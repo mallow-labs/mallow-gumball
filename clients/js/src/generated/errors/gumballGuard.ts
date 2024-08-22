@@ -777,7 +777,7 @@ nameToErrorMap.set(
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors
  */
-export function getMplGumballGuardProgramErrorFromCode(
+export function getGumballGuardErrorFromCode(
   code: number,
   program: Program,
   cause?: Error
@@ -790,7 +790,7 @@ export function getMplGumballGuardProgramErrorFromCode(
  * Attempts to resolve a custom program error from the provided error name, i.e. 'Unauthorized'.
  * @category Errors
  */
-export function getMplGumballGuardProgramErrorFromName(
+export function getGumballGuardErrorFromName(
   name: string,
   program: Program,
   cause?: Error

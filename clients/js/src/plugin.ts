@@ -23,13 +23,13 @@ import {
   tokenPaymentGuardManifest,
 } from './defaultGuards';
 import {
+  createGumballGuardProgram,
   createMallowGumballProgram,
-  createMplGumballGuardProgramProgram,
 } from './generated';
 import {
   DefaultGuardRepository,
   GuardRepository,
-  GumballGuardProgramProgram,
+  GumballGuardProgram,
 } from './guards';
 import {
   createCivicGatewayProgram,
@@ -44,9 +44,9 @@ export const mallowGumball = (): UmiPlugin => ({
     umi.programs.add(createMallowGumballProgram(), false);
     umi.programs.add(
       {
-        ...createMplGumballGuardProgramProgram(),
+        ...createGumballGuardProgram(),
         availableGuards: defaultGumballGuardNames,
-      } as GumballGuardProgramProgram,
+      } as GumballGuardProgram,
       false
     );
     umi.programs.add(createCivicGatewayProgram(), false);

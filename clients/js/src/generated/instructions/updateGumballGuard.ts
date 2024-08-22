@@ -85,7 +85,7 @@ export function updateGumballGuard(
 ): TransactionBuilder {
   // Program ID.
   const programId = context.programs.getPublicKey(
-    'mplGumballGuardProgram',
+    'gumballGuard',
     'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF'
   );
 

@@ -6,16 +6,16 @@
 
 From Gumball Guard v0.2.0, the serialization logic for the arguments of the `initialize` and `update` instructions expect a `[u8]` represeting the custom serialized struct. This is to ensure adding new guards in the future does not affect clients.
 
-If you are using the `mpl-gumball-guard` npm package, you can serialize the `GumballMachineData` object using:
+If you are using the `gumball-guard` npm package, you can serialize the `GumballMachineData` object using:
 
 ```typescript
-import { serialize } from '@metaplex-foundation/mpl-gumball-guard';
+import { serialize } from '@metaplex-foundation/gumball-guard';
 
 const data = { ... };
 const serializedData = serialize(data);
 ```
 
-If you are using the `mpl-gumball-guard` Rust crate, you can serialize the `GumballMachineData` struct using:
+If you are using the `gumball-guard` Rust crate, you can serialize the `GumballMachineData` struct using:
 
 ```rust
 let data = GumballGuardData { ... };
@@ -124,7 +124,7 @@ This instruction creates and initializes a new `GumballGuard` account.
 | ----------------------------- | ------ | ---- | ------------------------- |
 | `data`                        | 0      | ~    | Serialized `GumballGuardData` object as `[u8]`. |
 
-The instruction uses a [custom serialization](https://docs.rs/mpl-gumball-guard/0.1.1/mpl_gumball_guard/state/gumball_guard/struct.GumballGuardData.html#method.save) in order to maintain backwards compatibility with previous versions of the `GumballGuardData` struct.
+The instruction uses a [custom serialization](https://docs.rs/gumball-guard/0.1.1/gumball_guard/state/gumball_guard/struct.GumballGuardData.html#method.save) in order to maintain backwards compatibility with previous versions of the `GumballGuardData` struct.
 
 </details>
 
@@ -290,7 +290,7 @@ This instruction updates the Gumball Guard configuration. Given that there is a 
 | ----------------------------- | ------ | ---- | ------------------------- |
 | `data`                        | 0      | ~    | Serialized `GumballGuardData` object as `[u8]`. |
 
-The instruction uses a [custom serialization](https://docs.rs/mpl-gumball-guard/0.1.1/mpl_gumball_guard/state/gumball_guard/struct.GumballGuardData.html#method.save) in order to maintain backwards compatibility with previous versions of the `GumballGuardData` struct.
+The instruction uses a [custom serialization](https://docs.rs/gumball-guard/0.1.1/gumball_guard/state/gumball_guard/struct.GumballGuardData.html#method.save) in order to maintain backwards compatibility with previous versions of the `GumballGuardData` struct.
 
 </details>
 

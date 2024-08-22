@@ -13,22 +13,22 @@ import {
   PublicKey,
 } from '@metaplex-foundation/umi';
 import {
-  getMplGumballGuardProgramErrorFromCode,
-  getMplGumballGuardProgramErrorFromName,
+  getGumballGuardErrorFromCode,
+  getGumballGuardErrorFromName,
 } from '../errors';
 
-export const MPL_GUMBALL_GUARD_PROGRAM_PROGRAM_ID =
+export const GUMBALL_GUARD_PROGRAM_ID =
   'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF' as PublicKey<'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF'>;
 
-export function createMplGumballGuardProgramProgram(): Program {
+export function createGumballGuardProgram(): Program {
   return {
-    name: 'mplGumballGuardProgram',
-    publicKey: MPL_GUMBALL_GUARD_PROGRAM_PROGRAM_ID,
+    name: 'gumballGuard',
+    publicKey: GUMBALL_GUARD_PROGRAM_ID,
     getErrorFromCode(code: number, cause?: Error) {
-      return getMplGumballGuardProgramErrorFromCode(code, this, cause);
+      return getGumballGuardErrorFromCode(code, this, cause);
     },
     getErrorFromName(name: string, cause?: Error) {
-      return getMplGumballGuardProgramErrorFromName(name, this, cause);
+      return getGumballGuardErrorFromName(name, this, cause);
     },
     isOnCluster() {
       return true;
@@ -36,20 +36,20 @@ export function createMplGumballGuardProgramProgram(): Program {
   };
 }
 
-export function getMplGumballGuardProgramProgram<T extends Program = Program>(
+export function getGumballGuardProgram<T extends Program = Program>(
   context: Pick<Context, 'programs'>,
   clusterFilter?: ClusterFilter
 ): T {
-  return context.programs.get<T>('mplGumballGuardProgram', clusterFilter);
+  return context.programs.get<T>('gumballGuard', clusterFilter);
 }
 
-export function getMplGumballGuardProgramProgramId(
+export function getGumballGuardProgramId(
   context: Pick<Context, 'programs'>,
   clusterFilter?: ClusterFilter
 ): PublicKey {
   return context.programs.getPublicKey(
-    'mplGumballGuardProgram',
-    MPL_GUMBALL_GUARD_PROGRAM_PROGRAM_ID,
+    'gumballGuard',
+    GUMBALL_GUARD_PROGRAM_ID,
     clusterFilter
   );
 }

@@ -13,7 +13,7 @@ import {
   GuardRepository,
   GuardSet,
   GuardSetArgs,
-  GumballGuardProgramProgram,
+  GumballGuardProgram,
 } from './guards';
 import {
   getGumballGuardDataSerializer,
@@ -42,9 +42,7 @@ export function createGumballGuard<
     >
 ): TransactionBuilder {
   const { guards, groups, ...rest } = input;
-  const program = context.programs.get<GumballGuardProgramProgram>(
-    'mplGumballGuardProgram'
-  );
+  const program = context.programs.get<GumballGuardProgram>('gumballGuard');
   const serializer = getGumballGuardDataSerializer<
     DA extends undefined ? DefaultGuardSetArgs : DA,
     any

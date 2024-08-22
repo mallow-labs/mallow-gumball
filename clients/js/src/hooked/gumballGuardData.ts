@@ -11,7 +11,7 @@ import {
   GuardRepository,
   GuardSet,
   GuardSetArgs,
-  GumballGuardProgramProgram,
+  GumballGuardProgram,
 } from '../guards';
 
 export type GumballGuardData<D extends GuardSet> = {
@@ -29,7 +29,7 @@ export function getGumballGuardDataSerializer<
   D extends DA & GuardSet
 >(
   context: { guards: GuardRepository },
-  program: GumballGuardProgramProgram
+  program: GumballGuardProgram
 ): Serializer<GumballGuardDataArgs<DA>, GumballGuardData<D>> {
   return struct<GumballGuardDataArgs<DA>, GumballGuardData<D>>(
     [

@@ -27,7 +27,7 @@ import {
   GuardRepository,
   GuardSet,
   GuardSetArgs,
-  GumballGuardProgramProgram,
+  GumballGuardProgram,
 } from '../guards';
 import { GumballGuardData, GumballGuardDataArgs } from './gumballGuardData';
 
@@ -61,11 +61,9 @@ export function getGumballGuardAccountDataSerializer<
   context: Pick<Context, 'programs'> & {
     guards: GuardRepository;
   },
-  program?: GumballGuardProgramProgram
+  program?: GumballGuardProgram
 ): Serializer<GumballGuardAccountDataArgs<DA>, GumballGuardAccountData<D>> {
-  program ??= context.programs.get<GumballGuardProgramProgram>(
-    'mplGumballGuardProgram'
-  );
+  program ??= context.programs.get<GumballGuardProgram>('gumballGuard');
   return mapSerializer(
     struct<any>(
       [
@@ -87,7 +85,7 @@ export function deserializeGumballGuard<D extends GuardSet = DefaultGuardSet>(
     guards: GuardRepository;
   },
   rawAccount: RpcAccount,
-  program?: GumballGuardProgramProgram
+  program?: GumballGuardProgram
 ): GumballGuard<D> {
   return deserializeAccount(
     rawAccount,
@@ -101,7 +99,7 @@ export async function fetchGumballGuard<D extends GuardSet = DefaultGuardSet>(
   },
   publicKey: PublicKey | Pda,
   options?: RpcGetAccountOptions,
-  program?: GumballGuardProgramProgram
+  program?: GumballGuardProgram
 ): Promise<GumballGuard<D>> {
   const maybeAccount = await context.rpc.getAccount(
     toPublicKey(publicKey, false),
@@ -119,7 +117,7 @@ export async function safeFetchGumballGuard<
   },
   publicKey: PublicKey | Pda,
   options?: RpcGetAccountOptions,
-  program?: GumballGuardProgramProgram
+  program?: GumballGuardProgram
 ): Promise<GumballGuard<D> | null> {
   const maybeAccount = await context.rpc.getAccount(
     toPublicKey(publicKey, false),
@@ -138,7 +136,7 @@ export async function fetchAllGumballGuard<
   },
   publicKeys: (PublicKey | Pda)[],
   options?: RpcGetAccountsOptions,
-  program?: GumballGuardProgramProgram
+  program?: GumballGuardProgram
 ): Promise<GumballGuard<D>[]> {
   const maybeAccounts = await context.rpc.getAccounts(
     publicKeys.map((publicKey) => toPublicKey(publicKey, false)),
@@ -158,7 +156,7 @@ export async function safeFetchAllGumballGuard<
   },
   publicKeys: (PublicKey | Pda)[],
   options?: RpcGetAccountsOptions,
-  program?: GumballGuardProgramProgram
+  program?: GumballGuardProgram
 ): Promise<GumballGuard<D>[]> {
   const maybeAccounts = await context.rpc.getAccounts(
     publicKeys.map((publicKey) => toPublicKey(publicKey, false)),
@@ -175,10 +173,10 @@ export function getGumballGuardGpaBuilder<D extends GuardSet = DefaultGuardSet>(
   context: Pick<Context, 'programs' | 'rpc'> & {
     guards: GuardRepository;
   },
-  program?: GumballGuardProgramProgram
+  program?: GumballGuardProgram
 ) {
   const programId = context.programs.getPublicKey(
-    'mplGumballGuardProgram',
+    'gumballGuard',
     'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF'
   );
   return gpaBuilder(context, programId)

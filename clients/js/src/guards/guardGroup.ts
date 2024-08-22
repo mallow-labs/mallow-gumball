@@ -6,7 +6,7 @@ import {
 } from '@metaplex-foundation/umi/serializers';
 import { GUMBALL_GUARD_LABEL_SIZE } from '../constants';
 import { GuardGroupLabelTooLongError } from '../errors';
-import { GuardRepository, GumballGuardProgramProgram } from './guardRepository';
+import { GuardRepository, GumballGuardProgram } from './guardRepository';
 import { getGuardSetSerializer, GuardSet, GuardSetArgs } from './guardSet';
 
 /**
@@ -28,7 +28,7 @@ export function getGuardGroupSerializer<
   D extends DA & GuardSet
 >(
   context: { guards: GuardRepository },
-  program: GumballGuardProgramProgram
+  program: GumballGuardProgram
 ): Serializer<GuardGroupArgs<DA>, GuardGroup<D>> {
   return struct(
     [

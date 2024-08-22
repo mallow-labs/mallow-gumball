@@ -3,7 +3,7 @@
 version = 3
 
 [[package]]
-name = "mpl-gumball-guard-derive"
+name = "gumball-guard-derive"
 version = "0.0.1"
 dependencies = [
  "quote",

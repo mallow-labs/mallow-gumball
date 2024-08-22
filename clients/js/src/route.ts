@@ -14,7 +14,7 @@ import {
 import {
   GuardRepository,
   GuardSetRouteArgs,
-  GumballGuardProgramProgram,
+  GumballGuardProgram,
   parseGuardRemainingAccounts,
   parseRouteArgs,
   RouteContext,
@@ -56,9 +56,7 @@ export function route<
     >
 ): TransactionBuilder {
   const { routeArgs = {}, group = none(), ...rest } = input;
-  const program = context.programs.get<GumballGuardProgramProgram>(
-    'mplGumballGuardProgram'
-  );
+  const program = context.programs.get<GumballGuardProgram>('gumballGuard');
   const gumballMachine = publicKey(input.gumballMachine, false);
   const routeContext: RouteContext = {
     payer: input.payer ?? context.payer,
