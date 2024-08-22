@@ -12,9 +12,9 @@ import {
   RouteInstructionAccounts,
 } from './generated/instructions/route';
 import {
-  CandyGuardProgram,
   GuardRepository,
   GuardSetRouteArgs,
+  GumballGuardProgramProgram,
   parseGuardRemainingAccounts,
   parseRouteArgs,
   RouteContext,
@@ -56,7 +56,9 @@ export function route<
     >
 ): TransactionBuilder {
   const { routeArgs = {}, group = none(), ...rest } = input;
-  const program = context.programs.get<CandyGuardProgram>('mplCandyGuard');
+  const program = context.programs.get<GumballGuardProgramProgram>(
+    'mplGumballGuardProgram'
+  );
   const gumballMachine = publicKey(input.gumballMachine, false);
   const routeContext: RouteContext = {
     payer: input.payer ?? context.payer,

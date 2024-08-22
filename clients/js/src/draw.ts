@@ -13,9 +13,9 @@ import {
   DrawInstructionAccounts,
 } from './generated/instructions/draw';
 import {
-  CandyGuardProgram,
   GuardRepository,
   GuardSetMintArgs,
+  GumballGuardProgramProgram,
   MintContext,
   parseGuardRemainingAccounts,
   parseMintArgs,
@@ -47,7 +47,9 @@ export function draw<MA extends GuardSetMintArgs = DefaultGuardSetMintArgs>(
   const { mintArgs = {}, group = none(), ...rest } = input;
 
   // Parsing mint data.
-  const program = context.programs.get<CandyGuardProgram>('mplCandyGuard');
+  const program = context.programs.get<GumballGuardProgramProgram>(
+    'mplGumballGuardProgram'
+  );
   const gumballMachine = publicKey(input.gumballMachine, false);
   const mintContext: MintContext = {
     buyer: input.buyer ?? context.identity,

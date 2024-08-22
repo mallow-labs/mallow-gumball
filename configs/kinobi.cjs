@@ -14,7 +14,7 @@ const kinobi = k.createFromIdls([
 // Update programs.
 kinobi.update(
 	new k.UpdateProgramsVisitor({
-		gumballGuard: { name: "mplCandyGuard", prefix: "Cg" },
+		gumballGuard: { name: "mplGumballGuardProgram", prefix: "Cg" },
 		gumballMachineCore: { name: "mallowGumball", prefix: "Cm" },
 	})
 );
@@ -266,7 +266,7 @@ kinobi.update(
 // Update instructions.
 kinobi.update(
 	new k.UpdateInstructionsVisitor({
-		"mplCandyGuard.initialize": {
+		"mplGumballGuardProgram.initialize": {
 			name: "initializeGumballGuard",
 			internal: true,
 			accounts: {
@@ -311,7 +311,7 @@ kinobi.update(
 				buyer: { defaultsTo: k.identityDefault() },
 			},
 		},
-		"mplCandyGuard.draw": {
+		"mplGumballGuardProgram.draw": {
 			internal: true,
 			args: {
 				label: { name: "group" },
@@ -336,7 +336,7 @@ kinobi.update(
 				buyer: { defaultsTo: k.identityDefault() },
 			},
 		},
-		"mplCandyGuard.route": {
+		"mplGumballGuardProgram.route": {
 			internal: true,
 			args: {
 				label: { name: "group" },
@@ -389,10 +389,10 @@ kinobi.update(
 			},
 		},
 		"mallowGumball.SetAuthority": { name: "SetGumballMachineAuthority" },
-		"mplCandyGuard.SetAuthority": { name: "SetGumballGuardAuthority" },
-		"mplCandyGuard.update": { name: "updateGumballGuard", internal: true },
+		"mplGumballGuardProgram.SetAuthority": { name: "SetGumballGuardAuthority" },
+		"mplGumballGuardProgram.update": { name: "updateGumballGuard", internal: true },
 		"mallowGumball.withdraw": { name: "deleteGumballMachine" },
-		"mplCandyGuard.withdraw": { name: "deleteGumballGuard" },
+		"mplGumballGuardProgram.withdraw": { name: "deleteGumballGuard" },
 	})
 );
 

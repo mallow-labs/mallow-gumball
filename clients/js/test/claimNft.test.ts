@@ -76,6 +76,7 @@ test('it can claim an nft item', async (t) => {
         index: 0,
         isDrawn: true,
         isClaimed: true,
+        isSettled: false,
         mint: nft.publicKey,
         seller: umi.identity.publicKey,
         buyer: buyerUmi.identity.publicKey,

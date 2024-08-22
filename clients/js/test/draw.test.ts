@@ -77,6 +77,7 @@ test('it can mint from a gumball guard with no guards', async (t) => {
         index: 0,
         isDrawn: true,
         isClaimed: false,
+        isSettled: false,
         mint: nft.publicKey,
         seller: umi.identity.publicKey,
         buyer: buyer.publicKey,

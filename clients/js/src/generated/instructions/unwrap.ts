@@ -64,7 +64,7 @@ export function unwrap(
 ): TransactionBuilder {
   // Program ID.
   const programId = context.programs.getPublicKey(
-    'mplCandyGuard',
+    'mplGumballGuardProgram',
     'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF'
   );
 

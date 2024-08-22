@@ -67,6 +67,7 @@ test('it can claim a core asset item', async (t) => {
         index: 0,
         isDrawn: true,
         isClaimed: true,
+        isSettled: false,
         mint: asset.publicKey,
         seller: umi.identity.publicKey,
         buyer: buyerUmi.identity.publicKey,

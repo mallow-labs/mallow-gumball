@@ -7,4 +7,4 @@
  */
 
 export * from './mallowGumball';
-export * from './mplCandyGuard';
+export * from './mplGumballGuardProgram';

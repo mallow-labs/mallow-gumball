@@ -661,6 +661,7 @@ test('it can settle an nft sale for claimed nft', async (t) => {
         index: 0,
         isDrawn: true,
         isClaimed: true,
+        isSettled: true,
         mint: nft.publicKey,
         seller: umi.identity.publicKey,
         buyer: buyerUmi.identity.publicKey,

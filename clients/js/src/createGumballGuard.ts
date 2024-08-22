@@ -10,10 +10,10 @@ import {
   InitializeGumballGuardInstructionAccounts,
 } from './generated/instructions/initializeGumballGuard';
 import {
-  CandyGuardProgram,
   GuardRepository,
   GuardSet,
   GuardSetArgs,
+  GumballGuardProgramProgram,
 } from './guards';
 import {
   getGumballGuardDataSerializer,
@@ -42,7 +42,9 @@ export function createGumballGuard<
     >
 ): TransactionBuilder {
   const { guards, groups, ...rest } = input;
-  const program = context.programs.get<CandyGuardProgram>('mplCandyGuard');
+  const program = context.programs.get<GumballGuardProgramProgram>(
+    'mplGumballGuardProgram'
+  );
   const serializer = getGumballGuardDataSerializer<
     DA extends undefined ? DefaultGuardSetArgs : DA,
     any

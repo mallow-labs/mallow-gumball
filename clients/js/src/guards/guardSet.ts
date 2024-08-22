@@ -24,7 +24,7 @@ import {
   MintContext,
   RouteContext,
 } from './guardManifest';
-import { CandyGuardProgram, GuardRepository } from './guardRepository';
+import { GuardRepository, GumballGuardProgramProgram } from './guardRepository';
 
 export type GuardSetArgs = {
   [name: string]: OptionOrNullable<object>;
@@ -47,7 +47,7 @@ export function getGuardSetSerializer<
   D extends DA & GuardSet
 >(
   context: { guards: GuardRepository },
-  program: CandyGuardProgram
+  program: GumballGuardProgramProgram
 ): Serializer<Partial<DA>, D> {
   const manifests = context.guards.forProgram(program);
   const featuresSerializer = reverseSerializer(bitArray(8, true));
@@ -94,7 +94,7 @@ export function parseMintArgs<MA extends GuardSetMintArgs>(
   context: Pick<Context, 'eddsa' | 'programs'> & {
     guards: GuardRepository;
   },
-  program: CandyGuardProgram,
+  program: GumballGuardProgramProgram,
   mintContext: MintContext,
   mintArgs: Partial<MA>
 ): GuardInstructionExtras {
@@ -125,7 +125,7 @@ export function parseRouteArgs<
   context: Pick<Context, 'eddsa' | 'programs'> & {
     guards: GuardRepository;
   },
-  program: CandyGuardProgram,
+  program: GumballGuardProgramProgram,
   routeContext: RouteContext,
   guard: G,
   routeArgs: RA[G]

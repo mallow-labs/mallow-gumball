@@ -123,6 +123,7 @@ test('it can remove core asset at a lower index than last from a gumball machine
         index: 0,
         isDrawn: false,
         isClaimed: false,
+        isSettled: false,
         mint: coreAssets[1].publicKey,
         seller: umi.identity.publicKey,
         buyer: undefined,

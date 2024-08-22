@@ -118,7 +118,7 @@ export function getAllocationTrackerGpaBuilder(
   context: Pick<Context, 'rpc' | 'programs'>
 ) {
   const programId = context.programs.getPublicKey(
-    'mplCandyGuard',
+    'mplGumballGuardProgram',
     'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF'
   );
   return gpaBuilder(context, programId)
@@ -145,7 +145,7 @@ export function findAllocationTrackerPda(
   }
 ): Pda {
   const programId = context.programs.getPublicKey(
-    'mplCandyGuard',
+    'mplGumballGuardProgram',
     'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF'
   );
   return context.eddsa.findPda(programId, [

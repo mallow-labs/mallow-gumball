@@ -4,7 +4,6 @@ import {
   struct,
 } from '@metaplex-foundation/umi/serializers';
 import {
-  CandyGuardProgram,
   getGuardGroupSerializer,
   getGuardSetSerializer,
   GuardGroup,
@@ -12,6 +11,7 @@ import {
   GuardRepository,
   GuardSet,
   GuardSetArgs,
+  GumballGuardProgramProgram,
 } from '../guards';
 
 export type GumballGuardData<D extends GuardSet> = {
@@ -29,7 +29,7 @@ export function getGumballGuardDataSerializer<
   D extends DA & GuardSet
 >(
   context: { guards: GuardRepository },
-  program: CandyGuardProgram
+  program: GumballGuardProgramProgram
 ): Serializer<GumballGuardDataArgs<DA>, GumballGuardData<D>> {
   return struct<GumballGuardDataArgs<DA>, GumballGuardData<D>>(
     [

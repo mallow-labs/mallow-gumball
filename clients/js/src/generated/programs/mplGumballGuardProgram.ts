@@ -13,22 +13,22 @@ import {
   PublicKey,
 } from '@metaplex-foundation/umi';
 import {
-  getMplCandyGuardErrorFromCode,
-  getMplCandyGuardErrorFromName,
+  getMplGumballGuardProgramErrorFromCode,
+  getMplGumballGuardProgramErrorFromName,
 } from '../errors';
 
-export const MPL_CANDY_GUARD_PROGRAM_ID =
+export const MPL_GUMBALL_GUARD_PROGRAM_PROGRAM_ID =
   'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF' as PublicKey<'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF'>;
 
-export function createMplCandyGuardProgram(): Program {
+export function createMplGumballGuardProgramProgram(): Program {
   return {
-    name: 'mplCandyGuard',
-    publicKey: MPL_CANDY_GUARD_PROGRAM_ID,
+    name: 'mplGumballGuardProgram',
+    publicKey: MPL_GUMBALL_GUARD_PROGRAM_PROGRAM_ID,
     getErrorFromCode(code: number, cause?: Error) {
-      return getMplCandyGuardErrorFromCode(code, this, cause);
+      return getMplGumballGuardProgramErrorFromCode(code, this, cause);
     },
     getErrorFromName(name: string, cause?: Error) {
-      return getMplCandyGuardErrorFromName(name, this, cause);
+      return getMplGumballGuardProgramErrorFromName(name, this, cause);
     },
     isOnCluster() {
       return true;
@@ -36,20 +36,20 @@ export function createMplCandyGuardProgram(): Program {
   };
 }
 
-export function getMplCandyGuardProgram<T extends Program = Program>(
+export function getMplGumballGuardProgramProgram<T extends Program = Program>(
   context: Pick<Context, 'programs'>,
   clusterFilter?: ClusterFilter
 ): T {
-  return context.programs.get<T>('mplCandyGuard', clusterFilter);
+  return context.programs.get<T>('mplGumballGuardProgram', clusterFilter);
 }
 
-export function getMplCandyGuardProgramId(
+export function getMplGumballGuardProgramProgramId(
   context: Pick<Context, 'programs'>,
   clusterFilter?: ClusterFilter
 ): PublicKey {
   return context.programs.getPublicKey(
-    'mplCandyGuard',
-    MPL_CANDY_GUARD_PROGRAM_ID,
+    'mplGumballGuardProgram',
+    MPL_GUMBALL_GUARD_PROGRAM_PROGRAM_ID,
     clusterFilter
   );
 }

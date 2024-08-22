@@ -24,12 +24,12 @@ import {
 } from './defaultGuards';
 import {
   createMallowGumballProgram,
-  createMplCandyGuardProgram,
+  createMplGumballGuardProgramProgram,
 } from './generated';
 import {
-  CandyGuardProgram,
   DefaultGuardRepository,
   GuardRepository,
+  GumballGuardProgramProgram,
 } from './guards';
 import {
   createCivicGatewayProgram,
@@ -44,9 +44,9 @@ export const mallowGumball = (): UmiPlugin => ({
     umi.programs.add(createMallowGumballProgram(), false);
     umi.programs.add(
       {
-        ...createMplCandyGuardProgram(),
+        ...createMplGumballGuardProgramProgram(),
         availableGuards: defaultGumballGuardNames,
-      } as CandyGuardProgram,
+      } as GumballGuardProgramProgram,
       false
     );
     umi.programs.add(createCivicGatewayProgram(), false);

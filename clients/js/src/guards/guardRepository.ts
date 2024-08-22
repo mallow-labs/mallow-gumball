@@ -7,7 +7,7 @@ import { GuardManifest } from './guardManifest';
 
 export type AnyGuardManifest = GuardManifest<any, any, any, any>;
 
-export type CandyGuardProgram = Program & {
+export type GumballGuardProgramProgram = Program & {
   availableGuards: string[];
 };
 
@@ -28,7 +28,7 @@ export interface GuardRepository {
    * is not registered. Manifests are returned in the order in which
    * they are defined on the `availableGuards` property of the program.
    */
-  forProgram(program: CandyGuardProgram): AnyGuardManifest[];
+  forProgram(program: GumballGuardProgramProgram): AnyGuardManifest[];
 }
 
 export class DefaultGuardRepository implements GuardRepository {
@@ -55,7 +55,7 @@ export class DefaultGuardRepository implements GuardRepository {
     return Array.from(this.manifests.values());
   }
 
-  forProgram(program: CandyGuardProgram): AnyGuardManifest[] {
+  forProgram(program: GumballGuardProgramProgram): AnyGuardManifest[] {
     return program.availableGuards.map((name) => this.get(name));
   }
 }
