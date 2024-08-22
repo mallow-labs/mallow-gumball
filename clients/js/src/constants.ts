@@ -1,42 +1,39 @@
-export const MAX_NAME_LENGTH = 32;
-export const MAX_SYMBOL_LENGTH = 10;
-export const MAX_URI_LENGTH = 200;
-export const MAX_CREATOR_LIMIT = 5;
-export const MAX_CREATOR_LEN = 32 + 1 + 1;
-export const CONFIG_LINE_SIZE = 4 + MAX_NAME_LENGTH + 4 + MAX_URI_LENGTH;
+import { publicKey } from '@metaplex-foundation/umi';
 
-export const CANDY_MACHINE_HIDDEN_SECTION =
+export const FEE_CONFIG_SIZE =
+  32 + // fee account
+  2; // fee bps
+
+export const GUMBALL_MACHINE_HIDDEN_SECTION =
   8 + // discriminator
-  8 + // features
+  1 + // version
   32 + // authority
   32 + // mint authority
-  32 + // collection mint
+  FEE_CONFIG_SIZE +
+  1 + // marketplace fee config (optional)
   8 + // items redeemed
-  8 + // items available (config data)
-  4 +
-  MAX_SYMBOL_LENGTH + // u32 + max symbol length
-  2 + // seller fee basis points
-  8 + // max supply
-  1 + // is mutable
-  4 +
-  MAX_CREATOR_LIMIT * MAX_CREATOR_LEN + // u32 + creators vec
-  1 + // option (config lines settings)
-  4 +
-  MAX_NAME_LENGTH + // u32 + max name length
-  4 + // name length
-  4 +
-  MAX_URI_LENGTH + // u32 + max uri length
-  4 + // uri length
-  1 + // is sequential
-  1 + // option (hidden setting)
-  4 +
-  MAX_NAME_LENGTH + // u32 + max name length
-  4 +
-  MAX_URI_LENGTH + // u32 + max uri length
-  32; // hash
+  8 + // finalized items count
+  8 + // items settled
+  8 + // total revenue
+  1 + // state
+  200 + // uri
+  8 + // item capacity
+  2 + // items per seller
+  33 + // add items merkle root
+  2 + // curator fee bps
+  1 + // hide sold items
+  32; // payment token
 
-export const CANDY_GUARD_LABEL_SIZE = 6;
-export const CANDY_GUARD_DATA =
+export const GUMBALL_MACHINE_SIZE = GUMBALL_MACHINE_HIDDEN_SECTION;
+
+export const CONFIG_LINE_SIZE =
+  32 + // mint
+  32 + // seller
+  32 + // buyer
+  1; // token standard
+
+export const GUMBALL_GUARD_LABEL_SIZE = 6;
+export const GUMBALL_GUARD_DATA =
   8 + // discriminator
   32 + // base
   1 + // bump
@@ -45,3 +42,7 @@ export const CANDY_GUARD_DATA =
 export const METADATA_SIZE: number = 679;
 
 export const MASTER_EDITION_SIZE: number = 282;
+
+export const NATIVE_MINT = publicKey(
+  'So11111111111111111111111111111111111111112'
+);

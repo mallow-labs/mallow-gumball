@@ -39,7 +39,7 @@ impl Condition for TokenBurn {
         // consumes the gate token account
         ctx.account_cursor += 1;
 
-        let account = assert_is_ata(token_gate_account, &ctx.accounts.minter.key(), &self.mint)?;
+        let account = assert_is_ata(token_gate_account, &ctx.accounts.buyer.key(), &self.mint)?;
 
         if account.amount >= self.amount {
             let token_gate_mint =
@@ -50,7 +50,7 @@ impl Condition for TokenBurn {
             // is the mint account the one expected?
             assert_keys_equal(&token_gate_mint.key(), &self.mint)?;
         } else {
-            return err!(CandyGuardError::NotEnoughTokens);
+            return err!(GumballGuardError::NotEnoughTokens);
         }
 
         ctx.indices.insert("token_burn_index", token_gate_index);
@@ -73,7 +73,7 @@ impl Condition for TokenBurn {
             mint: token_gate_mint.to_account_info(),
             source: token_gate_account.to_account_info(),
             amount: self.amount,
-            authority: ctx.accounts.minter.to_account_info(),
+            authority: ctx.accounts.buyer.to_account_info(),
             authority_signer_seeds: None,
             token_program: ctx.accounts.spl_token_program.to_account_info(),
         })?;

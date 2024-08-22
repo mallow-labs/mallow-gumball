@@ -8,20 +8,20 @@
 
 import {
   Account,
+  assertAccountExists,
   Context,
+  deserializeAccount,
+  gpaBuilder,
   Pda,
   PublicKey,
+  publicKey as toPublicKey,
   RpcAccount,
   RpcGetAccountOptions,
   RpcGetAccountsOptions,
-  assertAccountExists,
-  deserializeAccount,
-  gpaBuilder,
-  publicKey as toPublicKey,
 } from '@metaplex-foundation/umi';
 import {
-  Serializer,
   publicKey as publicKeySerializer,
+  Serializer,
   string,
   struct,
   u16,
@@ -107,7 +107,7 @@ export function getMintCounterGpaBuilder(
 ) {
   const programId = context.programs.getPublicKey(
     'mplCandyGuard',
-    'Guard1JwRhJkVH6XZhzoYxeBVQe872VH6QggF4BWmS9g'
+    'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF'
   );
   return gpaBuilder(context, programId)
     .registerFields<{ count: number }>({ count: [0, u16()] })
@@ -122,26 +122,26 @@ export function getMintCounterSize(): number {
 export function findMintCounterPda(
   context: Pick<Context, 'eddsa' | 'programs'>,
   seeds: {
-    /** A unique identifier in the context of a Candy Machine/Candy Guard combo */
+    /** A unique identifier in the context of a Gumball Machine/Gumball Guard combo */
     id: number;
     /** The address of the wallet trying to mint */
     user: PublicKey;
-    /** The address of the Candy Guard account */
-    candyGuard: PublicKey;
-    /** The address of the Candy Machine account */
-    candyMachine: PublicKey;
+    /** The address of the Gumball Guard account */
+    gumballGuard: PublicKey;
+    /** The address of the Gumball Machine account */
+    gumballMachine: PublicKey;
   }
 ): Pda {
   const programId = context.programs.getPublicKey(
     'mplCandyGuard',
-    'Guard1JwRhJkVH6XZhzoYxeBVQe872VH6QggF4BWmS9g'
+    'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF'
   );
   return context.eddsa.findPda(programId, [
     string({ size: 'variable' }).serialize('mint_limit'),
     u8().serialize(seeds.id),
     publicKeySerializer().serialize(seeds.user),
-    publicKeySerializer().serialize(seeds.candyGuard),
-    publicKeySerializer().serialize(seeds.candyMachine),
+    publicKeySerializer().serialize(seeds.gumballGuard),
+    publicKeySerializer().serialize(seeds.gumballMachine),
   ]);
 }
 

@@ -1,12 +1,13 @@
 /* eslint-disable import/no-extraneous-dependencies */
+import { create as baseCreateCoreAsset } from '@metaplex-foundation/mpl-core';
 import {
-  DigitalAssetWithToken,
-  TokenStandard,
   createNft as baseCreateNft,
   createProgrammableNft as baseCreateProgrammableNft,
+  DigitalAssetWithToken,
   fetchDigitalAssetWithAssociatedToken,
   findMasterEditionPda,
   findMetadataPda,
+  TokenStandard as MplTokenStandard,
   verifyCollectionV1,
 } from '@metaplex-foundation/mpl-token-metadata';
 import {
@@ -16,35 +17,42 @@ import {
   mintTokensTo,
 } from '@metaplex-foundation/mpl-toolbox';
 import {
-  Context,
-  DateTime,
-  PublicKey,
-  PublicKeyInput,
-  Signer,
-  TransactionSignature,
-  Umi,
   assertAccountExists,
+  DateTime,
   generateSigner,
+  none,
   now,
   percentAmount,
+  PublicKey,
   publicKey,
+  PublicKeyInput,
+  Signer,
   some,
   transactionBuilder,
+  TransactionSignature,
+  Umi,
 } from '@metaplex-foundation/umi';
 import { createUmi as basecreateUmi } from '@metaplex-foundation/umi-bundle-tests';
+import { Keypair } from '@solana/web3.js';
 import { Assertions } from 'ava';
 import {
-  CandyGuardDataArgs,
-  ConfigLine,
-  CreateCandyGuardInstructionAccounts,
-  CreateCandyGuardInstructionDataArgs,
+  addCoreAsset,
+  addNft,
+  ConfigLineInput,
+  createGumballGuard as baseCreateGumballGuard,
+  CreateGumballGuardInstructionDataArgs,
+  createGumballMachine as baseCreateGumballMachineV2,
   DefaultGuardSetArgs,
+  fetchGumballMachine,
+  findGumballGuardPda,
   GuardSetArgs,
-  addConfigLines,
-  createCandyGuard as baseCreateCandyGuard,
-  createCandyMachineV2 as baseCreateCandyMachineV2,
-  findCandyGuardPda,
-  mplCandyMachine,
+  GumballGuardDataArgs,
+  GumballSettings,
+  GumballSettingsArgs,
+  InitializeGumballGuardInstructionAccounts,
+  mallowGumball,
+  startSale,
+  TokenStandard,
   wrap,
 } from '../src';
 
@@ -53,7 +61,7 @@ export const METAPLEX_DEFAULT_RULESET = publicKey(
 );
 
 export const createUmi = async () =>
-  (await basecreateUmi()).use(mplCandyMachine());
+  (await basecreateUmi()).use(mallowGumball());
 
 export const createNft = async (
   umi: Umi,
@@ -67,6 +75,20 @@ export const createNft = async (
   }).sendAndConfirm(umi);
 
   return mint;
+};
+
+export const createCoreAsset = async (
+  umi: Umi,
+  input: Partial<Parameters<typeof baseCreateCoreAsset>[1]> = {}
+): Promise<Signer> => {
+  const asset = generateSigner(umi);
+  await baseCreateCoreAsset(umi, {
+    asset,
+    ...defaultAssetData(),
+    ...input,
+  }).sendAndConfirm(umi);
+
+  return asset;
 };
 
 export const createProgrammableNft = async (
@@ -185,44 +207,71 @@ export const createMintWithHolders = async (
   return [mint, ...atas];
 };
 
-export const createV2 = async <DA extends GuardSetArgs = DefaultGuardSetArgs>(
+export const create = async <DA extends GuardSetArgs = DefaultGuardSetArgs>(
   umi: Umi,
-  input: Partial<Parameters<typeof baseCreateCandyMachineV2>[1]> &
-    Partial<
-      CandyGuardDataArgs<DA extends undefined ? DefaultGuardSetArgs : DA>
-    > & { configLineIndex?: number; configLines?: ConfigLine[] } = {}
+  input: Omit<
+    Partial<Parameters<typeof baseCreateGumballMachineV2>[1]>,
+    'settings'
+  > & {
+    settings?: Partial<GumballSettingsArgs>;
+    items?: { id: PublicKey; tokenStandard: TokenStandard }[];
+    startSale?: boolean;
+  } & Partial<
+      GumballGuardDataArgs<DA extends undefined ? DefaultGuardSetArgs : DA>
+    > = {}
 ) => {
-  const candyMachine = input.candyMachine ?? generateSigner(umi);
-  const collectionMint =
-    input.collectionMint ?? (await createCollectionNft(umi)).publicKey;
-  let builder = await baseCreateCandyMachineV2(umi, {
-    ...defaultCandyMachineData(umi),
+  const gumballMachine = input.gumballMachine ?? generateSigner(umi);
+  let builder = await baseCreateGumballMachineV2(umi, {
     ...input,
-    itemsAvailable: input.itemsAvailable ?? input.configLines?.length ?? 100,
-    candyMachine,
-    collectionMint,
+    settings: {
+      ...defaultGumballSettings(),
+      ...input.settings,
+    },
+    gumballMachine,
   });
 
-  if (input.configLines !== undefined) {
+  if (input.guards !== undefined || input.groups !== undefined) {
+    const gumballGuard = findGumballGuardPda(umi, {
+      base: gumballMachine.publicKey,
+    });
+    builder = builder
+      .add(baseCreateGumballGuard<DA>(umi, { ...input, base: gumballMachine }))
+      .add(
+        wrap(umi, {
+          gumballMachine: gumballMachine.publicKey,
+          gumballGuard,
+        })
+      );
+  }
+
+  (input.items ?? []).forEach((item) => {
+    if (item.tokenStandard === TokenStandard.NonFungible) {
+      builder = builder.add(
+        addNft(umi, {
+          gumballMachine: gumballMachine.publicKey,
+          mint: item.id,
+        })
+      );
+    } else {
+      builder = builder.add(
+        addCoreAsset(umi, {
+          gumballMachine: gumballMachine.publicKey,
+          asset: item.id,
+        })
+      );
+    }
+  });
+
+  if (input.startSale) {
     builder = builder.add(
-      addConfigLines(umi, {
-        authority: input.collectionUpdateAuthority ?? umi.identity,
-        candyMachine: candyMachine.publicKey,
-        index: input.configLineIndex ?? 0,
-        configLines: input.configLines,
+      startSale(umi, {
+        gumballMachine: gumballMachine.publicKey,
       })
     );
   }
 
-  if (input.guards !== undefined || input.groups !== undefined) {
-    const candyGuard = findCandyGuardPda(umi, { base: candyMachine.publicKey });
-    builder = builder
-      .add(baseCreateCandyGuard<DA>(umi, { ...input, base: candyMachine }))
-      .add(wrap(umi, { candyMachine: candyMachine.publicKey, candyGuard }));
-  }
-
   await builder.sendAndConfirm(umi);
-  return candyMachine;
+  return gumballMachine;
 };
 
 export const defaultAssetData = () => ({
@@ -231,46 +280,33 @@ export const defaultAssetData = () => ({
   uri: 'https://example.com/my-asset.json',
 });
 
-export const defaultCandyMachineData = (
-  context: Pick<Context, 'identity'>
-) => ({
-  tokenStandard: TokenStandard.NonFungible,
-  collectionUpdateAuthority: context.identity,
-  itemsAvailable: 100,
-  sellerFeeBasisPoints: percentAmount(10, 2),
-  creators: [
-    {
-      address: context.identity.publicKey,
-      verified: true,
-      percentageShare: 100,
-    },
-  ],
-  configLineSettings: some({
-    prefixName: '',
-    nameLength: 32,
-    prefixUri: '',
-    uriLength: 200,
-    isSequential: false,
-  }),
+export const defaultGumballSettings = (): GumballSettings => ({
+  itemCapacity: 100n,
+  uri: 'https://example.com/gumball-machine.json',
+  itemsPerSeller: 3,
+  sellersMerkleRoot: none(),
+  curatorFeeBps: 500,
+  hideSoldItems: false,
+  paymentMint: publicKey('So11111111111111111111111111111111111111112'),
 });
 
-export const createCandyGuard = async <
+export const createGumballGuard = async <
   DA extends GuardSetArgs = DefaultGuardSetArgs
 >(
   umi: Umi,
   input: Partial<
-    CreateCandyGuardInstructionAccounts &
-      CreateCandyGuardInstructionDataArgs<
+    InitializeGumballGuardInstructionAccounts &
+      CreateGumballGuardInstructionDataArgs<
         DA extends undefined ? DefaultGuardSetArgs : DA
       >
   > = {}
 ) => {
   const base = input.base ?? generateSigner(umi);
   await transactionBuilder()
-    .add(baseCreateCandyGuard<DA>(umi, { ...input, base }))
+    .add(baseCreateGumballGuard<DA>(umi, { ...input, base }))
     .sendAndConfirm(umi);
 
-  return findCandyGuardPda(umi, { base: base.publicKey });
+  return findGumballGuardPda(umi, { base: base.publicKey });
 };
 
 export const assertSuccessfulMint = async (
@@ -280,7 +316,7 @@ export const assertSuccessfulMint = async (
     mint: PublicKey | Signer;
     owner: PublicKey | Signer;
     token?: PublicKey;
-    tokenStandard?: TokenStandard;
+    tokenStandard?: MplTokenStandard;
     name?: string | RegExp;
     uri?: string | RegExp;
   }
@@ -331,20 +367,38 @@ export const assertSuccessfulMint = async (
   else if (uri !== undefined) t.regex(nft.metadata.uri, uri);
 };
 
+export const assertItemBought = async (
+  t: Assertions,
+  umi: Umi,
+  input: {
+    gumballMachine: PublicKey;
+    buyer?: PublicKey;
+    count?: number;
+  }
+) => {
+  const gumballMachineAccount = await fetchGumballMachine(
+    umi,
+    input.gumballMachine
+  );
+
+  const buyerCount = gumballMachineAccount.items.filter(
+    (item) => item.buyer === (input.buyer ?? umi.identity.publicKey)
+  ).length;
+
+  t.is(buyerCount, input.count ?? 1);
+};
+
 export const assertBotTax = async (
   t: Assertions,
   umi: Umi,
-  mint: Signer | PublicKey,
   signature: TransactionSignature,
   extraRegex?: RegExp
 ) => {
   const transaction = await umi.rpc.getTransaction(signature);
   t.true(transaction !== null);
   const logs = transaction!.meta.logs.join('');
-  t.regex(logs, /Candy Guard Botting is taxed/);
+  t.regex(logs, /Gumball Guard Botting is taxed/);
   if (extraRegex !== undefined) t.regex(logs, extraRegex);
-  const [metadata] = findMetadataPda(umi, { mint: publicKey(mint) });
-  t.false(await umi.rpc.accountExists(metadata));
 };
 
 export const assertBurnedNft = async (
@@ -374,3 +428,12 @@ export const assertBurnedNft = async (
 
 export const yesterday = (): DateTime => now() - 3600n * 24n;
 export const tomorrow = (): DateTime => now() + 3600n * 24n;
+
+export const getNewConfigLine = async (
+  umi: Umi,
+  overrides?: Partial<ConfigLineInput>
+): Promise<ConfigLineInput> => ({
+  mint: (await createNft(umi)).publicKey,
+  seller: publicKey(Keypair.generate().publicKey),
+  ...overrides,
+});

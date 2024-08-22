@@ -10,10 +10,6 @@ import {
   BotTaxArgs,
   EndDate,
   EndDateArgs,
-  FreezeSolPayment,
-  FreezeSolPaymentArgs,
-  FreezeTokenPayment,
-  FreezeTokenPaymentArgs,
   Gatekeeper,
   GatekeeperArgs,
   MintLimit,
@@ -51,20 +47,11 @@ import {
 } from '../guards/guardSet';
 import { AllocationMintArgs, AllocationRouteArgs } from './allocation';
 import { AllowListMintArgs, AllowListRouteArgs } from './allowList';
-import {
-  FreezeSolPaymentMintArgs,
-  FreezeSolPaymentRouteArgs,
-} from './freezeSolPayment';
-import {
-  FreezeTokenPaymentMintArgs,
-  FreezeTokenPaymentRouteArgs,
-} from './freezeTokenPayment';
 import { GatekeeperMintArgs } from './gatekeeper';
 import { MintLimitMintArgs } from './mintLimit';
 import { NftBurnMintArgs } from './nftBurn';
 import { NftGateMintArgs } from './nftGate';
 import { NftPaymentMintArgs } from './nftPayment';
-import { SolPaymentMintArgs } from './solPayment';
 import { ThirdPartySignerMintArgs } from './thirdPartySigner';
 import { Token2022PaymentMintArgs } from './token2022Payment';
 import { TokenBurnMintArgs } from './tokenBurn';
@@ -72,7 +59,7 @@ import { TokenGateMintArgs } from './tokenGate';
 import { TokenPaymentMintArgs } from './tokenPayment';
 
 /**
- * The arguments for all default Candy Machine guards.
+ * The arguments for all default Gumball Machine guards.
  */
 export type DefaultGuardSetArgs = GuardSetArgs & {
   botTax: OptionOrNullable<BotTaxArgs>;
@@ -91,15 +78,13 @@ export type DefaultGuardSetArgs = GuardSetArgs & {
   nftGate: OptionOrNullable<NftGateArgs>;
   nftBurn: OptionOrNullable<NftBurnArgs>;
   tokenBurn: OptionOrNullable<TokenBurnArgs>;
-  freezeSolPayment: OptionOrNullable<FreezeSolPaymentArgs>;
-  freezeTokenPayment: OptionOrNullable<FreezeTokenPaymentArgs>;
   programGate: OptionOrNullable<ProgramGateArgs>;
   allocation: OptionOrNullable<AllocationArgs>;
   token2022Payment: OptionOrNullable<Token2022PaymentArgs>;
 };
 
 /**
- * The data for all default Candy Machine guards.
+ * The data for all default Gumball Machine guards.
  */
 export type DefaultGuardSet = GuardSet & {
   botTax: Option<BotTax>;
@@ -118,19 +103,17 @@ export type DefaultGuardSet = GuardSet & {
   nftGate: Option<NftGate>;
   nftBurn: Option<NftBurn>;
   tokenBurn: Option<TokenBurn>;
-  freezeSolPayment: Option<FreezeSolPayment>;
-  freezeTokenPayment: Option<FreezeTokenPayment>;
   programGate: Option<ProgramGate>;
   allocation: Option<Allocation>;
   token2022Payment: Option<Token2022Payment>;
 };
 
 /**
- * The mint arguments for all default Candy Machine guards.
+ * The mint arguments for all default Gumball Machine guards.
  */
 export type DefaultGuardSetMintArgs = GuardSetMintArgs & {
   // botTax: no mint settings
-  solPayment: OptionOrNullable<SolPaymentMintArgs>;
+  solPayment: OptionOrNullable<boolean>;
   tokenPayment: OptionOrNullable<TokenPaymentMintArgs>;
   // startDate: no mint settings
   thirdPartySigner: OptionOrNullable<ThirdPartySignerMintArgs>;
@@ -145,15 +128,13 @@ export type DefaultGuardSetMintArgs = GuardSetMintArgs & {
   nftGate: OptionOrNullable<NftGateMintArgs>;
   nftBurn: OptionOrNullable<NftBurnMintArgs>;
   tokenBurn: OptionOrNullable<TokenBurnMintArgs>;
-  freezeSolPayment: OptionOrNullable<FreezeSolPaymentMintArgs>;
-  freezeTokenPayment: OptionOrNullable<FreezeTokenPaymentMintArgs>;
   // programGate: no mint settings
   allocation: OptionOrNullable<AllocationMintArgs>;
   token2022Payment: OptionOrNullable<Token2022PaymentMintArgs>;
 };
 
 /**
- * The route arguments for all default Candy Machine guards.
+ * The route arguments for all default Gumball Machine guards.
  */
 export type DefaultGuardSetRouteArgs = GuardSetRouteArgs & {
   // botTax: no route settings
@@ -172,19 +153,17 @@ export type DefaultGuardSetRouteArgs = GuardSetRouteArgs & {
   // nftGate: no route settings
   // nftBurn: no route settings
   // tokenBurn: no route settings
-  freezeSolPayment: FreezeSolPaymentRouteArgs;
-  freezeTokenPayment: FreezeTokenPaymentRouteArgs;
   // programGate: no route settings
   allocation: AllocationRouteArgs;
   // token2022Payment: no route settings
 };
 
 /** @internal */
-export const defaultCandyGuardNames: string[] = [
+export const defaultGumballGuardNames: string[] = [
   'botTax',
+  'startDate',
   'solPayment',
   'tokenPayment',
-  'startDate',
   'thirdPartySigner',
   'tokenGate',
   'gatekeeper',
@@ -197,8 +176,6 @@ export const defaultCandyGuardNames: string[] = [
   'nftGate',
   'nftBurn',
   'tokenBurn',
-  'freezeSolPayment',
-  'freezeTokenPayment',
   'programGate',
   'allocation',
   'token2022Payment',
@@ -206,7 +183,7 @@ export const defaultCandyGuardNames: string[] = [
 
 /** @internal */
 export const emptyDefaultGuardSetArgs: DefaultGuardSetArgs =
-  defaultCandyGuardNames.reduce((acc, name) => {
+  defaultGumballGuardNames.reduce((acc, name) => {
     acc[name] = none();
     return acc;
   }, {} as DefaultGuardSetArgs);

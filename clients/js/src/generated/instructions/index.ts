@@ -6,16 +6,24 @@
  * @see https://github.com/metaplex-foundation/kinobi
  */
 
-export * from './addConfigLines';
-export * from './deleteCandyGuard';
-export * from './deleteCandyMachine';
-export * from './initializeCandyMachineV2';
-export * from './mintFromCandyMachine';
-export * from './mintFromCandyMachineV2';
-export * from './setCandyGuardAuthority';
-export * from './setCandyMachineAuthority';
+export * from './addCoreAsset';
+export * from './addNft';
+export * from './baseSettleCoreAssetSale';
+export * from './baseSettleNftSale';
+export * from './claimCoreAsset';
+export * from './claimNft';
+export * from './deleteGumballGuard';
+export * from './deleteGumballMachine';
+export * from './drawFromGumballMachine';
+export * from './endSale';
+export * from './incrementTotalRevenue';
+export * from './initializeGumballMachine';
+export * from './removeCoreAsset';
+export * from './removeNft';
+export * from './setGumballGuardAuthority';
+export * from './setGumballMachineAuthority';
 export * from './setMintAuthority';
-export * from './setTokenStandard';
+export * from './startSale';
 export * from './unwrap';
-export * from './updateCandyMachine';
+export * from './updateSettings';
 export * from './wrap';

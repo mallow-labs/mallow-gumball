@@ -5,6 +5,7 @@ import {
   TokenPaymentArgs,
 } from '../generated';
 import { GuardManifest, noopParser } from '../guards';
+import { findGumballMachineAuthorityPda } from '../hooked';
 
 /**
  * The tokenPayment guard allows minting by charging the
@@ -25,13 +26,19 @@ export const tokenPaymentGuardManifest: GuardManifest<
   mintParser: (context, mintContext, args) => {
     const [sourceAta] = findAssociatedTokenPda(context, {
       mint: args.mint,
-      owner: mintContext.minter.publicKey,
+      owner: mintContext.buyer.publicKey,
+    });
+    const [destinationAta] = findAssociatedTokenPda(context, {
+      mint: args.mint,
+      owner: findGumballMachineAuthorityPda(context, {
+        gumballMachine: mintContext.gumballMachine,
+      })[0],
     });
     return {
       data: new Uint8Array(),
       remainingAccounts: [
         { publicKey: sourceAta, isWritable: true },
-        { publicKey: args.destinationAta, isWritable: true },
+        { publicKey: destinationAta, isWritable: true },
       ],
     };
   },

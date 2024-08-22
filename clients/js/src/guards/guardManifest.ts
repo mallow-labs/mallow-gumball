@@ -32,18 +32,16 @@ export const noopParser: MintParser<{}> & RouteParser<{}> = () => ({
 
 export type MintContext = {
   /** The wallet to use for validation and non-SOL fees, this is typically the payer. */
-  minter: Signer;
+  buyer: Signer;
   /** The wallet to use for SOL fees. */
   payer: Signer;
-  /** The mint account of the NFT being minted. */
-  mint: PublicKey;
-  /** The address of the Candy Machine we are using. */
-  candyMachine: PublicKey;
-  /** The address of the Candy Guard we are using. */
-  candyGuard: PublicKey;
+  /** The address of the Gumball Machine we are using. */
+  gumballMachine: PublicKey;
+  /** The address of the Gumball Guard we are using. */
+  gumballGuard: PublicKey;
 };
 
-export type RouteContext = Omit<MintContext, 'minter' | 'mint'>;
+export type RouteContext = Omit<MintContext, 'buyer' | 'mint'>;
 
 /** Additional data and accounts to pass to the mint or route instruction. */
 export type GuardInstructionExtras = {

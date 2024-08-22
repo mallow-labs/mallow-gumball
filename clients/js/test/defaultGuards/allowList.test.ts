@@ -9,19 +9,20 @@ import {
 } from '@metaplex-foundation/umi';
 import test from 'ava';
 import {
+  draw,
   findAllowListProofPda,
-  findCandyGuardPda,
+  findGumballGuardPda,
   getMerkleProof,
   getMerkleRoot,
-  mintV2,
   route,
+  TokenStandard,
 } from '../../src';
 import {
   assertBotTax,
-  assertSuccessfulMint,
-  createCollectionNft,
+  assertItemBought,
+  create,
+  createNft,
   createUmi,
-  createV2,
 } from '../_setup';
 
 test('it allows minting from wallets of a predefined list', async (t) => {
@@ -36,11 +37,16 @@ test('it allows minting from wallets of a predefined list', async (t) => {
   ];
   const merkleRoot = getMerkleRoot(allowList);
 
-  // And given a loaded Candy Machine with the allow list guard.
-  const collectionMint = (await createCollectionNft(umi)).publicKey;
-  const { publicKey: candyMachine } = await createV2(umi, {
-    collectionMint,
-    configLines: [{ name: 'Degen #1', uri: 'https://example.com/degen/1' }],
+  // And given a loaded Gumball Machine with the allow list guard.
+
+  const { publicKey: gumballMachine } = await create(umi, {
+    items: [
+      {
+        id: (await createNft(umi)).publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      },
+    ],
+    startSale: true,
     guards: {
       allowList: some({ merkleRoot }),
     },
@@ -50,7 +56,7 @@ test('it allows minting from wallets of a predefined list', async (t) => {
   await transactionBuilder()
     .add(
       route(umi, {
-        candyMachine,
+        gumballMachine,
         guard: 'allowList',
         routeArgs: {
           path: 'proof',
@@ -61,30 +67,28 @@ test('it allows minting from wallets of a predefined list', async (t) => {
     )
     .sendAndConfirm(umi);
 
-  // And then mint from the Candy Machine using the identity.
-  const mint = generateSigner(umi);
+  // And then mint from the Gumball Machine using the identity.
+
   await transactionBuilder()
     .add(setComputeUnitLimit(umi, { units: 600_000 }))
     .add(
-      mintV2(umi, {
-        candyMachine,
-        nftMint: mint,
-        collectionMint,
-        collectionUpdateAuthority: umi.identity.publicKey,
+      draw(umi, {
+        gumballMachine,
+
         mintArgs: { allowList: some({ merkleRoot }) },
       })
     )
     .sendAndConfirm(umi);
 
   // Then minting was successful.
-  await assertSuccessfulMint(t, umi, { mint, owner: umi.identity });
+  await assertItemBought(t, umi, { gumballMachine });
 });
 
 test('it is possible to verify the proof and mint in the same transaction if there is space', async (t) => {
   // Given the identity is part of an allow list.
   const umi = await createUmi();
   const allowList = [
-    base58PublicKey(umi.identity),
+    publicKey(umi.identity),
     'Ur1CbWSGsXCdedknRbJsEk7urwAvu1uddmQv51nAnXB',
     'GjwcWFQYzemBtpUoN5fMAP2FZviTtMRWCmrppGuTthJS',
     '2vjCrmEFiN9CLLhiqy8u1JPh48av8Zpzp3kNkdTtirYG',
@@ -92,24 +96,29 @@ test('it is possible to verify the proof and mint in the same transaction if the
   ];
   const merkleRoot = getMerkleRoot(allowList);
 
-  // And given a loaded Candy Machine with the allow list guard.
-  const collectionMint = (await createCollectionNft(umi)).publicKey;
-  const { publicKey: candyMachine } = await createV2(umi, {
-    collectionMint,
-    configLines: [{ name: 'Degen #1', uri: 'https://example.com/degen/1' }],
+  // And given a loaded Gumball Machine with the allow list guard.
+
+  const { publicKey: gumballMachine } = await create(umi, {
+    items: [
+      {
+        id: (await createNft(umi)).publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      },
+    ],
+    startSale: true,
     guards: {
       allowList: some({ merkleRoot }),
     },
   });
 
   // When we verify the identity using a valid merkle proof
-  // and mint from the Candy Machine at the same time.
-  const mint = generateSigner(umi);
+  // and mint from the Gumball Machine at the same time.
+
   await transactionBuilder()
     .add(setComputeUnitLimit(umi, { units: 600_000 }))
     .add(
       route(umi, {
-        candyMachine,
+        gumballMachine,
         guard: 'allowList',
         routeArgs: {
           path: 'proof',
@@ -119,26 +128,24 @@ test('it is possible to verify the proof and mint in the same transaction if the
       })
     )
     .add(
-      mintV2(umi, {
-        candyMachine,
-        nftMint: mint,
-        collectionMint,
-        collectionUpdateAuthority: umi.identity.publicKey,
+      draw(umi, {
+        gumballMachine,
+
         mintArgs: { allowList: some({ merkleRoot }) },
       })
     )
     .sendAndConfirm(umi);
 
   // Then minting was successful.
-  await assertSuccessfulMint(t, umi, { mint, owner: umi.identity });
+  await assertItemBought(t, umi, { gumballMachine });
 });
 
-test('it allows minting even when the payer is different from the minter', async (t) => {
-  // Given a separate minter that is part of an allow list.
+test('it allows minting even when the payer is different from the buyer', async (t) => {
+  // Given a separate buyer that is part of an allow list.
   const umi = await createUmi();
-  const minter = generateSigner(umi);
+  const buyer = generateSigner(umi);
   const allowList = [
-    base58PublicKey(minter),
+    publicKey(buyer),
     'Ur1CbWSGsXCdedknRbJsEk7urwAvu1uddmQv51nAnXB',
     'GjwcWFQYzemBtpUoN5fMAP2FZviTtMRWCmrppGuTthJS',
     '2vjCrmEFiN9CLLhiqy8u1JPh48av8Zpzp3kNkdTtirYG',
@@ -146,46 +153,50 @@ test('it allows minting even when the payer is different from the minter', async
   ];
   const merkleRoot = getMerkleRoot(allowList);
 
-  // And given a loaded Candy Machine with the allow list guard.
-  const collectionMint = (await createCollectionNft(umi)).publicKey;
-  const { publicKey: candyMachine } = await createV2(umi, {
-    collectionMint,
-    configLines: [{ name: 'Degen #1', uri: 'https://example.com/degen/1' }],
+  // And given a loaded Gumball Machine with the allow list guard.
+
+  const { publicKey: gumballMachine } = await create(umi, {
+    items: [
+      {
+        id: (await createNft(umi)).publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      },
+    ],
+    startSale: true,
     guards: {
       allowList: some({ merkleRoot }),
     },
   });
 
-  // When we verify and mint from the Candy Machine using the minter.
-  const mint = generateSigner(umi);
+  // When we verify and mint from the Gumball Machine using the buyer.
+
   await transactionBuilder()
     .add(setComputeUnitLimit(umi, { units: 600_000 }))
     .add(
       route(umi, {
-        candyMachine,
+        gumballMachine,
         guard: 'allowList',
         routeArgs: {
           path: 'proof',
           merkleRoot,
-          merkleProof: getMerkleProof(allowList, base58PublicKey(minter)),
-          minter: publicKey(minter), // <-- We need to tell the route instruction who the minter is.
+          merkleProof: getMerkleProof(allowList, base58PublicKey(buyer)),
+          buyer: publicKey(buyer), // <-- We need to tell the route instruction who the buyer is.
         },
       })
     )
     .add(
-      mintV2(umi, {
-        candyMachine,
-        nftMint: mint,
-        minter,
-        collectionMint,
-        collectionUpdateAuthority: umi.identity.publicKey,
+      draw(umi, {
+        gumballMachine,
+
+        buyer,
+
         mintArgs: { allowList: some({ merkleRoot }) },
       })
     )
     .sendAndConfirm(umi);
 
   // Then minting was successful.
-  await assertSuccessfulMint(t, umi, { mint, owner: minter });
+  await assertItemBought(t, umi, { gumballMachine, buyer: publicKey(buyer) });
 });
 
 test('it forbids minting from wallets that are not part of a predefined list', async (t) => {
@@ -199,11 +210,16 @@ test('it forbids minting from wallets that are not part of a predefined list', a
   ];
   const merkleRoot = getMerkleRoot(allowList);
 
-  // And given a loaded Candy Machine with the allow list guard.
-  const collectionMint = (await createCollectionNft(umi)).publicKey;
-  const { publicKey: candyMachine } = await createV2(umi, {
-    collectionMint,
-    configLines: [{ name: 'Degen #1', uri: 'https://example.com/degen/1' }],
+  // And given a loaded Gumball Machine with the allow list guard.
+
+  const { publicKey: gumballMachine } = await create(umi, {
+    items: [
+      {
+        id: (await createNft(umi)).publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      },
+    ],
+    startSale: true,
     guards: {
       allowList: some({ merkleRoot }),
     },
@@ -214,7 +230,7 @@ test('it forbids minting from wallets that are not part of a predefined list', a
     .add(setComputeUnitLimit(umi, { units: 600_000 }))
     .add(
       route(umi, {
-        candyMachine,
+        gumballMachine,
         guard: 'allowList',
         routeArgs: {
           path: 'proof',
@@ -241,11 +257,16 @@ test('it forbids minting from wallets that are providing the wrong proof', async
   ];
   const merkleRoot = getMerkleRoot(allowList);
 
-  // And given a loaded Candy Machine with the allow list guard.
-  const collectionMint = (await createCollectionNft(umi)).publicKey;
-  const { publicKey: candyMachine } = await createV2(umi, {
-    collectionMint,
-    configLines: [{ name: 'Degen #1', uri: 'https://example.com/degen/1' }],
+  // And given a loaded Gumball Machine with the allow list guard.
+
+  const { publicKey: gumballMachine } = await create(umi, {
+    items: [
+      {
+        id: (await createNft(umi)).publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      },
+    ],
+    startSale: true,
     guards: {
       allowList: some({ merkleRoot }),
     },
@@ -259,7 +280,7 @@ test('it forbids minting from wallets that are providing the wrong proof', async
   const promise = transactionBuilder()
     .add(
       route(umi, {
-        candyMachine,
+        gumballMachine,
         guard: 'allowList',
         routeArgs: {
           path: 'proof',
@@ -286,27 +307,30 @@ test('it forbids minting if the wallet has not been verified via the route instr
   ];
   const merkleRoot = getMerkleRoot(allowList);
 
-  // And given a loaded Candy Machine with an allow list guard.
-  const collectionMint = (await createCollectionNft(umi)).publicKey;
-  const { publicKey: candyMachine } = await createV2(umi, {
-    collectionMint,
-    configLines: [{ name: 'Degen #1', uri: 'https://example.com/degen/1' }],
+  // And given a loaded Gumball Machine with an allow list guard.
+
+  const { publicKey: gumballMachine } = await create(umi, {
+    items: [
+      {
+        id: (await createNft(umi)).publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      },
+    ],
+    startSale: true,
     guards: {
       allowList: some({ merkleRoot }),
     },
   });
 
-  // When the identity tries to mints from that Candy Machine
+  // When the identity tries to mints from that Gumball Machine
   // without having been verified via the route instruction.
-  const mint = generateSigner(umi);
+
   const promise = transactionBuilder()
     .add(setComputeUnitLimit(umi, { units: 600_000 }))
     .add(
-      mintV2(umi, {
-        candyMachine,
-        nftMint: mint,
-        collectionMint,
-        collectionUpdateAuthority: umi.identity.publicKey,
+      draw(umi, {
+        gumballMachine,
+
         mintArgs: { allowList: some({ merkleRoot }) },
       })
     )
@@ -328,43 +352,46 @@ test('it charges a bot tax when trying to mint whilst not verified', async (t) =
   ];
   const merkleRoot = getMerkleRoot(allowList);
 
-  // And given a loaded Candy Machine with an allow list and a bot tax guard.
-  const collectionMint = (await createCollectionNft(umi)).publicKey;
-  const { publicKey: candyMachine } = await createV2(umi, {
-    collectionMint,
-    configLines: [{ name: 'Degen #1', uri: 'https://example.com/degen/1' }],
+  // And given a loaded Gumball Machine with an allow list and a bot tax guard.
+
+  const { publicKey: gumballMachine } = await create(umi, {
+    items: [
+      {
+        id: (await createNft(umi)).publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      },
+    ],
+    startSale: true,
     guards: {
       botTax: some({ lamports: sol(0.01), lastInstruction: true }),
       allowList: some({ merkleRoot }),
     },
   });
 
-  // When the identity tries to mints from that Candy Machine
+  // When the identity tries to mints from that Gumball Machine
   // without having been verified via the route instruction.
-  const mint = generateSigner(umi);
+
   const { signature } = await transactionBuilder()
     .add(setComputeUnitLimit(umi, { units: 600_000 }))
     .add(
-      mintV2(umi, {
-        candyMachine,
-        nftMint: mint,
-        collectionMint,
-        collectionUpdateAuthority: umi.identity.publicKey,
+      draw(umi, {
+        gumballMachine,
+
         mintArgs: { allowList: some({ merkleRoot }) },
       })
     )
     .sendAndConfirm(umi);
 
   // Then we expect a silent bot tax error.
-  await assertBotTax(t, umi, mint, signature, /MissingAllowedListProof/);
+  await assertBotTax(t, umi, signature, /MissingAllowedListProof/);
 });
 
-test('it creates a proof for a minter even when the minter is not a signer', async (t) => {
-  // Given a separate minter that is part of an allow list and not a signer.
+test('it creates a proof for a buyer even when the buyer is not a signer', async (t) => {
+  // Given a separate buyer that is part of an allow list and not a signer.
   const umi = await createUmi();
-  const minter = generateSigner(umi).publicKey;
+  const buyer = generateSigner(umi).publicKey;
   const allowList = [
-    base58PublicKey(minter),
+    base58PublicKey(buyer),
     'Ur1CbWSGsXCdedknRbJsEk7urwAvu1uddmQv51nAnXB',
     'GjwcWFQYzemBtpUoN5fMAP2FZviTtMRWCmrppGuTthJS',
     '2vjCrmEFiN9CLLhiqy8u1JPh48av8Zpzp3kNkdTtirYG',
@@ -372,42 +399,47 @@ test('it creates a proof for a minter even when the minter is not a signer', asy
   ];
   const merkleRoot = getMerkleRoot(allowList);
 
-  // And given a loaded Candy Machine with the allow list guard.
-  const collectionMint = (await createCollectionNft(umi)).publicKey;
-  const { publicKey: candyMachine } = await createV2(umi, {
-    collectionMint,
-    configLines: [{ name: 'Degen #1', uri: 'https://example.com/degen/1' }],
+  // And given a loaded Gumball Machine with the allow list guard.
+
+  const { publicKey: gumballMachine } = await create(umi, {
+    items: [
+      {
+        id: (await createNft(umi)).publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      },
+    ],
+    startSale: true,
     guards: {
       allowList: some({ merkleRoot }),
     },
   });
 
-  // When we verify the minter on the allow list from the Candy Machine.
+  // When we verify the buyer on the allow list from the Gumball Machine.
   await transactionBuilder()
     .add(setComputeUnitLimit(umi, { units: 600_000 }))
     .add(
       route(umi, {
-        candyMachine,
+        gumballMachine,
         guard: 'allowList',
         routeArgs: {
           path: 'proof',
           merkleRoot,
-          merkleProof: getMerkleProof(allowList, base58PublicKey(minter)),
-          minter, // <-- We need to tell the route instruction who the minter is.
+          merkleProof: getMerkleProof(allowList, base58PublicKey(buyer)),
+          buyer, // <-- We need to tell the route instruction who the buyer is.
         },
       })
     )
     .sendAndConfirm(umi);
 
-  // Then a proof has been created for the minter.
-  const [candyGuard] = findCandyGuardPda(umi, { base: candyMachine });
+  // Then a proof has been created for the buyer.
+  const [gumballGuard] = findGumballGuardPda(umi, { base: gumballMachine });
   t.true(
     await umi.rpc.accountExists(
       findAllowListProofPda(umi, {
-        candyGuard,
-        candyMachine,
+        gumballGuard,
+        gumballMachine,
         merkleRoot,
-        user: minter,
+        user: buyer,
       })[0]
     )
   );
@@ -416,8 +448,8 @@ test('it creates a proof for a minter even when the minter is not a signer', asy
   t.false(
     await umi.rpc.accountExists(
       findAllowListProofPda(umi, {
-        candyGuard,
-        candyMachine,
+        gumballGuard,
+        gumballMachine,
         merkleRoot,
         user: publicKey(umi.payer),
       })[0]
@@ -425,7 +457,7 @@ test('it creates a proof for a minter even when the minter is not a signer', asy
   );
 });
 
-test('it creates a proof for the payer when the minter is not present', async (t) => {
+test('it creates a proof for the payer when the buyer is not present', async (t) => {
   // Given the payer that is part of an allow list.
   const umi = await createUmi();
   const allowList = [
@@ -437,22 +469,27 @@ test('it creates a proof for the payer when the minter is not present', async (t
   ];
   const merkleRoot = getMerkleRoot(allowList);
 
-  // And given a loaded Candy Machine with the allow list guard.
-  const collectionMint = (await createCollectionNft(umi)).publicKey;
-  const { publicKey: candyMachine } = await createV2(umi, {
-    collectionMint,
-    configLines: [{ name: 'Degen #1', uri: 'https://example.com/degen/1' }],
+  // And given a loaded Gumball Machine with the allow list guard.
+
+  const { publicKey: gumballMachine } = await create(umi, {
+    items: [
+      {
+        id: (await createNft(umi)).publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      },
+    ],
+    startSale: true,
     guards: {
       allowList: some({ merkleRoot }),
     },
   });
 
-  // When we verify the payer on the allow list from the Candy Machine.
+  // When we verify the payer on the allow list from the Gumball Machine.
   await transactionBuilder()
     .add(setComputeUnitLimit(umi, { units: 600_000 }))
     .add(
       route(umi, {
-        candyMachine,
+        gumballMachine,
         guard: 'allowList',
         routeArgs: {
           path: 'proof',
@@ -464,12 +501,12 @@ test('it creates a proof for the payer when the minter is not present', async (t
     .sendAndConfirm(umi);
 
   // Then a proof has been created for the payer.
-  const [candyGuard] = findCandyGuardPda(umi, { base: candyMachine });
+  const [gumballGuard] = findGumballGuardPda(umi, { base: gumballMachine });
   t.true(
     await umi.rpc.accountExists(
       findAllowListProofPda(umi, {
-        candyGuard,
-        candyMachine,
+        gumballGuard,
+        gumballMachine,
         merkleRoot,
         user: publicKey(umi.payer),
       })[0]

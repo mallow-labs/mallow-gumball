@@ -15,26 +15,26 @@ import {
   transactionBuilder,
 } from '@metaplex-foundation/umi';
 import {
-  Serializer,
   array,
   mapSerializer,
+  Serializer,
   struct,
   u8,
 } from '@metaplex-foundation/umi/serializers';
 import {
+  getAccountMetasAndSigners,
   ResolvedAccount,
   ResolvedAccountsWithIndices,
-  getAccountMetasAndSigners,
 } from '../shared';
 
 // Accounts.
 export type SetMintAuthorityInstructionAccounts = {
-  /** Candy Machine account. */
-  candyMachine: PublicKey | Pda;
-  /** Candy Machine authority */
+  /** Gumball Machine account. */
+  gumballMachine: PublicKey | Pda;
+  /** Gumball Machine authority */
   authority?: Signer;
-  /** New candy machine authority */
-  mintAuthority: Signer;
+  /** New gumball machine authority */
+  mintAuthority?: Signer;
 };
 
 // Data.
@@ -72,16 +72,16 @@ export function setMintAuthority(
 ): TransactionBuilder {
   // Program ID.
   const programId = context.programs.getPublicKey(
-    'mplCandyMachineCore',
-    'CndyV3LdqHUfDLmE5naZjVN8rBZz4tqhdefbAnjHG3JR'
+    'mallowGumball',
+    'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa'
   );
 
   // Accounts.
   const resolvedAccounts: ResolvedAccountsWithIndices = {
-    candyMachine: {
+    gumballMachine: {
       index: 0,
       isWritable: true,
-      value: input.candyMachine ?? null,
+      value: input.gumballMachine ?? null,
     },
     authority: { index: 1, isWritable: false, value: input.authority ?? null },
     mintAuthority: {
@@ -94,6 +94,9 @@ export function setMintAuthority(
   // Default values.
   if (!resolvedAccounts.authority.value) {
     resolvedAccounts.authority.value = context.identity;
+  }
+  if (!resolvedAccounts.mintAuthority.value) {
+    resolvedAccounts.mintAuthority.value = context.identity;
   }
 
   // Accounts in order.

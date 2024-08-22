@@ -8,13 +8,13 @@ import {
   transactionBuilder,
 } from '@metaplex-foundation/umi';
 import test from 'ava';
-import { mintV2 } from '../../src';
+import { draw, fetchGumballMachine, TokenStandard } from '../../src';
 import {
-  assertSuccessfulMint,
-  createCollectionNft,
+  assertItemBought,
+  create,
   createMintWithHolders,
+  createNft,
   createUmi,
-  createV2,
 } from '../_setup';
 
 test('it transfers Token2022 tokens from the payer to the destination', async (t) => {
@@ -37,11 +37,19 @@ test('it transfers Token2022 tokens from the payer to the destination', async (t
     }
   );
 
-  // And a loaded Candy Machine with a token2022Payment guard that requires 5 tokens.
-  const collectionMint = (await createCollectionNft(umi)).publicKey;
-  const { publicKey: candyMachine } = await createV2(umi, {
-    collectionMint,
-    configLines: [{ name: 'Degen #1', uri: 'https://example.com/degen/1' }],
+  // And a loaded Gumball Machine with a token2022Payment guard that requires 5 tokens.
+
+  const { publicKey: gumballMachine } = await create(umi, {
+    items: [
+      {
+        id: (await createNft(umi)).publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      },
+    ],
+    startSale: true,
+    settings: {
+      paymentMint: tokenMint.publicKey,
+    },
     guards: {
       token2022Payment: some({
         mint: tokenMint.publicKey,
@@ -52,15 +60,12 @@ test('it transfers Token2022 tokens from the payer to the destination', async (t
   });
 
   // When we mint from it.
-  const mint = generateSigner(umi);
+
   await transactionBuilder()
     .add(setComputeUnitLimit(umi, { units: 600_000 }))
     .add(
-      mintV2(umi, {
-        candyMachine,
-        nftMint: mint,
-        collectionMint,
-        collectionUpdateAuthority: umi.identity.publicKey,
+      draw(umi, {
+        gumballMachine,
         mintArgs: {
           token2022Payment: some({ mint: tokenMint.publicKey, destinationAta }),
         },
@@ -69,7 +74,7 @@ test('it transfers Token2022 tokens from the payer to the destination', async (t
     .sendAndConfirm(umi);
 
   // Then minting was successful.
-  await assertSuccessfulMint(t, umi, { mint, owner: umi.identity });
+  await assertItemBought(t, umi, { gumballMachine });
 
   // And the treasury token received 5 tokens.
   const destinationTokenAccount = await fetchToken(umi, destinationAta);
@@ -78,4 +83,8 @@ test('it transfers Token2022 tokens from the payer to the destination', async (t
   // And the payer lost 5 tokens.
   const payerTokenAccount = await fetchToken(umi, identityAta);
   t.is(payerTokenAccount.amount, 7n);
+
+  // Total revenue is incremented
+  const gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
+  t.is(gumballMachineAccount.totalRevenue, 5n, 'total revenue is incremented');
 });

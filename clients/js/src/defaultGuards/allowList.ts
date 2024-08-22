@@ -1,5 +1,5 @@
 import { getSplSystemProgramId } from '@metaplex-foundation/mpl-toolbox';
-import { PublicKey, Signer, publicKey } from '@metaplex-foundation/umi';
+import { PublicKey, publicKey, Signer } from '@metaplex-foundation/umi';
 import { array, bytes } from '@metaplex-foundation/umi/serializers';
 import {
   AllowList,
@@ -25,7 +25,7 @@ import { GuardManifest } from '../guards';
  * Here is an example.
  *
  * ```ts
- * import { getMerkleProof, getMerkleRoot } from '@metaplex-foundation/mpl-candy-machine';
+ * import { getMerkleProof, getMerkleRoot } from '@metaplex-foundation/mallow-gumball';
  * const allowList = [
  *   'Ur1CbWSGsXCdedknRbJsEk7urwAvu1uddmQv51nAnXB',
  *   'GjwcWFQYzemBtpUoN5fMAP2FZviTtMRWCmrppGuTthJS',
@@ -56,9 +56,9 @@ export const allowListGuardManifest: GuardManifest<
         isWritable: false,
         publicKey: findAllowListProofPda(context, {
           merkleRoot: args.merkleRoot,
-          user: mintContext.minter.publicKey,
-          candyMachine: mintContext.candyMachine,
-          candyGuard: mintContext.candyGuard,
+          user: mintContext.buyer.publicKey,
+          gumballMachine: mintContext.gumballMachine,
+          gumballGuard: mintContext.gumballGuard,
         })[0],
       },
     ],
@@ -70,14 +70,14 @@ export const allowListGuardManifest: GuardManifest<
         isWritable: true,
         publicKey: findAllowListProofPda(context, {
           merkleRoot: args.merkleRoot,
-          user: publicKey(args.minter ?? routeContext.payer),
-          candyMachine: routeContext.candyMachine,
-          candyGuard: routeContext.candyGuard,
+          user: publicKey(args.buyer ?? routeContext.payer),
+          gumballMachine: routeContext.gumballMachine,
+          gumballGuard: routeContext.gumballGuard,
         })[0],
       },
       { isWritable: false, publicKey: getSplSystemProgramId(context) },
-      ...(args.minter !== undefined
-        ? [{ isWritable: false, publicKey: publicKey(args.minter) }]
+      ...(args.buyer !== undefined
+        ? [{ isWritable: false, publicKey: publicKey(args.buyer) }]
         : []),
     ],
   }),
@@ -125,5 +125,5 @@ export type AllowListRouteArgs = AllowListArgs & {
    * Here, we allow it to be a Signer for backwards compatibility
    * but the account will not be used as a signer.
    */
-  minter?: PublicKey | Signer;
+  buyer?: PublicKey | Signer;
 };

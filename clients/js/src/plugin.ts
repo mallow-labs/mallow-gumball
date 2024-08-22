@@ -2,13 +2,11 @@ import { mplTokenMetadata } from '@metaplex-foundation/mpl-token-metadata';
 import { UmiPlugin } from '@metaplex-foundation/umi';
 import {
   addressGateGuardManifest,
-  allowListGuardManifest,
   allocationGuardManifest,
+  allowListGuardManifest,
   botTaxGuardManifest,
-  defaultCandyGuardNames,
+  defaultGumballGuardNames,
   endDateGuardManifest,
-  freezeSolPaymentGuardManifest,
-  freezeTokenPaymentGuardManifest,
   gatekeeperGuardManifest,
   mintLimitGuardManifest,
   nftBurnGuardManifest,
@@ -25,8 +23,8 @@ import {
   tokenPaymentGuardManifest,
 } from './defaultGuards';
 import {
+  createMallowGumballProgram,
   createMplCandyGuardProgram,
-  createMplCandyMachineCoreProgram,
 } from './generated';
 import {
   CandyGuardProgram,
@@ -38,16 +36,16 @@ import {
   createMplTokenAuthRulesProgram,
 } from './programs';
 
-export const mplCandyMachine = (): UmiPlugin => ({
+export const mallowGumball = (): UmiPlugin => ({
   install(umi) {
     umi.use(mplTokenMetadata());
 
     // Programs.
-    umi.programs.add(createMplCandyMachineCoreProgram(), false);
+    umi.programs.add(createMallowGumballProgram(), false);
     umi.programs.add(
       {
         ...createMplCandyGuardProgram(),
-        availableGuards: defaultCandyGuardNames,
+        availableGuards: defaultGumballGuardNames,
       } as CandyGuardProgram,
       false
     );
@@ -58,9 +56,9 @@ export const mplCandyMachine = (): UmiPlugin => ({
     umi.guards = new DefaultGuardRepository();
     umi.guards.add(
       botTaxGuardManifest,
+      startDateGuardManifest,
       solPaymentGuardManifest,
       tokenPaymentGuardManifest,
-      startDateGuardManifest,
       thirdPartySignerGuardManifest,
       tokenGateGuardManifest,
       gatekeeperGuardManifest,
@@ -73,8 +71,6 @@ export const mplCandyMachine = (): UmiPlugin => ({
       nftGateGuardManifest,
       nftBurnGuardManifest,
       tokenBurnGuardManifest,
-      freezeSolPaymentGuardManifest,
-      freezeTokenPaymentGuardManifest,
       programGateGuardManifest,
       allocationGuardManifest,
       token2022PaymentGuardManifest

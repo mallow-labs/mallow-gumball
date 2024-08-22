@@ -1,12 +1,11 @@
+use mallow_gumball::constants::AUTHORITY_SEED;
+
 use super::*;
 
 use crate::{
-    errors::CandyGuardError,
+    errors::GumballGuardError,
     state::GuardType,
-    utils::{
-        assert_initialized, assert_is_token_account, assert_keys_equal, spl_token_transfer,
-        TokenTransferParams,
-    },
+    utils::{assert_is_token_account, spl_token_transfer, TokenTransferParams},
 };
 
 /// Guard that charges an amount in a specified spl-token as payment for the mint.
@@ -19,14 +18,12 @@ use crate::{
 pub struct TokenPayment {
     pub amount: u64,
     pub mint: Pubkey,
-    pub destination_ata: Pubkey,
 }
 
 impl Guard for TokenPayment {
     fn size() -> usize {
         8    // amount
         + 32 // token mint
-        + 32 // destination ata
     }
 
     fn mask() -> u64 {
@@ -41,6 +38,11 @@ impl Condition for TokenPayment {
         _guard_set: &GuardSet,
         _mint_args: &[u8],
     ) -> Result<()> {
+        require!(
+            ctx.accounts.gumball_machine.settings.payment_mint == self.mint,
+            GumballGuardError::InvalidPaymentMint
+        );
+
         // token
         let token_account_index = ctx.account_cursor;
         let token_account_info = try_get_account_info(ctx.accounts.remaining, token_account_index)?;
@@ -48,15 +50,18 @@ impl Condition for TokenPayment {
             try_get_account_info(ctx.accounts.remaining, token_account_index + 1)?;
         ctx.account_cursor += 2;
 
-        assert_keys_equal(destination_ata.key, &self.destination_ata)?;
-        let ata_account: spl_token::state::Account = assert_initialized(destination_ata)?;
-        assert_keys_equal(&ata_account.mint, &self.mint)?;
+        let seeds = [
+            AUTHORITY_SEED.as_bytes(),
+            ctx.accounts.gumball_machine.to_account_info().key.as_ref(),
+        ];
+        let (authority_pda, _) = Pubkey::find_program_address(&seeds, &mallow_gumball::ID);
+        assert_is_token_account(destination_ata, &authority_pda, &self.mint)?;
 
         let token_account =
-            assert_is_token_account(token_account_info, ctx.accounts.minter.key, &self.mint)?;
+            assert_is_token_account(token_account_info, ctx.accounts.buyer.key, &self.mint)?;
 
         if token_account.amount < self.amount {
-            return err!(CandyGuardError::NotEnoughTokens);
+            return err!(GumballGuardError::NotEnoughTokens);
         }
 
         ctx.indices
@@ -79,11 +84,13 @@ impl Condition for TokenPayment {
         spl_token_transfer(TokenTransferParams {
             source: token_account_info.to_account_info(),
             destination: destination_ata.to_account_info(),
-            authority: ctx.accounts.minter.to_account_info(),
+            authority: ctx.accounts.buyer.to_account_info(),
             authority_signer_seeds: &[],
             token_program: ctx.accounts.spl_token_program.to_account_info(),
             amount: self.amount,
         })?;
+
+        cpi_increment_total_revenue(ctx, self.amount)?;
 
         Ok(())
     }

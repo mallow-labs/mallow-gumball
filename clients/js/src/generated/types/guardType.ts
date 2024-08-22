@@ -6,14 +6,14 @@
  * @see https://github.com/metaplex-foundation/kinobi
  */
 
-import { Serializer, scalarEnum } from '@metaplex-foundation/umi/serializers';
+import { scalarEnum, Serializer } from '@metaplex-foundation/umi/serializers';
 
 /** Available guard types. */
 export enum GuardType {
   BotTax,
+  StartDate,
   SolPayment,
   TokenPayment,
-  StartDate,
   ThirdPartySigner,
   TokenGate,
   Gatekeeper,
@@ -26,8 +26,6 @@ export enum GuardType {
   NftGate,
   NftBurn,
   TokenBurn,
-  FreezeSolPayment,
-  FreezeTokenPayment,
   ProgramGate,
   Allocation,
   Token2022Payment,

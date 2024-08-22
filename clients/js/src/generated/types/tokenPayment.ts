@@ -8,8 +8,8 @@
 
 import { PublicKey } from '@metaplex-foundation/umi';
 import {
-  Serializer,
   publicKey as publicKeySerializer,
+  Serializer,
   struct,
   u64,
 } from '@metaplex-foundation/umi/serializers';
@@ -23,17 +23,9 @@ import {
  * 1. `[writable]` Address of the ATA to receive the tokens.
  */
 
-export type TokenPayment = {
-  amount: bigint;
-  mint: PublicKey;
-  destinationAta: PublicKey;
-};
+export type TokenPayment = { amount: bigint; mint: PublicKey };
 
-export type TokenPaymentArgs = {
-  amount: number | bigint;
-  mint: PublicKey;
-  destinationAta: PublicKey;
-};
+export type TokenPaymentArgs = { amount: number | bigint; mint: PublicKey };
 
 export function getTokenPaymentSerializer(): Serializer<
   TokenPaymentArgs,
@@ -43,7 +35,6 @@ export function getTokenPaymentSerializer(): Serializer<
     [
       ['amount', u64()],
       ['mint', publicKeySerializer()],
-      ['destinationAta', publicKeySerializer()],
     ],
     { description: 'TokenPayment' }
   ) as Serializer<TokenPaymentArgs, TokenPayment>;

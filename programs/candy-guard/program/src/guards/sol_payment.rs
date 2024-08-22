@@ -1,8 +1,9 @@
 use super::*;
 
+use mallow_gumball::constants::AUTHORITY_SEED;
 use solana_program::{program::invoke, system_instruction};
 
-use crate::{errors::CandyGuardError, state::GuardType, utils::assert_keys_equal};
+use crate::{errors::GumballGuardError, state::GuardType, utils::assert_derivation};
 
 /// Guard that charges an amount in SOL (lamports) for the mint.
 ///
@@ -12,13 +13,11 @@ use crate::{errors::CandyGuardError, state::GuardType, utils::assert_keys_equal}
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct SolPayment {
     pub lamports: u64,
-    pub destination: Pubkey,
 }
 
 impl Guard for SolPayment {
     fn size() -> usize {
-        8    // lamports
-        + 32 // destination
+        8 // lamports
     }
 
     fn mask() -> u64 {
@@ -36,9 +35,19 @@ impl Condition for SolPayment {
         let index = ctx.account_cursor;
         // validates that we received all required accounts
         let destination = try_get_account_info(ctx.accounts.remaining, index)?;
+
+        require!(
+            ctx.accounts.gumball_machine.settings.payment_mint == spl_token::native_mint::id(),
+            GumballGuardError::InvalidPaymentMint
+        );
+
+        let seeds = [
+            AUTHORITY_SEED.as_bytes(),
+            ctx.accounts.gumball_machine.to_account_info().key.as_ref(),
+        ];
+        assert_derivation(&mallow_gumball::ID, destination, &seeds)?;
+
         ctx.account_cursor += 1;
-        // validates the account information
-        assert_keys_equal(destination.key, &self.destination)?;
 
         ctx.indices.insert("lamports_destination", index);
 
@@ -48,7 +57,7 @@ impl Condition for SolPayment {
                 self.lamports,
                 ctx.accounts.payer.lamports(),
             );
-            return err!(CandyGuardError::NotEnoughSOL);
+            return err!(GumballGuardError::NotEnoughSOL);
         }
 
         Ok(())
@@ -75,6 +84,8 @@ impl Condition for SolPayment {
                 ctx.accounts.system_program.to_account_info(),
             ],
         )?;
+
+        cpi_increment_total_revenue(ctx, self.lamports)?;
 
         Ok(())
     }

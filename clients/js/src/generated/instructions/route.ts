@@ -17,29 +17,29 @@ import {
   transactionBuilder,
 } from '@metaplex-foundation/umi';
 import {
-  Serializer,
   array,
   bytes,
   mapSerializer,
   option,
+  Serializer,
   string,
   struct,
   u32,
   u8,
 } from '@metaplex-foundation/umi/serializers';
-import { findCandyGuardPda } from '../../hooked';
+import { findGumballGuardPda } from '../../hooked';
 import {
-  ResolvedAccount,
-  ResolvedAccountsWithIndices,
   expectPublicKey,
   getAccountMetasAndSigners,
+  ResolvedAccount,
+  ResolvedAccountsWithIndices,
 } from '../shared';
-import { GuardType, GuardTypeArgs, getGuardTypeSerializer } from '../types';
+import { getGuardTypeSerializer, GuardType, GuardTypeArgs } from '../types';
 
 // Accounts.
 export type RouteInstructionAccounts = {
-  candyGuard?: PublicKey | Pda;
-  candyMachine: PublicKey | Pda;
+  gumballGuard?: PublicKey | Pda;
+  gumballMachine: PublicKey | Pda;
   payer?: Signer;
 };
 
@@ -93,20 +93,20 @@ export function route(
   // Program ID.
   const programId = context.programs.getPublicKey(
     'mplCandyGuard',
-    'Guard1JwRhJkVH6XZhzoYxeBVQe872VH6QggF4BWmS9g'
+    'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF'
   );
 
   // Accounts.
   const resolvedAccounts: ResolvedAccountsWithIndices = {
-    candyGuard: {
+    gumballGuard: {
       index: 0,
       isWritable: false,
-      value: input.candyGuard ?? null,
+      value: input.gumballGuard ?? null,
     },
-    candyMachine: {
+    gumballMachine: {
       index: 1,
       isWritable: true,
-      value: input.candyMachine ?? null,
+      value: input.gumballMachine ?? null,
     },
     payer: { index: 2, isWritable: true, value: input.payer ?? null },
   };
@@ -115,9 +115,9 @@ export function route(
   const resolvedArgs: RouteInstructionArgs = { ...input };
 
   // Default values.
-  if (!resolvedAccounts.candyGuard.value) {
-    resolvedAccounts.candyGuard.value = findCandyGuardPda(context, {
-      base: expectPublicKey(resolvedAccounts.candyMachine.value),
+  if (!resolvedAccounts.gumballGuard.value) {
+    resolvedAccounts.gumballGuard.value = findGumballGuardPda(context, {
+      base: expectPublicKey(resolvedAccounts.gumballMachine.value),
     });
   }
   if (!resolvedAccounts.payer.value) {

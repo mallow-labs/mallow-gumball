@@ -6,38 +6,41 @@ import {
   transactionBuilder,
 } from '@metaplex-foundation/umi';
 import test from 'ava';
-import { mintV2 } from '../../src';
+import { draw, TokenStandard } from '../../src';
 import {
   assertBotTax,
-  assertSuccessfulMint,
-  createCollectionNft,
+  assertItemBought,
+  create,
+  createNft,
   createUmi,
-  createV2,
 } from '../_setup';
 
 test('it allows minting when the third party signer is provided', async (t) => {
-  // Given a loaded Candy Machine with a third party signer guard.
+  // Given a loaded Gumball Machine with a third party signer guard.
   const umi = await createUmi();
   const thirdPartySigner = generateSigner(umi);
-  const collectionMint = (await createCollectionNft(umi)).publicKey;
-  const { publicKey: candyMachine } = await createV2(umi, {
-    collectionMint,
-    configLines: [{ name: 'Degen #1', uri: 'https://example.com/degen/1' }],
+
+  const { publicKey: gumballMachine } = await create(umi, {
+    items: [
+      {
+        id: (await createNft(umi)).publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      },
+    ],
+    startSale: true,
     guards: {
       thirdPartySigner: some({ signerKey: thirdPartySigner.publicKey }),
     },
   });
 
   // When we mint from it by providing the third party as a Signer.
-  const mint = generateSigner(umi);
+
   await transactionBuilder()
     .add(setComputeUnitLimit(umi, { units: 600_000 }))
     .add(
-      mintV2(umi, {
-        candyMachine,
-        nftMint: mint,
-        collectionMint,
-        collectionUpdateAuthority: umi.identity.publicKey,
+      draw(umi, {
+        gumballMachine,
+
         mintArgs: {
           thirdPartySigner: some({ signer: thirdPartySigner }),
         },
@@ -46,17 +49,22 @@ test('it allows minting when the third party signer is provided', async (t) => {
     .sendAndConfirm(umi);
 
   // Then minting was successful.
-  await assertSuccessfulMint(t, umi, { mint, owner: umi.identity });
+  await assertItemBought(t, umi, { gumballMachine });
 });
 
 test('it forbids minting when the third party signer is wrong', async (t) => {
-  // Given a loaded Candy Machine with a third party signer guard.
+  // Given a loaded Gumball Machine with a third party signer guard.
   const umi = await createUmi();
   const thirdPartySigner = generateSigner(umi);
-  const collectionMint = (await createCollectionNft(umi)).publicKey;
-  const { publicKey: candyMachine } = await createV2(umi, {
-    collectionMint,
-    configLines: [{ name: 'Degen #1', uri: 'https://example.com/degen/1' }],
+
+  const { publicKey: gumballMachine } = await create(umi, {
+    items: [
+      {
+        id: (await createNft(umi)).publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      },
+    ],
+    startSale: true,
     guards: {
       thirdPartySigner: some({ signerKey: thirdPartySigner.publicKey }),
     },
@@ -64,15 +72,13 @@ test('it forbids minting when the third party signer is wrong', async (t) => {
 
   // When we try to mint from it by providing the wrong third party signer.
   const wrongThirdPartySigner = generateSigner(umi);
-  const mint = generateSigner(umi);
+
   const promise = transactionBuilder()
     .add(setComputeUnitLimit(umi, { units: 600_000 }))
     .add(
-      mintV2(umi, {
-        candyMachine,
-        nftMint: mint,
-        collectionMint,
-        collectionUpdateAuthority: umi.identity.publicKey,
+      draw(umi, {
+        gumballMachine,
+
         mintArgs: {
           thirdPartySigner: some({ signer: wrongThirdPartySigner }),
         },
@@ -85,13 +91,18 @@ test('it forbids minting when the third party signer is wrong', async (t) => {
 });
 
 test('it charges a bot tax when trying to mint using the wrong third party signer', async (t) => {
-  // Given a loaded Candy Machine with a third party signer guard and a bot tax guard.
+  // Given a loaded Gumball Machine with a third party signer guard and a bot tax guard.
   const umi = await createUmi();
   const thirdPartySigner = generateSigner(umi);
-  const collectionMint = (await createCollectionNft(umi)).publicKey;
-  const { publicKey: candyMachine } = await createV2(umi, {
-    collectionMint,
-    configLines: [{ name: 'Degen #1', uri: 'https://example.com/degen/1' }],
+
+  const { publicKey: gumballMachine } = await create(umi, {
+    items: [
+      {
+        id: (await createNft(umi)).publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      },
+    ],
+    startSale: true,
     guards: {
       botTax: some({ lamports: sol(0.1), lastInstruction: true }),
       thirdPartySigner: some({ signerKey: thirdPartySigner.publicKey }),
@@ -100,15 +111,13 @@ test('it charges a bot tax when trying to mint using the wrong third party signe
 
   // When we try to mint from it by providing the wrong third party signer.
   const wrongThirdPartySigner = generateSigner(umi);
-  const mint = generateSigner(umi);
+
   const { signature } = await transactionBuilder()
     .add(setComputeUnitLimit(umi, { units: 600_000 }))
     .add(
-      mintV2(umi, {
-        candyMachine,
-        nftMint: mint,
-        collectionMint,
-        collectionUpdateAuthority: umi.identity.publicKey,
+      draw(umi, {
+        gumballMachine,
+
         mintArgs: {
           thirdPartySigner: some({ signer: wrongThirdPartySigner }),
         },
@@ -117,5 +126,5 @@ test('it charges a bot tax when trying to mint using the wrong third party signe
     .sendAndConfirm(umi);
 
   // Then we expect a silent bot tax error.
-  await assertBotTax(t, umi, mint, signature, /MissingRequiredSignature/);
+  await assertBotTax(t, umi, signature, /MissingRequiredSignature/);
 });

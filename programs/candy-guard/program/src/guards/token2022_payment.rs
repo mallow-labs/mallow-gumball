@@ -7,7 +7,7 @@ use spl_token_2022::{
 use super::*;
 
 use crate::{
-    errors::CandyGuardError,
+    errors::GumballGuardError,
     state::GuardType,
     utils::{assert_keys_equal, assert_owned_by},
 };
@@ -46,6 +46,11 @@ impl Condition for Token2022Payment {
         _guard_set: &GuardSet,
         _mint_args: &[u8],
     ) -> Result<()> {
+        require!(
+            ctx.accounts.gumball_machine.settings.payment_mint == self.mint,
+            GumballGuardError::InvalidPaymentMint
+        );
+
         // required accounts
         let token_account_index = ctx.account_cursor;
         let token_account_info = try_get_account_info(ctx.accounts.remaining, token_account_index)?;
@@ -66,11 +71,11 @@ impl Condition for Token2022Payment {
         assert_owned_by(token_account_info, &spl_token_2022::ID)?;
         let data = token_account_info.data.borrow();
         let token_account = StateWithExtensions::<Account>::unpack(&data)?;
-        assert_keys_equal(&token_account.base.owner, ctx.accounts.minter.key)?;
+        assert_keys_equal(&token_account.base.owner, ctx.accounts.buyer.key)?;
         assert_keys_equal(&token_account.base.mint, &self.mint)?;
 
         if token_account.base.amount < self.amount {
-            return err!(CandyGuardError::NotEnoughTokens);
+            return err!(GumballGuardError::NotEnoughTokens);
         }
 
         // mint
@@ -107,7 +112,7 @@ impl Condition for Token2022Payment {
                 token_account_info.key,
                 &self.mint,
                 destination_ata.key,
-                ctx.accounts.minter.key,
+                ctx.accounts.buyer.key,
                 &[],
                 self.amount,
                 mint.base.decimals,
@@ -115,11 +120,13 @@ impl Condition for Token2022Payment {
             &[
                 token_account_info.clone(),
                 destination_ata.clone(),
-                ctx.accounts.minter.clone(),
+                ctx.accounts.buyer.clone(),
                 spl_token_2022_program.clone(),
                 mint_info.clone(),
             ],
         )?;
+
+        cpi_increment_total_revenue(ctx, self.amount)?;
 
         Ok(())
     }

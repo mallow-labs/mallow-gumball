@@ -1,21 +1,22 @@
+import { TokenStandard as MplTokenStandard } from '@metaplex-foundation/mpl-token-metadata';
 import { setComputeUnitLimit } from '@metaplex-foundation/mpl-toolbox';
 import {
   generateSigner,
+  publicKey,
   sol,
   some,
   transactionBuilder,
 } from '@metaplex-foundation/umi';
 import test from 'ava';
-import { TokenStandard } from '@metaplex-foundation/mpl-token-metadata';
-import { mintV2 } from '../../src';
+import { draw, TokenStandard } from '../../src';
 import {
   assertBotTax,
   assertBurnedNft,
-  assertSuccessfulMint,
+  assertItemBought,
+  create,
   createCollectionNft,
   createNft,
   createUmi,
-  createV2,
   createVerifiedNft,
   createVerifiedProgrammableNft,
 } from '../_setup';
@@ -33,29 +34,32 @@ test('it burns a specific NFT to allow minting', async (t) => {
     collectionAuthority: requiredCollectionAuthority,
   });
 
-  // And a loaded Candy Machine with an nftBurn guard on that collection.
-  const collectionMint = (await createCollectionNft(umi)).publicKey;
-  const { publicKey: candyMachine } = await createV2(umi, {
-    collectionMint,
-    configLines: [{ name: 'Degen #1', uri: 'https://example.com/degen/1' }],
+  // And a loaded Gumball Machine with an nftBurn guard on that collection.
+
+  const { publicKey: gumballMachine } = await create(umi, {
+    items: [
+      {
+        id: (await createNft(umi)).publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      },
+    ],
+    startSale: true,
     guards: {
       nftBurn: some({ requiredCollection }),
     },
   });
 
   // When the identity mints from it using its NFT to burn.
-  const mint = generateSigner(umi);
+
   await transactionBuilder()
     .add(setComputeUnitLimit(umi, { units: 600_000 }))
     .add(
-      mintV2(umi, {
-        candyMachine,
-        nftMint: mint,
-        collectionMint,
-        collectionUpdateAuthority: umi.identity.publicKey,
+      draw(umi, {
+        gumballMachine,
+
         mintArgs: {
           nftBurn: some({
-            tokenStandard: TokenStandard.NonFungible,
+            tokenStandard: MplTokenStandard.NonFungible,
             requiredCollection,
             mint: nftToBurn.publicKey,
           }),
@@ -65,50 +69,54 @@ test('it burns a specific NFT to allow minting', async (t) => {
     .sendAndConfirm(umi);
 
   // Then minting was successful.
-  await assertSuccessfulMint(t, umi, { mint, owner: umi.identity });
+  await assertItemBought(t, umi, { gumballMachine });
 
   // And the NFT was burned.
   await assertBurnedNft(t, umi, nftToBurn, umi.identity);
 });
 
-test('it allows minting even when the payer is different from the minter', async (t) => {
-  // Given a separate minter owns an NFT from a certain collection.
+test('it allows minting even when the payer is different from the buyer', async (t) => {
+  // Given a separate buyer owns an NFT from a certain collection.
   const umi = await createUmi();
-  const minter = generateSigner(umi);
+  const buyer = generateSigner(umi);
   const requiredCollectionAuthority = generateSigner(umi);
   const { publicKey: requiredCollection } = await createCollectionNft(umi, {
     authority: requiredCollectionAuthority,
   });
   const nftToBurn = await createVerifiedNft(umi, {
-    tokenOwner: minter.publicKey,
+    tokenOwner: buyer.publicKey,
     collectionMint: requiredCollection,
     collectionAuthority: requiredCollectionAuthority,
   });
 
-  // And a loaded Candy Machine with an nftBurn guard on that collection.
-  const collectionMint = (await createCollectionNft(umi)).publicKey;
-  const { publicKey: candyMachine } = await createV2(umi, {
-    collectionMint,
-    configLines: [{ name: 'Degen #1', uri: 'https://example.com/degen/1' }],
+  // And a loaded Gumball Machine with an nftBurn guard on that collection.
+
+  const { publicKey: gumballMachine } = await create(umi, {
+    items: [
+      {
+        id: (await createNft(umi)).publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      },
+    ],
+    startSale: true,
     guards: {
       nftBurn: some({ requiredCollection }),
     },
   });
 
-  // When the minter mints from it using its NFT to burn.
-  const mint = generateSigner(umi);
+  // When the buyer mints from it using its NFT to burn.
+
   await transactionBuilder()
     .add(setComputeUnitLimit(umi, { units: 600_000 }))
     .add(
-      mintV2(umi, {
-        candyMachine,
-        nftMint: mint,
-        minter,
-        collectionMint,
-        collectionUpdateAuthority: umi.identity.publicKey,
+      draw(umi, {
+        gumballMachine,
+
+        buyer,
+
         mintArgs: {
           nftBurn: some({
-            tokenStandard: TokenStandard.NonFungible,
+            tokenStandard: MplTokenStandard.NonFungible,
             requiredCollection,
             mint: nftToBurn.publicKey,
           }),
@@ -118,20 +126,25 @@ test('it allows minting even when the payer is different from the minter', async
     .sendAndConfirm(umi);
 
   // Then minting was successful.
-  await assertSuccessfulMint(t, umi, { mint, owner: minter });
+  await assertItemBought(t, umi, { gumballMachine, buyer: publicKey(buyer) });
 
   // And the NFT was burned.
-  await assertBurnedNft(t, umi, nftToBurn, minter);
+  await assertBurnedNft(t, umi, nftToBurn, buyer);
 });
 
 test('it fails if there is not valid NFT to burn', async (t) => {
-  // Given a loaded Candy Machine with an nftBurn guard on a specific collection.
+  // Given a loaded Gumball Machine with an nftBurn guard on a specific collection.
   const umi = await createUmi();
   const requiredCollection = (await createCollectionNft(umi)).publicKey;
-  const collectionMint = (await createCollectionNft(umi)).publicKey;
-  const { publicKey: candyMachine } = await createV2(umi, {
-    collectionMint,
-    configLines: [{ name: 'Degen #1', uri: 'https://example.com/degen/1' }],
+
+  const { publicKey: gumballMachine } = await create(umi, {
+    items: [
+      {
+        id: (await createNft(umi)).publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      },
+    ],
+    startSale: true,
     guards: {
       nftBurn: some({ requiredCollection }),
     },
@@ -139,18 +152,16 @@ test('it fails if there is not valid NFT to burn', async (t) => {
 
   // When we try to mint from it using an NFT that's not part of this collection.
   const nftToBurn = await createNft(umi);
-  const mint = generateSigner(umi);
+
   const promise = transactionBuilder()
     .add(setComputeUnitLimit(umi, { units: 600_000 }))
     .add(
-      mintV2(umi, {
-        candyMachine,
-        nftMint: mint,
-        collectionMint,
-        collectionUpdateAuthority: umi.identity.publicKey,
+      draw(umi, {
+        gumballMachine,
+
         mintArgs: {
           nftBurn: some({
-            tokenStandard: TokenStandard.NonFungible,
+            tokenStandard: MplTokenStandard.NonFungible,
             requiredCollection,
             mint: nftToBurn.publicKey,
           }),
@@ -164,14 +175,19 @@ test('it fails if there is not valid NFT to burn', async (t) => {
 });
 
 test('it charges a bot tax when trying to mint using the wrong NFT', async (t) => {
-  // Given a loaded Candy Machine with a botTax guard and
+  // Given a loaded Gumball Machine with a botTax guard and
   // an nftBurn guard on a specific collection.
   const umi = await createUmi();
   const requiredCollection = (await createCollectionNft(umi)).publicKey;
-  const collectionMint = (await createCollectionNft(umi)).publicKey;
-  const { publicKey: candyMachine } = await createV2(umi, {
-    collectionMint,
-    configLines: [{ name: 'Degen #1', uri: 'https://example.com/degen/1' }],
+
+  const { publicKey: gumballMachine } = await create(umi, {
+    items: [
+      {
+        id: (await createNft(umi)).publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      },
+    ],
+    startSale: true,
     guards: {
       botTax: some({ lamports: sol(0.01), lastInstruction: true }),
       nftBurn: some({ requiredCollection }),
@@ -180,18 +196,16 @@ test('it charges a bot tax when trying to mint using the wrong NFT', async (t) =
 
   // When we try to mint from it using an NFT that's not part of this collection.
   const nftToBurn = await createNft(umi);
-  const mint = generateSigner(umi);
+
   const { signature } = await transactionBuilder()
     .add(setComputeUnitLimit(umi, { units: 600_000 }))
     .add(
-      mintV2(umi, {
-        candyMachine,
-        nftMint: mint,
-        collectionMint,
-        collectionUpdateAuthority: umi.identity.publicKey,
+      draw(umi, {
+        gumballMachine,
+
         mintArgs: {
           nftBurn: some({
-            tokenStandard: TokenStandard.NonFungible,
+            tokenStandard: MplTokenStandard.NonFungible,
             requiredCollection,
             mint: nftToBurn.publicKey,
           }),
@@ -201,7 +215,7 @@ test('it charges a bot tax when trying to mint using the wrong NFT', async (t) =
     .sendAndConfirm(umi);
 
   // Then we expect a bot tax error.
-  await assertBotTax(t, umi, mint, signature, /InvalidNftCollection/);
+  await assertBotTax(t, umi, signature, /InvalidNftCollection/);
 });
 
 test('it burns a specific Programmable NFT to allow minting', async (t) => {
@@ -217,29 +231,32 @@ test('it burns a specific Programmable NFT to allow minting', async (t) => {
     collectionAuthority: requiredCollectionAuthority,
   });
 
-  // And a loaded Candy Machine with an nftBurn guard on that collection.
-  const collectionMint = (await createCollectionNft(umi)).publicKey;
-  const { publicKey: candyMachine } = await createV2(umi, {
-    collectionMint,
-    configLines: [{ name: 'Degen #1', uri: 'https://example.com/degen/1' }],
+  // And a loaded Gumball Machine with an nftBurn guard on that collection.
+
+  const { publicKey: gumballMachine } = await create(umi, {
+    items: [
+      {
+        id: (await createNft(umi)).publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      },
+    ],
+    startSale: true,
     guards: {
       nftBurn: some({ requiredCollection }),
     },
   });
 
   // When the identity mints from it using its pNFT to burn.
-  const mint = generateSigner(umi);
+
   await transactionBuilder()
     .add(setComputeUnitLimit(umi, { units: 600_000 }))
     .add(
-      mintV2(umi, {
-        candyMachine,
-        nftMint: mint,
-        collectionMint,
-        collectionUpdateAuthority: umi.identity.publicKey,
+      draw(umi, {
+        gumballMachine,
+
         mintArgs: {
           nftBurn: some({
-            tokenStandard: TokenStandard.ProgrammableNonFungible,
+            tokenStandard: MplTokenStandard.ProgrammableNonFungible,
             requiredCollection,
             mint: pnftToBurn.publicKey,
           }),
@@ -249,7 +266,7 @@ test('it burns a specific Programmable NFT to allow minting', async (t) => {
     .sendAndConfirm(umi);
 
   // Then minting was successful.
-  await assertSuccessfulMint(t, umi, { mint, owner: umi.identity });
+  await assertItemBought(t, umi, { gumballMachine });
 
   // And the NFT was burned.
   await assertBurnedNft(t, umi, pnftToBurn, umi.identity);

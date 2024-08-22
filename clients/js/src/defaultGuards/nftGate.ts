@@ -1,5 +1,5 @@
-import { findAssociatedTokenPda } from '@metaplex-foundation/mpl-toolbox';
 import { findMetadataPda } from '@metaplex-foundation/mpl-token-metadata';
+import { findAssociatedTokenPda } from '@metaplex-foundation/mpl-toolbox';
 import { PublicKey } from '@metaplex-foundation/umi';
 import { getNftGateSerializer, NftGate, NftGateArgs } from '../generated';
 import { GuardManifest, noopParser } from '../guards';
@@ -23,7 +23,7 @@ export const nftGateGuardManifest: GuardManifest<
       args.tokenAccount ??
       findAssociatedTokenPda(context, {
         mint: args.mint,
-        owner: mintContext.minter.publicKey,
+        owner: mintContext.buyer.publicKey,
       })[0];
     const [tokenMetadata] = findMetadataPda(context, { mint: args.mint });
     return {

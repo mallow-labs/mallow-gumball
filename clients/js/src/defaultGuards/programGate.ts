@@ -4,9 +4,9 @@ import {
 } from '@metaplex-foundation/umi/serializers';
 import { MaximumOfFiveAdditionalProgramsError } from '../errors';
 import {
+  getProgramGateSerializer,
   ProgramGate,
   ProgramGateArgs,
-  getProgramGateSerializer,
 } from '../generated';
 import { GuardManifest, noopParser } from '../guards';
 
@@ -26,8 +26,8 @@ import { GuardManifest, noopParser } from '../guards';
  * - The SPL Token Program
  * - The SPL Associated Token Program
  * - The SPL Compute Budget Program
- * - The MPL Candy Machine Core Program
- * - The MPL Candy Guard Program
+ * - The MPL Gumball Machine Core Program
+ * - The MPL Gumball Guard Program
  * - The MPL System Extras Program
  */
 export const programGateGuardManifest: GuardManifest<

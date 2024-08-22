@@ -11,3 +11,5 @@ dist
 .vscode
 .yarn
 programs/.bin
+.turbo
+deploy.sh

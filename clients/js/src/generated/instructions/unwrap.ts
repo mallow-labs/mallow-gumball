@@ -15,25 +15,25 @@ import {
   transactionBuilder,
 } from '@metaplex-foundation/umi';
 import {
-  Serializer,
   array,
   mapSerializer,
+  Serializer,
   struct,
   u8,
 } from '@metaplex-foundation/umi/serializers';
 import {
+  getAccountMetasAndSigners,
   ResolvedAccount,
   ResolvedAccountsWithIndices,
-  getAccountMetasAndSigners,
 } from '../shared';
 
 // Accounts.
 export type UnwrapInstructionAccounts = {
-  candyGuard: PublicKey | Pda;
+  gumballGuard: PublicKey | Pda;
   authority?: Signer;
-  candyMachine: PublicKey | Pda;
-  candyMachineAuthority?: Signer;
-  candyMachineProgram?: PublicKey | Pda;
+  gumballMachine: PublicKey | Pda;
+  gumballMachineAuthority?: Signer;
+  gumballMachineProgram?: PublicKey | Pda;
 };
 
 // Data.
@@ -65,31 +65,31 @@ export function unwrap(
   // Program ID.
   const programId = context.programs.getPublicKey(
     'mplCandyGuard',
-    'Guard1JwRhJkVH6XZhzoYxeBVQe872VH6QggF4BWmS9g'
+    'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF'
   );
 
   // Accounts.
   const resolvedAccounts: ResolvedAccountsWithIndices = {
-    candyGuard: {
+    gumballGuard: {
       index: 0,
       isWritable: false,
-      value: input.candyGuard ?? null,
+      value: input.gumballGuard ?? null,
     },
     authority: { index: 1, isWritable: false, value: input.authority ?? null },
-    candyMachine: {
+    gumballMachine: {
       index: 2,
       isWritable: true,
-      value: input.candyMachine ?? null,
+      value: input.gumballMachine ?? null,
     },
-    candyMachineAuthority: {
+    gumballMachineAuthority: {
       index: 3,
       isWritable: false,
-      value: input.candyMachineAuthority ?? null,
+      value: input.gumballMachineAuthority ?? null,
     },
-    candyMachineProgram: {
+    gumballMachineProgram: {
       index: 4,
       isWritable: false,
-      value: input.candyMachineProgram ?? null,
+      value: input.gumballMachineProgram ?? null,
     },
   };
 
@@ -97,15 +97,16 @@ export function unwrap(
   if (!resolvedAccounts.authority.value) {
     resolvedAccounts.authority.value = context.identity;
   }
-  if (!resolvedAccounts.candyMachineAuthority.value) {
-    resolvedAccounts.candyMachineAuthority.value = context.identity;
+  if (!resolvedAccounts.gumballMachineAuthority.value) {
+    resolvedAccounts.gumballMachineAuthority.value = context.identity;
   }
-  if (!resolvedAccounts.candyMachineProgram.value) {
-    resolvedAccounts.candyMachineProgram.value = context.programs.getPublicKey(
-      'mplCandyMachine',
-      'CndyV3LdqHUfDLmE5naZjVN8rBZz4tqhdefbAnjHG3JR'
-    );
-    resolvedAccounts.candyMachineProgram.isWritable = false;
+  if (!resolvedAccounts.gumballMachineProgram.value) {
+    resolvedAccounts.gumballMachineProgram.value =
+      context.programs.getPublicKey(
+        'mallowGumball',
+        'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa'
+      );
+    resolvedAccounts.gumballMachineProgram.isWritable = false;
   }
 
   // Accounts in order.

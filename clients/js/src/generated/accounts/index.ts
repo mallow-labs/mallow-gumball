@@ -8,6 +8,6 @@
 
 export * from './allocationTracker';
 export * from './allowListProof';
-export * from './candyMachine';
-export * from './freezeEscrow';
+export * from './gumballMachine';
 export * from './mintCounter';
+export * from './sellerHistory';

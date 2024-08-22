@@ -1,11 +1,13 @@
 use std::collections::BTreeMap;
 
 pub use anchor_lang::prelude::*;
+use anchor_lang::Discriminator;
+use solana_program::{instruction::Instruction, program::invoke_signed};
 
-pub use crate::{errors::CandyGuardError, instructions::mint::*, state::GuardSet};
+pub use crate::{errors::GumballGuardError, instructions::draw::*, state::GuardSet};
 use crate::{
-    instructions::{MintAccounts, Route, RouteContext},
-    state::CandyGuardData,
+    instructions::{DrawAccounts, Route, RouteContext},
+    state::{GumballGuardData, SEED},
 };
 
 pub use address_gate::AddressGate;
@@ -13,8 +15,6 @@ pub use allocation::Allocation;
 pub use allow_list::AllowList;
 pub use bot_tax::BotTax;
 pub use end_date::EndDate;
-pub use freeze_sol_payment::{FreezeEscrow, FreezeInstruction, FreezeSolPayment};
-pub use freeze_token_payment::FreezeTokenPayment;
 pub use gatekeeper::Gatekeeper;
 pub use mint_limit::{MintCounter, MintLimit};
 pub use nft_burn::NftBurn;
@@ -35,8 +35,6 @@ mod allocation;
 mod allow_list;
 mod bot_tax;
 mod end_date;
-mod freeze_sol_payment;
-mod freeze_token_payment;
 mod gatekeeper;
 mod mint_limit;
 mod nft_burn;
@@ -110,7 +108,7 @@ pub trait Guard: Condition + AnchorSerialize + AnchorDeserialize {
         _route_context: RouteContext<'info>,
         _data: Vec<u8>,
     ) -> Result<()> {
-        err!(CandyGuardError::InstructionNotFound)
+        err!(GumballGuardError::InstructionNotFound)
     }
 
     /// Returns whether the guards is enabled or not on the specified features.
@@ -150,15 +148,15 @@ pub trait Guard: Condition + AnchorSerialize + AnchorDeserialize {
         }
     }
 
-    /// Verifies that the candy guard configuration is valid according to the rules
+    /// Verifies that the gumball guard configuration is valid according to the rules
     /// of the guard.
-    fn verify(_data: &CandyGuardData) -> Result<()> {
+    fn verify(_data: &GumballGuardData) -> Result<()> {
         Ok(())
     }
 }
 pub struct EvaluationContext<'b, 'c: 'info, 'info> {
     /// Accounts required to mint an NFT.
-    pub(crate) accounts: MintAccounts<'b, 'c, 'info>,
+    pub(crate) accounts: DrawAccounts<'b, 'c, 'info>,
 
     /// The cursor for the remaining account list. When a guard "consumes" one of the
     /// remaining accounts, it should increment the cursor.
@@ -178,7 +176,7 @@ pub fn try_get_account_info<T>(remaining_accounts: &[T], index: usize) -> Result
     if index < remaining_accounts.len() {
         Ok(&remaining_accounts[index])
     } else {
-        err!(CandyGuardError::MissingRemainingAccount)
+        err!(GumballGuardError::MissingRemainingAccount)
     }
 }
 
@@ -190,4 +188,60 @@ pub fn get_account_info<T>(remaining_accounts: &[T], index: usize) -> Option<&T>
     } else {
         None
     }
+}
+
+fn cpi_increment_total_revenue(ctx: &EvaluationContext, revenue: u64) -> Result<()> {
+    let gumball_guard = ctx.accounts.gumball_guard;
+
+    // gumball machine mint instruction accounts
+    let accounts = Box::new(mallow_gumball::cpi::accounts::IncrementTotalRevenue {
+        gumball_machine: ctx.accounts.gumball_machine.to_account_info(),
+        mint_authority: gumball_guard.to_account_info(),
+    });
+
+    let ix_infos = accounts.to_account_infos();
+    let ix_metas = accounts.to_account_metas(None);
+    let mut ix_data = mallow_gumball::instruction::IncrementTotalRevenue::DISCRIMINATOR.to_vec();
+    ix_data.extend(&revenue.to_le_bytes());
+
+    let ix = Instruction {
+        program_id: mallow_gumball::ID,
+        accounts: ix_metas,
+        data: ix_data,
+    };
+
+    // PDA signer for the transaction
+    let seeds = [SEED, &gumball_guard.base.to_bytes(), &[gumball_guard.bump]];
+    let signer = [&seeds[..]];
+
+    invoke_signed(&ix, &ix_infos, &signer)?;
+
+    Ok(())
+}
+
+fn cpi_start_sale(ctx: &EvaluationContext) -> Result<()> {
+    let gumball_guard = ctx.accounts.gumball_guard;
+
+    // gumball machine mint instruction accounts
+    let accounts = Box::new(mallow_gumball::cpi::accounts::StartSale {
+        gumball_machine: ctx.accounts.gumball_machine.to_account_info(),
+        authority: gumball_guard.to_account_info(),
+    });
+
+    let ix_infos = accounts.to_account_infos();
+    let ix_metas = accounts.to_account_metas(None);
+
+    let ix = Instruction {
+        program_id: mallow_gumball::ID,
+        accounts: ix_metas,
+        data: mallow_gumball::instruction::StartSale::DISCRIMINATOR.to_vec(),
+    };
+
+    // PDA signer for the transaction
+    let seeds = [SEED, &gumball_guard.base.to_bytes(), &[gumball_guard.bump]];
+    let signer = [&seeds[..]];
+
+    invoke_signed(&ix, &ix_infos, &signer)?;
+
+    Ok(())
 }

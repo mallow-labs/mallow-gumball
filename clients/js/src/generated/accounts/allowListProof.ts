@@ -8,22 +8,22 @@
 
 import {
   Account,
+  assertAccountExists,
   Context,
+  deserializeAccount,
+  gpaBuilder,
   Pda,
   PublicKey,
+  publicKey as toPublicKey,
   RpcAccount,
   RpcGetAccountOptions,
   RpcGetAccountsOptions,
-  assertAccountExists,
-  deserializeAccount,
-  gpaBuilder,
-  publicKey as toPublicKey,
 } from '@metaplex-foundation/umi';
 import {
-  Serializer,
   bytes,
   i64,
   publicKey as publicKeySerializer,
+  Serializer,
   string,
   struct,
 } from '@metaplex-foundation/umi/serializers';
@@ -114,7 +114,7 @@ export function getAllowListProofGpaBuilder(
 ) {
   const programId = context.programs.getPublicKey(
     'mplCandyGuard',
-    'Guard1JwRhJkVH6XZhzoYxeBVQe872VH6QggF4BWmS9g'
+    'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF'
   );
   return gpaBuilder(context, programId)
     .registerFields<{ timestamp: number | bigint }>({ timestamp: [0, i64()] })
@@ -135,22 +135,22 @@ export function findAllowListProofPda(
     merkleRoot: Uint8Array;
     /** The address of the wallet trying to mint */
     user: PublicKey;
-    /** The address of the Candy Guard account */
-    candyGuard: PublicKey;
-    /** The address of the Candy Machine account */
-    candyMachine: PublicKey;
+    /** The address of the Gumball Guard account */
+    gumballGuard: PublicKey;
+    /** The address of the Gumball Machine account */
+    gumballMachine: PublicKey;
   }
 ): Pda {
   const programId = context.programs.getPublicKey(
     'mplCandyGuard',
-    'Guard1JwRhJkVH6XZhzoYxeBVQe872VH6QggF4BWmS9g'
+    'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF'
   );
   return context.eddsa.findPda(programId, [
     string({ size: 'variable' }).serialize('allow_list'),
     bytes({ size: 32 }).serialize(seeds.merkleRoot),
     publicKeySerializer().serialize(seeds.user),
-    publicKeySerializer().serialize(seeds.candyGuard),
-    publicKeySerializer().serialize(seeds.candyMachine),
+    publicKeySerializer().serialize(seeds.gumballGuard),
+    publicKeySerializer().serialize(seeds.gumballMachine),
   ]);
 }
 

@@ -8,19 +8,20 @@ import {
 } from '@metaplex-foundation/mpl-toolbox';
 import {
   generateSigner,
+  publicKey,
   sol,
   some,
   transactionBuilder,
 } from '@metaplex-foundation/umi';
 import test from 'ava';
-import { mintV2 } from '../../src';
+import { draw, TokenStandard } from '../../src';
 import {
   assertBotTax,
-  assertSuccessfulMint,
+  assertItemBought,
+  create,
   createCollectionNft,
   createNft,
   createUmi,
-  createV2,
   createVerifiedNft,
 } from '../_setup';
 
@@ -37,26 +38,29 @@ test('it allows minting when the payer owns an NFT from a certain collection', a
     collectionAuthority: requiredCollectionAuthority,
   });
 
-  // And a loaded Candy Machine with an nftGate guard.
-  const collectionMint = (await createCollectionNft(umi)).publicKey;
-  const { publicKey: candyMachine } = await createV2(umi, {
-    collectionMint,
-    configLines: [{ name: 'Degen #1', uri: 'https://example.com/degen/1' }],
+  // And a loaded Gumball Machine with an nftGate guard.
+
+  const { publicKey: gumballMachine } = await create(umi, {
+    items: [
+      {
+        id: (await createNft(umi)).publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      },
+    ],
+    startSale: true,
     guards: {
       nftGate: some({ requiredCollection }),
     },
   });
 
   // When we mint from it.
-  const mint = generateSigner(umi);
+
   await transactionBuilder()
     .add(setComputeUnitLimit(umi, { units: 600_000 }))
     .add(
-      mintV2(umi, {
-        candyMachine,
-        nftMint: mint,
-        collectionMint,
-        collectionUpdateAuthority: umi.identity.publicKey,
+      draw(umi, {
+        gumballMachine,
+
         mintArgs: {
           nftGate: some({ mint: nftToVerify.publicKey }),
         },
@@ -65,44 +69,48 @@ test('it allows minting when the payer owns an NFT from a certain collection', a
     .sendAndConfirm(umi);
 
   // Then minting was successful.
-  await assertSuccessfulMint(t, umi, { mint, owner: umi.identity });
+  await assertItemBought(t, umi, { gumballMachine });
 });
 
-test('it allows minting even when the payer is different from the minter', async (t) => {
-  // Given a separate minter that owns an NFT from a certain collection.
+test('it allows minting even when the payer is different from the buyer', async (t) => {
+  // Given a separate buyer that owns an NFT from a certain collection.
   const umi = await createUmi();
-  const minter = generateSigner(umi);
+  const buyer = generateSigner(umi);
   const requiredCollectionAuthority = generateSigner(umi);
   const { publicKey: requiredCollection } = await createCollectionNft(umi, {
     authority: requiredCollectionAuthority,
   });
   const nftToVerify = await createVerifiedNft(umi, {
-    tokenOwner: minter.publicKey,
+    tokenOwner: buyer.publicKey,
     collectionMint: requiredCollection,
     collectionAuthority: requiredCollectionAuthority,
   });
 
-  // And a loaded Candy Machine with an nftGate guard.
-  const collectionMint = (await createCollectionNft(umi)).publicKey;
-  const { publicKey: candyMachine } = await createV2(umi, {
-    collectionMint,
-    configLines: [{ name: 'Degen #1', uri: 'https://example.com/degen/1' }],
+  // And a loaded Gumball Machine with an nftGate guard.
+
+  const { publicKey: gumballMachine } = await create(umi, {
+    items: [
+      {
+        id: (await createNft(umi)).publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      },
+    ],
+    startSale: true,
     guards: {
       nftGate: some({ requiredCollection }),
     },
   });
 
   // When we mint from it.
-  const mint = generateSigner(umi);
+
   await transactionBuilder()
     .add(setComputeUnitLimit(umi, { units: 600_000 }))
     .add(
-      mintV2(umi, {
-        candyMachine,
-        nftMint: mint,
-        minter,
-        collectionMint,
-        collectionUpdateAuthority: umi.identity.publicKey,
+      draw(umi, {
+        gumballMachine,
+
+        buyer,
+
         mintArgs: {
           nftGate: some({ mint: nftToVerify.publicKey }),
         },
@@ -111,7 +119,7 @@ test('it allows minting even when the payer is different from the minter', async
     .sendAndConfirm(umi);
 
   // Then minting was successful.
-  await assertSuccessfulMint(t, umi, { mint, owner: minter });
+  await assertItemBought(t, umi, { gumballMachine, buyer: publicKey(buyer) });
 });
 
 test('it allows minting when the NFT is not on an associated token account', async (t) => {
@@ -141,26 +149,29 @@ test('it allows minting when the NFT is not on an associated token account', asy
     collectionAuthority: requiredCollectionAuthority,
   });
 
-  // And a loaded Candy Machine with an nftGate guard.
-  const collectionMint = (await createCollectionNft(umi)).publicKey;
-  const { publicKey: candyMachine } = await createV2(umi, {
-    collectionMint,
-    configLines: [{ name: 'Degen #1', uri: 'https://example.com/degen/1' }],
+  // And a loaded Gumball Machine with an nftGate guard.
+
+  const { publicKey: gumballMachine } = await create(umi, {
+    items: [
+      {
+        id: (await createNft(umi)).publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      },
+    ],
+    startSale: true,
     guards: {
       nftGate: some({ requiredCollection }),
     },
   });
 
   // When we mint from it by providing the mint and token addresses.
-  const mint = generateSigner(umi);
+
   await transactionBuilder()
     .add(setComputeUnitLimit(umi, { units: 600_000 }))
     .add(
-      mintV2(umi, {
-        candyMachine,
-        nftMint: mint,
-        collectionMint,
-        collectionUpdateAuthority: umi.identity.publicKey,
+      draw(umi, {
+        gumballMachine,
+
         mintArgs: {
           nftGate: some({
             mint: nftToVerify.publicKey,
@@ -172,7 +183,7 @@ test('it allows minting when the NFT is not on an associated token account', asy
     .sendAndConfirm(umi);
 
   // Then minting was successful.
-  await assertSuccessfulMint(t, umi, { mint, owner: umi.identity });
+  await assertItemBought(t, umi, { gumballMachine });
 });
 
 test('it forbids minting when the payer does not own an NFT from a certain collection', async (t) => {
@@ -208,26 +219,29 @@ test('it forbids minting when the payer does not own an NFT from a certain colle
     )
     .sendAndConfirm(umi);
 
-  // And a loaded Candy Machine with an nftGate guard on that collection.
-  const collectionMint = (await createCollectionNft(umi)).publicKey;
-  const { publicKey: candyMachine } = await createV2(umi, {
-    collectionMint,
-    configLines: [{ name: 'Degen #1', uri: 'https://example.com/degen/1' }],
+  // And a loaded Gumball Machine with an nftGate guard on that collection.
+
+  const { publicKey: gumballMachine } = await create(umi, {
+    items: [
+      {
+        id: (await createNft(umi)).publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      },
+    ],
+    startSale: true,
     guards: {
       nftGate: some({ requiredCollection }),
     },
   });
 
   // When the payer tries to mint from it.
-  const mint = generateSigner(umi);
+
   const promise = transactionBuilder()
     .add(setComputeUnitLimit(umi, { units: 600_000 }))
     .add(
-      mintV2(umi, {
-        candyMachine,
-        nftMint: mint,
-        collectionMint,
-        collectionUpdateAuthority: umi.identity.publicKey,
+      draw(umi, {
+        gumballMachine,
+
         mintArgs: {
           nftGate: some({ mint: nftToVerify }),
         },
@@ -252,30 +266,33 @@ test('it forbids minting when the payer tries to provide an NFT from the wrong c
     collectionAuthority: requiredCollectionAuthorityA,
   });
 
-  // And a loaded Candy Machine with an nftGate guard on a Collection B.
+  // And a loaded Gumball Machine with an nftGate guard on a Collection B.
   const requiredCollectionAuthorityB = generateSigner(umi);
   const { publicKey: requiredCollectionB } = await createCollectionNft(umi, {
     authority: requiredCollectionAuthorityB,
   });
-  const collectionMint = (await createCollectionNft(umi)).publicKey;
-  const { publicKey: candyMachine } = await createV2(umi, {
-    collectionMint,
-    configLines: [{ name: 'Degen #1', uri: 'https://example.com/degen/1' }],
+
+  const { publicKey: gumballMachine } = await create(umi, {
+    items: [
+      {
+        id: (await createNft(umi)).publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      },
+    ],
+    startSale: true,
     guards: {
       nftGate: some({ requiredCollection: requiredCollectionB }),
     },
   });
 
   // When the identity tries to mint from it using its collection A NFT.
-  const mint = generateSigner(umi);
+
   const promise = transactionBuilder()
     .add(setComputeUnitLimit(umi, { units: 600_000 }))
     .add(
-      mintV2(umi, {
-        candyMachine,
-        nftMint: mint,
-        collectionMint,
-        collectionUpdateAuthority: umi.identity.publicKey,
+      draw(umi, {
+        gumballMachine,
+
         mintArgs: {
           nftGate: some({ mint: nftToVerify }),
         },
@@ -298,26 +315,29 @@ test('it forbids minting when the payer tries to provide an NFT from an unverifi
     tokenOwner: umi.identity.publicKey,
   });
 
-  // And a loaded Candy Machine with an nftGate guard.
-  const collectionMint = (await createCollectionNft(umi)).publicKey;
-  const { publicKey: candyMachine } = await createV2(umi, {
-    collectionMint,
-    configLines: [{ name: 'Degen #1', uri: 'https://example.com/degen/1' }],
+  // And a loaded Gumball Machine with an nftGate guard.
+
+  const { publicKey: gumballMachine } = await create(umi, {
+    items: [
+      {
+        id: (await createNft(umi)).publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      },
+    ],
+    startSale: true,
     guards: {
       nftGate: some({ requiredCollection }),
     },
   });
 
   // When the payer tries to mint from it using its unverified NFT.
-  const mint = generateSigner(umi);
+
   const promise = transactionBuilder()
     .add(setComputeUnitLimit(umi, { units: 600_000 }))
     .add(
-      mintV2(umi, {
-        candyMachine,
-        nftMint: mint,
-        collectionMint,
-        collectionUpdateAuthority: umi.identity.publicKey,
+      draw(umi, {
+        gumballMachine,
+
         mintArgs: {
           nftGate: some({ mint: nftToVerify }),
         },
@@ -330,13 +350,18 @@ test('it forbids minting when the payer tries to provide an NFT from an unverifi
 });
 
 test('it charges a bot tax when trying to mint without owning the right NFT', async (t) => {
-  // Given a loaded Candy Machine with an nftGate guard and a bot tax guard.
+  // Given a loaded Gumball Machine with an nftGate guard and a bot tax guard.
   const umi = await createUmi();
   const { publicKey: requiredCollection } = await createCollectionNft(umi);
-  const collectionMint = (await createCollectionNft(umi)).publicKey;
-  const { publicKey: candyMachine } = await createV2(umi, {
-    collectionMint,
-    configLines: [{ name: 'Degen #1', uri: 'https://example.com/degen/1' }],
+
+  const { publicKey: gumballMachine } = await create(umi, {
+    items: [
+      {
+        id: (await createNft(umi)).publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      },
+    ],
+    startSale: true,
     guards: {
       botTax: some({ lamports: sol(0.1), lastInstruction: true }),
       nftGate: some({ requiredCollection }),
@@ -345,15 +370,13 @@ test('it charges a bot tax when trying to mint without owning the right NFT', as
 
   // When we try to mint from it using any NFT that's not from the required collection.
   const wrongNft = await createNft(umi);
-  const mint = generateSigner(umi);
+
   const { signature } = await transactionBuilder()
     .add(setComputeUnitLimit(umi, { units: 600_000 }))
     .add(
-      mintV2(umi, {
-        candyMachine,
-        nftMint: mint,
-        collectionMint,
-        collectionUpdateAuthority: umi.identity.publicKey,
+      draw(umi, {
+        gumballMachine,
+
         mintArgs: {
           nftGate: some({ mint: wrongNft.publicKey }),
         },
@@ -362,5 +385,5 @@ test('it charges a bot tax when trying to mint without owning the right NFT', as
     .sendAndConfirm(umi);
 
   // Then we expect a bot tax error.
-  await assertBotTax(t, umi, mint, signature, /InvalidNftCollection/);
+  await assertBotTax(t, umi, signature, /InvalidNftCollection/);
 });

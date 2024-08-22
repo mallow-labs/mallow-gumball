@@ -6,21 +6,40 @@
  * @see https://github.com/metaplex-foundation/kinobi
  */
 
+import { PublicKey } from '@metaplex-foundation/umi';
 import {
+  publicKey as publicKeySerializer,
   Serializer,
-  string,
   struct,
 } from '@metaplex-foundation/umi/serializers';
+import {
+  getTokenStandardSerializer,
+  TokenStandard,
+  TokenStandardArgs,
+} from '.';
 
 /** Config line struct for storing asset (NFT) data pre-mint. */
 export type ConfigLine = {
-  /** Name of the asset. */
-  name: string;
-  /** URI to JSON metadata. */
-  uri: string;
+  /** Mint account of the asset. */
+  mint: PublicKey;
+  /** Wallet that submitted the asset for sale. */
+  seller: PublicKey;
+  /** Wallet that will receive the asset upon sale. Empty until drawn. */
+  buyer: PublicKey;
+  /** Token standard. */
+  tokenStandard: TokenStandard;
 };
 
-export type ConfigLineArgs = ConfigLine;
+export type ConfigLineArgs = {
+  /** Mint account of the asset. */
+  mint: PublicKey;
+  /** Wallet that submitted the asset for sale. */
+  seller: PublicKey;
+  /** Wallet that will receive the asset upon sale. Empty until drawn. */
+  buyer: PublicKey;
+  /** Token standard. */
+  tokenStandard: TokenStandardArgs;
+};
 
 export function getConfigLineSerializer(): Serializer<
   ConfigLineArgs,
@@ -28,8 +47,10 @@ export function getConfigLineSerializer(): Serializer<
 > {
   return struct<ConfigLine>(
     [
-      ['name', string()],
-      ['uri', string()],
+      ['mint', publicKeySerializer()],
+      ['seller', publicKeySerializer()],
+      ['buyer', publicKeySerializer()],
+      ['tokenStandard', getTokenStandardSerializer()],
     ],
     { description: 'ConfigLine' }
   ) as Serializer<ConfigLineArgs, ConfigLine>;
