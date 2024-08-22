@@ -4,7 +4,7 @@ use anchor_lang::{prelude::*, AnchorDeserialize};
 use solana_program::program_memory::sol_memcmp;
 
 use crate::{errors::GumballGuardError, guards::*, utils::fixed_length_string};
-use mpl_candy_guard_derive::GuardSet;
+use mpl_gumball_guard_derive::GuardSet;
 
 // Bytes offset for the start of the data section:
 //     8 (discriminator)

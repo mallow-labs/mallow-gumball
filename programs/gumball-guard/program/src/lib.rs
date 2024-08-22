@@ -13,7 +13,7 @@ pub mod utils;
 declare_id!("GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF");
 
 #[program]
-pub mod candy_guard {
+pub mod gumball_guard {
     use super::*;
 
     /// Create a new gumball guard account.

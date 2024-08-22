@@ -8,13 +8,13 @@ const idlDir = path.join(__dirname, "..", "idls");
 // Instanciate Kinobi.
 const kinobi = k.createFromIdls([
 	path.join(idlDir, "mallow_gumball.json"),
-	path.join(idlDir, "candy_guard.json"),
+	path.join(idlDir, "gumball_guard.json"),
 ]);
 
 // Update programs.
 kinobi.update(
 	new k.UpdateProgramsVisitor({
-		candyGuard: { name: "mplCandyGuard", prefix: "Cg" },
+		gumballGuard: { name: "mplCandyGuard", prefix: "Cg" },
 		gumballMachineCore: { name: "mallowGumball", prefix: "Cm" },
 	})
 );

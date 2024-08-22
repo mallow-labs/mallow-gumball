@@ -9,7 +9,7 @@ deterministic and non-deterministic (random) way, like a traditional gumball mac
 
 The latest iteration of the `Gumball Machine` program retains the core functionality of minting an NFT
 only, while any access control configuration is now done by the new
-[`Gumball Guard`](https://github.com/metaplex-foundation/mpl-candy-guard) program.
+[`Gumball Guard`](https://github.com/metaplex-foundation/mpl-gumball-guard) program.
 
 The `Gumball Machine` program is responsible for:
 
@@ -42,7 +42,7 @@ requirement being that there are NFTs to be minted from it. The `authority` of t
 delegate the `mint_authority` to another address, either a wallet or PDA. This separation allows
 maximum flexibility and enables composability, since other programs can be set as `mint_authority`
 and provide additional features on top of the gumball machine. An example of this is the
-[`Gumball Guard`](https://github.com/metaplex-foundation/mpl-candy-guard) program, which provides
+[`Gumball Guard`](https://github.com/metaplex-foundation/mpl-gumball-guard) program, which provides
 access control guards for the gumball machine.
 
 ## Account

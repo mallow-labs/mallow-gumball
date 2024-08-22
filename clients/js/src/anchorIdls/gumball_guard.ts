@@ -1,6 +1,6 @@
-export type CandyGuard = {
+export type GumballGuard = {
   version: '0.1.0';
-  name: 'candy_guard';
+  name: 'gumball_guard';
   instructions: [
     {
       name: 'initialize';
@@ -1435,9 +1435,9 @@ export type CandyGuard = {
   ];
 };
 
-export const IDL: CandyGuard = {
+export const IDL: GumballGuard = {
   version: '0.1.0',
-  name: 'candy_guard',
+  name: 'gumball_guard',
   instructions: [
     {
       name: 'initialize',

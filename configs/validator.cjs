@@ -19,7 +19,7 @@ module.exports = {
 			{
 				label: "Gumball Guard",
 				programId: "GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF",
-				deployPath: getProgram("mpl_candy_guard.so"),
+				deployPath: getProgram("mpl_gumball_guard.so"),
 			},
 			{
 				label: "Token Metadata",

@@ -13,13 +13,13 @@ mallow_gumball_program: &mallow_gumball_program
   - *program_common
   - "programs/mallow-gumball/**"
 
-candy_guard_program: &candy_guard_program
+gumball_guard_program: &gumball_guard_program
   - *program_common
-  - "programs/candy-guard/**"
+  - "programs/gumball-guard/**"
 
 programs: &programs
   - *mallow_gumball_program
-  - *candy_guard_program
+  - *gumball_guard_program
 
 # Clients.
 

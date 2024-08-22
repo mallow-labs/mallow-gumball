@@ -20,11 +20,11 @@ generateIdl({
 
 generateIdl({
 	generator: "anchor",
-	programName: "candy_guard",
+	programName: "gumball_guard",
 	programId: "GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF",
 	idlDir,
 	binaryInstallDir,
-	programDir: path.join(programDir, "candy-guard", "program"),
+	programDir: path.join(programDir, "gumball-guard", "program"),
 	rustbin: {
 		locked: true,
 		versionRangeFallback: "0.27.0",

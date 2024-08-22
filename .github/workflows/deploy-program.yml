@@ -6,10 +6,10 @@ on:
       program:
         description: Program
         required: true
-        default: candy-guard
+        default: gumball-guard
         type: choice
         options:
-          - candy-guard
+          - gumball-guard
           - mallow-gumball
       cluster:
         description: Cluster environment
@@ -95,10 +95,10 @@ jobs:
 
       - name: Identify Program
         run: |
-          if [ "${{ inputs.program }}" == "candy-guard" ]; then
+          if [ "${{ inputs.program }}" == "gumball-guard" ]; then
             echo ${{ secrets.CANDY_GUARD_DEPLOY_KEY }} > ./deploy-key.json 
             echo ${{ secrets.CANDY_GUARD_ID }} > ./program-id.json
-            echo PROGRAM_NAME="mpl_candy_guard" >> $GITHUB_ENV
+            echo PROGRAM_NAME="mpl_gumball_guard" >> $GITHUB_ENV
           else
             echo ${{ secrets.CANDY_MACHINE_CORE_DEPLOY_KEY }} > ./deploy-key.json
             echo ${{ secrets.CANDY_MACHINE_CORE_ID }} > ./program-id.json
