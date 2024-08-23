@@ -14,7 +14,7 @@
   "scripts": {
     "dev": "concurrently \"tsc --watch\" \"tsc -p tsconfig-cjs.json --watch\" \"tsc -p tsconfig-test.json --watch\" \"tsc -p tsconfig-test-cjs.json --watch\"",
     "build": "rimraf dist/* && concurrently \"tsc\" \"tsc -p tsconfig-cjs.json\" \"tsc -p tsconfig-test.json\" \"tsc -p tsconfig-test-cjs.json\" && ./fixup.sh",
-    "build:server": "rimraf dist/ && tsc",
+    "build:server": "rimraf dist/ && tsc && tsc -p tsconfig-cjs.json && ./fixup-server.sh",
     "build:docs": "typedoc",
     "test": "ava",
     "lint": "eslint --ext js,ts,tsx src",
