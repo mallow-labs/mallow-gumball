@@ -88,17 +88,12 @@ pub fn remove_core_asset(ctx: Context<RemoveCoreAsset>, index: u32) -> Result<()
         index,
     )?;
 
-    let collection_info = if let Some(collection) = &ctx.accounts.collection {
-        Some(collection.to_account_info())
-    } else {
-        None
-    };
-
-    let collection = if let Some(collection) = &collection_info {
-        Some(collection)
-    } else {
-        None
-    };
+    let collection_info = ctx
+        .accounts
+        .collection
+        .as_ref()
+        .map(|account| account.to_account_info());
+    let collection = collection_info.as_ref();
 
     let auth_seeds = [
         AUTHORITY_SEED.as_bytes(),

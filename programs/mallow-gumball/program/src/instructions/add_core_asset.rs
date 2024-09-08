@@ -92,17 +92,12 @@ pub fn add_core_asset(
 
     seller_history.item_count += 1;
 
-    let collection_info = if let Some(collection) = &ctx.accounts.collection {
-        Some(collection.to_account_info())
-    } else {
-        None
-    };
-
-    let collection = if let Some(collection) = &collection_info {
-        Some(collection)
-    } else {
-        None
-    };
+    let collection_info = ctx
+        .accounts
+        .collection
+        .as_ref()
+        .map(|account| account.to_account_info());
+    let collection = collection_info.as_ref();
 
     // Make sure the collection doesn't have any Permanent delegates
     if let Some(collection) = collection {
