@@ -8,8 +8,7 @@ pub struct UpdateSettings<'info> {
     /// Gumball machine account.
     #[account(
         mut, 
-        has_one = authority,
-        constraint = gumball_machine.state != GumballState::SaleLive @ GumballError::InvalidState
+        has_one = authority
     )]
     gumball_machine: Box<Account<'info, GumballMachine>>,
 
@@ -33,7 +32,7 @@ pub fn update_settings(ctx: Context<UpdateSettings>, settings: GumballSettings) 
     }
 
     // Limit the possible updates when details are finalized or there are already items loaded
-    if gumball_machine.state == GumballState::DetailsFinalized || items_loaded > 0 {
+    if gumball_machine.state != GumballState::None || items_loaded > 0 {
         // Can only increase items_per_seller
         if settings.items_per_seller < gumball_machine.settings.items_per_seller {
             msg!("Cannot decrease items_per_seller");
