@@ -1,5 +1,4 @@
 use anchor_lang::prelude::*;
-use utils::get_verified_royalty_info;
 use crate::{
     assert_config_line, constants::AUTHORITY_SEED, events::ClaimItemEvent, processors, state::GumballMachine, AssociatedToken, GumballError, ConfigLine, GumballState, Token, TokenStandard
 };
@@ -87,7 +86,6 @@ pub fn claim_nft<'info>(ctx: Context<'_, '_, '_, 'info, ClaimNft<'info>>, index:
     let associated_token_program = &ctx.accounts.associated_token_program.to_account_info();
     let system_program = &ctx.accounts.system_program.to_account_info();
     let rent = &ctx.accounts.rent.to_account_info();
-    let metadata = &ctx.accounts.metadata.to_account_info();
     let edition = &ctx.accounts.edition.to_account_info();
     let mint = &ctx.accounts.mint.to_account_info();
 
@@ -101,8 +99,6 @@ pub fn claim_nft<'info>(ctx: Context<'_, '_, '_, 'info, ClaimNft<'info>>, index:
             token_standard: TokenStandard::NonFungible,
         },
     )?;
-
-    let royalty_info = get_verified_royalty_info(metadata, mint)?;
 
     let auth_seeds = [
         AUTHORITY_SEED.as_bytes(),
@@ -122,13 +118,11 @@ pub fn claim_nft<'info>(ctx: Context<'_, '_, '_, 'info, ClaimNft<'info>>, index:
         tmp_token_account,
         mint,
         edition,
-        metadata,
         token_program,
         associated_token_program,
         token_metadata_program,
         system_program,
         rent,
-        &royalty_info,
         &auth_seeds,
     )?;
 

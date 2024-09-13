@@ -1,10 +1,7 @@
 use anchor_lang::prelude::*;
-use mpl_token_metadata::instructions::{
-    ThawDelegatedAccountCpi, ThawDelegatedAccountCpiAccounts, UpdatePrimarySaleHappenedViaTokenCpi,
-    UpdatePrimarySaleHappenedViaTokenCpiAccounts,
-};
+use mpl_token_metadata::instructions::{ThawDelegatedAccountCpi, ThawDelegatedAccountCpiAccounts};
 use solana_program::program::invoke_signed;
-use utils::{transfer_spl, RoyaltyInfo};
+use utils::transfer_spl;
 
 use crate::{processors::claim_item, GumballMachine};
 
@@ -20,18 +17,15 @@ pub fn claim_nft<'a, 'b>(
     tmp_token_account: &AccountInfo<'a>,
     mint: &AccountInfo<'a>,
     edition: &AccountInfo<'a>,
-    metadata: &AccountInfo<'a>,
     token_program: &AccountInfo<'a>,
     associated_token_program: &AccountInfo<'a>,
     token_metadata_program: &AccountInfo<'a>,
     system_program: &AccountInfo<'a>,
     rent: &AccountInfo<'a>,
-    royalty_info: &RoyaltyInfo,
     auth_seeds: &[&[u8]],
 ) -> Result<()> {
     claim_item(gumball_machine, index)?;
 
-    msg!("thawing delegated account");
     ThawDelegatedAccountCpi::new(
         token_metadata_program,
         ThawDelegatedAccountCpiAccounts {
@@ -44,7 +38,6 @@ pub fn claim_nft<'a, 'b>(
     )
     .invoke_signed(&[&auth_seeds])?;
 
-    msg!("transferring nft");
     // Transfer to authority pda first so we can update primary sale flag
     transfer_spl(
         from,
@@ -62,18 +55,6 @@ pub fn claim_nft<'a, 'b>(
         None,
         1,
     )?;
-
-    if royalty_info.is_primary_sale {
-        UpdatePrimarySaleHappenedViaTokenCpi::new(
-            token_metadata_program,
-            UpdatePrimarySaleHappenedViaTokenCpiAccounts {
-                metadata,
-                owner: authority_pda,
-                token: tmp_token_account,
-            },
-        )
-        .invoke_signed(&[&auth_seeds])?;
-    }
 
     // Transfer
     transfer_spl(

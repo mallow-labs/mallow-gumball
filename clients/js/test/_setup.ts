@@ -1,5 +1,8 @@
 /* eslint-disable import/no-extraneous-dependencies */
-import { create as baseCreateCoreAsset } from '@metaplex-foundation/mpl-core';
+import {
+  create as baseCreateCoreAsset,
+  ruleSet,
+} from '@metaplex-foundation/mpl-core';
 import {
   createNft as baseCreateNft,
   createProgrammableNft as baseCreateProgrammableNft,
@@ -82,9 +85,24 @@ export const createCoreAsset = async (
   input: Partial<Parameters<typeof baseCreateCoreAsset>[1]> = {}
 ): Promise<Signer> => {
   const asset = generateSigner(umi);
+  const defaultData = defaultAssetData();
+
   await baseCreateCoreAsset(umi, {
     asset,
-    ...defaultAssetData(),
+    ...defaultData,
+    plugins: [
+      {
+        type: 'Royalties',
+        basisPoints: 1000,
+        creators: [
+          {
+            address: umi.identity.publicKey,
+            percentage: 100,
+          },
+        ],
+        ruleSet: ruleSet('None'),
+      },
+    ],
     ...input,
   }).sendAndConfirm(umi);
 

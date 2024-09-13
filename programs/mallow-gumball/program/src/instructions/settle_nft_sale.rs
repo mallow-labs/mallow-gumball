@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use mpl_token_metadata::{accounts::Metadata, instructions::UpdateMetadataAccountV2CpiBuilder};
 use utils::get_verified_royalty_info;
 use crate::{
     assert_config_line, constants::{AUTHORITY_SEED, SELLER_HISTORY_SEED}, events::SettleItemSaleEvent, processors::{self, claim_proceeds, is_item_claimed}, state::GumballMachine, AssociatedToken, ConfigLine, GumballError, GumballState, SellerHistory, Token, TokenStandard
@@ -171,6 +172,17 @@ pub fn settle_nft_sale<'info>(ctx: Context<'_, '_, '_, 'info, SettleNftSale<'inf
         &[ctx.bumps.authority_pda],
     ];
 
+    if royalty_info.is_primary_sale {
+        let metadata_account = Metadata::try_from(metadata)?;
+        if metadata_account.update_authority == payer.key() {
+            let mut builder = UpdateMetadataAccountV2CpiBuilder::new(token_metadata_program);
+            builder.metadata(metadata)
+                .update_authority(payer)
+                .primary_sale_happened(true)
+                .invoke()?;
+        }
+    }
+
     if !is_item_claimed(gumball_machine, index)? {
         processors::claim_nft(
             gumball_machine,
@@ -184,13 +196,11 @@ pub fn settle_nft_sale<'info>(ctx: Context<'_, '_, '_, 'info, SettleNftSale<'inf
             tmp_token_account,
             mint,
             edition,
-            metadata,
             token_program,
             associated_token_program,
             token_metadata_program,
             system_program,
             rent,
-            &royalty_info,
             &auth_seeds,
         )?;
     }

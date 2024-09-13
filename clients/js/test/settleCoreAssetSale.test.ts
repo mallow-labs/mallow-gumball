@@ -1,5 +1,5 @@
 /* eslint-disable no-await-in-loop */
-import { AssetV1, fetchAssetV1 } from '@metaplex-foundation/mpl-core';
+import { AssetV1, fetchAssetV1, ruleSet } from '@metaplex-foundation/mpl-core';
 import { setComputeUnitLimit } from '@metaplex-foundation/mpl-toolbox';
 import {
   addAmounts,
@@ -149,6 +149,559 @@ test('it can settle a core asset sale', async (t) => {
     transferDelegate: undefined,
     owner: buyer.publicKey,
   });
+});
+
+test('it splits proceeds for a primary asset sale with multiple creators after claim', async (t) => {
+  const umi = await createUmi();
+  const secondCreator = generateSigner(umi).publicKey;
+
+  // Given a gumball machine with some guards.
+  const asset = await createCoreAsset(umi, {
+    plugins: [
+      {
+        type: 'Royalties',
+        basisPoints: 1000,
+        creators: [
+          {
+            address: umi.identity.publicKey,
+            percentage: 50,
+          },
+          {
+            address: secondCreator,
+            percentage: 50,
+          },
+        ],
+        ruleSet: ruleSet('None'),
+      },
+    ],
+  });
+
+  const gumballMachineSigner = generateSigner(umi);
+  const gumballMachine = gumballMachineSigner.publicKey;
+
+  await create(umi, {
+    gumballMachine: gumballMachineSigner,
+    items: [
+      {
+        id: asset.publicKey,
+        tokenStandard: TokenStandard.Core,
+      },
+    ],
+    startSale: true,
+    guards: {
+      botTax: { lamports: sol(0.01), lastInstruction: true },
+      solPayment: { lamports: sol(1) },
+    },
+    settings: {
+      curatorFeeBps: 0,
+    },
+  });
+
+  // When we mint from the gumball guard.
+  const buyerUmi = await createUmi();
+  const buyer = buyerUmi.identity;
+  const payer = await generateSignerWithSol(umi, sol(10));
+  await transactionBuilder()
+    .add(setComputeUnitLimit(umi, { units: 600_000 }))
+    .add(
+      draw(umi, {
+        gumballMachine,
+        payer,
+        buyer,
+        mintArgs: {
+          solPayment: some(true),
+        },
+      })
+    )
+    .sendAndConfirm(umi);
+
+  await transactionBuilder()
+    .add(setComputeUnitLimit(umi, { units: 600_000 }))
+    .add(
+      claimCoreAsset(buyerUmi, {
+        gumballMachine,
+        index: 0,
+        payer,
+        buyer: buyerUmi.identity.publicKey,
+        asset: asset.publicKey,
+        seller: umi.identity.publicKey,
+      })
+    )
+    .sendAndConfirm(buyerUmi);
+
+  const sellerPreBalance = await umi.rpc.getBalance(umi.identity.publicKey);
+  const secondCreatorPreBalance = await umi.rpc.getBalance(secondCreator);
+  const authorityPdaPreBalance = await umi.rpc.getBalance(
+    findGumballMachineAuthorityPda(umi, { gumballMachine: gumballMachine })[0]
+  );
+
+  // Then settle the sale
+  await transactionBuilder()
+    .add(setComputeUnitLimit(buyerUmi, { units: 600_000 }))
+    .add(
+      settleCoreAssetSale(buyerUmi, {
+        index: 0,
+        gumballMachine,
+        authority: umi.identity.publicKey,
+        seller: umi.identity.publicKey,
+        asset: asset.publicKey,
+        creators: [umi.identity.publicKey, secondCreator],
+      })
+    )
+    .sendAndConfirm(buyerUmi);
+
+  const payerBalance = await umi.rpc.getBalance(payer.publicKey);
+  t.true(isEqualToAmount(payerBalance, sol(9), sol(0.1)));
+
+  const sellerPostBalance = await umi.rpc.getBalance(umi.identity.publicKey);
+  const secondCreatorPostBalance = await umi.rpc.getBalance(secondCreator);
+  const authorityPdaPostBalance = await umi.rpc.getBalance(
+    findGumballMachineAuthorityPda(umi, { gumballMachine: gumballMachine })[0]
+  );
+
+  t.true(
+    isEqualToAmount(
+      sellerPostBalance,
+      addAmounts(sellerPreBalance, sol(0.5)),
+      sol(0.01)
+    )
+  );
+
+  t.true(
+    isEqualToAmount(
+      secondCreatorPostBalance,
+      addAmounts(secondCreatorPreBalance, sol(0.5)),
+      sol(0.01)
+    )
+  );
+
+  t.true(
+    isEqualToAmount(
+      authorityPdaPostBalance,
+      subtractAmounts(authorityPdaPreBalance, sol(1)),
+      sol(0.01)
+    )
+  );
+});
+
+test('it splits proceeds for a primary asset sale with multiple creators before claim', async (t) => {
+  const umi = await createUmi();
+  const secondCreator = generateSigner(umi).publicKey;
+
+  // Given a gumball machine with some guards.
+  const asset = await createCoreAsset(umi, {
+    plugins: [
+      {
+        type: 'Royalties',
+        basisPoints: 1000,
+        creators: [
+          {
+            address: umi.identity.publicKey,
+            percentage: 50,
+          },
+          {
+            address: secondCreator,
+            percentage: 50,
+          },
+        ],
+        ruleSet: ruleSet('None'),
+      },
+    ],
+  });
+
+  const gumballMachineSigner = generateSigner(umi);
+  const gumballMachine = gumballMachineSigner.publicKey;
+
+  await create(umi, {
+    gumballMachine: gumballMachineSigner,
+    items: [
+      {
+        id: asset.publicKey,
+        tokenStandard: TokenStandard.Core,
+      },
+    ],
+    startSale: true,
+    guards: {
+      botTax: { lamports: sol(0.01), lastInstruction: true },
+      solPayment: { lamports: sol(1) },
+    },
+    settings: {
+      curatorFeeBps: 0,
+    },
+  });
+
+  // When we mint from the gumball guard.
+  const buyerUmi = await createUmi();
+  const buyer = buyerUmi.identity;
+  const payer = await generateSignerWithSol(umi, sol(10));
+  await transactionBuilder()
+    .add(setComputeUnitLimit(umi, { units: 600_000 }))
+    .add(
+      draw(umi, {
+        gumballMachine,
+        payer,
+        buyer,
+        mintArgs: {
+          solPayment: some(true),
+        },
+      })
+    )
+    .sendAndConfirm(umi);
+
+  const sellerPreBalance = await umi.rpc.getBalance(umi.identity.publicKey);
+  const secondCreatorPreBalance = await umi.rpc.getBalance(secondCreator);
+  const authorityPdaPreBalance = await umi.rpc.getBalance(
+    findGumballMachineAuthorityPda(umi, { gumballMachine: gumballMachine })[0]
+  );
+
+  // Then settle the sale
+  await transactionBuilder()
+    .add(setComputeUnitLimit(buyerUmi, { units: 600_000 }))
+    .add(
+      settleCoreAssetSale(buyerUmi, {
+        index: 0,
+        gumballMachine,
+        authority: umi.identity.publicKey,
+        seller: umi.identity.publicKey,
+        asset: asset.publicKey,
+        creators: [umi.identity.publicKey, secondCreator],
+      })
+    )
+    .sendAndConfirm(buyerUmi);
+
+  const payerBalance = await umi.rpc.getBalance(payer.publicKey);
+  t.true(isEqualToAmount(payerBalance, sol(9), sol(0.1)));
+
+  const sellerPostBalance = await umi.rpc.getBalance(umi.identity.publicKey);
+  const secondCreatorPostBalance = await umi.rpc.getBalance(secondCreator);
+  const authorityPdaPostBalance = await umi.rpc.getBalance(
+    findGumballMachineAuthorityPda(umi, { gumballMachine: gumballMachine })[0]
+  );
+
+  t.true(
+    isEqualToAmount(
+      sellerPostBalance,
+      addAmounts(sellerPreBalance, sol(0.5)),
+      sol(0.01)
+    )
+  );
+
+  t.true(
+    isEqualToAmount(
+      secondCreatorPostBalance,
+      addAmounts(secondCreatorPreBalance, sol(0.5)),
+      sol(0.01)
+    )
+  );
+
+  t.true(
+    isEqualToAmount(
+      authorityPdaPostBalance,
+      subtractAmounts(authorityPdaPreBalance, sol(1)),
+      sol(0.01)
+    )
+  );
+});
+
+test('it splits proceeds for a secondary asset sale with multiple creators after claim', async (t) => {
+  const umi = await createUmi();
+  const creatorUmi = await createUmi();
+  const secondCreator = generateSigner(umi).publicKey;
+
+  const asset = await createCoreAsset(creatorUmi, {
+    plugins: [
+      {
+        type: 'Royalties',
+        basisPoints: 1000,
+        creators: [
+          {
+            address: creatorUmi.identity.publicKey,
+            percentage: 50,
+          },
+          {
+            address: secondCreator,
+            percentage: 50,
+          },
+        ],
+        ruleSet: ruleSet('None'),
+      },
+    ],
+    owner: umi.identity.publicKey,
+  });
+
+  const gumballMachineSigner = generateSigner(umi);
+  const gumballMachine = gumballMachineSigner.publicKey;
+
+  await create(umi, {
+    gumballMachine: gumballMachineSigner,
+    items: [
+      {
+        id: asset.publicKey,
+        tokenStandard: TokenStandard.Core,
+      },
+    ],
+    startSale: true,
+    guards: {
+      botTax: { lamports: sol(0.01), lastInstruction: true },
+      solPayment: { lamports: sol(1) },
+    },
+    settings: {
+      curatorFeeBps: 0,
+    },
+  });
+
+  // When we mint from the gumball guard.
+  const buyerUmi = await createUmi();
+  const buyer = buyerUmi.identity;
+  const payer = await generateSignerWithSol(umi, sol(10));
+  await transactionBuilder()
+    .add(setComputeUnitLimit(umi, { units: 600_000 }))
+    .add(
+      draw(umi, {
+        gumballMachine,
+        payer,
+        buyer,
+        mintArgs: {
+          solPayment: some(true),
+        },
+      })
+    )
+    .sendAndConfirm(umi);
+
+  await transactionBuilder()
+    .add(setComputeUnitLimit(umi, { units: 600_000 }))
+    .add(
+      claimCoreAsset(buyerUmi, {
+        gumballMachine,
+        index: 0,
+        payer,
+        buyer: buyerUmi.identity.publicKey,
+        asset: asset.publicKey,
+        seller: umi.identity.publicKey,
+      })
+    )
+    .sendAndConfirm(buyerUmi);
+
+  const sellerPreBalance = await umi.rpc.getBalance(umi.identity.publicKey);
+  const firstCreatorPreBalance = await umi.rpc.getBalance(
+    creatorUmi.identity.publicKey
+  );
+  const secondCreatorPreBalance = await umi.rpc.getBalance(secondCreator);
+  const authorityPdaPreBalance = await umi.rpc.getBalance(
+    findGumballMachineAuthorityPda(umi, { gumballMachine: gumballMachine })[0]
+  );
+
+  const sellerHistoryAccount = findSellerHistoryPda(umi, {
+    gumballMachine,
+    seller: umi.identity.publicKey,
+  })[0];
+
+  const sellerHistoryAccountRent = await umi.rpc.getBalance(
+    sellerHistoryAccount
+  );
+
+  // Then settle the sale
+  await transactionBuilder()
+    .add(setComputeUnitLimit(buyerUmi, { units: 600_000 }))
+    .add(
+      settleCoreAssetSale(buyerUmi, {
+        index: 0,
+        gumballMachine,
+        authority: umi.identity.publicKey,
+        seller: umi.identity.publicKey,
+        asset: asset.publicKey,
+        creators: [creatorUmi.identity.publicKey, secondCreator],
+      })
+    )
+    .sendAndConfirm(buyerUmi);
+
+  const payerBalance = await umi.rpc.getBalance(payer.publicKey);
+  t.true(isEqualToAmount(payerBalance, sol(9), sol(0.1)));
+
+  const sellerPostBalance = await umi.rpc.getBalance(umi.identity.publicKey);
+  const firstCreatorPostBalance = await umi.rpc.getBalance(
+    creatorUmi.identity.publicKey
+  );
+  const secondCreatorPostBalance = await umi.rpc.getBalance(secondCreator);
+  const authorityPdaPostBalance = await umi.rpc.getBalance(
+    findGumballMachineAuthorityPda(umi, { gumballMachine: gumballMachine })[0]
+  );
+
+  t.true(
+    isEqualToAmount(
+      sellerPostBalance,
+      addAmounts(
+        addAmounts(sellerPreBalance, sol(0.9)),
+        sellerHistoryAccountRent
+      )
+    )
+  );
+
+  t.true(
+    isEqualToAmount(
+      firstCreatorPostBalance,
+      addAmounts(firstCreatorPreBalance, sol(0.05))
+    )
+  );
+
+  t.true(
+    isEqualToAmount(
+      secondCreatorPostBalance,
+      addAmounts(secondCreatorPreBalance, sol(0.05))
+    )
+  );
+
+  t.true(
+    isEqualToAmount(
+      authorityPdaPostBalance,
+      subtractAmounts(authorityPdaPreBalance, sol(1)),
+      sol(0.01)
+    )
+  );
+});
+
+test('it splits proceeds for a secondary asset sale with multiple creators before claim', async (t) => {
+  const umi = await createUmi();
+  const creatorUmi = await createUmi();
+  const secondCreator = generateSigner(umi).publicKey;
+
+  const asset = await createCoreAsset(creatorUmi, {
+    plugins: [
+      {
+        type: 'Royalties',
+        basisPoints: 1000,
+        creators: [
+          {
+            address: creatorUmi.identity.publicKey,
+            percentage: 50,
+          },
+          {
+            address: secondCreator,
+            percentage: 50,
+          },
+        ],
+        ruleSet: ruleSet('None'),
+      },
+    ],
+    owner: umi.identity.publicKey,
+  });
+
+  const gumballMachineSigner = generateSigner(umi);
+  const gumballMachine = gumballMachineSigner.publicKey;
+
+  await create(umi, {
+    gumballMachine: gumballMachineSigner,
+    items: [
+      {
+        id: asset.publicKey,
+        tokenStandard: TokenStandard.Core,
+      },
+    ],
+    startSale: true,
+    guards: {
+      botTax: { lamports: sol(0.01), lastInstruction: true },
+      solPayment: { lamports: sol(1) },
+    },
+    settings: {
+      curatorFeeBps: 0,
+    },
+  });
+
+  // When we mint from the gumball guard.
+  const buyerUmi = await createUmi();
+  const buyer = buyerUmi.identity;
+  const payer = await generateSignerWithSol(umi, sol(10));
+  await transactionBuilder()
+    .add(setComputeUnitLimit(umi, { units: 600_000 }))
+    .add(
+      draw(umi, {
+        gumballMachine,
+        payer,
+        buyer,
+        mintArgs: {
+          solPayment: some(true),
+        },
+      })
+    )
+    .sendAndConfirm(umi);
+
+  const sellerPreBalance = await umi.rpc.getBalance(umi.identity.publicKey);
+  const firstCreatorPreBalance = await umi.rpc.getBalance(
+    creatorUmi.identity.publicKey
+  );
+  const secondCreatorPreBalance = await umi.rpc.getBalance(secondCreator);
+  const authorityPdaPreBalance = await umi.rpc.getBalance(
+    findGumballMachineAuthorityPda(umi, { gumballMachine: gumballMachine })[0]
+  );
+
+  const sellerHistoryAccount = findSellerHistoryPda(umi, {
+    gumballMachine,
+    seller: umi.identity.publicKey,
+  })[0];
+
+  const sellerHistoryAccountRent = await umi.rpc.getBalance(
+    sellerHistoryAccount
+  );
+
+  // Then settle the sale
+  await transactionBuilder()
+    .add(setComputeUnitLimit(buyerUmi, { units: 600_000 }))
+    .add(
+      settleCoreAssetSale(buyerUmi, {
+        index: 0,
+        gumballMachine,
+        authority: umi.identity.publicKey,
+        seller: umi.identity.publicKey,
+        asset: asset.publicKey,
+        creators: [creatorUmi.identity.publicKey, secondCreator],
+      })
+    )
+    .sendAndConfirm(buyerUmi);
+
+  const payerBalance = await umi.rpc.getBalance(payer.publicKey);
+  t.true(isEqualToAmount(payerBalance, sol(9), sol(0.1)));
+
+  const sellerPostBalance = await umi.rpc.getBalance(umi.identity.publicKey);
+  const firstCreatorPostBalance = await umi.rpc.getBalance(
+    creatorUmi.identity.publicKey
+  );
+  const secondCreatorPostBalance = await umi.rpc.getBalance(secondCreator);
+  const authorityPdaPostBalance = await umi.rpc.getBalance(
+    findGumballMachineAuthorityPda(umi, { gumballMachine: gumballMachine })[0]
+  );
+
+  t.true(
+    isEqualToAmount(
+      sellerPostBalance,
+      addAmounts(
+        addAmounts(sellerPreBalance, sol(0.9)),
+        sellerHistoryAccountRent
+      ),
+      sol(0.1)
+    )
+  );
+
+  t.true(
+    isEqualToAmount(
+      firstCreatorPostBalance,
+      addAmounts(firstCreatorPreBalance, sol(0.05))
+    )
+  );
+
+  t.true(
+    isEqualToAmount(
+      secondCreatorPostBalance,
+      addAmounts(secondCreatorPreBalance, sol(0.05))
+    )
+  );
+
+  t.true(
+    isEqualToAmount(
+      authorityPdaPostBalance,
+      subtractAmounts(authorityPdaPreBalance, sol(1)),
+      sol(0.01)
+    )
+  );
 });
 
 test('it can settle a core asset that was not sold', async (t) => {
