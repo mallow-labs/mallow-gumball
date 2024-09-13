@@ -1,3 +1,4 @@
+import { printSupply } from '@metaplex-foundation/mpl-token-metadata';
 import {
   fetchToken,
   findAssociatedTokenPda,
@@ -433,4 +434,24 @@ test('it cannot add more nfts than allowed per seller', async (t) => {
     .sendAndConfirm(otherSellerUmi);
 
   await t.throwsAsync(promise, { message: /SellerTooManyItems/ });
+});
+
+test('it cannot add a printable nft', async (t) => {
+  // Given a Gumball Machine with 5 nfts.
+  const umi = await createUmi();
+  const gumballMachine = await create(umi, { settings: { itemCapacity: 5 } });
+  const nft = await createNft(umi, {
+    printSupply: printSupply('Limited', [10n]),
+  });
+
+  const promise = transactionBuilder()
+    .add(
+      addNft(umi, {
+        gumballMachine: gumballMachine.publicKey,
+        mint: nft.publicKey,
+      })
+    )
+    .sendAndConfirm(umi);
+
+  await t.throwsAsync(promise, { message: /InvalidEditionMaxSupply/ });
 });
