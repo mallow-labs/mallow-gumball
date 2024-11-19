@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::{constants::ADD_ITEM_REQUEST_SEED, TokenStandard};
+use crate::TokenStandard;
 
 /// Add item request state.
 #[account]
@@ -19,10 +19,6 @@ pub struct AddItemRequest {
 impl AddItemRequest {
     // Additional padding for future proofing
     pub const SPACE: usize = 8 + 32 + 32 + 32 + 1;
-
-    pub fn auth_seeds<'a>(&'a self) -> [&'a [u8]; 2] {
-        [ADD_ITEM_REQUEST_SEED.as_bytes(), self.asset.as_ref()]
-    }
 
     pub fn init(
         &mut self,

@@ -4,7 +4,8 @@ use mpl_core::{
     accounts::{BaseAssetV1, BaseCollectionV1},
     fetch_plugin,
     instructions::{
-        AddPluginV1CpiBuilder, ApprovePluginAuthorityV1CpiBuilder, UpdatePluginV1CpiBuilder,
+        AddPluginV1CpiBuilder, ApprovePluginAuthorityV1CpiBuilder, RemovePluginV1CpiBuilder,
+        RevokePluginAuthorityV1CpiBuilder, UpdatePluginV1CpiBuilder,
     },
     types::{
         FreezeDelegate, PermanentBurnDelegate, PermanentFreezeDelegate, PermanentTransferDelegate,
@@ -215,7 +216,7 @@ pub fn assert_no_permanent_delegates(collection: Option<&AccountInfo>) -> Result
 pub fn approve_and_freeze_core_asset<'a>(
     payer: &AccountInfo<'a>,
     asset_info: &AccountInfo<'a>,
-    collection_info: Option<&AccountInfo<'a>>,
+    collection: Option<&AccountInfo<'a>>,
     new_authority_info: &AccountInfo<'a>,
     new_authority_seeds: &[&[u8]],
     mpl_core_program: &AccountInfo<'a>,
@@ -229,7 +230,7 @@ pub fn approve_and_freeze_core_asset<'a>(
     {
         AddPluginV1CpiBuilder::new(mpl_core_program)
             .asset(asset_info)
-            .collection(collection_info)
+            .collection(collection)
             .payer(payer)
             .plugin(Plugin::TransferDelegate(TransferDelegate {}))
             .init_authority(PluginAuthority::Address {
@@ -240,7 +241,7 @@ pub fn approve_and_freeze_core_asset<'a>(
     } else {
         ApprovePluginAuthorityV1CpiBuilder::new(mpl_core_program)
             .asset(asset_info)
-            .collection(collection_info)
+            .collection(collection)
             .payer(payer)
             .new_authority(PluginAuthority::Address {
                 address: new_authority,
@@ -256,7 +257,7 @@ pub fn approve_and_freeze_core_asset<'a>(
     {
         AddPluginV1CpiBuilder::new(mpl_core_program)
             .asset(asset_info)
-            .collection(collection_info)
+            .collection(collection)
             .payer(payer)
             .plugin(Plugin::FreezeDelegate(FreezeDelegate { frozen: true }))
             .init_authority(PluginAuthority::Address {
@@ -267,7 +268,7 @@ pub fn approve_and_freeze_core_asset<'a>(
     } else {
         ApprovePluginAuthorityV1CpiBuilder::new(mpl_core_program)
             .asset(asset_info)
-            .collection(collection_info)
+            .collection(collection)
             .payer(payer)
             .new_authority(PluginAuthority::Address {
                 address: new_authority,
@@ -278,12 +279,76 @@ pub fn approve_and_freeze_core_asset<'a>(
 
         UpdatePluginV1CpiBuilder::new(mpl_core_program)
             .asset(asset_info)
-            .collection(collection_info)
+            .collection(collection)
             .payer(payer)
             .plugin(Plugin::FreezeDelegate(FreezeDelegate { frozen: true }))
             .authority(Some(new_authority_info))
             .system_program(system_program)
             .invoke_signed(&[&new_authority_seeds])?;
+    }
+
+    Ok(())
+}
+
+pub fn thaw_and_revoke_core_asset<'a>(
+    payer: &AccountInfo<'a>,
+    owner: &AccountInfo<'a>,
+    asset_info: &AccountInfo<'a>,
+    collection: Option<&AccountInfo<'a>>,
+    authority: &AccountInfo<'a>,
+    authority_seeds: &[&[u8]],
+    mpl_core_program: &AccountInfo<'a>,
+    system_program: &AccountInfo<'a>,
+) -> Result<()> {
+    // Thaw
+    UpdatePluginV1CpiBuilder::new(mpl_core_program)
+        .asset(asset_info)
+        .collection(collection)
+        .payer(payer)
+        .plugin(Plugin::FreezeDelegate(FreezeDelegate { frozen: false }))
+        .authority(Some(authority))
+        .system_program(system_program)
+        .invoke_signed(&[&authority_seeds])?;
+
+    // Can only remove plugins if the seller is the authority
+    if owner.key() == payer.key() {
+        // Clean up freeze plugin back to seller
+        RemovePluginV1CpiBuilder::new(mpl_core_program)
+            .asset(asset_info)
+            .collection(collection)
+            .payer(payer)
+            .plugin_type(PluginType::FreezeDelegate)
+            .system_program(system_program)
+            .invoke()?;
+
+        // Clean up transfer delegate plugin back to seller
+        RemovePluginV1CpiBuilder::new(mpl_core_program)
+            .asset(asset_info)
+            .collection(collection)
+            .payer(payer)
+            .plugin_type(PluginType::TransferDelegate)
+            .system_program(system_program)
+            .invoke()?;
+    } else {
+        // Revoke
+        RevokePluginAuthorityV1CpiBuilder::new(mpl_core_program)
+            .asset(asset_info)
+            .collection(collection)
+            .payer(payer)
+            .plugin_type(PluginType::FreezeDelegate)
+            .authority(Some(authority))
+            .system_program(system_program)
+            .invoke_signed(&[&authority_seeds])?;
+
+        // Revoke
+        RevokePluginAuthorityV1CpiBuilder::new(mpl_core_program)
+            .asset(asset_info)
+            .collection(collection)
+            .payer(payer)
+            .plugin_type(PluginType::TransferDelegate)
+            .authority(Some(authority))
+            .system_program(system_program)
+            .invoke_signed(&[&authority_seeds])?;
     }
 
     Ok(())
