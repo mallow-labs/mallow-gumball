@@ -10,6 +10,9 @@ pub const AUTHORITY_SEED: &str = "gumball_machine";
 // Seed used to derive the seller history PDA address.
 pub const SELLER_HISTORY_SEED: &str = "seller_history";
 
+// Seed used to derive the add item request PDA address.
+pub const ADD_ITEM_REQUEST_SEED: &str = "add_item_request";
+
 pub const GUMBALL_SETTINGS_BYTE_INDEX: usize = 8 // discriminator
     + 1                                       // version
     + 32                                      // authority

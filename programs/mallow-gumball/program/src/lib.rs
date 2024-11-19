@@ -69,6 +69,11 @@ pub mod mallow_gumball {
         instructions::add_core_asset(ctx, seller_proof_path)
     }
 
+    /// Request to add a core asset to the gumball machine.
+    pub fn request_add_core_asset(ctx: Context<RequestAddCoreAsset>) -> Result<()> {
+        instructions::request_add_core_asset(ctx)
+    }
+
     /// Remove legacy NFT from the gumball machine.
     ///
     /// # Accounts

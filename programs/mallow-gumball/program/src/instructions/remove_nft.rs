@@ -2,7 +2,7 @@ use crate::{
     constants::{AUTHORITY_SEED, SELLER_HISTORY_SEED},
     processors,
     state::GumballMachine,
-    AssociatedToken, GumballError, GumballState, SellerHistory, Token,
+    AssociatedToken, GumballError, SellerHistory, Token,
 };
 use anchor_lang::prelude::*;
 use mpl_token_metadata::instructions::{ThawDelegatedAccountCpi, ThawDelegatedAccountCpiAccounts};
@@ -16,7 +16,7 @@ pub struct RemoveNft<'info> {
     /// Gumball Machine account.
     #[account(
         mut,
-        constraint = gumball_machine.state == GumballState::None || gumball_machine.state == GumballState::DetailsFinalized @ GumballError::InvalidState,
+        constraint = gumball_machine.can_edit_items() @ GumballError::InvalidState,
     )]
     gumball_machine: Account<'info, GumballMachine>,
 

@@ -1,6 +1,14 @@
 use anchor_lang::prelude::*;
 use arrayref::array_ref;
-use mpl_core::{types::UpdateAuthority, Asset, Collection};
+use mpl_core::{
+    accounts::BaseCollectionV1,
+    fetch_plugin,
+    types::{
+        PermanentBurnDelegate, PermanentFreezeDelegate, PermanentTransferDelegate, PluginType,
+        UpdateAuthority,
+    },
+    Asset, Collection,
+};
 use solana_program::{
     account_info::AccountInfo,
     program_memory::sol_memcmp,
@@ -61,6 +69,23 @@ pub fn assert_can_add_item(
         ),
         GumballError::InvalidProofPath
     );
+
+    Ok(())
+}
+
+pub fn assert_can_request_add_item(
+    gumball_machine: &mut Box<Account<GumballMachine>>,
+    seller_history: &mut Box<Account<SellerHistory>>,
+) -> Result<()> {
+    let seller = seller_history.seller;
+
+    if seller == gumball_machine.authority {
+        return err!(GumballError::InvalidSeller);
+    }
+
+    if seller_history.item_count >= gumball_machine.settings.items_per_seller as u64 {
+        return err!(GumballError::SellerTooManyItems);
+    }
 
     Ok(())
 }
@@ -151,6 +176,37 @@ pub fn get_bit_byte_info(base_position: usize, position: usize) -> Result<(usize
     let mask = u8::pow(2, bit as u32);
 
     return Ok((byte_position, bit, mask));
+}
+
+pub fn assert_no_permanent_delegates(collection: Option<&AccountInfo>) -> Result<()> {
+    // Make sure the collection doesn't have any Permanent delegates
+    if let Some(collection) = collection {
+        if let Ok(_) = fetch_plugin::<BaseCollectionV1, PermanentTransferDelegate>(
+            collection,
+            PluginType::PermanentTransferDelegate,
+        ) {
+            msg!("Collection cannot have the PermanentTransferDelegate plugin");
+            return err!(GumballError::InvalidCollection);
+        }
+
+        if let Ok(_) = fetch_plugin::<BaseCollectionV1, PermanentFreezeDelegate>(
+            collection,
+            PluginType::PermanentFreezeDelegate,
+        ) {
+            msg!("Collection cannot have the PermanentFreezeDelegate plugin");
+            return err!(GumballError::InvalidCollection);
+        }
+
+        if let Ok(_) = fetch_plugin::<BaseCollectionV1, PermanentBurnDelegate>(
+            collection,
+            PluginType::PermanentBurnDelegate,
+        ) {
+            msg!("Collection cannot have the PermanentBurnDelegate plugin");
+            return err!(GumballError::InvalidCollection);
+        }
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]

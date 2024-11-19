@@ -2,7 +2,7 @@ use crate::{
     assert_can_add_item,
     constants::{AUTHORITY_SEED, SELLER_HISTORY_SEED},
     state::GumballMachine,
-    GumballError, ConfigLineInput, GumballState, SellerHistory, Token, TokenStandard,
+    GumballError, ConfigLineInput, SellerHistory, Token, TokenStandard,
 };
 use anchor_lang::prelude::*;
 use mpl_token_metadata::{
@@ -19,7 +19,7 @@ pub struct AddNft<'info> {
     /// Gumball Machine account.
     #[account(
         mut,
-        constraint = gumball_machine.state == GumballState::None || gumball_machine.state == GumballState::DetailsFinalized @ GumballError::InvalidState,
+        constraint = gumball_machine.can_edit_items() @ GumballError::InvalidState,
     )]
     gumball_machine: Box<Account<'info, GumballMachine>>,
 

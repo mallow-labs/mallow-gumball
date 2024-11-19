@@ -67,6 +67,10 @@ impl GumballMachine {
         let position = self.get_settled_items_bit_mask_position()? + mask_size + 1;
         Ok(position)
     }
+
+    pub fn can_edit_items(&self) -> bool {
+        self.state == GumballState::None || self.state == GumballState::DetailsFinalized
+    }
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug)]
