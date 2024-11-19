@@ -74,6 +74,11 @@ pub mod mallow_gumball {
         instructions::request_add_core_asset(ctx)
     }
 
+    /// Approve adding an item to the gumball machine.
+    pub fn approve_add_item(ctx: Context<ApproveAddItem>) -> Result<()> {
+        instructions::approve_add_item(ctx)
+    }
+
     /// Remove legacy NFT from the gumball machine.
     ///
     /// # Accounts

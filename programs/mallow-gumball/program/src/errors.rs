@@ -154,4 +154,7 @@ pub enum GumballError {
 
     #[msg("Item already drawn")]
     ItemAlreadyDrawn,
+
+    #[msg("Invalid gumball machine")]
+    InvalidGumballMachine,
 }

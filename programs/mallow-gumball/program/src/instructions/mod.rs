@@ -1,5 +1,6 @@
 pub mod add_core_asset;
 pub mod add_nft;
+pub mod approve_add_item;
 pub mod claim_core_asset;
 pub mod claim_nft;
 pub mod close_gumball_machine;
@@ -19,6 +20,7 @@ pub mod update_settings;
 
 pub use add_core_asset::*;
 pub use add_nft::*;
+pub use approve_add_item::*;
 pub use claim_core_asset::*;
 pub use claim_nft::*;
 pub use close_gumball_machine::*;
