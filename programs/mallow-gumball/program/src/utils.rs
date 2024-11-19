@@ -1,11 +1,14 @@
 use anchor_lang::prelude::*;
 use arrayref::array_ref;
 use mpl_core::{
-    accounts::BaseCollectionV1,
+    accounts::{BaseAssetV1, BaseCollectionV1},
     fetch_plugin,
+    instructions::{
+        AddPluginV1CpiBuilder, ApprovePluginAuthorityV1CpiBuilder, UpdatePluginV1CpiBuilder,
+    },
     types::{
-        PermanentBurnDelegate, PermanentFreezeDelegate, PermanentTransferDelegate, PluginType,
-        UpdateAuthority,
+        FreezeDelegate, PermanentBurnDelegate, PermanentFreezeDelegate, PermanentTransferDelegate,
+        Plugin, PluginAuthority, PluginType, TransferDelegate, UpdateAuthority,
     },
     Asset, Collection,
 };
@@ -204,6 +207,83 @@ pub fn assert_no_permanent_delegates(collection: Option<&AccountInfo>) -> Result
             msg!("Collection cannot have the PermanentBurnDelegate plugin");
             return err!(GumballError::InvalidCollection);
         }
+    }
+
+    Ok(())
+}
+
+pub fn approve_and_freeze_core_asset<'a>(
+    payer: &AccountInfo<'a>,
+    asset_info: &AccountInfo<'a>,
+    collection_info: Option<&AccountInfo<'a>>,
+    new_authority_info: &AccountInfo<'a>,
+    new_authority_seeds: &[&[u8]],
+    mpl_core_program: &AccountInfo<'a>,
+    system_program: &AccountInfo<'a>,
+) -> Result<()> {
+    let new_authority = new_authority_info.key();
+
+    // Approve
+    if let Err(_) =
+        fetch_plugin::<BaseAssetV1, TransferDelegate>(asset_info, PluginType::TransferDelegate)
+    {
+        AddPluginV1CpiBuilder::new(mpl_core_program)
+            .asset(asset_info)
+            .collection(collection_info)
+            .payer(payer)
+            .plugin(Plugin::TransferDelegate(TransferDelegate {}))
+            .init_authority(PluginAuthority::Address {
+                address: new_authority,
+            })
+            .system_program(system_program)
+            .invoke()?;
+    } else {
+        ApprovePluginAuthorityV1CpiBuilder::new(mpl_core_program)
+            .asset(asset_info)
+            .collection(collection_info)
+            .payer(payer)
+            .new_authority(PluginAuthority::Address {
+                address: new_authority,
+            })
+            .plugin_type(PluginType::TransferDelegate)
+            .system_program(system_program)
+            .invoke()?;
+    }
+
+    // Freeze
+    if let Err(_) =
+        fetch_plugin::<BaseAssetV1, TransferDelegate>(asset_info, PluginType::FreezeDelegate)
+    {
+        AddPluginV1CpiBuilder::new(mpl_core_program)
+            .asset(asset_info)
+            .collection(collection_info)
+            .payer(payer)
+            .plugin(Plugin::FreezeDelegate(FreezeDelegate { frozen: true }))
+            .init_authority(PluginAuthority::Address {
+                address: new_authority,
+            })
+            .system_program(system_program)
+            .invoke_signed(&[&new_authority_seeds])?;
+    } else {
+        ApprovePluginAuthorityV1CpiBuilder::new(mpl_core_program)
+            .asset(asset_info)
+            .collection(collection_info)
+            .payer(payer)
+            .new_authority(PluginAuthority::Address {
+                address: new_authority,
+            })
+            .plugin_type(PluginType::FreezeDelegate)
+            .system_program(system_program)
+            .invoke()?;
+
+        UpdatePluginV1CpiBuilder::new(mpl_core_program)
+            .asset(asset_info)
+            .collection(collection_info)
+            .payer(payer)
+            .plugin(Plugin::FreezeDelegate(FreezeDelegate { frozen: true }))
+            .authority(Some(new_authority_info))
+            .system_program(system_program)
+            .invoke_signed(&[&new_authority_seeds])?;
     }
 
     Ok(())

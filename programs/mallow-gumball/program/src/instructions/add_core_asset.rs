@@ -1,18 +1,9 @@
 use crate::{
-    assert_can_add_item, assert_no_permanent_delegates, constants::{AUTHORITY_SEED, SELLER_HISTORY_SEED}, state::GumballMachine, ConfigLineInput, GumballError, SellerHistory, TokenStandard
+    approve_and_freeze_core_asset, assert_can_add_item, assert_no_permanent_delegates, 
+    constants::{AUTHORITY_SEED, SELLER_HISTORY_SEED}, 
+    state::GumballMachine, ConfigLineInput, GumballError, SellerHistory, TokenStandard
 };
 use anchor_lang::prelude::*;
-use mpl_core::{
-    accounts::BaseAssetV1,
-    fetch_plugin,
-    instructions::{
-        AddPluginV1CpiBuilder, ApprovePluginAuthorityV1CpiBuilder, UpdatePluginV1CpiBuilder,
-    },
-    types::{
-        FreezeDelegate,
-        Plugin, PluginAuthority, PluginType, TransferDelegate,
-    },
-};
 
 /// Add core asset to a gumball machine.
 #[derive(Accounts)]
@@ -77,7 +68,6 @@ pub fn add_core_asset(
     let seller = &ctx.accounts.seller.to_account_info();
     let mpl_core_program = &ctx.accounts.mpl_core_program.to_account_info();
     let system_program = &ctx.accounts.system_program.to_account_info();
-    let authority_pda_key = ctx.accounts.authority_pda.key();
     let gumball_machine = &mut ctx.accounts.gumball_machine;
     let seller_history = &mut ctx.accounts.seller_history;
 
@@ -107,74 +97,21 @@ pub fn add_core_asset(
         TokenStandard::Core,
     )?;
 
-    // Approve
-    if let Err(_) =
-        fetch_plugin::<BaseAssetV1, TransferDelegate>(asset_info, PluginType::TransferDelegate)
-    {
-        AddPluginV1CpiBuilder::new(mpl_core_program)
-            .asset(asset_info)
-            .collection(collection)
-            .payer(seller)
-            .plugin(Plugin::TransferDelegate(TransferDelegate {}))
-            .init_authority(PluginAuthority::Address {
-                address: authority_pda_key,
-            })
-            .system_program(system_program)
-            .invoke()?;
-    } else {
-        ApprovePluginAuthorityV1CpiBuilder::new(mpl_core_program)
-            .asset(asset_info)
-            .collection(collection)
-            .payer(seller)
-            .new_authority(PluginAuthority::Address {
-                address: authority_pda_key,
-            })
-            .plugin_type(PluginType::TransferDelegate)
-            .system_program(system_program)
-            .invoke()?;
-    }
-
     let auth_seeds = [
         AUTHORITY_SEED.as_bytes(),
         ctx.accounts.gumball_machine.to_account_info().key.as_ref(),
         &[ctx.bumps.authority_pda],
     ];
 
-    // Freeze
-    if let Err(_) =
-        fetch_plugin::<BaseAssetV1, TransferDelegate>(asset_info, PluginType::FreezeDelegate)
-    {
-        AddPluginV1CpiBuilder::new(mpl_core_program)
-            .asset(asset_info)
-            .collection(collection)
-            .payer(seller)
-            .plugin(Plugin::FreezeDelegate(FreezeDelegate { frozen: true }))
-            .init_authority(PluginAuthority::Address {
-                address: authority_pda_key,
-            })
-            .system_program(system_program)
-            .invoke_signed(&[&auth_seeds])?;
-    } else {
-        ApprovePluginAuthorityV1CpiBuilder::new(mpl_core_program)
-            .asset(asset_info)
-            .collection(collection)
-            .payer(seller)
-            .new_authority(PluginAuthority::Address {
-                address: authority_pda_key,
-            })
-            .plugin_type(PluginType::FreezeDelegate)
-            .system_program(system_program)
-            .invoke()?;
-
-        UpdatePluginV1CpiBuilder::new(mpl_core_program)
-            .asset(asset_info)
-            .collection(collection)
-            .payer(seller)
-            .plugin(Plugin::FreezeDelegate(FreezeDelegate { frozen: true }))
-            .authority(Some(&ctx.accounts.authority_pda.to_account_info()))
-            .system_program(system_program)
-            .invoke_signed(&[&auth_seeds])?;
-    }
+    approve_and_freeze_core_asset(
+        seller,
+        asset_info,
+        collection,
+        &ctx.accounts.authority_pda.to_account_info(),
+        &auth_seeds,
+        mpl_core_program,
+        system_program,
+    )?;
 
     Ok(())
 }

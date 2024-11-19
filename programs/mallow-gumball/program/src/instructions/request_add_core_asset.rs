@@ -1,20 +1,9 @@
 use crate::{
-    assert_can_request_add_item, assert_no_permanent_delegates, 
-    constants::{ADD_ITEM_REQUEST_SEED, SELLER_HISTORY_SEED}, 
+    approve_and_freeze_core_asset, assert_can_request_add_item, assert_no_permanent_delegates, 
+    constants::{ADD_ITEM_REQUEST_SEED, AUTHORITY_SEED, SELLER_HISTORY_SEED}, 
     state::GumballMachine, AddItemRequest, GumballError, SellerHistory, TokenStandard
 };
 use anchor_lang::prelude::*;
-use mpl_core::{
-    accounts::BaseAssetV1,
-    fetch_plugin,
-    instructions::{
-        AddPluginV1CpiBuilder, ApprovePluginAuthorityV1CpiBuilder, UpdatePluginV1CpiBuilder,
-    },
-    types::{
-        FreezeDelegate,
-        Plugin, PluginAuthority, PluginType, TransferDelegate,
-    },
-};
 
 /// Request to add a core asset to a gumball machine.
 #[derive(Accounts)]
@@ -52,6 +41,17 @@ pub struct RequestAddCoreAsset<'info> {
         payer = seller
     )]
     add_item_request: Box<Account<'info, AddItemRequest>>,
+
+    /// CHECK: Safe due to seeds constraint
+    #[account(
+        mut,
+        seeds = [
+            AUTHORITY_SEED.as_bytes(), 
+            gumball_machine.key().as_ref()
+        ],
+        bump
+    )]
+    authority_pda: UncheckedAccount<'info>,
 
     /// Seller of the asset.
     #[account(mut)]
@@ -108,72 +108,21 @@ pub fn request_add_core_asset(
 
     assert_no_permanent_delegates(collection)?;
 
-    let authority_address = add_item_request.key();
+    let auth_seeds = [
+        AUTHORITY_SEED.as_bytes(),
+        ctx.accounts.gumball_machine.to_account_info().key.as_ref(),
+        &[ctx.bumps.authority_pda],
+    ];
 
-    // Approve
-    if let Err(_) =
-        fetch_plugin::<BaseAssetV1, TransferDelegate>(asset_info, PluginType::TransferDelegate)
-    {
-        AddPluginV1CpiBuilder::new(mpl_core_program)
-            .asset(asset_info)
-            .collection(collection)
-            .payer(seller)
-            .plugin(Plugin::TransferDelegate(TransferDelegate {}))
-            .init_authority(PluginAuthority::Address {
-                address: authority_address,
-            })
-            .system_program(system_program)
-            .invoke()?;
-    } else {
-        ApprovePluginAuthorityV1CpiBuilder::new(mpl_core_program)
-            .asset(asset_info)
-            .collection(collection)
-            .payer(seller)
-            .new_authority(PluginAuthority::Address {
-                address: authority_address,
-            })
-            .plugin_type(PluginType::TransferDelegate)
-            .system_program(system_program)
-            .invoke()?;
-    }
-
-    let auth_seeds = add_item_request.auth_seeds();
-
-    // Freeze
-    if let Err(_) =
-        fetch_plugin::<BaseAssetV1, TransferDelegate>(asset_info, PluginType::FreezeDelegate)
-    {
-        AddPluginV1CpiBuilder::new(mpl_core_program)
-            .asset(asset_info)
-            .collection(collection)
-            .payer(seller)
-            .plugin(Plugin::FreezeDelegate(FreezeDelegate { frozen: true }))
-            .init_authority(PluginAuthority::Address {
-                address: authority_address,
-            })
-            .system_program(system_program)
-            .invoke_signed(&[&auth_seeds])?;
-    } else {
-        ApprovePluginAuthorityV1CpiBuilder::new(mpl_core_program)
-            .asset(asset_info)
-            .collection(collection)
-            .payer(seller)
-            .new_authority(PluginAuthority::Address {
-                address: authority_address,
-            })
-            .plugin_type(PluginType::FreezeDelegate)
-            .system_program(system_program)
-            .invoke()?;
-
-        UpdatePluginV1CpiBuilder::new(mpl_core_program)
-            .asset(asset_info)
-            .collection(collection)
-            .payer(seller)
-            .plugin(Plugin::FreezeDelegate(FreezeDelegate { frozen: true }))
-            .authority(Some(&add_item_request.to_account_info()))
-            .system_program(system_program)
-            .invoke_signed(&[&auth_seeds])?;
-    }
+    approve_and_freeze_core_asset(
+        seller,
+        asset_info,
+        collection,
+        &ctx.accounts.authority_pda.to_account_info(),
+        &auth_seeds,
+        mpl_core_program,
+        system_program,
+    )?;
 
     Ok(())
 }
