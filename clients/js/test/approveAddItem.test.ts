@@ -2,19 +2,20 @@ import { AssetV1, fetchAssetV1 } from '@metaplex-foundation/mpl-core';
 import { transactionBuilder } from '@metaplex-foundation/umi';
 import test from 'ava';
 import {
-  AddItemRequest,
-  cancelAddCoreAssetRequest,
-  fetchAddItemRequestFromSeeds,
+  approveAddItem,
+  fetchGumballMachine,
   fetchSellerHistoryFromSeeds,
+  findAddItemRequestPda,
   findGumballMachineAuthorityPda,
-  findSellerHistoryPda,
+  GumballMachine,
   requestAddCoreAsset,
+  safeFetchAddItemRequestFromSeeds,
   SellerHistory,
   TokenStandard,
 } from '../src';
 import { create, createCoreAsset, createUmi } from './_setup';
 
-test('it can cancel a request to add core asset to a gumball machine', async (t) => {
+test('it can approve a request to add core asset to a gumball machine', async (t) => {
   // Given a Gumball Machine with 5 core assets.
   const umi = await createUmi();
   const gumballMachine = await create(umi, { settings: { itemCapacity: 5 } });
@@ -32,34 +33,49 @@ test('it can cancel a request to add core asset to a gumball machine', async (t)
     )
     .sendAndConfirm(sellerUmi);
 
-  // Then cancel the request to add an coreAsset to the Gumball Machine.
+  // Then accept the request
   await transactionBuilder()
     .add(
-      cancelAddCoreAssetRequest(sellerUmi, {
+      approveAddItem(umi, {
+        gumballMachine: gumballMachine.publicKey,
+        addItemRequest: findAddItemRequestPda(umi, {
+          asset: coreAsset.publicKey,
+        }),
+        seller: sellerUmi.identity.publicKey,
         asset: coreAsset.publicKey,
-        sellerHistory: findSellerHistoryPda(umi, {
-          gumballMachine: gumballMachine.publicKey,
-          seller: sellerUmi.identity.publicKey,
-        }),
-        authorityPda: findGumballMachineAuthorityPda(umi, {
-          gumballMachine: gumballMachine.publicKey,
-        }),
       })
     )
-    .sendAndConfirm(sellerUmi);
+    .sendAndConfirm(umi);
 
-  // Then the request is created properly.
-  const addItemRequestAccount = await fetchAddItemRequestFromSeeds(umi, {
+  // Then the request is closed
+  const addItemRequestAccount = await safeFetchAddItemRequestFromSeeds(umi, {
     asset: coreAsset.publicKey,
   });
+  t.falsy(addItemRequestAccount);
 
-  t.like(addItemRequestAccount, <AddItemRequest>{
-    asset: coreAsset.publicKey,
-    seller: sellerUmi.identity.publicKey,
-    gumballMachine: gumballMachine.publicKey,
-    tokenStandard: TokenStandard.Core,
+  // Then the Gumball Machine has been updated properly.
+  const gumballMachineAccount = await fetchGumballMachine(
+    umi,
+    gumballMachine.publicKey
+  );
+
+  t.like(gumballMachineAccount, <Pick<GumballMachine, 'itemsLoaded' | 'items'>>{
+    itemsLoaded: 1,
+    items: [
+      {
+        index: 0,
+        isDrawn: false,
+        isClaimed: false,
+        isSettled: false,
+        mint: coreAsset.publicKey,
+        seller: sellerUmi.identity.publicKey,
+        buyer: undefined,
+        tokenStandard: TokenStandard.Core,
+      },
+    ],
   });
 
+  // Then the asset is still frozen/delegated to the gumball machine
   const asset = await fetchAssetV1(umi, coreAsset.publicKey);
   t.like(asset, <AssetV1>{
     owner: sellerUmi.identity.publicKey,
