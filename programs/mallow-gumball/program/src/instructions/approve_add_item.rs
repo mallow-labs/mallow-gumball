@@ -20,11 +20,12 @@ pub struct ApproveAddItem<'info> {
         close = seller,
         seeds = [
             ADD_ITEM_REQUEST_SEED.as_bytes(), 
-            add_item_request.asset.key().as_ref()
+            asset.key().as_ref()
         ],
         bump,
         has_one = gumball_machine @ GumballError::InvalidGumballMachine,
         has_one = seller @ GumballError::InvalidSeller,
+        has_one = asset @ GumballError::InvalidMint,
     )]
     add_item_request: Box<Account<'info, AddItemRequest>>,
 
@@ -46,6 +47,9 @@ pub struct ApproveAddItem<'info> {
     /// CHECK: Safe due to add_item_request constraint
     #[account(mut)]
     seller: UncheckedAccount<'info>,
+
+    /// CHECK: Safe due to add_item_request constraint
+    asset: UncheckedAccount<'info>,
 
     system_program: Program<'info, System>,
 }

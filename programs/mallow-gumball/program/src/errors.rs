@@ -157,4 +157,7 @@ pub enum GumballError {
 
     #[msg("Invalid gumball machine")]
     InvalidGumballMachine,
+
+    #[msg("Seller cannot be authority")]
+    SellerCannotBeAuthority,
 }

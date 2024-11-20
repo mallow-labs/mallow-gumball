@@ -56,6 +56,12 @@ kinobi.update(
 				k.publicKeySeed("seller", "The seller this history is tracking"),
 			],
 		},
+		addItemRequest: {
+			seeds: [
+				k.stringConstantSeed("add_item_request"),
+				k.publicKeySeed("asset", "The address of the asset being added to the Gumball Machine"),
+			],
+		},
 		mintCounter: {
 			size: 2,
 			discriminator: k.sizeAccountDiscriminator(),
@@ -141,6 +147,11 @@ const defaultsToSellerHistoryPda = (seller = "seller") =>
 		importFrom: "generated",
 		seeds: { seller: k.accountDefault(seller) },
 	});
+const defaultsToAddItemRequestPda = (asset = "asset") =>
+	k.pdaDefault("addItemRequest", {
+		importFrom: "generated",
+		seeds: { asset: k.accountDefault(asset) },
+	});
 const defaultsToEventAuthorityPda = () =>
 	k.pdaDefault("eventAuthority", {
 		importFrom: "hooked",
@@ -215,6 +226,7 @@ kinobi.update(
 			account: "sellerHistory",
 			ignoreIfOptional: true,
 		},
+		{ ...defaultsToAddItemRequestPda(), account: "addItemRequest", ignoreIfOptional: true },
 		{
 			...k.identityDefault(),
 			account: "mintAuthority",
@@ -294,6 +306,18 @@ kinobi.update(
 		},
 		"mallowGumball.addCoreAsset": {
 			name: "addCoreAsset",
+			accounts: {
+				seller: { defaultsTo: k.identityDefault() },
+			},
+		},
+		"mallowGumball.requestAddCoreAsset": {
+			name: "requestAddCoreAsset",
+			accounts: {
+				seller: { defaultsTo: k.identityDefault() },
+			},
+		},
+		"mallowGumball.cancelAddCoreAssetRequest": {
+			name: "cancelAddCoreAssetRequest",
 			accounts: {
 				seller: { defaultsTo: k.identityDefault() },
 			},

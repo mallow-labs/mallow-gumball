@@ -6,6 +6,7 @@
  * @see https://github.com/metaplex-foundation/kinobi
  */
 
+export * from './addItemRequest';
 export * from './allocationTracker';
 export * from './allowListProof';
 export * from './gumballMachine';

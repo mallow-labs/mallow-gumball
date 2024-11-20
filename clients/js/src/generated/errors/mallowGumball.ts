@@ -753,6 +753,32 @@ export class ItemAlreadyDrawnError extends ProgramError {
 codeToErrorMap.set(0x17a2, ItemAlreadyDrawnError);
 nameToErrorMap.set('ItemAlreadyDrawn', ItemAlreadyDrawnError);
 
+/** InvalidGumballMachine: Invalid gumball machine */
+export class InvalidGumballMachineError extends ProgramError {
+  readonly name: string = 'InvalidGumballMachine';
+
+  readonly code: number = 0x17a3; // 6051
+
+  constructor(program: Program, cause?: Error) {
+    super('Invalid gumball machine', program, cause);
+  }
+}
+codeToErrorMap.set(0x17a3, InvalidGumballMachineError);
+nameToErrorMap.set('InvalidGumballMachine', InvalidGumballMachineError);
+
+/** SellerCannotBeAuthority: Seller cannot be authority */
+export class SellerCannotBeAuthorityError extends ProgramError {
+  readonly name: string = 'SellerCannotBeAuthority';
+
+  readonly code: number = 0x17a4; // 6052
+
+  constructor(program: Program, cause?: Error) {
+    super('Seller cannot be authority', program, cause);
+  }
+}
+codeToErrorMap.set(0x17a4, SellerCannotBeAuthorityError);
+nameToErrorMap.set('SellerCannotBeAuthority', SellerCannotBeAuthorityError);
+
 /**
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors

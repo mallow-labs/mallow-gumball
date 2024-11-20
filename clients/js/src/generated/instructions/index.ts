@@ -8,8 +8,10 @@
 
 export * from './addCoreAsset';
 export * from './addNft';
+export * from './approveAddItem';
 export * from './baseSettleCoreAssetSale';
 export * from './baseSettleNftSale';
+export * from './cancelAddCoreAssetRequest';
 export * from './claimCoreAsset';
 export * from './claimNft';
 export * from './deleteGumballGuard';
@@ -20,6 +22,7 @@ export * from './incrementTotalRevenue';
 export * from './initializeGumballMachine';
 export * from './removeCoreAsset';
 export * from './removeNft';
+export * from './requestAddCoreAsset';
 export * from './setGumballGuardAuthority';
 export * from './setGumballMachineAuthority';
 export * from './setMintAuthority';

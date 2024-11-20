@@ -256,6 +256,161 @@ export type MallowGumball = {
       ];
     },
     {
+      name: 'requestAddCoreAsset';
+      docs: ['Request to add a core asset to the gumball machine.'];
+      accounts: [
+        {
+          name: 'gumballMachine';
+          isMut: true;
+          isSigner: false;
+          docs: ['Gumball Machine account.'];
+        },
+        {
+          name: 'sellerHistory';
+          isMut: true;
+          isSigner: false;
+          docs: ['Seller history account.'];
+        },
+        {
+          name: 'addItemRequest';
+          isMut: true;
+          isSigner: false;
+          docs: ['Add item request account.'];
+        },
+        {
+          name: 'authorityPda';
+          isMut: true;
+          isSigner: false;
+        },
+        {
+          name: 'seller';
+          isMut: true;
+          isSigner: true;
+          docs: ['Seller of the asset.'];
+        },
+        {
+          name: 'asset';
+          isMut: true;
+          isSigner: false;
+        },
+        {
+          name: 'collection';
+          isMut: true;
+          isSigner: false;
+          isOptional: true;
+          docs: ["Core asset's collection if it's part of one."];
+        },
+        {
+          name: 'mplCoreProgram';
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: 'systemProgram';
+          isMut: false;
+          isSigner: false;
+        }
+      ];
+      args: [];
+    },
+    {
+      name: 'cancelAddCoreAssetRequest';
+      docs: ['Cancel a request to add a core asset to the gumball machine.'];
+      accounts: [
+        {
+          name: 'sellerHistory';
+          isMut: true;
+          isSigner: false;
+          docs: ['Seller history account.'];
+        },
+        {
+          name: 'addItemRequest';
+          isMut: true;
+          isSigner: false;
+          docs: ['Add item request account.'];
+        },
+        {
+          name: 'authorityPda';
+          isMut: true;
+          isSigner: false;
+        },
+        {
+          name: 'seller';
+          isMut: true;
+          isSigner: true;
+          docs: ['Seller of the asset.'];
+        },
+        {
+          name: 'asset';
+          isMut: true;
+          isSigner: false;
+        },
+        {
+          name: 'collection';
+          isMut: true;
+          isSigner: false;
+          isOptional: true;
+          docs: ["Core asset's collection if it's part of one."];
+        },
+        {
+          name: 'mplCoreProgram';
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: 'systemProgram';
+          isMut: false;
+          isSigner: false;
+        }
+      ];
+      args: [];
+    },
+    {
+      name: 'approveAddItem';
+      docs: ['Approve adding an item to the gumball machine.'];
+      accounts: [
+        {
+          name: 'gumballMachine';
+          isMut: true;
+          isSigner: false;
+          docs: ['Gumball Machine account.'];
+        },
+        {
+          name: 'addItemRequest';
+          isMut: true;
+          isSigner: false;
+          docs: ['Add item request account.'];
+        },
+        {
+          name: 'authorityPda';
+          isMut: true;
+          isSigner: false;
+        },
+        {
+          name: 'authority';
+          isMut: true;
+          isSigner: true;
+          docs: ['Authority of the gumball machine.'];
+        },
+        {
+          name: 'seller';
+          isMut: true;
+          isSigner: false;
+        },
+        {
+          name: 'asset';
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: 'systemProgram';
+          isMut: false;
+          isSigner: false;
+        }
+      ];
+      args: [];
+    },
+    {
       name: 'removeNft';
       docs: [
         'Remove legacy NFT from the gumball machine.',
@@ -1205,6 +1360,37 @@ export type MallowGumball = {
   ];
   accounts: [
     {
+      name: 'addItemRequest';
+      docs: ['Add item request state.'];
+      type: {
+        kind: 'struct';
+        fields: [
+          {
+            name: 'gumballMachine';
+            docs: ['Gumball machine address.'];
+            type: 'publicKey';
+          },
+          {
+            name: 'seller';
+            docs: ['Seller address.'];
+            type: 'publicKey';
+          },
+          {
+            name: 'asset';
+            docs: ['Asset address.'];
+            type: 'publicKey';
+          },
+          {
+            name: 'tokenStandard';
+            docs: ['Token standard.'];
+            type: {
+              defined: 'TokenStandard';
+            };
+          }
+        ];
+      };
+    },
+    {
       name: 'gumballMachine';
       docs: ['Gumball machine state and config data.'];
       type: {
@@ -1805,6 +1991,16 @@ export type MallowGumball = {
       code: 6050;
       name: 'ItemAlreadyDrawn';
       msg: 'Item already drawn';
+    },
+    {
+      code: 6051;
+      name: 'InvalidGumballMachine';
+      msg: 'Invalid gumball machine';
+    },
+    {
+      code: 6052;
+      name: 'SellerCannotBeAuthority';
+      msg: 'Seller cannot be authority';
     }
   ];
 };
@@ -2065,6 +2261,161 @@ export const IDL: MallowGumball = {
           },
         },
       ],
+    },
+    {
+      name: 'requestAddCoreAsset',
+      docs: ['Request to add a core asset to the gumball machine.'],
+      accounts: [
+        {
+          name: 'gumballMachine',
+          isMut: true,
+          isSigner: false,
+          docs: ['Gumball Machine account.'],
+        },
+        {
+          name: 'sellerHistory',
+          isMut: true,
+          isSigner: false,
+          docs: ['Seller history account.'],
+        },
+        {
+          name: 'addItemRequest',
+          isMut: true,
+          isSigner: false,
+          docs: ['Add item request account.'],
+        },
+        {
+          name: 'authorityPda',
+          isMut: true,
+          isSigner: false,
+        },
+        {
+          name: 'seller',
+          isMut: true,
+          isSigner: true,
+          docs: ['Seller of the asset.'],
+        },
+        {
+          name: 'asset',
+          isMut: true,
+          isSigner: false,
+        },
+        {
+          name: 'collection',
+          isMut: true,
+          isSigner: false,
+          isOptional: true,
+          docs: ["Core asset's collection if it's part of one."],
+        },
+        {
+          name: 'mplCoreProgram',
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: 'systemProgram',
+          isMut: false,
+          isSigner: false,
+        },
+      ],
+      args: [],
+    },
+    {
+      name: 'cancelAddCoreAssetRequest',
+      docs: ['Cancel a request to add a core asset to the gumball machine.'],
+      accounts: [
+        {
+          name: 'sellerHistory',
+          isMut: true,
+          isSigner: false,
+          docs: ['Seller history account.'],
+        },
+        {
+          name: 'addItemRequest',
+          isMut: true,
+          isSigner: false,
+          docs: ['Add item request account.'],
+        },
+        {
+          name: 'authorityPda',
+          isMut: true,
+          isSigner: false,
+        },
+        {
+          name: 'seller',
+          isMut: true,
+          isSigner: true,
+          docs: ['Seller of the asset.'],
+        },
+        {
+          name: 'asset',
+          isMut: true,
+          isSigner: false,
+        },
+        {
+          name: 'collection',
+          isMut: true,
+          isSigner: false,
+          isOptional: true,
+          docs: ["Core asset's collection if it's part of one."],
+        },
+        {
+          name: 'mplCoreProgram',
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: 'systemProgram',
+          isMut: false,
+          isSigner: false,
+        },
+      ],
+      args: [],
+    },
+    {
+      name: 'approveAddItem',
+      docs: ['Approve adding an item to the gumball machine.'],
+      accounts: [
+        {
+          name: 'gumballMachine',
+          isMut: true,
+          isSigner: false,
+          docs: ['Gumball Machine account.'],
+        },
+        {
+          name: 'addItemRequest',
+          isMut: true,
+          isSigner: false,
+          docs: ['Add item request account.'],
+        },
+        {
+          name: 'authorityPda',
+          isMut: true,
+          isSigner: false,
+        },
+        {
+          name: 'authority',
+          isMut: true,
+          isSigner: true,
+          docs: ['Authority of the gumball machine.'],
+        },
+        {
+          name: 'seller',
+          isMut: true,
+          isSigner: false,
+        },
+        {
+          name: 'asset',
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: 'systemProgram',
+          isMut: false,
+          isSigner: false,
+        },
+      ],
+      args: [],
     },
     {
       name: 'removeNft',
@@ -3016,6 +3367,37 @@ export const IDL: MallowGumball = {
   ],
   accounts: [
     {
+      name: 'addItemRequest',
+      docs: ['Add item request state.'],
+      type: {
+        kind: 'struct',
+        fields: [
+          {
+            name: 'gumballMachine',
+            docs: ['Gumball machine address.'],
+            type: 'publicKey',
+          },
+          {
+            name: 'seller',
+            docs: ['Seller address.'],
+            type: 'publicKey',
+          },
+          {
+            name: 'asset',
+            docs: ['Asset address.'],
+            type: 'publicKey',
+          },
+          {
+            name: 'tokenStandard',
+            docs: ['Token standard.'],
+            type: {
+              defined: 'TokenStandard',
+            },
+          },
+        ],
+      },
+    },
+    {
       name: 'gumballMachine',
       docs: ['Gumball machine state and config data.'],
       type: {
@@ -3616,6 +3998,16 @@ export const IDL: MallowGumball = {
       code: 6050,
       name: 'ItemAlreadyDrawn',
       msg: 'Item already drawn',
+    },
+    {
+      code: 6051,
+      name: 'InvalidGumballMachine',
+      msg: 'Invalid gumball machine',
+    },
+    {
+      code: 6052,
+      name: 'SellerCannotBeAuthority',
+      msg: 'Seller cannot be authority',
     },
   ],
 };

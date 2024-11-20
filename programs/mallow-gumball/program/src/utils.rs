@@ -84,7 +84,7 @@ pub fn assert_can_request_add_item(
     let seller = seller_history.seller;
 
     if seller == gumball_machine.authority {
-        return err!(GumballError::InvalidSeller);
+        return err!(GumballError::SellerCannotBeAuthority);
     }
 
     if seller_history.item_count >= gumball_machine.settings.items_per_seller as u64 {

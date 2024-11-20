@@ -75,7 +75,7 @@ pub mod mallow_gumball {
     }
 
     /// Cancel a request to add a core asset to the gumball machine.
-    pub fn cancel_request_add_core_asset(ctx: Context<CancelAddCoreAssetRequest>) -> Result<()> {
+    pub fn cancel_add_core_asset_request(ctx: Context<CancelAddCoreAssetRequest>) -> Result<()> {
         instructions::cancel_add_core_asset_request(ctx)
     }
 
