@@ -294,6 +294,23 @@ kinobi.update(
 				seller: { defaultsTo: k.identityDefault() },
 			},
 		},
+		"mallowGumball.requestAddNft": {
+			name: "requestAddNft",
+			accounts: {
+				seller: { defaultsTo: k.identityDefault() },
+				addItemRequest: { defaultsTo: defaultsToAddItemRequestPda("mint") },
+			},
+		},
+		"mallowGumball.cancelAddNftRequest": {
+			name: "cancelAddNftRequest",
+			accounts: {
+				seller: { defaultsTo: k.identityDefault() },
+				tokenAccount: {
+					defaultsTo: defaultsToAssociatedTokenPda("mint", "seller"),
+				},
+				addItemRequest: { defaultsTo: defaultsToAddItemRequestPda("mint") },
+			},
+		},
 		"mallowGumball.removeNft": {
 			name: "removeNft",
 			accounts: {

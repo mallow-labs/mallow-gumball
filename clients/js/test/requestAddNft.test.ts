@@ -1,0 +1,102 @@
+import {
+  fetchToken,
+  findAssociatedTokenPda,
+  TokenState,
+} from '@metaplex-foundation/mpl-toolbox';
+import { some, transactionBuilder } from '@metaplex-foundation/umi';
+import test from 'ava';
+import {
+  AddItemRequest,
+  fetchAddItemRequestFromSeeds,
+  fetchSellerHistory,
+  findGumballMachineAuthorityPda,
+  findSellerHistoryPda,
+  requestAddCoreAsset,
+  requestAddNft,
+  SellerHistory,
+  TokenStandard,
+} from '../src';
+import { create, createNft, createUmi } from './_setup';
+
+test('it can create a request to add nft to a gumball machine', async (t) => {
+  // Given a Gumball Machine with 5 nfts.
+  const umi = await createUmi();
+  const gumballMachine = await create(umi, { settings: { itemCapacity: 5 } });
+
+  const sellerUmi = await createUmi();
+  const nft = await createNft(sellerUmi);
+
+  // When we add an nft to the Gumball Machine.
+  await transactionBuilder()
+    .add(
+      requestAddNft(sellerUmi, {
+        gumballMachine: gumballMachine.publicKey,
+        mint: nft.publicKey,
+      })
+    )
+    .sendAndConfirm(umi);
+
+  // Then the request is created properly.
+  const addItemRequestAccount = await fetchAddItemRequestFromSeeds(umi, {
+    asset: nft.publicKey,
+  });
+
+  t.like(addItemRequestAccount, <AddItemRequest>{
+    asset: nft.publicKey,
+    seller: sellerUmi.identity.publicKey,
+    gumballMachine: gumballMachine.publicKey,
+    tokenStandard: TokenStandard.NonFungible,
+  });
+
+  // Then nft is frozen and delegated
+  const tokenAccount = await fetchToken(
+    umi,
+    findAssociatedTokenPda(sellerUmi, {
+      mint: nft.publicKey,
+      owner: sellerUmi.identity.publicKey,
+    })[0]
+  );
+  t.like(tokenAccount, {
+    state: TokenState.Frozen,
+    owner: sellerUmi.identity.publicKey,
+    delegate: some(
+      findGumballMachineAuthorityPda(sellerUmi, {
+        gumballMachine: gumballMachine.publicKey,
+      })[0]
+    ),
+  });
+
+  // Seller history state is correct
+  const sellerHistoryAccount = await fetchSellerHistory(
+    sellerUmi,
+    findSellerHistoryPda(sellerUmi, {
+      gumballMachine: gumballMachine.publicKey,
+      seller: sellerUmi.identity.publicKey,
+    })[0]
+  );
+
+  t.like(sellerHistoryAccount, <SellerHistory>{
+    gumballMachine: gumballMachine.publicKey,
+    seller: sellerUmi.identity.publicKey,
+    itemCount: 1n,
+  });
+});
+
+test('it cannot request to add core asset as the gumball machine authority', async (t) => {
+  // Given a Gumball Machine with 5 core assets.
+  const umi = await createUmi();
+  const gumballMachine = await create(umi, { settings: { itemCapacity: 5 } });
+  const nft = await createNft(umi);
+
+  // When we create a request to add an coreAsset to the Gumball Machine.
+  const promise = transactionBuilder()
+    .add(
+      requestAddCoreAsset(umi, {
+        gumballMachine: gumballMachine.publicKey,
+        asset: nft.publicKey,
+      })
+    )
+    .sendAndConfirm(umi);
+
+  await t.throwsAsync(promise, { message: /SellerCannotBeAuthority/ });
+});

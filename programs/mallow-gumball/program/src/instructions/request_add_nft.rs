@@ -1,7 +1,7 @@
 use crate::{
-    approve_and_freeze_nft, assert_can_add_item, 
-    constants::{AUTHORITY_SEED, SELLER_HISTORY_SEED}, 
-    state::GumballMachine, ConfigLineInput, GumballError, SellerHistory, Token, TokenStandard
+    approve_and_freeze_nft, assert_can_request_add_item, 
+    constants::{ADD_ITEM_REQUEST_SEED, AUTHORITY_SEED, SELLER_HISTORY_SEED}, 
+    state::GumballMachine, AddItemRequest, GumballError, SellerHistory, Token, TokenStandard
 };
 use anchor_lang::prelude::*;
 use mpl_token_metadata::accounts::Metadata;
@@ -9,7 +9,7 @@ use utils::assert_is_non_printable_edition;
 
 /// Add nft to a gumball machine.
 #[derive(Accounts)]
-pub struct AddNft<'info> {
+pub struct RequestAddNft<'info> {
     /// Gumball Machine account.
     #[account(
         mut,
@@ -30,6 +30,19 @@ pub struct AddNft<'info> {
 		payer = seller
 	)]
     seller_history: Box<Account<'info, SellerHistory>>,
+
+    /// Add item request account.
+    #[account(
+        init,
+        seeds = [
+            ADD_ITEM_REQUEST_SEED.as_bytes(), 
+            mint.key().as_ref()
+        ],
+        bump,
+        space = AddItemRequest::SPACE,
+        payer = seller
+    )]
+    add_item_request: Box<Account<'info, AddItemRequest>>,
 
     /// CHECK: Safe due to seeds constraint
     #[account(
@@ -68,7 +81,7 @@ pub struct AddNft<'info> {
     system_program: Program<'info, System>,
 }
 
-pub fn add_nft(ctx: Context<AddNft>, seller_proof_path: Option<Vec<[u8; 32]>>) -> Result<()> {
+pub fn request_add_nft(ctx: Context<RequestAddNft>) -> Result<()> {
     let token_program = &ctx.accounts.token_program.to_account_info();
     let token_account = &ctx.accounts.token_account.to_account_info();
     let token_metadata_program = &ctx.accounts.token_metadata_program.to_account_info();
@@ -79,12 +92,20 @@ pub fn add_nft(ctx: Context<AddNft>, seller_proof_path: Option<Vec<[u8; 32]>>) -
     let mint = &ctx.accounts.mint.to_account_info();
     let gumball_machine = &mut ctx.accounts.gumball_machine;
     let seller_history = &mut ctx.accounts.seller_history;
+    let add_item_request = &mut ctx.accounts.add_item_request;
+
+    add_item_request.init(
+        gumball_machine.key(), 
+        seller.key(),
+         ctx.accounts.mint.key(),
+          TokenStandard::NonFungible
+    )?;
 
     seller_history.gumball_machine = gumball_machine.key();
     seller_history.seller = seller.key();
 
     // Validate the seller
-    assert_can_add_item(gumball_machine, seller_history, seller_proof_path)?;
+    assert_can_request_add_item(gumball_machine, seller_history)?;
 
     seller_history.item_count += 1;
 
@@ -97,15 +118,6 @@ pub fn add_nft(ctx: Context<AddNft>, seller_proof_path: Option<Vec<[u8; 32]>>) -
 
     // Prevent selling printable master editions
     assert_is_non_printable_edition(&ctx.accounts.edition.to_account_info())?;
-
-    crate::processors::add_item(
-        gumball_machine,
-        ConfigLineInput {
-            mint: ctx.accounts.mint.key(),
-            seller: ctx.accounts.seller.key(),
-        },
-        TokenStandard::NonFungible,
-    )?;
 
     let auth_seeds = [
         AUTHORITY_SEED.as_bytes(),

@@ -69,9 +69,19 @@ pub mod mallow_gumball {
         instructions::add_core_asset(ctx, seller_proof_path)
     }
 
+    /// Request to add a NFT to the gumball machine.
+    pub fn request_add_nft(ctx: Context<RequestAddNft>) -> Result<()> {
+        instructions::request_add_nft(ctx)
+    }
+
     /// Request to add a core asset to the gumball machine.
     pub fn request_add_core_asset(ctx: Context<RequestAddCoreAsset>) -> Result<()> {
         instructions::request_add_core_asset(ctx)
+    }
+
+    /// Cancel a request to add a NFT to the gumball machine.
+    pub fn cancel_add_nft_request(ctx: Context<CancelAddNftRequest>) -> Result<()> {
+        instructions::cancel_add_nft_request(ctx)
     }
 
     /// Cancel a request to add a core asset to the gumball machine.

@@ -80,9 +80,9 @@ pub fn request_add_core_asset(
     let seller = &ctx.accounts.seller.to_account_info();
     let mpl_core_program = &ctx.accounts.mpl_core_program.to_account_info();
     let system_program = &ctx.accounts.system_program.to_account_info();
-    let add_item_request = &mut ctx.accounts.add_item_request;
     let gumball_machine = &mut ctx.accounts.gumball_machine;
     let seller_history = &mut ctx.accounts.seller_history;
+    let add_item_request = &mut ctx.accounts.add_item_request;
 
     add_item_request.init(
         gumball_machine.key(), 

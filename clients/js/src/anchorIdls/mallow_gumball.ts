@@ -256,6 +256,77 @@ export type MallowGumball = {
       ];
     },
     {
+      name: 'requestAddNft';
+      docs: ['Request to add a NFT to the gumball machine.'];
+      accounts: [
+        {
+          name: 'gumballMachine';
+          isMut: true;
+          isSigner: false;
+          docs: ['Gumball Machine account.'];
+        },
+        {
+          name: 'sellerHistory';
+          isMut: true;
+          isSigner: false;
+          docs: ['Seller history account.'];
+        },
+        {
+          name: 'addItemRequest';
+          isMut: true;
+          isSigner: false;
+          docs: ['Add item request account.'];
+        },
+        {
+          name: 'authorityPda';
+          isMut: true;
+          isSigner: false;
+        },
+        {
+          name: 'seller';
+          isMut: true;
+          isSigner: true;
+          docs: ['Seller of the nft'];
+        },
+        {
+          name: 'mint';
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: 'tokenAccount';
+          isMut: true;
+          isSigner: false;
+        },
+        {
+          name: 'metadata';
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: 'edition';
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: 'tokenProgram';
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: 'tokenMetadataProgram';
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: 'systemProgram';
+          isMut: false;
+          isSigner: false;
+        }
+      ];
+      args: [];
+    },
+    {
       name: 'requestAddCoreAsset';
       docs: ['Request to add a core asset to the gumball machine.'];
       accounts: [
@@ -307,6 +378,81 @@ export type MallowGumball = {
         },
         {
           name: 'systemProgram';
+          isMut: false;
+          isSigner: false;
+        }
+      ];
+      args: [];
+    },
+    {
+      name: 'cancelAddNftRequest';
+      docs: ['Cancel a request to add a NFT to the gumball machine.'];
+      accounts: [
+        {
+          name: 'sellerHistory';
+          isMut: true;
+          isSigner: false;
+          docs: ['Seller history account.'];
+        },
+        {
+          name: 'addItemRequest';
+          isMut: true;
+          isSigner: false;
+          docs: ['Add item request account.'];
+        },
+        {
+          name: 'authorityPda';
+          isMut: true;
+          isSigner: false;
+        },
+        {
+          name: 'seller';
+          isMut: true;
+          isSigner: true;
+          docs: ['Seller of the NFT.'];
+        },
+        {
+          name: 'mint';
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: 'tokenAccount';
+          isMut: true;
+          isSigner: false;
+        },
+        {
+          name: 'tmpTokenAccount';
+          isMut: true;
+          isSigner: false;
+        },
+        {
+          name: 'edition';
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: 'tokenProgram';
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: 'associatedTokenProgram';
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: 'tokenMetadataProgram';
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: 'systemProgram';
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: 'rent';
           isMut: false;
           isSigner: false;
         }
@@ -2263,6 +2409,77 @@ export const IDL: MallowGumball = {
       ],
     },
     {
+      name: 'requestAddNft',
+      docs: ['Request to add a NFT to the gumball machine.'],
+      accounts: [
+        {
+          name: 'gumballMachine',
+          isMut: true,
+          isSigner: false,
+          docs: ['Gumball Machine account.'],
+        },
+        {
+          name: 'sellerHistory',
+          isMut: true,
+          isSigner: false,
+          docs: ['Seller history account.'],
+        },
+        {
+          name: 'addItemRequest',
+          isMut: true,
+          isSigner: false,
+          docs: ['Add item request account.'],
+        },
+        {
+          name: 'authorityPda',
+          isMut: true,
+          isSigner: false,
+        },
+        {
+          name: 'seller',
+          isMut: true,
+          isSigner: true,
+          docs: ['Seller of the nft'],
+        },
+        {
+          name: 'mint',
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: 'tokenAccount',
+          isMut: true,
+          isSigner: false,
+        },
+        {
+          name: 'metadata',
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: 'edition',
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: 'tokenProgram',
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: 'tokenMetadataProgram',
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: 'systemProgram',
+          isMut: false,
+          isSigner: false,
+        },
+      ],
+      args: [],
+    },
+    {
       name: 'requestAddCoreAsset',
       docs: ['Request to add a core asset to the gumball machine.'],
       accounts: [
@@ -2314,6 +2531,81 @@ export const IDL: MallowGumball = {
         },
         {
           name: 'systemProgram',
+          isMut: false,
+          isSigner: false,
+        },
+      ],
+      args: [],
+    },
+    {
+      name: 'cancelAddNftRequest',
+      docs: ['Cancel a request to add a NFT to the gumball machine.'],
+      accounts: [
+        {
+          name: 'sellerHistory',
+          isMut: true,
+          isSigner: false,
+          docs: ['Seller history account.'],
+        },
+        {
+          name: 'addItemRequest',
+          isMut: true,
+          isSigner: false,
+          docs: ['Add item request account.'],
+        },
+        {
+          name: 'authorityPda',
+          isMut: true,
+          isSigner: false,
+        },
+        {
+          name: 'seller',
+          isMut: true,
+          isSigner: true,
+          docs: ['Seller of the NFT.'],
+        },
+        {
+          name: 'mint',
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: 'tokenAccount',
+          isMut: true,
+          isSigner: false,
+        },
+        {
+          name: 'tmpTokenAccount',
+          isMut: true,
+          isSigner: false,
+        },
+        {
+          name: 'edition',
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: 'tokenProgram',
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: 'associatedTokenProgram',
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: 'tokenMetadataProgram',
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: 'systemProgram',
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: 'rent',
           isMut: false,
           isSigner: false,
         },

@@ -12,7 +12,7 @@ pub struct CancelAddCoreAssetRequest<'info> {
 		mut,
 		seeds = [
 			SELLER_HISTORY_SEED.as_bytes(),
-			seller_history.gumball_machine.key().as_ref(),
+			seller_history.gumball_machine.as_ref(),
             seller.key().as_ref(),
 		],
 		bump,

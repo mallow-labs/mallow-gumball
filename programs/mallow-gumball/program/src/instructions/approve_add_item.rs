@@ -1,6 +1,6 @@
 use crate::{
     constants::{ADD_ITEM_REQUEST_SEED, AUTHORITY_SEED}, 
-    state::GumballMachine, AddItemRequest, ConfigLineInput, GumballError, TokenStandard
+    state::GumballMachine, AddItemRequest, ConfigLineInput, GumballError
 };
 use anchor_lang::prelude::*;
 
@@ -67,7 +67,7 @@ pub fn approve_add_item(
             mint: add_item_request.asset,
             seller: add_item_request.seller
         },
-        TokenStandard::Core,
+        add_item_request.token_standard,
     )?;
 
     Ok(())

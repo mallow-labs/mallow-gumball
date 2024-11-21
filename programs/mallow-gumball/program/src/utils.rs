@@ -13,11 +13,18 @@ use mpl_core::{
     },
     Asset, Collection,
 };
+use mpl_token_metadata::instructions::{
+    FreezeDelegatedAccountCpi, FreezeDelegatedAccountCpiAccounts, ThawDelegatedAccountCpi,
+    ThawDelegatedAccountCpiAccounts,
+};
 use solana_program::{
     account_info::AccountInfo,
+    program::{invoke, invoke_signed},
     program_memory::sol_memcmp,
     pubkey::{Pubkey, PUBKEY_BYTES},
 };
+use spl_associated_token_account::instruction::create_associated_token_account_idempotent;
+use spl_token::instruction::{approve, transfer_checked};
 use utils::{assert_keys_equal, verify_proof};
 
 use crate::{
@@ -351,6 +358,142 @@ pub fn thaw_and_revoke_core_asset<'a>(
             .invoke_signed(&[&authority_seeds])?;
     }
 
+    Ok(())
+}
+
+pub fn approve_and_freeze_nft<'a>(
+    payer: &AccountInfo<'a>,
+    mint: &AccountInfo<'a>,
+    token_account: &AccountInfo<'a>,
+    edition: &AccountInfo<'a>,
+    new_authority_info: &AccountInfo<'a>,
+    new_authority_seeds: &[&[u8]],
+    token_metadata_program: &AccountInfo<'a>,
+    token_program: &AccountInfo<'a>,
+) -> Result<()> {
+    let approve_ix = approve(
+        token_program.key,
+        token_account.key,
+        new_authority_info.key,
+        payer.key,
+        &[payer.key],
+        1,
+    )?;
+
+    invoke(
+        &approve_ix,
+        &[
+            token_program.to_account_info(),
+            token_account.to_account_info(),
+            new_authority_info.to_account_info(),
+            payer.to_account_info(),
+        ],
+    )?;
+
+    FreezeDelegatedAccountCpi::new(
+        token_metadata_program,
+        FreezeDelegatedAccountCpiAccounts {
+            delegate: new_authority_info,
+            token_account,
+            edition,
+            mint,
+            token_program,
+        },
+    )
+    .invoke_signed(&[&new_authority_seeds])?;
+
+    Ok(())
+}
+
+pub fn thaw_and_revoke_nft<'a>(
+    payer: &AccountInfo<'a>,
+    mint: &AccountInfo<'a>,
+    token_account: &AccountInfo<'a>,
+    tmp_token_account: &AccountInfo<'a>,
+    edition: &AccountInfo<'a>,
+    authority: &AccountInfo<'a>,
+    authority_seeds: &[&[u8]],
+    token_metadata_program: &AccountInfo<'a>,
+    token_program: &AccountInfo<'a>,
+    associated_token_program: &AccountInfo<'a>,
+    system_program: &AccountInfo<'a>,
+    rent: &AccountInfo<'a>,
+) -> Result<()> {
+    ThawDelegatedAccountCpi::new(
+        token_metadata_program,
+        ThawDelegatedAccountCpiAccounts {
+            delegate: authority,
+            token_account,
+            edition,
+            mint,
+            token_program,
+        },
+    )
+    .invoke_signed(&[&authority_seeds])?;
+
+    // Send to a temporary account to revoke
+    invoke(
+        &create_associated_token_account_idempotent(
+            payer.key,
+            authority.key,
+            mint.key,
+            token_program.key,
+        ),
+        &[
+            token_program.to_account_info(),
+            associated_token_program.to_account_info(),
+            authority.to_account_info(),
+            payer.to_account_info(),
+            mint.to_account_info(),
+            tmp_token_account.to_account_info(),
+            system_program.to_account_info(),
+            rent.to_account_info(),
+        ],
+    )?;
+
+    invoke_signed(
+        &transfer_checked(
+            token_program.key,
+            token_account.key,
+            mint.key,
+            tmp_token_account.key,
+            authority.key,
+            &[],
+            1,
+            0,
+        )?,
+        &[
+            token_program.to_account_info(),
+            token_account.to_account_info(),
+            mint.to_account_info(),
+            tmp_token_account.to_account_info(),
+            authority.to_account_info(),
+            system_program.to_account_info(),
+        ],
+        &[&authority_seeds],
+    )?;
+
+    invoke_signed(
+        &transfer_checked(
+            token_program.key,
+            tmp_token_account.key,
+            mint.key,
+            token_account.key,
+            authority.key,
+            &[],
+            1,
+            0,
+        )?,
+        &[
+            token_program.to_account_info(),
+            token_account.to_account_info(),
+            mint.to_account_info(),
+            tmp_token_account.to_account_info(),
+            authority.to_account_info(),
+            system_program.to_account_info(),
+        ],
+        &[&authority_seeds],
+    )?;
     Ok(())
 }
 
