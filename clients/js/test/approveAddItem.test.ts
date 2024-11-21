@@ -16,6 +16,7 @@ import {
   requestAddNft,
   safeFetchAddItemRequestFromSeeds,
   SellerHistory,
+  startSale,
   TokenStandard,
 } from '../src';
 import { create, createCoreAsset, createNft, createUmi } from './_setup';
@@ -199,4 +200,52 @@ test('it can approve a request to add an nft to a gumball machine', async (t) =>
     seller: sellerUmi.identity.publicKey,
     itemCount: 1n,
   });
+});
+
+test('it cannot approve a request to add core asset to a gumball machine after the gumball has started', async (t) => {
+  // Given a Gumball Machine with 5 core assets.
+  const umi = await createUmi();
+  const asset = await createCoreAsset(umi);
+  const gumballMachine = await create(umi, {
+    settings: {
+      itemCapacity: 5,
+    },
+    items: [
+      {
+        id: asset.publicKey,
+        tokenStandard: TokenStandard.Core,
+      },
+    ],
+  });
+
+  const sellerUmi = await createUmi();
+  const coreAsset = await createCoreAsset(sellerUmi);
+
+  // When we create a request to add an coreAsset to the Gumball Machine.
+  await transactionBuilder()
+    .add(
+      requestAddCoreAsset(sellerUmi, {
+        gumballMachine: gumballMachine.publicKey,
+        asset: coreAsset.publicKey,
+      })
+    )
+    .sendAndConfirm(sellerUmi);
+
+  // Then the sale starts
+  await startSale(umi, {
+    gumballMachine: gumballMachine.publicKey,
+  }).sendAndConfirm(umi);
+
+  // Then accepting the request fails
+  const promise = transactionBuilder()
+    .add(
+      approveAddItem(umi, {
+        gumballMachine: gumballMachine.publicKey,
+        seller: sellerUmi.identity.publicKey,
+        asset: coreAsset.publicKey,
+      })
+    )
+    .sendAndConfirm(umi);
+
+  await t.throwsAsync(promise, { message: /InvalidState/ });
 });

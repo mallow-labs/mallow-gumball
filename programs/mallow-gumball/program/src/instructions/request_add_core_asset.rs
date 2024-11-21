@@ -106,7 +106,7 @@ pub fn request_add_core_asset(
         .map(|account| account.to_account_info());
     let collection = collection_info.as_ref();
 
-    assert_no_permanent_delegates(collection)?;
+    assert_no_permanent_delegates(asset_info, collection)?;
 
     let auth_seeds = [
         AUTHORITY_SEED.as_bytes(),

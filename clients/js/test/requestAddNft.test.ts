@@ -100,3 +100,71 @@ test('it cannot request to add core asset as the gumball machine authority', asy
 
   await t.throwsAsync(promise, { message: /SellerCannotBeAuthority/ });
 });
+
+test('it cannot request to add nft when limit has been reached', async (t) => {
+  // Given a Gumball Machine with 5 nfts.
+  const umi = await createUmi();
+  const gumballMachine = await create(umi, {
+    settings: { itemCapacity: 5, itemsPerSeller: 1 },
+  });
+
+  const sellerUmi = await createUmi();
+  let nft = await createNft(sellerUmi);
+
+  await transactionBuilder()
+    .add(
+      requestAddNft(sellerUmi, {
+        gumballMachine: gumballMachine.publicKey,
+        mint: nft.publicKey,
+      })
+    )
+    .sendAndConfirm(sellerUmi);
+
+  nft = await createNft(sellerUmi);
+
+  // When we create a request to add an nft to the Gumball Machine.
+  const promise = transactionBuilder()
+    .add(
+      requestAddNft(sellerUmi, {
+        gumballMachine: gumballMachine.publicKey,
+        mint: nft.publicKey,
+      })
+    )
+    .sendAndConfirm(sellerUmi);
+
+  await t.throwsAsync(promise, { message: /SellerTooManyItems/ });
+});
+
+test('it cannot request to add nft when sale has started', async (t) => {
+  // Given a Gumball Machine with 5 nfts.
+  const umi = await createUmi();
+  const initialNft = await createNft(umi);
+
+  const gumballMachine = await create(umi, {
+    settings: {
+      itemCapacity: 5,
+    },
+    items: [
+      {
+        id: initialNft.publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      },
+    ],
+    startSale: true,
+  });
+
+  const sellerUmi = await createUmi();
+  const nft = await createNft(sellerUmi);
+
+  // When we create a request to add an nft to the Gumball Machine.
+  const promise = transactionBuilder()
+    .add(
+      requestAddNft(sellerUmi, {
+        gumballMachine: gumballMachine.publicKey,
+        mint: nft.publicKey,
+      })
+    )
+    .sendAndConfirm(sellerUmi);
+
+  await t.throwsAsync(promise, { message: /InvalidState/ });
+});

@@ -1,5 +1,9 @@
-import { AssetV1, fetchAssetV1 } from '@metaplex-foundation/mpl-core';
-import { transactionBuilder } from '@metaplex-foundation/umi';
+import {
+  AssetV1,
+  createCollection,
+  fetchAssetV1,
+} from '@metaplex-foundation/mpl-core';
+import { generateSigner, transactionBuilder } from '@metaplex-foundation/umi';
 import test from 'ava';
 import {
   AddItemRequest,
@@ -94,4 +98,146 @@ test('it cannot request to add core asset as the gumball machine authority', asy
     .sendAndConfirm(umi);
 
   await t.throwsAsync(promise, { message: /SellerCannotBeAuthority/ });
+});
+
+test('it cannot request to add core asset when limit has been reached', async (t) => {
+  // Given a Gumball Machine with 5 core assets.
+  const umi = await createUmi();
+  const gumballMachine = await create(umi, {
+    settings: { itemCapacity: 5, itemsPerSeller: 1 },
+  });
+
+  const sellerUmi = await createUmi();
+  let coreAsset = await createCoreAsset(sellerUmi);
+
+  await transactionBuilder()
+    .add(
+      requestAddCoreAsset(sellerUmi, {
+        gumballMachine: gumballMachine.publicKey,
+        asset: coreAsset.publicKey,
+      })
+    )
+    .sendAndConfirm(sellerUmi);
+
+  coreAsset = await createCoreAsset(sellerUmi);
+  // When we create a request to add an coreAsset to the Gumball Machine.
+  const promise = transactionBuilder()
+    .add(
+      requestAddCoreAsset(sellerUmi, {
+        gumballMachine: gumballMachine.publicKey,
+        asset: coreAsset.publicKey,
+      })
+    )
+    .sendAndConfirm(sellerUmi);
+
+  await t.throwsAsync(promise, { message: /SellerTooManyItems/ });
+});
+
+test('it cannot request to add core asset with permanent delegates', async (t) => {
+  // Given a Gumball Machine with 5 core assets.
+  const umi = await createUmi();
+  const gumballMachine = await create(umi, {
+    settings: { itemCapacity: 5, itemsPerSeller: 1 },
+  });
+
+  const sellerUmi = await createUmi();
+  const coreAsset = await createCoreAsset(sellerUmi, {
+    plugins: [
+      {
+        type: 'PermanentBurnDelegate',
+        authority: {
+          type: 'Address',
+          address: sellerUmi.identity.publicKey,
+        },
+      },
+    ],
+  });
+
+  // When we create a request to add an coreAsset to the Gumball Machine.
+  const promise = transactionBuilder()
+    .add(
+      requestAddCoreAsset(sellerUmi, {
+        gumballMachine: gumballMachine.publicKey,
+        asset: coreAsset.publicKey,
+      })
+    )
+    .sendAndConfirm(sellerUmi);
+
+  await t.throwsAsync(promise, { message: /InvalidAssetPlugin/ });
+});
+
+test('it cannot request to add core asset in a collection with permanent delegates', async (t) => {
+  // Given a Gumball Machine with 5 core assets.
+  const umi = await createUmi();
+  const gumballMachine = await create(umi, {
+    settings: { itemCapacity: 5, itemsPerSeller: 1 },
+  });
+
+  const sellerUmi = await createUmi();
+  const collection = generateSigner(sellerUmi);
+  await createCollection(sellerUmi, {
+    collection,
+    name: 'Test Collection',
+    uri: 'https://example.com',
+    plugins: [
+      {
+        type: 'PermanentBurnDelegate',
+        authority: {
+          type: 'Address',
+          address: sellerUmi.identity.publicKey,
+        },
+      },
+    ],
+  }).sendAndConfirm(sellerUmi);
+
+  const coreAsset = await createCoreAsset(sellerUmi, {
+    collection,
+  });
+
+  // When we create a request to add an coreAsset to the Gumball Machine.
+  const promise = transactionBuilder()
+    .add(
+      requestAddCoreAsset(sellerUmi, {
+        gumballMachine: gumballMachine.publicKey,
+        asset: coreAsset.publicKey,
+        collection: collection.publicKey,
+      })
+    )
+    .sendAndConfirm(sellerUmi);
+
+  await t.throwsAsync(promise, { message: /InvalidCollection/ });
+});
+
+test('it cannot request to add core asset when sale has started', async (t) => {
+  // Given a Gumball Machine with 5 core assets.
+  const umi = await createUmi();
+  const asset = await createCoreAsset(umi);
+
+  const gumballMachine = await create(umi, {
+    settings: {
+      itemCapacity: 5,
+    },
+    items: [
+      {
+        id: asset.publicKey,
+        tokenStandard: TokenStandard.Core,
+      },
+    ],
+    startSale: true,
+  });
+
+  const sellerUmi = await createUmi();
+  const coreAsset = await createCoreAsset(sellerUmi);
+
+  // When we create a request to add an coreAsset to the Gumball Machine.
+  const promise = transactionBuilder()
+    .add(
+      requestAddCoreAsset(sellerUmi, {
+        gumballMachine: gumballMachine.publicKey,
+        asset: coreAsset.publicKey,
+      })
+    )
+    .sendAndConfirm(sellerUmi);
+
+  await t.throwsAsync(promise, { message: /InvalidState/ });
 });

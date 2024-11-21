@@ -189,7 +189,33 @@ pub fn get_bit_byte_info(base_position: usize, position: usize) -> Result<(usize
     return Ok((byte_position, bit, mask));
 }
 
-pub fn assert_no_permanent_delegates(collection: Option<&AccountInfo>) -> Result<()> {
+pub fn assert_no_permanent_delegates(
+    asset: &AccountInfo,
+    collection: Option<&AccountInfo>,
+) -> Result<()> {
+    if let Ok(_) = fetch_plugin::<BaseAssetV1, PermanentTransferDelegate>(
+        asset,
+        PluginType::PermanentTransferDelegate,
+    ) {
+        msg!("Asset cannot have the PermanentTransferDelegate plugin");
+        return err!(GumballError::InvalidAssetPlugin);
+    }
+
+    if let Ok(_) = fetch_plugin::<BaseAssetV1, PermanentFreezeDelegate>(
+        asset,
+        PluginType::PermanentFreezeDelegate,
+    ) {
+        msg!("Asset cannot have the PermanentFreezeDelegate plugin");
+        return err!(GumballError::InvalidAssetPlugin);
+    }
+
+    if let Ok(_) =
+        fetch_plugin::<BaseAssetV1, PermanentBurnDelegate>(asset, PluginType::PermanentBurnDelegate)
+    {
+        msg!("Asset cannot have the PermanentBurnDelegate plugin");
+        return err!(GumballError::InvalidAssetPlugin);
+    }
+
     // Make sure the collection doesn't have any Permanent delegates
     if let Some(collection) = collection {
         if let Ok(_) = fetch_plugin::<BaseCollectionV1, PermanentTransferDelegate>(

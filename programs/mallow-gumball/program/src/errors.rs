@@ -160,4 +160,7 @@ pub enum GumballError {
 
     #[msg("Seller cannot be authority")]
     SellerCannotBeAuthority,
+
+    #[msg("Asset has an invalid plugin")]
+    InvalidAssetPlugin,
 }

@@ -779,6 +779,19 @@ export class SellerCannotBeAuthorityError extends ProgramError {
 codeToErrorMap.set(0x17a4, SellerCannotBeAuthorityError);
 nameToErrorMap.set('SellerCannotBeAuthority', SellerCannotBeAuthorityError);
 
+/** InvalidAssetPlugin: Asset has an invalid plugin */
+export class InvalidAssetPluginError extends ProgramError {
+  readonly name: string = 'InvalidAssetPlugin';
+
+  readonly code: number = 0x17a5; // 6053
+
+  constructor(program: Program, cause?: Error) {
+    super('Asset has an invalid plugin', program, cause);
+  }
+}
+codeToErrorMap.set(0x17a5, InvalidAssetPluginError);
+nameToErrorMap.set('InvalidAssetPlugin', InvalidAssetPluginError);
+
 /**
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors

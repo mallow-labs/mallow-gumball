@@ -2147,6 +2147,11 @@ export type MallowGumball = {
       code: 6052;
       name: 'SellerCannotBeAuthority';
       msg: 'Seller cannot be authority';
+    },
+    {
+      code: 6053;
+      name: 'InvalidAssetPlugin';
+      msg: 'Asset has an invalid plugin';
     }
   ];
 };
@@ -4300,6 +4305,11 @@ export const IDL: MallowGumball = {
       code: 6052,
       name: 'SellerCannotBeAuthority',
       msg: 'Seller cannot be authority',
+    },
+    {
+      code: 6053,
+      name: 'InvalidAssetPlugin',
+      msg: 'Asset has an invalid plugin',
     },
   ],
 };
