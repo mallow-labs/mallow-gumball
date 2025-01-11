@@ -1,4 +1,4 @@
-# JavaScript client for Mpl Gumball Machine
+# JavaScript client for mallow Gumball Machine
 
 A Umi-compatible JavaScript library for Gumball machines.
 
