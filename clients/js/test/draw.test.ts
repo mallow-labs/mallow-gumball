@@ -177,6 +177,62 @@ test('it can mint from a gumball guard with guards', async (t) => {
   t.like(gumballMachineAccount, <GumballMachine>{ itemsRedeemed: 1n });
 });
 
+test('it can mint from a gumball guard with guards and fee account', async (t) => {
+  // Given a gumball machine with some guards.
+  const umi = await createUmi();
+  const feeAccount = generateSigner(umi).publicKey;
+
+  const gumballMachineSigner = await create(umi, {
+    items: [
+      {
+        id: (await createNft(umi)).publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      },
+    ],
+    feeConfig: {
+      feeAccount,
+      feeBps: 500,
+    },
+    startSale: true,
+    guards: {
+      solPayment: { lamports: sol(1) },
+    },
+  });
+  const gumballMachine = gumballMachineSigner.publicKey;
+
+  // When we mint from the gumball guard.
+  const buyer = generateSigner(umi);
+  const payer = await generateSignerWithSol(umi, sol(10));
+  await transactionBuilder()
+    .add(setComputeUnitLimit(umi, { units: 600_000 }))
+    .add(
+      draw(umi, {
+        gumballMachine,
+        payer,
+        buyer,
+        mintArgs: {
+          solPayment: some({ feeAccount }),
+        },
+      })
+    )
+    .sendAndConfirm(umi);
+
+  // Then the mint was successful.
+  await assertItemBought(t, umi, { gumballMachine, buyer: buyer.publicKey });
+
+  // And the payer was charged.
+  const payerBalance = await umi.rpc.getBalance(payer.publicKey);
+  t.true(isEqualToAmount(payerBalance, sol(9), sol(0.1)));
+
+  // And the fee account was credited.
+  const feeAccountBalance = await umi.rpc.getBalance(feeAccount);
+  t.true(isEqualToAmount(feeAccountBalance, sol(0.05)));
+
+  // And the gumball machine was updated.
+  const gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
+  t.like(gumballMachineAccount, <GumballMachine>{ itemsRedeemed: 1n });
+});
+
 test('it can mint from a gumball guard with token payment guard', async (t) => {
   // Given a gumball machine with some guards.
   const umi = await createUmi();

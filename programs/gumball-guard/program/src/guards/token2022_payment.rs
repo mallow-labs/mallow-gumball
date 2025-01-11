@@ -1,4 +1,5 @@
 use solana_program::program::invoke;
+use spl_associated_token_account::get_associated_token_address_with_program_id;
 use spl_token_2022::{
     extension::StateWithExtensions,
     state::{Account, Mint},
@@ -9,7 +10,7 @@ use super::*;
 use crate::{
     errors::GumballGuardError,
     state::GuardType,
-    utils::{assert_keys_equal, assert_owned_by},
+    utils::{assert_keys_equal, assert_owned_by, get_bps_of},
 };
 
 /// Guard that charges an amount in a specified spl-token as payment for the mint.
@@ -61,6 +62,22 @@ impl Condition for Token2022Payment {
             try_get_account_info(ctx.accounts.remaining, token_account_index + 3)?;
         ctx.account_cursor += 3;
 
+        if let Some(fee_config) = ctx.accounts.gumball_machine.marketplace_fee_config {
+            if ctx.accounts.gumball_machine.version > 0 {
+                ctx.account_cursor += 1;
+
+                let fee_ata =
+                    try_get_account_info(ctx.accounts.remaining, token_account_index + 4)?;
+                let expected_ata = get_associated_token_address_with_program_id(
+                    &fee_config.fee_account,
+                    &self.mint,
+                    &spl_token_2022_program.key,
+                );
+
+                assert_keys_equal(&fee_ata.key, &expected_ata)?;
+            }
+        }
+
         // destination
         assert_keys_equal(destination_ata.key, &self.destination_ata)?;
         let data = destination_ata.data.borrow();
@@ -106,6 +123,50 @@ impl Condition for Token2022Payment {
         let data = mint_info.data.borrow();
         let mint = StateWithExtensions::<Mint>::unpack(&data)?;
 
+        let marketplace_fee_bps =
+            if let Some(fee_confg) = ctx.accounts.gumball_machine.marketplace_fee_config {
+                // Version 0 takes fee on claim, so no fee on draw
+                if ctx.accounts.gumball_machine.version == 0 {
+                    0
+                } else {
+                    fee_confg.fee_bps
+                }
+            } else {
+                0
+            };
+
+        let marketplace_fee = get_bps_of(self.amount, marketplace_fee_bps)?;
+        msg!("Marketplace fee: {}", marketplace_fee);
+
+        if marketplace_fee > 0 {
+            let fee_destination_ata = try_get_account_info(ctx.accounts.remaining, index + 4)?;
+
+            invoke(
+                &spl_token_2022::instruction::transfer_checked(
+                    spl_token_2022_program.key,
+                    token_account_info.key,
+                    &self.mint,
+                    fee_destination_ata.key,
+                    ctx.accounts.buyer.key,
+                    &[],
+                    marketplace_fee,
+                    mint.base.decimals,
+                )?,
+                &[
+                    token_account_info.clone(),
+                    fee_destination_ata.clone(),
+                    ctx.accounts.buyer.clone(),
+                    spl_token_2022_program.clone(),
+                    mint_info.clone(),
+                ],
+            )?;
+        }
+
+        let price_less_fees = self
+            .amount
+            .checked_sub(marketplace_fee)
+            .ok_or(GumballGuardError::NumericalOverflowError)?;
+
         invoke(
             &spl_token_2022::instruction::transfer_checked(
                 spl_token_2022_program.key,
@@ -114,7 +175,7 @@ impl Condition for Token2022Payment {
                 destination_ata.key,
                 ctx.accounts.buyer.key,
                 &[],
-                self.amount,
+                price_less_fees,
                 mint.base.decimals,
             )?,
             &[

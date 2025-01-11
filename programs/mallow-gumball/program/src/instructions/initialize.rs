@@ -64,7 +64,7 @@ pub fn initialize(
     };
 
     let gumball_machine = GumballMachine {
-        version: 0,
+        version: 1,
         authority: ctx.accounts.authority.key(),
         mint_authority: ctx.accounts.authority.key(),
         marketplace_fee_config: fee_config,

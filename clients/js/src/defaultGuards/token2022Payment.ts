@@ -1,4 +1,4 @@
-import { publicKey } from '@metaplex-foundation/umi';
+import { PublicKey, publicKey } from '@metaplex-foundation/umi';
 import { publicKey as publicKeySerializer } from '@metaplex-foundation/umi/serializers';
 import {
   getToken2022PaymentSerializer,
@@ -37,6 +37,14 @@ export const token2022PaymentGuardManifest: GuardManifest<
       publicKeySerializer().serialize(args.mint),
     ])[0];
 
+    const [feeDestinationAta] = args.feeAccount
+      ? context.eddsa.findPda(associatedTokenProgramId, [
+          publicKeySerializer().serialize(args.feeAccount),
+          publicKeySerializer().serialize(SPL_TOKEN_2022_PROGRAM_ID),
+          publicKeySerializer().serialize(args.mint),
+        ])
+      : [];
+
     return {
       data: new Uint8Array(),
       remainingAccounts: [
@@ -44,10 +52,15 @@ export const token2022PaymentGuardManifest: GuardManifest<
         { publicKey: args.destinationAta, isWritable: true },
         { publicKey: args.mint, isWritable: false },
         { publicKey: SPL_TOKEN_2022_PROGRAM_ID, isWritable: false },
+        ...(feeDestinationAta
+          ? [{ publicKey: feeDestinationAta, isWritable: true }]
+          : []),
       ],
     };
   },
   routeParser: noopParser,
 };
 
-export type Token2022PaymentMintArgs = Omit<Token2022PaymentArgs, 'amount'>;
+export type Token2022PaymentMintArgs = Omit<Token2022PaymentArgs, 'amount'> & {
+  feeAccount?: PublicKey;
+};

@@ -88,3 +88,90 @@ test('it transfers Token2022 tokens from the payer to the destination', async (t
   const gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
   t.is(gumballMachineAccount.totalRevenue, 5n, 'total revenue is incremented');
 });
+
+test('it transfers Token2022 tokens from the payer to the fee account', async (t) => {
+  // Given a Umi instance using the SPL Token 2022 program.
+  const umi = await createUmi();
+  const programsWithToken22 = umi.programs.clone();
+  programsWithToken22.bind('splToken', 'splToken2022');
+
+  // And a mint account such that:
+  // - The destination treasury has 100 tokens.
+  // - The payer has 12 tokens.
+  const destination = generateSigner(umi).publicKey;
+  const feeAccount = generateSigner(umi).publicKey;
+  const [tokenMint, destinationAta, identityAta, feeAccountAta] =
+    await createMintWithHolders(
+      { ...umi, programs: programsWithToken22 },
+      {
+        holders: [
+          { owner: destination, amount: 100 },
+          { owner: umi.identity, amount: 12 },
+          { owner: feeAccount, amount: 0 },
+        ],
+      }
+    );
+
+  // And a loaded Gumball Machine with a token2022Payment guard that requires 5 tokens.
+
+  const { publicKey: gumballMachine } = await create(umi, {
+    items: [
+      {
+        id: (await createNft(umi)).publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      },
+    ],
+    startSale: true,
+    settings: {
+      paymentMint: tokenMint.publicKey,
+    },
+    feeConfig: {
+      feeAccount,
+      feeBps: 1000,
+    },
+    guards: {
+      token2022Payment: some({
+        mint: tokenMint.publicKey,
+        destinationAta,
+        amount: 10,
+      }),
+    },
+  });
+
+  // When we mint from it.
+
+  await transactionBuilder()
+    .add(setComputeUnitLimit(umi, { units: 600_000 }))
+    .add(
+      draw(umi, {
+        gumballMachine,
+        mintArgs: {
+          token2022Payment: some({
+            mint: tokenMint.publicKey,
+            destinationAta,
+            feeAccount,
+          }),
+        },
+      })
+    )
+    .sendAndConfirm(umi);
+
+  // Then minting was successful.
+  await assertItemBought(t, umi, { gumballMachine });
+
+  // And the treasury token received 9 tokens.
+  const destinationTokenAccount = await fetchToken(umi, destinationAta);
+  t.is(destinationTokenAccount.amount, 109n);
+
+  // And the fee account received 1 token.
+  const feeAccountTokenAccount = await fetchToken(umi, feeAccountAta);
+  t.is(feeAccountTokenAccount.amount, 1n);
+
+  // And the payer lost 10 tokens.
+  const payerTokenAccount = await fetchToken(umi, identityAta);
+  t.is(payerTokenAccount.amount, 2n);
+
+  // Total revenue is incremented
+  const gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
+  t.is(gumballMachineAccount.totalRevenue, 10n, 'total revenue is incremented');
+});

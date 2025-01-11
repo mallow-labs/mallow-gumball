@@ -64,21 +64,35 @@ pub fn claim_proceeds<'a, 'b>(
 
     drop(account_data);
 
+    let marketplace_fee_bps = if let Some(fee_confg) = gumball_machine.marketplace_fee_config {
+        fee_confg.fee_bps
+    } else {
+        0
+    };
+
+    // Version 1+ takes fee on draw
+    let fees_taken = if gumball_machine.version > 0 {
+        get_bps_of(gumball_machine.total_revenue, marketplace_fee_bps)?
+    } else {
+        0
+    };
+
     // Proceeds are calculated as total amount paid by buyers divided by total number of items in the gumball machine
     let total_proceeds = gumball_machine
         .total_revenue
+        .checked_sub(fees_taken)
+        .ok_or(GumballError::NumericalOverflowError)?
         .checked_div(config_count)
         .ok_or(GumballError::NumericalOverflowError)?;
     msg!("Proceeds: {}", total_proceeds);
 
     if total_proceeds > 0 {
-        let marketplace_fee_bps = if let Some(fee_confg) = gumball_machine.marketplace_fee_config {
-            fee_confg.fee_bps
-        } else {
+        // Version 1+ takes fee on draw, so no fee on claim
+        let marketplace_fee = if gumball_machine.version > 0 {
             0
+        } else {
+            get_bps_of(total_proceeds, marketplace_fee_bps)?
         };
-
-        let marketplace_fee = get_bps_of(total_proceeds, marketplace_fee_bps)?;
         msg!("Marketplace fee: {}", marketplace_fee);
 
         if marketplace_fee > 0 {

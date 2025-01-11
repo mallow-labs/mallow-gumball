@@ -63,7 +63,6 @@ test('it transfers an NFT from the payer to the destination', async (t) => {
     .add(
       draw(umi, {
         gumballMachine,
-
         mintArgs: {
           nftPayment: some({
             tokenStandard: MplTokenStandard.NonFungible,

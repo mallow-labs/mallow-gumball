@@ -1,4 +1,5 @@
 import { findAssociatedTokenPda } from '@metaplex-foundation/mpl-toolbox';
+import { PublicKey } from '@metaplex-foundation/umi';
 import {
   getTokenPaymentSerializer,
   TokenPayment,
@@ -34,15 +35,27 @@ export const tokenPaymentGuardManifest: GuardManifest<
         gumballMachine: mintContext.gumballMachine,
       })[0],
     });
+    const [feeDestinationAta] = args.feeAccount
+      ? findAssociatedTokenPda(context, {
+          mint: args.mint,
+          owner: args.feeAccount,
+        })
+      : [];
+
     return {
       data: new Uint8Array(),
       remainingAccounts: [
         { publicKey: sourceAta, isWritable: true },
         { publicKey: destinationAta, isWritable: true },
+        ...(feeDestinationAta
+          ? [{ publicKey: feeDestinationAta, isWritable: true }]
+          : []),
       ],
     };
   },
   routeParser: noopParser,
 };
 
-export type TokenPaymentMintArgs = Omit<TokenPaymentArgs, 'amount'>;
+export type TokenPaymentMintArgs = Omit<TokenPaymentArgs, 'amount'> & {
+  feeAccount?: PublicKey;
+};

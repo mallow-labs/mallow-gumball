@@ -1,6 +1,6 @@
 [package]
 name = "gumball-guard"
-version = "0.1.0"
+version = "0.2.0"
 description = "mallow Gumball Guard: programmatic access control for mallow Gumball."
 authors = ["mallow Developers <dev@mallow.art>"]
 repository = "https://github.com/mallow-labs/mallow-gumball"

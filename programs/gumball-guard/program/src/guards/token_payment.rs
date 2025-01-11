@@ -5,7 +5,7 @@ use super::*;
 use crate::{
     errors::GumballGuardError,
     state::GuardType,
-    utils::{assert_is_token_account, spl_token_transfer, TokenTransferParams},
+    utils::{assert_is_token_account, get_bps_of, spl_token_transfer, TokenTransferParams},
 };
 
 /// Guard that charges an amount in a specified spl-token as payment for the mint.
@@ -50,6 +50,16 @@ impl Condition for TokenPayment {
             try_get_account_info(ctx.accounts.remaining, token_account_index + 1)?;
         ctx.account_cursor += 2;
 
+        if let Some(fee_config) = ctx.accounts.gumball_machine.marketplace_fee_config {
+            if ctx.accounts.gumball_machine.version > 0 {
+                ctx.account_cursor += 1;
+
+                let fee_ata =
+                    try_get_account_info(ctx.accounts.remaining, token_account_index + 2)?;
+                assert_is_token_account(fee_ata, &fee_config.fee_account, &self.mint)?;
+            }
+        }
+
         let seeds = [
             AUTHORITY_SEED.as_bytes(),
             ctx.accounts.gumball_machine.to_account_info().key.as_ref(),
@@ -81,13 +91,46 @@ impl Condition for TokenPayment {
         let token_account_info = try_get_account_info(ctx.accounts.remaining, index)?;
         let destination_ata = try_get_account_info(ctx.accounts.remaining, index + 1)?;
 
+        let marketplace_fee_bps =
+            if let Some(fee_confg) = ctx.accounts.gumball_machine.marketplace_fee_config {
+                // Version 0 takes fee on claim, so no fee on draw
+                if ctx.accounts.gumball_machine.version == 0 {
+                    0
+                } else {
+                    fee_confg.fee_bps
+                }
+            } else {
+                0
+            };
+
+        let marketplace_fee = get_bps_of(self.amount, marketplace_fee_bps)?;
+        msg!("Marketplace fee: {}", marketplace_fee);
+
+        if marketplace_fee > 0 {
+            let fee_destination_ata = try_get_account_info(ctx.accounts.remaining, index + 2)?;
+
+            spl_token_transfer(TokenTransferParams {
+                source: token_account_info.to_account_info(),
+                destination: fee_destination_ata.to_account_info(),
+                authority: ctx.accounts.buyer.to_account_info(),
+                authority_signer_seeds: &[],
+                token_program: ctx.accounts.spl_token_program.to_account_info(),
+                amount: marketplace_fee,
+            })?;
+        }
+
+        let price_less_fees = self
+            .amount
+            .checked_sub(marketplace_fee)
+            .ok_or(GumballGuardError::NumericalOverflowError)?;
+
         spl_token_transfer(TokenTransferParams {
             source: token_account_info.to_account_info(),
             destination: destination_ata.to_account_info(),
             authority: ctx.accounts.buyer.to_account_info(),
             authority_signer_seeds: &[],
             token_program: ctx.accounts.spl_token_program.to_account_info(),
-            amount: self.amount,
+            amount: price_less_fees,
         })?;
 
         cpi_increment_total_revenue(ctx, self.amount)?;
