@@ -43,7 +43,7 @@ export type CancelAddNftRequestInstructionAccounts = {
   seller?: Signer;
   mint: PublicKey | Pda;
   tokenAccount?: PublicKey | Pda;
-  tmpTokenAccount?: PublicKey | Pda;
+  authorityPdaTokenAccount?: PublicKey | Pda;
   edition?: PublicKey | Pda;
   tokenProgram?: PublicKey | Pda;
   associatedTokenProgram?: PublicKey | Pda;
@@ -114,10 +114,10 @@ export function cancelAddNftRequest(
       isWritable: true,
       value: input.tokenAccount ?? null,
     },
-    tmpTokenAccount: {
+    authorityPdaTokenAccount: {
       index: 6,
       isWritable: true,
-      value: input.tmpTokenAccount ?? null,
+      value: input.authorityPdaTokenAccount ?? null,
     },
     edition: { index: 7, isWritable: false, value: input.edition ?? null },
     tokenProgram: {
@@ -158,11 +158,14 @@ export function cancelAddNftRequest(
       owner: expectPublicKey(resolvedAccounts.seller.value),
     });
   }
-  if (!resolvedAccounts.tmpTokenAccount.value) {
-    resolvedAccounts.tmpTokenAccount.value = findAssociatedTokenPda(context, {
-      mint: expectPublicKey(resolvedAccounts.mint.value),
-      owner: expectPublicKey(resolvedAccounts.authorityPda.value),
-    });
+  if (!resolvedAccounts.authorityPdaTokenAccount.value) {
+    resolvedAccounts.authorityPdaTokenAccount.value = findAssociatedTokenPda(
+      context,
+      {
+        mint: expectPublicKey(resolvedAccounts.mint.value),
+        owner: expectPublicKey(resolvedAccounts.authorityPda.value),
+      }
+    );
   }
   if (!resolvedAccounts.edition.value) {
     resolvedAccounts.edition.value = findMasterEditionPda(context, {

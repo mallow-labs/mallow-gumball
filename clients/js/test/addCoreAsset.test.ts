@@ -49,6 +49,7 @@ test('it can add core assets to a gumball machine', async (t) => {
         seller: umi.identity.publicKey,
         buyer: undefined,
         tokenStandard: TokenStandard.Core,
+        amount: 1,
       },
     ],
   });
@@ -133,6 +134,7 @@ test('it can add core asset to a gumball machine as allowlisted seller', async (
         seller: otherSellerUmi.identity.publicKey,
         buyer: undefined,
         tokenStandard: TokenStandard.Core,
+        amount: 1,
       },
     ],
   });
@@ -259,6 +261,7 @@ test('it can append additional core assets to a gumball machine', async (t) => {
         seller: umi.identity.publicKey,
         buyer: undefined,
         tokenStandard: TokenStandard.Core,
+        amount: 1,
       },
       {
         index: 1,
@@ -269,6 +272,7 @@ test('it can append additional core assets to a gumball machine', async (t) => {
         seller: umi.identity.publicKey,
         buyer: undefined,
         tokenStandard: TokenStandard.Core,
+        amount: 1,
       },
     ],
   });

@@ -31,6 +31,7 @@ export const CONFIG_LINE_SIZE =
   32 + // seller
   32 + // buyer
   1; // token standard
+export const CONFIG_LINE_V2_SIZE = CONFIG_LINE_SIZE + 8; // amount
 
 export const GUMBALL_GUARD_LABEL_SIZE = 6;
 export const GUMBALL_GUARD_DATA =

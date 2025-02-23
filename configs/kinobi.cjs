@@ -258,8 +258,13 @@ kinobi.update(
 			ignoreIfOptional: true,
 		},
 		{
+			...defaultsToAssociatedTokenPda("mint", "buyer"),
+			account: "buyerTokenAccount",
+			ignoreIfOptional: true,
+		},
+		{
 			...defaultsToAssociatedTokenPda("mint", "authorityPda"),
-			account: "tmpTokenAccount",
+			account: "authorityPdaTokenAccount",
 			ignoreIfOptional: true,
 		},
 		{
@@ -346,6 +351,19 @@ kinobi.update(
 				seller: { defaultsTo: k.identityDefault() },
 			},
 		},
+		"mallowGumball.addTokens": {
+			name: "addTokens",
+			accounts: {
+				seller: { defaultsTo: k.identityDefault() },
+			},
+		},
+		"mallowGumball.removeTokens": {
+			name: "removeTokens",
+			accounts: {
+				authority: { defaultsTo: k.identityDefault() },
+				seller: { defaultsTo: k.identityDefault() },
+			},
+		},
 		"mallowGumball.draw": {
 			name: "drawFromGumballMachine",
 			accounts: {
@@ -375,6 +393,15 @@ kinobi.update(
 			name: "claimCoreAsset",
 			accounts: {
 				buyer: { defaultsTo: k.identityDefault() },
+			},
+		},
+		"mallowGumball.claimTokens": {
+			name: "claimTokens",
+			accounts: {
+				buyer: { defaultsTo: k.identityDefault() },
+				buyerTokenAccount: {
+					defaultsTo: defaultsToAssociatedTokenPda("mint", "buyer"),
+				},
 			},
 		},
 		"gumballGuard.route": {
@@ -429,6 +456,28 @@ kinobi.update(
 				},
 			},
 		},
+		"mallowGumball.settleTokensSale": {
+			name: "settleTokensSale",
+			accounts: {
+				buyer: { defaultsTo: k.identityDefault() },
+				buyerTokenAccount: { defaultsTo: defaultsToAssociatedTokenPda("mint", "buyer") },
+				authorityPdaPaymentAccount: {
+					defaultsTo: k.conditionalDefault("account", "paymentMint", {
+						ifTrue: defaultsToAssociatedTokenPda("paymentMint", "authorityPda"),
+					}),
+				},
+				authorityPaymentAccount: {
+					defaultsTo: k.conditionalDefault("account", "paymentMint", {
+						ifTrue: defaultsToAssociatedTokenPda("paymentMint", "authority"),
+					}),
+				},
+				sellerPaymentAccount: {
+					defaultsTo: k.conditionalDefault("account", "paymentMint", {
+						ifTrue: defaultsToAssociatedTokenPda("paymentMint", "seller"),
+					}),
+				},
+			},
+		},
 		"mallowGumball.SetAuthority": { name: "SetGumballMachineAuthority" },
 		"gumballGuard.SetAuthority": { name: "SetGumballGuardAuthority" },
 		"gumballGuard.update": { name: "updateGumballGuard", internal: true },
@@ -444,6 +493,7 @@ kinobi.update(
 	new k.SetStructDefaultValuesVisitor({
 		addNftInstructionData: addItemDefaultArgs,
 		addCoreAssetInstructionData: addItemDefaultArgs,
+		addTokensInstructionData: addItemDefaultArgs,
 		initializeGumballMachineInstructionData: {
 			feeConfig: k.vNone(),
 		},

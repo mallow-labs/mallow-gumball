@@ -1,11 +1,11 @@
+use crate::{
+    errors::GumballGuardError,
+    state::{GumballGuard, GumballGuardData, DATA_OFFSET, SEED},
+};
 use anchor_lang::prelude::*;
 use mallow_gumball::{GumballMachine, GumballState};
 use solana_program::{
     entrypoint::MAX_PERMITTED_DATA_INCREASE, program::invoke, system_instruction,
-};
-use crate::{
-    errors::GumballGuardError,
-    state::{GumballGuard, GumballGuardData, DATA_OFFSET, SEED},
 };
 
 pub fn update(ctx: Context<Update>, data: Vec<u8>) -> Result<()> {

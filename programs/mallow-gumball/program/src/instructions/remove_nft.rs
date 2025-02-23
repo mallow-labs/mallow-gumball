@@ -54,7 +54,7 @@ pub struct RemoveNft<'info> {
 
     /// CHECK: Safe due to transfer
     #[account(mut)]
-    tmp_token_account: UncheckedAccount<'info>,
+    authority_pda_token_account: UncheckedAccount<'info>,
 
     /// CHECK: Safe due to thaw
     edition: UncheckedAccount<'info>,
@@ -78,7 +78,7 @@ pub fn remove_nft(ctx: Context<RemoveNft>, index: u32) -> Result<()> {
     let associated_token_program = &ctx.accounts.associated_token_program.to_account_info();
     let token_metadata_program = &ctx.accounts.token_metadata_program.to_account_info();
     let token_account = &ctx.accounts.token_account.to_account_info();
-    let tmp_token_account = &ctx.accounts.tmp_token_account.to_account_info();
+    let authority_pda_token_account = &ctx.accounts.authority_pda_token_account.to_account_info();
     let authority_pda = &ctx.accounts.authority_pda.to_account_info();
     let authority = &ctx.accounts.authority.to_account_info();
     let edition = &ctx.accounts.edition.to_account_info();
@@ -93,6 +93,7 @@ pub fn remove_nft(ctx: Context<RemoveNft>, index: u32) -> Result<()> {
         mint.key(),
         seller.key(),
         index,
+        1,
     )?;
 
     let auth_seeds = [
@@ -105,7 +106,7 @@ pub fn remove_nft(ctx: Context<RemoveNft>, index: u32) -> Result<()> {
         authority,
         mint,
         token_account,
-        tmp_token_account,
+        authority_pda_token_account,
         edition,
         authority_pda,
         &auth_seeds,

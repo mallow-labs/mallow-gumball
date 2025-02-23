@@ -1,6 +1,6 @@
 use crate::{
     constants::{ADD_ITEM_REQUEST_SEED, AUTHORITY_SEED, SELLER_HISTORY_SEED},
-    thaw_and_revoke_core_asset, AddItemRequest, GumballError, SellerHistory
+    thaw_and_revoke_core_asset, AddItemRequest, GumballError, SellerHistory,
 };
 use anchor_lang::prelude::*;
 

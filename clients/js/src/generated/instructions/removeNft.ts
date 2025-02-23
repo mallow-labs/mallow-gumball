@@ -46,7 +46,7 @@ export type RemoveNftInstructionAccounts = {
   seller?: PublicKey | Pda;
   mint: PublicKey | Pda;
   tokenAccount?: PublicKey | Pda;
-  tmpTokenAccount?: PublicKey | Pda;
+  authorityPdaTokenAccount?: PublicKey | Pda;
   edition?: PublicKey | Pda;
   tokenProgram?: PublicKey | Pda;
   associatedTokenProgram?: PublicKey | Pda;
@@ -125,10 +125,10 @@ export function removeNft(
       isWritable: true,
       value: input.tokenAccount ?? null,
     },
-    tmpTokenAccount: {
+    authorityPdaTokenAccount: {
       index: 7,
       isWritable: true,
-      value: input.tmpTokenAccount ?? null,
+      value: input.authorityPdaTokenAccount ?? null,
     },
     edition: { index: 8, isWritable: false, value: input.edition ?? null },
     tokenProgram: {
@@ -182,11 +182,14 @@ export function removeNft(
       owner: expectPublicKey(resolvedAccounts.authority.value),
     });
   }
-  if (!resolvedAccounts.tmpTokenAccount.value) {
-    resolvedAccounts.tmpTokenAccount.value = findAssociatedTokenPda(context, {
-      mint: expectPublicKey(resolvedAccounts.mint.value),
-      owner: expectPublicKey(resolvedAccounts.authorityPda.value),
-    });
+  if (!resolvedAccounts.authorityPdaTokenAccount.value) {
+    resolvedAccounts.authorityPdaTokenAccount.value = findAssociatedTokenPda(
+      context,
+      {
+        mint: expectPublicKey(resolvedAccounts.mint.value),
+        owner: expectPublicKey(resolvedAccounts.authorityPda.value),
+      }
+    );
   }
   if (!resolvedAccounts.edition.value) {
     resolvedAccounts.edition.value = findMasterEditionPda(context, {

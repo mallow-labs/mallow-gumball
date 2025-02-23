@@ -18,7 +18,7 @@ import {
   TokenStandardArgs,
 } from '.';
 
-/** Config line struct for storing asset (NFT) data pre-mint. */
+/** Config line struct for storing asset data. */
 export type ConfigLine = {
   /** Mint account of the asset. */
   mint: PublicKey;

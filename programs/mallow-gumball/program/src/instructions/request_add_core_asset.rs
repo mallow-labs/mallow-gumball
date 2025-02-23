@@ -1,7 +1,8 @@
 use crate::{
-    approve_and_freeze_core_asset, assert_can_request_add_item, assert_no_permanent_delegates, 
-    constants::{ADD_ITEM_REQUEST_SEED, AUTHORITY_SEED, SELLER_HISTORY_SEED}, 
-    state::GumballMachine, AddItemRequest, GumballError, SellerHistory, TokenStandard
+    approve_and_freeze_core_asset, assert_can_request_add_item, assert_no_permanent_delegates,
+    constants::{ADD_ITEM_REQUEST_SEED, AUTHORITY_SEED, SELLER_HISTORY_SEED},
+    state::GumballMachine,
+    AddItemRequest, GumballError, SellerHistory, TokenStandard,
 };
 use anchor_lang::prelude::*;
 
@@ -73,9 +74,7 @@ pub struct RequestAddCoreAsset<'info> {
     system_program: Program<'info, System>,
 }
 
-pub fn request_add_core_asset(
-    ctx: Context<RequestAddCoreAsset>,
-) -> Result<()> {
+pub fn request_add_core_asset(ctx: Context<RequestAddCoreAsset>) -> Result<()> {
     let asset_info = &ctx.accounts.asset.to_account_info();
     let seller = &ctx.accounts.seller.to_account_info();
     let mpl_core_program = &ctx.accounts.mpl_core_program.to_account_info();
@@ -85,10 +84,10 @@ pub fn request_add_core_asset(
     let add_item_request = &mut ctx.accounts.add_item_request;
 
     add_item_request.init(
-        gumball_machine.key(), 
+        gumball_machine.key(),
         seller.key(),
-         ctx.accounts.asset.key(),
-          TokenStandard::Core
+        ctx.accounts.asset.key(),
+        TokenStandard::Core,
     )?;
 
     seller_history.gumball_machine = gumball_machine.key();

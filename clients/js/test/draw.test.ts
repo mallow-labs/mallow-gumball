@@ -82,6 +82,7 @@ test('it can mint from a gumball guard with no guards', async (t) => {
         seller: umi.identity.publicKey,
         buyer: buyer.publicKey,
         tokenStandard: TokenStandard.NonFungible,
+        amount: 1,
       },
     ],
   });

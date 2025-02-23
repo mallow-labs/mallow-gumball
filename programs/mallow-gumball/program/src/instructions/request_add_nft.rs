@@ -1,7 +1,8 @@
 use crate::{
-    approve_and_freeze_nft, assert_can_request_add_item, 
-    constants::{ADD_ITEM_REQUEST_SEED, AUTHORITY_SEED, SELLER_HISTORY_SEED}, 
-    state::GumballMachine, AddItemRequest, GumballError, SellerHistory, Token, TokenStandard
+    approve_and_freeze_nft, assert_can_request_add_item,
+    constants::{ADD_ITEM_REQUEST_SEED, AUTHORITY_SEED, SELLER_HISTORY_SEED},
+    state::GumballMachine,
+    AddItemRequest, GumballError, SellerHistory, Token, TokenStandard,
 };
 use anchor_lang::prelude::*;
 use mpl_token_metadata::accounts::Metadata;
@@ -95,10 +96,10 @@ pub fn request_add_nft(ctx: Context<RequestAddNft>) -> Result<()> {
     let add_item_request = &mut ctx.accounts.add_item_request;
 
     add_item_request.init(
-        gumball_machine.key(), 
+        gumball_machine.key(),
         seller.key(),
-         ctx.accounts.mint.key(),
-          TokenStandard::NonFungible
+        ctx.accounts.mint.key(),
+        TokenStandard::NonFungible,
     )?;
 
     seller_history.gumball_machine = gumball_machine.key();

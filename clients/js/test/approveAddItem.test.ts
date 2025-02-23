@@ -74,6 +74,7 @@ test('it can approve a request to add core asset to a gumball machine', async (t
         seller: sellerUmi.identity.publicKey,
         buyer: undefined,
         tokenStandard: TokenStandard.Core,
+        amount: 1,
       },
     ],
   });
@@ -167,6 +168,7 @@ test('it can approve a request to add an nft to a gumball machine', async (t) =>
         seller: sellerUmi.identity.publicKey,
         buyer: undefined,
         tokenStandard: TokenStandard.NonFungible,
+        amount: 1,
       },
     ],
   });

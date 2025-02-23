@@ -11,6 +11,7 @@ import { scalarEnum, Serializer } from '@metaplex-foundation/umi/serializers';
 export enum TokenStandard {
   NonFungible,
   Core,
+  Fungible,
 }
 
 export type TokenStandardArgs = TokenStandard;

@@ -138,6 +138,7 @@ test('it can settle an nft sale', async (t) => {
         seller: umi.identity.publicKey,
         buyer: buyerUmi.identity.publicKey,
         tokenStandard: TokenStandard.NonFungible,
+        amount: 1,
       },
     ],
   });
@@ -784,6 +785,7 @@ test('it can settle an nft sale as a third party', async (t) => {
         seller: umi.identity.publicKey,
         buyer: buyerUmi.identity.publicKey,
         tokenStandard: TokenStandard.NonFungible,
+        amount: 1,
       },
     ],
   });
@@ -1456,6 +1458,7 @@ test('it can settle an nft sale for claimed nft', async (t) => {
         seller: umi.identity.publicKey,
         buyer: buyerUmi.identity.publicKey,
         tokenStandard: TokenStandard.NonFungible,
+        amount: 1,
       },
     ],
   });

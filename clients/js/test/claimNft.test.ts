@@ -81,6 +81,7 @@ test('it can claim an nft item', async (t) => {
         seller: umi.identity.publicKey,
         buyer: buyerUmi.identity.publicKey,
         tokenStandard: TokenStandard.NonFungible,
+        amount: 1,
       },
     ],
   });

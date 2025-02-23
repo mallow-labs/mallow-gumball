@@ -1,7 +1,9 @@
-use anchor_lang::prelude::*;
 use crate::{
-    assert_config_line, constants::AUTHORITY_SEED, events::ClaimItemEvent, processors, state::GumballMachine, AssociatedToken, GumballError, ConfigLine, GumballState, Token, TokenStandard
+    assert_config_line, constants::AUTHORITY_SEED, events::ClaimItemEvent, processors,
+    state::GumballMachine, AssociatedToken, ConfigLine, GumballError, GumballState, Token,
+    TokenStandard,
 };
+use anchor_lang::prelude::*;
 
 /// Settles a legacy NFT sale
 #[event_cpi]
@@ -57,7 +59,7 @@ pub struct ClaimNft<'info> {
 
     /// CHECK: Safe due to transfer
     #[account(mut)]
-    tmp_token_account: UncheckedAccount<'info>,
+    authority_pda_token_account: UncheckedAccount<'info>,
 
     /// CHECK: Safe due to processor royalties check
     #[account(mut)]
@@ -72,12 +74,15 @@ pub struct ClaimNft<'info> {
     token_metadata_program: UncheckedAccount<'info>,
 }
 
-pub fn claim_nft<'info>(ctx: Context<'_, '_, '_, 'info, ClaimNft<'info>>, index: u32) -> Result<()> {
+pub fn claim_nft<'info>(
+    ctx: Context<'_, '_, '_, 'info, ClaimNft<'info>>,
+    index: u32,
+) -> Result<()> {
     let gumball_machine = &mut ctx.accounts.gumball_machine;
     let payer = &ctx.accounts.payer.to_account_info();
     let buyer = &ctx.accounts.buyer.to_account_info();
     let buyer_token_account = &ctx.accounts.buyer_token_account.to_account_info();
-    let tmp_token_account = &ctx.accounts.tmp_token_account.to_account_info();
+    let authority_pda_token_account = &ctx.accounts.authority_pda_token_account.to_account_info();
     let authority_pda = &mut ctx.accounts.authority_pda.to_account_info();
     let seller = &mut ctx.accounts.seller.to_account_info();
     let token_metadata_program = &ctx.accounts.token_metadata_program.to_account_info();
@@ -115,7 +120,7 @@ pub fn claim_nft<'info>(ctx: Context<'_, '_, '_, 'info, ClaimNft<'info>>, index:
         buyer_token_account,
         seller,
         token_account,
-        tmp_token_account,
+        authority_pda_token_account,
         mint,
         edition,
         token_program,
@@ -130,7 +135,8 @@ pub fn claim_nft<'info>(ctx: Context<'_, '_, '_, 'info, ClaimNft<'info>>, index:
         mint: mint.key(),
         authority: gumball_machine.authority.key(),
         seller: seller.key(),
-        buyer: buyer.key()
+        buyer: buyer.key(),
+        amount: 1,
     });
 
     Ok(())

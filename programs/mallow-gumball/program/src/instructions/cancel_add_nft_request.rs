@@ -1,6 +1,6 @@
 use crate::{
-    constants::{ADD_ITEM_REQUEST_SEED, AUTHORITY_SEED, SELLER_HISTORY_SEED}, 
-    thaw_and_revoke_nft, AddItemRequest, AssociatedToken, GumballError, SellerHistory, Token
+    constants::{ADD_ITEM_REQUEST_SEED, AUTHORITY_SEED, SELLER_HISTORY_SEED},
+    thaw_and_revoke_nft, AddItemRequest, AssociatedToken, GumballError, SellerHistory, Token,
 };
 use anchor_lang::prelude::*;
 
@@ -58,7 +58,7 @@ pub struct CancelAddNftRequest<'info> {
 
     /// CHECK: Safe due to thaw/revoke
     #[account(mut)]
-    tmp_token_account: UncheckedAccount<'info>,
+    authority_pda_token_account: UncheckedAccount<'info>,
 
     /// CHECK: Safe due to thaw/revoke
     edition: UncheckedAccount<'info>,
@@ -82,7 +82,7 @@ pub fn cancel_add_nft_request(ctx: Context<CancelAddNftRequest>) -> Result<()> {
     let associated_token_program = &ctx.accounts.associated_token_program.to_account_info();
     let token_metadata_program = &ctx.accounts.token_metadata_program.to_account_info();
     let token_account = &ctx.accounts.token_account.to_account_info();
-    let tmp_token_account = &ctx.accounts.tmp_token_account.to_account_info();
+    let authority_pda_token_account = &ctx.accounts.authority_pda_token_account.to_account_info();
     let authority_pda = &ctx.accounts.authority_pda.to_account_info();
     let edition = &ctx.accounts.edition.to_account_info();
     let mint = &ctx.accounts.mint.to_account_info();
@@ -96,10 +96,10 @@ pub fn cancel_add_nft_request(ctx: Context<CancelAddNftRequest>) -> Result<()> {
     ];
 
     thaw_and_revoke_nft(
-        seller, 
-        mint, 
-        token_account, 
-        tmp_token_account, 
+        seller,
+        mint,
+        token_account,
+        authority_pda_token_account,
         edition,
         authority_pda,
         &auth_seeds,
@@ -107,7 +107,7 @@ pub fn cancel_add_nft_request(ctx: Context<CancelAddNftRequest>) -> Result<()> {
         token_program,
         associated_token_program,
         system_program,
-        rent
+        rent,
     )?;
 
     seller_history.item_count -= 1;

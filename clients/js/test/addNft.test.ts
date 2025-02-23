@@ -58,6 +58,7 @@ test('it can add nft to a gumball machine as the authority', async (t) => {
         seller: umi.identity.publicKey,
         buyer: undefined,
         tokenStandard: TokenStandard.NonFungible,
+        amount: 1,
       },
     ],
   });
@@ -138,6 +139,7 @@ test('it can add nft to a gumball machine as allowlisted seller', async (t) => {
         seller: otherSellerUmi.identity.publicKey,
         buyer: undefined,
         tokenStandard: TokenStandard.NonFungible,
+        amount: 1,
       },
     ],
   });
@@ -208,6 +210,7 @@ test('it can add nft to a gumball machine as allowlisted seller on allowlist of 
         seller: otherSellerUmi.identity.publicKey,
         buyer: undefined,
         tokenStandard: TokenStandard.NonFungible,
+        amount: 1,
       },
     ],
   });
@@ -319,6 +322,7 @@ test('it can append additional nfts to a gumball machine', async (t) => {
         seller: umi.identity.publicKey,
         buyer: undefined,
         tokenStandard: TokenStandard.NonFungible,
+        amount: 1,
       },
       {
         index: 1,
@@ -329,6 +333,7 @@ test('it can append additional nfts to a gumball machine', async (t) => {
         seller: umi.identity.publicKey,
         buyer: undefined,
         tokenStandard: TokenStandard.NonFungible,
+        amount: 1,
       },
     ],
   });

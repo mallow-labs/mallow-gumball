@@ -792,6 +792,45 @@ export class InvalidAssetPluginError extends ProgramError {
 codeToErrorMap.set(0x17a5, InvalidAssetPluginError);
 nameToErrorMap.set('InvalidAssetPlugin', InvalidAssetPluginError);
 
+/** InvalidAmount: Invalid amount */
+export class InvalidAmountError extends ProgramError {
+  readonly name: string = 'InvalidAmount';
+
+  readonly code: number = 0x17a6; // 6054
+
+  constructor(program: Program, cause?: Error) {
+    super('Invalid amount', program, cause);
+  }
+}
+codeToErrorMap.set(0x17a6, InvalidAmountError);
+nameToErrorMap.set('InvalidAmount', InvalidAmountError);
+
+/** DuplicateIndex: Duplicate index */
+export class DuplicateIndexError extends ProgramError {
+  readonly name: string = 'DuplicateIndex';
+
+  readonly code: number = 0x17a7; // 6055
+
+  constructor(program: Program, cause?: Error) {
+    super('Duplicate index', program, cause);
+  }
+}
+codeToErrorMap.set(0x17a7, DuplicateIndexError);
+nameToErrorMap.set('DuplicateIndex', DuplicateIndexError);
+
+/** InvalidInputLength: Invalid input length */
+export class InvalidInputLengthError extends ProgramError {
+  readonly name: string = 'InvalidInputLength';
+
+  readonly code: number = 0x17a8; // 6056
+
+  constructor(program: Program, cause?: Error) {
+    super('Invalid input length', program, cause);
+  }
+}
+codeToErrorMap.set(0x17a8, InvalidInputLengthError);
+nameToErrorMap.set('InvalidInputLength', InvalidInputLengthError);
+
 /**
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors

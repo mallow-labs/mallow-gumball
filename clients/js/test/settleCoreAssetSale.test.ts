@@ -128,6 +128,7 @@ test('it can settle a core asset sale', async (t) => {
         seller: umi.identity.publicKey,
         buyer: buyerUmi.identity.publicKey,
         tokenStandard: TokenStandard.Core,
+        amount: 1,
       },
     ],
   });
@@ -1273,6 +1274,7 @@ test('it can settle a core asset sale for claimed core asset', async (t) => {
         seller: umi.identity.publicKey,
         buyer: buyerUmi.identity.publicKey,
         tokenStandard: TokenStandard.Core,
+        amount: 1,
       },
     ],
   });

@@ -1,11 +1,10 @@
+use crate::{
+    constants::GUMBALL_MACHINE_SIZE, events::DrawItemEvent, utils::*, GumballError, GumballMachine,
+    GumballState,
+};
 use anchor_lang::prelude::*;
 use arrayref::array_ref;
 use solana_program::sysvar;
-use crate::{
-    constants::{
-        GUMBALL_MACHINE_SIZE, CONFIG_LINE_SIZE
-    }, events::DrawItemEvent, utils::*, GumballError, GumballMachine, GumballState
-};
 
 /// Draws an item from the gumball machine.
 #[event_cpi]
@@ -53,10 +52,7 @@ pub fn draw<'info>(ctx: Context<'_, '_, '_, 'info, Draw<'info>>) -> Result<()> {
         recent_slothashes: ctx.accounts.recent_slothashes.to_account_info(),
     };
 
-    let index = process_draw(
-        &mut ctx.accounts.gumball_machine,
-        accounts
-    )?;
+    let index = process_draw(&mut ctx.accounts.gumball_machine, accounts)?;
 
     msg!("Drew item at index: {}", index);
 
@@ -105,7 +101,7 @@ pub(crate) fn process_draw(
         gumball_machine,
         accounts.buyer.key(),
         index,
-        gumball_machine.items_redeemed
+        gumball_machine.items_redeemed,
     )?;
 
     gumball_machine.items_redeemed = gumball_machine
@@ -147,16 +143,21 @@ pub fn set_config_line_buyer(
     let last_value = u32::from_le_bytes(*array_ref![account_data, last_index, 4]);
     // swap-remove: this guarantees that we remove the used mint index from the available array
     // in a constant time O(1) no matter how big the indices array is
-    account_data[mint_byte_position..mint_byte_position + 4].copy_from_slice(&u32::to_le_bytes(last_value));
+    account_data[mint_byte_position..mint_byte_position + 4]
+        .copy_from_slice(&u32::to_le_bytes(last_value));
 
     // (2) retrieve the config line at the mint_index position
-    let buyer_position = GUMBALL_MACHINE_SIZE + 4 + mint_index * CONFIG_LINE_SIZE 
+    let buyer_position = GUMBALL_MACHINE_SIZE + 4 + mint_index * gumball_machine.get_config_line_size() 
         + 32 // mint
         + 32; // seller
 
     // Set the buyer on the config line
-    let current_buyer = Pubkey::try_from(&account_data[buyer_position..buyer_position + 32]).unwrap();
-    require!(current_buyer == Pubkey::default(), GumballError::ItemAlreadyDrawn);
+    let current_buyer =
+        Pubkey::try_from(&account_data[buyer_position..buyer_position + 32]).unwrap();
+    require!(
+        current_buyer == Pubkey::default(),
+        GumballError::ItemAlreadyDrawn
+    );
     account_data[buyer_position..buyer_position + 32].copy_from_slice(&buyer.to_bytes());
 
     Ok(mint_index as u32)

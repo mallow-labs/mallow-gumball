@@ -28,8 +28,7 @@ use spl_token::instruction::{approve, transfer_checked};
 use utils::{assert_keys_equal, verify_proof};
 
 use crate::{
-    constants::{CONFIG_LINE_SIZE, GUMBALL_MACHINE_SIZE},
-    ConfigLine, GumballError, GumballMachine, SellerHistory,
+    constants::GUMBALL_MACHINE_SIZE, ConfigLine, GumballError, GumballMachine, SellerHistory,
 };
 
 /// Anchor wrapper for Token program.
@@ -55,6 +54,7 @@ impl anchor_lang::Id for AssociatedToken {
 pub fn assert_can_add_item(
     gumball_machine: &mut Box<Account<GumballMachine>>,
     seller_history: &mut Box<Account<SellerHistory>>,
+    quantity: u16,
     seller_proof_path: Option<Vec<[u8; 32]>>,
 ) -> Result<()> {
     let seller = seller_history.seller;
@@ -63,7 +63,9 @@ pub fn assert_can_add_item(
         return Ok(());
     }
 
-    if seller_history.item_count >= gumball_machine.settings.items_per_seller as u64 {
+    if seller_history.item_count + quantity as u64
+        > gumball_machine.settings.items_per_seller as u64
+    {
         return err!(GumballError::SellerTooManyItems);
     }
 
@@ -114,7 +116,8 @@ pub fn assert_config_line(
         return err!(GumballError::IndexGreaterThanLength);
     }
 
-    let config_line_position = GUMBALL_MACHINE_SIZE + 4 + (index as usize) * CONFIG_LINE_SIZE;
+    let config_line_position =
+        GUMBALL_MACHINE_SIZE + 4 + (index as usize) * gumball_machine.get_config_line_size();
 
     let mint = Pubkey::try_from(&data[config_line_position..config_line_position + 32]).unwrap();
     require!(config_line.mint == mint, GumballError::InvalidMint);
@@ -435,7 +438,7 @@ pub fn thaw_and_revoke_nft<'a>(
     payer: &AccountInfo<'a>,
     mint: &AccountInfo<'a>,
     token_account: &AccountInfo<'a>,
-    tmp_token_account: &AccountInfo<'a>,
+    authority_pda_token_account: &AccountInfo<'a>,
     edition: &AccountInfo<'a>,
     authority: &AccountInfo<'a>,
     authority_seeds: &[&[u8]],
@@ -471,7 +474,7 @@ pub fn thaw_and_revoke_nft<'a>(
             authority.to_account_info(),
             payer.to_account_info(),
             mint.to_account_info(),
-            tmp_token_account.to_account_info(),
+            authority_pda_token_account.to_account_info(),
             system_program.to_account_info(),
             rent.to_account_info(),
         ],
@@ -482,7 +485,7 @@ pub fn thaw_and_revoke_nft<'a>(
             token_program.key,
             token_account.key,
             mint.key,
-            tmp_token_account.key,
+            authority_pda_token_account.key,
             authority.key,
             &[],
             1,
@@ -492,7 +495,7 @@ pub fn thaw_and_revoke_nft<'a>(
             token_program.to_account_info(),
             token_account.to_account_info(),
             mint.to_account_info(),
-            tmp_token_account.to_account_info(),
+            authority_pda_token_account.to_account_info(),
             authority.to_account_info(),
             system_program.to_account_info(),
         ],
@@ -502,7 +505,7 @@ pub fn thaw_and_revoke_nft<'a>(
     invoke_signed(
         &transfer_checked(
             token_program.key,
-            tmp_token_account.key,
+            authority_pda_token_account.key,
             mint.key,
             token_account.key,
             authority.key,
@@ -514,13 +517,20 @@ pub fn thaw_and_revoke_nft<'a>(
             token_program.to_account_info(),
             token_account.to_account_info(),
             mint.to_account_info(),
-            tmp_token_account.to_account_info(),
+            authority_pda_token_account.to_account_info(),
             authority.to_account_info(),
             system_program.to_account_info(),
         ],
         &[&authority_seeds],
     )?;
     Ok(())
+}
+
+#[macro_export]
+macro_rules! try_from {
+    ($ty: ty, $acc: expr) => {
+        <$ty>::try_from(unsafe { std::mem::transmute::<_, &AccountInfo<'_>>($acc.as_ref()) })
+    };
 }
 
 #[cfg(test)]

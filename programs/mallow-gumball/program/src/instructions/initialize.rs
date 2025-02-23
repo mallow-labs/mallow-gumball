@@ -1,6 +1,7 @@
 use crate::{
-    constants::{AUTHORITY_SEED, GUMBALL_MACHINE_SIZE}, state::GumballMachine, GumballError, FeeConfig, GumballSettings,
-    GumballState,
+    constants::{AUTHORITY_SEED, GUMBALL_MACHINE_SIZE},
+    state::GumballMachine,
+    FeeConfig, GumballError, GumballSettings, GumballState,
 };
 use anchor_lang::{prelude::*, Discriminator};
 use mpl_token_metadata::MAX_URI_LENGTH;
@@ -64,7 +65,7 @@ pub fn initialize(
     };
 
     let gumball_machine = GumballMachine {
-        version: 1,
+        version: 2,
         authority: ctx.accounts.authority.key(),
         mint_authority: ctx.accounts.authority.key(),
         marketplace_fee_config: fee_config,

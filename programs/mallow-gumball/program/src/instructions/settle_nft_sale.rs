@@ -1,9 +1,14 @@
+use crate::{
+    assert_config_line,
+    constants::{AUTHORITY_SEED, SELLER_HISTORY_SEED},
+    events::SettleItemSaleEvent,
+    processors::{self, claim_proceeds, is_item_claimed},
+    state::GumballMachine,
+    AssociatedToken, ConfigLine, GumballError, GumballState, SellerHistory, Token, TokenStandard,
+};
 use anchor_lang::prelude::*;
 use mpl_token_metadata::{accounts::Metadata, instructions::UpdateMetadataAccountV2CpiBuilder};
 use utils::get_verified_royalty_info;
-use crate::{
-    assert_config_line, constants::{AUTHORITY_SEED, SELLER_HISTORY_SEED}, events::SettleItemSaleEvent, processors::{self, claim_proceeds, is_item_claimed}, state::GumballMachine, AssociatedToken, ConfigLine, GumballError, GumballState, SellerHistory, Token, TokenStandard
-};
 
 /// Settles a legacy NFT sale
 #[event_cpi]
@@ -100,7 +105,7 @@ pub struct SettleNftSale<'info> {
 
     /// CHECK: Safe due to transfer
     #[account(mut)]
-    tmp_token_account: UncheckedAccount<'info>,
+    authority_pda_token_account: UncheckedAccount<'info>,
 
     /// CHECK: Safe due to processor royalties check
     #[account(mut)]
@@ -115,13 +120,16 @@ pub struct SettleNftSale<'info> {
     token_metadata_program: UncheckedAccount<'info>,
 }
 
-pub fn settle_nft_sale<'info>(ctx: Context<'_, '_, '_, 'info, SettleNftSale<'info>>, index: u32) -> Result<()> {
+pub fn settle_nft_sale<'info>(
+    ctx: Context<'_, '_, '_, 'info, SettleNftSale<'info>>,
+    index: u32,
+) -> Result<()> {
     let gumball_machine = &mut ctx.accounts.gumball_machine;
     let seller_history = &mut ctx.accounts.seller_history;
     let payer = &ctx.accounts.payer.to_account_info();
     let buyer = &ctx.accounts.buyer.to_account_info();
     let buyer_token_account = &ctx.accounts.buyer_token_account.to_account_info();
-    let tmp_token_account = &ctx.accounts.tmp_token_account.to_account_info();
+    let authority_pda_token_account = &ctx.accounts.authority_pda_token_account.to_account_info();
     let authority_pda = &mut ctx.accounts.authority_pda.to_account_info();
     let authority = &mut ctx.accounts.authority.to_account_info();
     let seller = &mut ctx.accounts.seller.to_account_info();
@@ -148,22 +156,46 @@ pub fn settle_nft_sale<'info>(ctx: Context<'_, '_, '_, 'info, SettleNftSale<'inf
 
     let royalty_info = get_verified_royalty_info(metadata, mint)?;
 
-    let payment_mint_info = ctx.accounts.payment_mint.as_ref().map(|mint| mint.to_account_info());
+    let payment_mint_info = ctx
+        .accounts
+        .payment_mint
+        .as_ref()
+        .map(|mint| mint.to_account_info());
     let payment_mint = payment_mint_info.as_ref();
 
-    let authority_pda_payment_account_info = ctx.accounts.authority_pda_payment_account.as_ref().map(|account| account.to_account_info());
+    let authority_pda_payment_account_info = ctx
+        .accounts
+        .authority_pda_payment_account
+        .as_ref()
+        .map(|account| account.to_account_info());
     let authority_pda_payment_account = authority_pda_payment_account_info.as_ref();
 
-    let authority_payment_account_info = ctx.accounts.authority_payment_account.as_ref().map(|account| account.to_account_info());
+    let authority_payment_account_info = ctx
+        .accounts
+        .authority_payment_account
+        .as_ref()
+        .map(|account| account.to_account_info());
     let authority_payment_account = authority_payment_account_info.as_ref();
 
-    let seller_payment_account_info = ctx.accounts.seller_payment_account.as_ref().map(|account| account.to_account_info());
+    let seller_payment_account_info = ctx
+        .accounts
+        .seller_payment_account
+        .as_ref()
+        .map(|account| account.to_account_info());
     let seller_payment_account = seller_payment_account_info.as_ref();
 
-    let mut fee_account_info = ctx.accounts.fee_account.as_ref().map(|account| account.to_account_info());
+    let mut fee_account_info = ctx
+        .accounts
+        .fee_account
+        .as_ref()
+        .map(|account| account.to_account_info());
     let fee_account = fee_account_info.as_mut();
 
-    let fee_payment_account_info = ctx.accounts.fee_payment_account.as_ref().map(|account| account.to_account_info());
+    let fee_payment_account_info = ctx
+        .accounts
+        .fee_payment_account
+        .as_ref()
+        .map(|account| account.to_account_info());
     let fee_payment_account = fee_payment_account_info.as_ref();
 
     let auth_seeds = [
@@ -176,24 +208,36 @@ pub fn settle_nft_sale<'info>(ctx: Context<'_, '_, '_, 'info, SettleNftSale<'inf
         let metadata_account = Metadata::try_from(metadata)?;
         if metadata_account.update_authority == payer.key() {
             let mut builder = UpdateMetadataAccountV2CpiBuilder::new(token_metadata_program);
-            builder.metadata(metadata)
+            builder
+                .metadata(metadata)
                 .update_authority(payer)
                 .primary_sale_happened(true)
                 .invoke()?;
         }
     }
 
+    let mut amount = 0;
     if !is_item_claimed(gumball_machine, index)? {
+        amount = 1;
+
         processors::claim_nft(
             gumball_machine,
             index,
             authority_pda,
             payer,
-            if buyer.key() == Pubkey::default() { seller } else { buyer },
-            if buyer.key() == Pubkey::default() { token_account } else { buyer_token_account },
+            if buyer.key() == Pubkey::default() {
+                seller
+            } else {
+                buyer
+            },
+            if buyer.key() == Pubkey::default() {
+                token_account
+            } else {
+                buyer_token_account
+            },
             seller,
             token_account,
-            tmp_token_account,
+            authority_pda_token_account,
             mint,
             edition,
             token_program,
@@ -206,7 +250,7 @@ pub fn settle_nft_sale<'info>(ctx: Context<'_, '_, '_, 'info, SettleNftSale<'inf
     }
 
     let total_proceeds = claim_proceeds(
-        gumball_machine, 
+        gumball_machine,
         index,
         seller_history,
         payer,
@@ -222,10 +266,10 @@ pub fn settle_nft_sale<'info>(ctx: Context<'_, '_, '_, 'info, SettleNftSale<'inf
         &royalty_info,
         &ctx.remaining_accounts,
         associated_token_program,
-        token_program, 
-        system_program, 
-        rent, 
-        &auth_seeds
+        token_program,
+        system_program,
+        rent,
+        &auth_seeds,
     )?;
 
     emit_cpi!(SettleItemSaleEvent {
@@ -236,7 +280,8 @@ pub fn settle_nft_sale<'info>(ctx: Context<'_, '_, '_, 'info, SettleNftSale<'inf
         total_proceeds,
         payment_mint: gumball_machine.settings.payment_mint,
         fee_config: gumball_machine.marketplace_fee_config,
-        curator_fee_bps: gumball_machine.settings.curator_fee_bps
+        curator_fee_bps: gumball_machine.settings.curator_fee_bps,
+        amount
     });
 
     Ok(())

@@ -1,7 +1,5 @@
+use crate::{GumballError, GumballMachine, GumballState};
 use anchor_lang::prelude::*;
-use crate::{
-    GumballError, GumballMachine, GumballState
-};
 
 /// Increments total revenue. This is required as token transfers occur in guard.
 #[derive(Accounts)]
@@ -18,9 +16,16 @@ pub struct IncrementTotalRevenue<'info> {
     mint_authority: Signer<'info>,
 }
 
-pub fn increment_total_revenue<'info>(ctx: Context<'_, '_, '_, 'info, IncrementTotalRevenue<'info>>, revenue: u64) -> Result<()> {
-    ctx.accounts.gumball_machine.total_revenue = ctx.accounts.gumball_machine.total_revenue
-        .checked_add(revenue).ok_or(GumballError::NumericalOverflowError)?;
-    
+pub fn increment_total_revenue<'info>(
+    ctx: Context<'_, '_, '_, 'info, IncrementTotalRevenue<'info>>,
+    revenue: u64,
+) -> Result<()> {
+    ctx.accounts.gumball_machine.total_revenue = ctx
+        .accounts
+        .gumball_machine
+        .total_revenue
+        .checked_add(revenue)
+        .ok_or(GumballError::NumericalOverflowError)?;
+
     Ok(())
 }

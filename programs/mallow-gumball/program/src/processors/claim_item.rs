@@ -1,6 +1,8 @@
+use crate::{
+    constants::{CONFIG_LINE_SIZE, GUMBALL_MACHINE_SIZE},
+    get_bit_byte_info, GumballError, GumballMachine,
+};
 use anchor_lang::prelude::*;
-
-use crate::{get_bit_byte_info, GumballError, GumballMachine};
 
 pub fn is_item_claimed(gumball_machine: &Box<Account<GumballMachine>>, index: u32) -> Result<bool> {
     let account_info = gumball_machine.to_account_info();
@@ -26,7 +28,7 @@ pub fn is_item_claimed(gumball_machine: &Box<Account<GumballMachine>>, index: u3
     Ok(is_claimed)
 }
 
-pub fn claim_item(gumball_machine: &mut Box<Account<GumballMachine>>, index: u32) -> Result<()> {
+pub fn claim_item(gumball_machine: &mut Box<Account<GumballMachine>>, index: u32) -> Result<u64> {
     let account_info = gumball_machine.to_account_info();
     let mut data = account_info.data.borrow_mut();
 
@@ -48,7 +50,20 @@ pub fn claim_item(gumball_machine: &mut Box<Account<GumballMachine>>, index: u32
         bit
     );
 
+    let item_amount = if gumball_machine.version >= 2 {
+        let config_line_size = gumball_machine.get_config_line_size();
+        let config_line_position = GUMBALL_MACHINE_SIZE + 4 + (index as usize) * config_line_size;
+        u64::from_le_bytes(
+            data[config_line_position + CONFIG_LINE_SIZE
+                ..config_line_position + CONFIG_LINE_SIZE + 8]
+                .try_into()
+                .unwrap(),
+        )
+    } else {
+        1
+    };
+
     drop(data);
 
-    Ok(())
+    Ok(item_amount)
 }

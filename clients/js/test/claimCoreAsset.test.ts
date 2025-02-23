@@ -72,6 +72,7 @@ test('it can claim a core asset item', async (t) => {
         seller: umi.identity.publicKey,
         buyer: buyerUmi.identity.publicKey,
         tokenStandard: TokenStandard.Core,
+        amount: 1,
       },
     ],
   });

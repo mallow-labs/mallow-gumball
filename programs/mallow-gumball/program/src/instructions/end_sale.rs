@@ -18,7 +18,6 @@ pub struct EndSale<'info> {
     authority: Signer<'info>,
 }
 
-
 pub fn end_sale(ctx: Context<EndSale>) -> Result<()> {
     ctx.accounts.gumball_machine.state = GumballState::SaleEnded;
 

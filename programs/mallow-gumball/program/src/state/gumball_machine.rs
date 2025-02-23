@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 
 use crate::{
-    constants::{CONFIG_LINE_SIZE, GUMBALL_MACHINE_SIZE},
+    constants::{CONFIG_LINE_SIZE, CONFIG_LINE_V2_SIZE, GUMBALL_MACHINE_SIZE},
     GumballError,
 };
 
@@ -42,14 +42,24 @@ impl GumballMachine {
     pub fn get_size(item_count: u64) -> usize {
         GUMBALL_MACHINE_SIZE
             + 4 // number of items inserted
-            + (CONFIG_LINE_SIZE * item_count as usize) // config lines
+            + (CONFIG_LINE_V2_SIZE * item_count as usize) // config lines
             + (item_count as usize / 8) + 1 // bit mask tracking claimed items
             + (item_count as usize / 8) + 1 // bit mask tracking settled items
             + 4 + (4 * item_count as usize) // mint indices
     }
 
+    pub fn get_config_line_size(&self) -> usize {
+        if self.version < 2 {
+            CONFIG_LINE_SIZE
+        } else {
+            CONFIG_LINE_V2_SIZE
+        }
+    }
+
     pub fn get_claimed_items_bit_mask_position(&self) -> usize {
-        GUMBALL_MACHINE_SIZE + 4 + (self.settings.item_capacity as usize) * CONFIG_LINE_SIZE
+        GUMBALL_MACHINE_SIZE
+            + 4
+            + (self.settings.item_capacity as usize) * self.get_config_line_size()
     }
 
     pub fn get_settled_items_bit_mask_position(&self) -> Result<usize> {
@@ -92,6 +102,17 @@ pub struct ConfigLineInput {
 
 /// Config line struct for storing asset (NFT) data pre-mint.
 #[derive(AnchorSerialize, AnchorDeserialize, Debug)]
+pub struct ConfigLineV2Input {
+    /// Mint account of the asset.
+    pub mint: Pubkey,
+    /// Wallet that submitted the asset for sale.
+    pub seller: Pubkey,
+    /// Amount of the asset.
+    pub amount: u64,
+}
+
+/// Config line struct for storing asset data.
+#[derive(AnchorSerialize, AnchorDeserialize, Debug)]
 pub struct ConfigLine {
     /// Mint account of the asset.
     pub mint: Pubkey,
@@ -103,10 +124,26 @@ pub struct ConfigLine {
     pub token_standard: TokenStandard,
 }
 
+/// Config line struct for storing asset data.
+#[derive(AnchorSerialize, AnchorDeserialize, Debug)]
+pub struct ConfigLineV2 {
+    /// Mint account of the asset.
+    pub mint: Pubkey,
+    /// Wallet that submitted the asset for sale.
+    pub seller: Pubkey,
+    /// Wallet that will receive the asset upon sale. Empty until drawn.
+    pub buyer: Pubkey,
+    /// Token standard.
+    pub token_standard: TokenStandard,
+    /// Amount of the asset.
+    pub amount: u64,
+}
+
 #[derive(Copy, AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
 pub enum TokenStandard {
     NonFungible,
     Core,
+    Fungible,
 }
 
 #[derive(Copy, AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]

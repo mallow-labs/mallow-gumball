@@ -7,6 +7,7 @@ import {
   Serializer,
   struct,
   u32,
+  u64,
   u8,
 } from '@metaplex-foundation/umi/serializers';
 import { GUMBALL_MACHINE_HIDDEN_SECTION } from '../constants';
@@ -54,6 +55,8 @@ export type GumballMachineItem = {
   readonly buyer?: string;
 
   readonly tokenStandard: TokenStandard;
+
+  readonly amount: number;
 };
 
 type GumballMachineHiddenSection = {
@@ -68,6 +71,92 @@ type GumballMachineHiddenSection = {
   itemsSettledMap: boolean[];
   itemsLeftToMint: number[];
 };
+
+type GumballMachineHiddenSectionV2 = {
+  itemsLoaded: number;
+  rawConfigLines: {
+    mint: PublicKey;
+    seller: PublicKey;
+    buyer: PublicKey;
+    tokenStandard: TokenStandard;
+    amount: number | bigint;
+  }[];
+  itemsClaimedMap: boolean[];
+  itemsSettledMap: boolean[];
+  itemsLeftToMint: number[];
+};
+
+function getHiddenSection(
+  version: number,
+  itemCapacity: number,
+  slice: Uint8Array
+): GumballMachineHiddenSectionV2 {
+  if (version >= 2) {
+    const hiddenSectionSerializer: Serializer<GumballMachineHiddenSectionV2> =
+      struct<GumballMachineHiddenSectionV2>([
+        ['itemsLoaded', u32()],
+        [
+          'rawConfigLines',
+          array(
+            struct<{
+              mint: PublicKey;
+              seller: PublicKey;
+              buyer: PublicKey;
+              tokenStandard: TokenStandard;
+              amount: number | bigint;
+            }>([
+              ['mint', publicKey()],
+              ['seller', publicKey()],
+              ['buyer', publicKey()],
+              ['tokenStandard', u8()],
+              ['amount', u64()],
+            ]),
+            { size: itemCapacity }
+          ),
+        ],
+        ['itemsClaimedMap', bitArray(Math.floor(itemCapacity / 8) + 1)],
+        ['itemsSettledMap', bitArray(Math.floor(itemCapacity / 8) + 1)],
+        ['itemsLeftToMint', array(u32(), { size: itemCapacity })],
+      ]);
+
+    const [hiddenSection] = hiddenSectionSerializer.deserialize(slice);
+    return hiddenSection;
+  }
+
+  const hiddenSectionSerializer: Serializer<GumballMachineHiddenSection> =
+    struct<GumballMachineHiddenSection>([
+      ['itemsLoaded', u32()],
+      [
+        'rawConfigLines',
+        array(
+          struct<{
+            mint: PublicKey;
+            seller: PublicKey;
+            buyer: PublicKey;
+            tokenStandard: TokenStandard;
+          }>([
+            ['mint', publicKey()],
+            ['seller', publicKey()],
+            ['buyer', publicKey()],
+            ['tokenStandard', u8()],
+          ]),
+          { size: itemCapacity }
+        ),
+      ],
+      ['itemsClaimedMap', bitArray(Math.floor(itemCapacity / 8) + 1)],
+      ['itemsSettledMap', bitArray(Math.floor(itemCapacity / 8) + 1)],
+      ['itemsLeftToMint', array(u32(), { size: itemCapacity })],
+    ]);
+
+  const [hiddenSection] = hiddenSectionSerializer.deserialize(slice);
+  return {
+    ...hiddenSection,
+    rawConfigLines: hiddenSection.rawConfigLines.map((item) => ({
+      ...item,
+      amount: 1n,
+    })),
+  };
+}
 
 export function getGumballMachineAccountDataSerializer(): Serializer<
   GumballMachineAccountDataArgs,
@@ -85,32 +174,7 @@ export function getGumballMachineAccountDataSerializer(): Serializer<
       const slice = bytes.slice(offset + GUMBALL_MACHINE_HIDDEN_SECTION);
       const itemCapacity = Number(base.settings.itemCapacity);
 
-      const hiddenSectionSerializer: Serializer<GumballMachineHiddenSection> =
-        struct<GumballMachineHiddenSection>([
-          ['itemsLoaded', u32()],
-          [
-            'rawConfigLines',
-            array(
-              struct<{
-                mint: PublicKey;
-                seller: PublicKey;
-                buyer: PublicKey;
-                tokenStandard: TokenStandard;
-              }>([
-                ['mint', publicKey()],
-                ['seller', publicKey()],
-                ['buyer', publicKey()],
-                ['tokenStandard', u8()],
-              ]),
-              { size: itemCapacity }
-            ),
-          ],
-          ['itemsClaimedMap', bitArray(Math.floor(itemCapacity / 8) + 1)],
-          ['itemsSettledMap', bitArray(Math.floor(itemCapacity / 8) + 1)],
-          ['itemsLeftToMint', array(u32(), { size: itemCapacity })],
-        ]);
-
-      const [hiddenSection] = hiddenSectionSerializer.deserialize(slice);
+      const hiddenSection = getHiddenSection(base.version, itemCapacity, slice);
 
       const itemsMinted = Number(base.itemsRedeemed);
       const itemsRemaining = hiddenSection.itemsLoaded - itemsMinted;
@@ -137,6 +201,7 @@ export function getGumballMachineAccountDataSerializer(): Serializer<
           buyer:
             rawItem.buyer === defaultPublicKey() ? undefined : rawItem.buyer,
           tokenStandard: rawItem.tokenStandard,
+          amount: Number(rawItem.amount),
         };
         items.push(item);
       });

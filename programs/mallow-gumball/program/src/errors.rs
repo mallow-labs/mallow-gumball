@@ -163,4 +163,13 @@ pub enum GumballError {
 
     #[msg("Asset has an invalid plugin")]
     InvalidAssetPlugin,
+
+    #[msg("Invalid amount")]
+    InvalidAmount,
+
+    #[msg("Duplicate index")]
+    DuplicateIndex,
+
+    #[msg("Invalid input length")]
+    InvalidInputLength,
 }

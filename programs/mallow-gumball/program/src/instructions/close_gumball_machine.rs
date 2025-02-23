@@ -1,8 +1,8 @@
+use crate::{constants::AUTHORITY_SEED, get_config_count, GumballError, GumballMachine, Token};
 use anchor_lang::prelude::*;
 use solana_program::program::invoke_signed;
 use spl_token::instruction::close_account;
 use utils::{assert_is_ata, is_native_mint};
-use crate::{constants::AUTHORITY_SEED, get_config_count, GumballError, GumballMachine, Token};
 
 /// Withdraw the rent SOL from the gumball machine account.
 #[derive(Accounts)]
@@ -72,17 +72,26 @@ pub fn close_gumball_machine(ctx: Context<CloseGumballMachine>) -> Result<()> {
 
     // Close payment account if using payment token
     if !is_native_mint(payment_mint) {
-        let authority_pda_payment_account = &ctx.accounts.authority_pda_payment_account.as_ref().unwrap().to_account_info();
+        let authority_pda_payment_account = &ctx
+            .accounts
+            .authority_pda_payment_account
+            .as_ref()
+            .unwrap()
+            .to_account_info();
 
         if !authority_pda_payment_account.data_is_empty() {
-            assert_is_ata(authority_pda_payment_account, authority_pda.key, &payment_mint)?;
+            assert_is_ata(
+                authority_pda_payment_account,
+                authority_pda.key,
+                &payment_mint,
+            )?;
 
             let close_ix = close_account(
-                token_program.key, 
+                token_program.key,
                 authority_pda_payment_account.key,
-                authority.key, 
-                authority_pda.key, 
-                &[]
+                authority.key,
+                authority_pda.key,
+                &[],
             )?;
 
             invoke_signed(
@@ -93,7 +102,7 @@ pub fn close_gumball_machine(ctx: Context<CloseGumballMachine>) -> Result<()> {
                     authority_pda.to_account_info(),
                     authority.to_account_info(),
                 ],
-                &[&auth_seeds]
+                &[&auth_seeds],
             )?;
         }
     }

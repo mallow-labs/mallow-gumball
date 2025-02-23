@@ -128,6 +128,7 @@ test('it can remove core asset at a lower index than last from a gumball machine
         seller: umi.identity.publicKey,
         buyer: undefined,
         tokenStandard: TokenStandard.Core,
+        amount: 1,
       },
     ],
   });

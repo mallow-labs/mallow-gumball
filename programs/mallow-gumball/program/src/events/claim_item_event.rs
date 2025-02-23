@@ -7,4 +7,5 @@ pub struct ClaimItemEvent {
     pub authority: Pubkey,
     pub seller: Pubkey,
     pub buyer: Pubkey,
+    pub amount: u64,
 }

@@ -1,7 +1,8 @@
 use crate::{
-    approve_and_freeze_core_asset, assert_can_add_item, assert_no_permanent_delegates, 
-    constants::{AUTHORITY_SEED, SELLER_HISTORY_SEED}, 
-    state::GumballMachine, ConfigLineInput, GumballError, SellerHistory, TokenStandard
+    approve_and_freeze_core_asset, assert_can_add_item, assert_no_permanent_delegates,
+    constants::{AUTHORITY_SEED, SELLER_HISTORY_SEED},
+    state::GumballMachine,
+    ConfigLineV2Input, GumballError, SellerHistory, TokenStandard,
 };
 use anchor_lang::prelude::*;
 
@@ -75,7 +76,7 @@ pub fn add_core_asset(
     seller_history.seller = seller.key();
 
     // Validate the seller
-    assert_can_add_item(gumball_machine, seller_history, seller_proof_path)?;
+    assert_can_add_item(gumball_machine, seller_history, 1, seller_proof_path)?;
 
     seller_history.item_count += 1;
 
@@ -90,11 +91,13 @@ pub fn add_core_asset(
 
     crate::processors::add_item(
         gumball_machine,
-        ConfigLineInput {
+        ConfigLineV2Input {
             mint: ctx.accounts.asset.key(),
             seller: ctx.accounts.seller.key(),
+            amount: 1,
         },
         TokenStandard::Core,
+        1,
     )?;
 
     let auth_seeds = [

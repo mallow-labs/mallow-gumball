@@ -1,4 +1,4 @@
-import { CONFIG_LINE_SIZE, GUMBALL_MACHINE_SIZE } from '../constants';
+import { CONFIG_LINE_V2_SIZE, GUMBALL_MACHINE_SIZE } from '../constants';
 
 export function getGumballMachineSizeForItemCount(
   itemCount: number | bigint
@@ -10,7 +10,7 @@ export function getGumballMachineSizeForItemCount(
       // Number of currently items inserted.
       4 +
       // Config line data.
-      items * CONFIG_LINE_SIZE +
+      items * CONFIG_LINE_V2_SIZE +
       // Bit mask to keep track of which items have been claimed.
       (4 + Math.floor(items / 8) + 1) +
       // Bit mask to keep track of which items have been settled.

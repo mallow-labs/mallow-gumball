@@ -1,7 +1,8 @@
 use crate::{
-    approve_and_freeze_nft, assert_can_add_item, 
-    constants::{AUTHORITY_SEED, SELLER_HISTORY_SEED}, 
-    state::GumballMachine, ConfigLineInput, GumballError, SellerHistory, Token, TokenStandard
+    approve_and_freeze_nft, assert_can_add_item,
+    constants::{AUTHORITY_SEED, SELLER_HISTORY_SEED},
+    state::GumballMachine,
+    ConfigLineV2Input, GumballError, SellerHistory, Token, TokenStandard,
 };
 use anchor_lang::prelude::*;
 use mpl_token_metadata::accounts::Metadata;
@@ -84,7 +85,7 @@ pub fn add_nft(ctx: Context<AddNft>, seller_proof_path: Option<Vec<[u8; 32]>>) -
     seller_history.seller = seller.key();
 
     // Validate the seller
-    assert_can_add_item(gumball_machine, seller_history, seller_proof_path)?;
+    assert_can_add_item(gumball_machine, seller_history, 1, seller_proof_path)?;
 
     seller_history.item_count += 1;
 
@@ -100,11 +101,13 @@ pub fn add_nft(ctx: Context<AddNft>, seller_proof_path: Option<Vec<[u8; 32]>>) -
 
     crate::processors::add_item(
         gumball_machine,
-        ConfigLineInput {
+        ConfigLineV2Input {
             mint: ctx.accounts.mint.key(),
             seller: ctx.accounts.seller.key(),
+            amount: 1,
         },
         TokenStandard::NonFungible,
+        1,
     )?;
 
     let auth_seeds = [

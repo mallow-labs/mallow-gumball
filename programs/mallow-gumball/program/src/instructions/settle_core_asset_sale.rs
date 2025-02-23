@@ -1,7 +1,12 @@
-use anchor_lang::prelude::*;
 use crate::{
-    assert_config_line, constants::{AUTHORITY_SEED, SELLER_HISTORY_SEED}, events::SettleItemSaleEvent, processors::{self, claim_proceeds, is_item_claimed}, state::GumballMachine, AssociatedToken, ConfigLine, GumballError, GumballState, SellerHistory, Token, TokenStandard
+    assert_config_line,
+    constants::{AUTHORITY_SEED, SELLER_HISTORY_SEED},
+    events::SettleItemSaleEvent,
+    processors::{self, claim_proceeds, is_item_claimed},
+    state::GumballMachine,
+    AssociatedToken, ConfigLine, GumballError, GumballState, SellerHistory, Token, TokenStandard,
 };
+use anchor_lang::prelude::*;
 
 #[event_cpi]
 #[derive(Accounts)]
@@ -96,7 +101,10 @@ pub struct SettleCoreAssetSale<'info> {
     mpl_core_program: UncheckedAccount<'info>,
 }
 
-pub fn settle_core_asset_sale<'info>(ctx: Context<'_, '_, '_, 'info, SettleCoreAssetSale<'info>>, index: u32) -> Result<()> {
+pub fn settle_core_asset_sale<'info>(
+    ctx: Context<'_, '_, '_, 'info, SettleCoreAssetSale<'info>>,
+    index: u32,
+) -> Result<()> {
     let gumball_machine = &mut ctx.accounts.gumball_machine;
     let seller_history = &mut ctx.accounts.seller_history;
     let payer = &ctx.accounts.payer.to_account_info();
@@ -110,7 +118,11 @@ pub fn settle_core_asset_sale<'info>(ctx: Context<'_, '_, '_, 'info, SettleCoreA
     let system_program = &ctx.accounts.system_program.to_account_info();
     let rent = &ctx.accounts.rent.to_account_info();
     let asset = &ctx.accounts.asset.to_account_info();
-    let collection_info = ctx.accounts.collection.as_ref().map(|account| account.to_account_info());
+    let collection_info = ctx
+        .accounts
+        .collection
+        .as_ref()
+        .map(|account| account.to_account_info());
     let collection = collection_info.as_ref();
 
     assert_config_line(
@@ -124,24 +136,49 @@ pub fn settle_core_asset_sale<'info>(ctx: Context<'_, '_, '_, 'info, SettleCoreA
         },
     )?;
 
-    let royalty_info = utils::core::royalties::get_verified_royalty_info(asset, collection, seller.key())?;
+    let royalty_info =
+        utils::core::royalties::get_verified_royalty_info(asset, collection, seller.key())?;
 
-    let payment_mint_info = ctx.accounts.payment_mint.as_ref().map(|mint| mint.to_account_info());
+    let payment_mint_info = ctx
+        .accounts
+        .payment_mint
+        .as_ref()
+        .map(|mint| mint.to_account_info());
     let payment_mint = payment_mint_info.as_ref();
 
-    let authority_pda_payment_account_info = ctx.accounts.authority_pda_payment_account.as_ref().map(|account| account.to_account_info());
+    let authority_pda_payment_account_info = ctx
+        .accounts
+        .authority_pda_payment_account
+        .as_ref()
+        .map(|account| account.to_account_info());
     let authority_pda_payment_account = authority_pda_payment_account_info.as_ref();
 
-    let authority_payment_account_info = ctx.accounts.authority_payment_account.as_ref().map(|account| account.to_account_info());
+    let authority_payment_account_info = ctx
+        .accounts
+        .authority_payment_account
+        .as_ref()
+        .map(|account| account.to_account_info());
     let authority_payment_account = authority_payment_account_info.as_ref();
 
-    let seller_payment_account_info = ctx.accounts.seller_payment_account.as_ref().map(|account| account.to_account_info());
+    let seller_payment_account_info = ctx
+        .accounts
+        .seller_payment_account
+        .as_ref()
+        .map(|account| account.to_account_info());
     let seller_payment_account = seller_payment_account_info.as_ref();
 
-    let mut fee_account_info = ctx.accounts.fee_account.as_ref().map(|account| account.to_account_info());
+    let mut fee_account_info = ctx
+        .accounts
+        .fee_account
+        .as_ref()
+        .map(|account| account.to_account_info());
     let fee_account = fee_account_info.as_mut();
 
-    let fee_payment_account_info = ctx.accounts.fee_payment_account.as_ref().map(|account| account.to_account_info());
+    let fee_payment_account_info = ctx
+        .accounts
+        .fee_payment_account
+        .as_ref()
+        .map(|account| account.to_account_info());
     let fee_payment_account = fee_payment_account_info.as_ref();
 
     let auth_seeds = [
@@ -150,19 +187,26 @@ pub fn settle_core_asset_sale<'info>(ctx: Context<'_, '_, '_, 'info, SettleCoreA
         &[ctx.bumps.authority_pda],
     ];
 
+    let mut amount = 0;
     if !is_item_claimed(gumball_machine, index)? {
+        amount = 1;
+
         processors::claim_core_asset(
             gumball_machine,
             index,
             authority_pda,
             payer,
-            if buyer.key() == Pubkey::default() { seller } else { buyer },
+            if buyer.key() == Pubkey::default() {
+                seller
+            } else {
+                buyer
+            },
             seller,
             asset,
             collection,
             mpl_core_program,
             system_program,
-            &auth_seeds
+            &auth_seeds,
         )?;
     }
 
@@ -183,10 +227,10 @@ pub fn settle_core_asset_sale<'info>(ctx: Context<'_, '_, '_, 'info, SettleCoreA
         &royalty_info,
         &ctx.remaining_accounts,
         associated_token_program,
-        token_program, 
-        system_program, 
-        rent, 
-        &auth_seeds
+        token_program,
+        system_program,
+        rent,
+        &auth_seeds,
     )?;
 
     emit_cpi!(SettleItemSaleEvent {
@@ -197,7 +241,8 @@ pub fn settle_core_asset_sale<'info>(ctx: Context<'_, '_, '_, 'info, SettleCoreA
         total_proceeds,
         payment_mint: gumball_machine.settings.payment_mint,
         fee_config: gumball_machine.marketplace_fee_config,
-        curator_fee_bps: gumball_machine.settings.curator_fee_bps
+        curator_fee_bps: gumball_machine.settings.curator_fee_bps,
+        amount
     });
 
     Ok(())

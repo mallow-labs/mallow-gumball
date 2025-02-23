@@ -45,8 +45,9 @@ pub fn update_settings(ctx: Context<UpdateSettings>, settings: GumballSettings) 
         }
 
         // Cannot change hide_sold_items if others have been invited
-        if gumball_machine.settings.sellers_merkle_root.is_some() &&
-            settings.hide_sold_items != gumball_machine.settings.hide_sold_items {
+        if gumball_machine.settings.sellers_merkle_root.is_some()
+            && settings.hide_sold_items != gumball_machine.settings.hide_sold_items
+        {
             msg!("Cannot change hide_sold_items");
             return err!(GumballError::InvalidSettingUpdate);
         }

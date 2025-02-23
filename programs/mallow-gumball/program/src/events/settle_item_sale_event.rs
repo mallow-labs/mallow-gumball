@@ -13,4 +13,5 @@ pub struct SettleItemSaleEvent {
     pub payment_mint: Pubkey,
     pub fee_config: Option<FeeConfig>,
     pub curator_fee_bps: u16,
+    pub amount: u64,
 }

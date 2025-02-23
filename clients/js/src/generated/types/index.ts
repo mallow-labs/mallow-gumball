@@ -12,6 +12,8 @@ export * from './allowList';
 export * from './botTax';
 export * from './configLine';
 export * from './configLineInput';
+export * from './configLineV2';
+export * from './configLineV2Input';
 export * from './endDate';
 export * from './feeConfig';
 export * from './gatekeeper';

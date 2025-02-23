@@ -1,7 +1,8 @@
-use anchor_lang::prelude::*;
 use crate::{
-    assert_config_line, constants::AUTHORITY_SEED, events::ClaimItemEvent, processors, state::GumballMachine, GumballError, ConfigLine, GumballState, TokenStandard
+    assert_config_line, constants::AUTHORITY_SEED, events::ClaimItemEvent, processors,
+    state::GumballMachine, ConfigLine, GumballError, GumballState, TokenStandard,
 };
+use anchor_lang::prelude::*;
 
 #[event_cpi]
 #[derive(Accounts)]
@@ -33,7 +34,6 @@ pub struct ClaimCoreAsset<'info> {
     #[account(mut)]
     seller: UncheckedAccount<'info>,
 
-
     /// buyer of the nft
     /// CHECK: Safe due to item check
     buyer: UncheckedAccount<'info>,
@@ -53,7 +53,10 @@ pub struct ClaimCoreAsset<'info> {
     mpl_core_program: UncheckedAccount<'info>,
 }
 
-pub fn claim_core_asset<'info>(ctx: Context<'_, '_, '_, 'info, ClaimCoreAsset<'info>>, index: u32) -> Result<()> {
+pub fn claim_core_asset<'info>(
+    ctx: Context<'_, '_, '_, 'info, ClaimCoreAsset<'info>>,
+    index: u32,
+) -> Result<()> {
     let gumball_machine = &mut ctx.accounts.gumball_machine;
     let payer = &ctx.accounts.payer.to_account_info();
     let buyer = &ctx.accounts.buyer.to_account_info();
@@ -62,7 +65,11 @@ pub fn claim_core_asset<'info>(ctx: Context<'_, '_, '_, 'info, ClaimCoreAsset<'i
     let mpl_core_program = &ctx.accounts.mpl_core_program.to_account_info();
     let system_program = &ctx.accounts.system_program.to_account_info();
     let asset = &ctx.accounts.asset.to_account_info();
-    let collection_info = ctx.accounts.collection.as_ref().map(|account| account.to_account_info());
+    let collection_info = ctx
+        .accounts
+        .collection
+        .as_ref()
+        .map(|account| account.to_account_info());
     let collection = collection_info.as_ref();
 
     assert_config_line(
@@ -93,7 +100,7 @@ pub fn claim_core_asset<'info>(ctx: Context<'_, '_, '_, 'info, ClaimCoreAsset<'i
         collection,
         mpl_core_program,
         system_program,
-        &auth_seeds
+        &auth_seeds,
     )?;
 
     emit_cpi!(ClaimItemEvent {
@@ -101,6 +108,7 @@ pub fn claim_core_asset<'info>(ctx: Context<'_, '_, '_, 'info, ClaimCoreAsset<'i
         authority: gumball_machine.authority.key(),
         seller: seller.key(),
         buyer: buyer.key(),
+        amount: 1,
     });
 
     Ok(())

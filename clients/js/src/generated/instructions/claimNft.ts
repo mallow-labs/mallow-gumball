@@ -58,7 +58,7 @@ export type ClaimNftInstructionAccounts = {
   tokenAccount?: PublicKey | Pda;
   /** Nft token account for buyer */
   buyerTokenAccount?: PublicKey | Pda;
-  tmpTokenAccount?: PublicKey | Pda;
+  authorityPdaTokenAccount?: PublicKey | Pda;
   metadata?: PublicKey | Pda;
   edition?: PublicKey | Pda;
   tokenMetadataProgram?: PublicKey | Pda;
@@ -153,10 +153,10 @@ export function claimNft(
       isWritable: true,
       value: input.buyerTokenAccount ?? null,
     },
-    tmpTokenAccount: {
+    authorityPdaTokenAccount: {
       index: 12,
       isWritable: true,
-      value: input.tmpTokenAccount ?? null,
+      value: input.authorityPdaTokenAccount ?? null,
     },
     metadata: { index: 13, isWritable: true, value: input.metadata ?? null },
     edition: { index: 14, isWritable: true, value: input.edition ?? null },
@@ -228,11 +228,14 @@ export function claimNft(
       owner: expectPublicKey(resolvedAccounts.buyer.value),
     });
   }
-  if (!resolvedAccounts.tmpTokenAccount.value) {
-    resolvedAccounts.tmpTokenAccount.value = findAssociatedTokenPda(context, {
-      mint: expectPublicKey(resolvedAccounts.mint.value),
-      owner: expectPublicKey(resolvedAccounts.authorityPda.value),
-    });
+  if (!resolvedAccounts.authorityPdaTokenAccount.value) {
+    resolvedAccounts.authorityPdaTokenAccount.value = findAssociatedTokenPda(
+      context,
+      {
+        mint: expectPublicKey(resolvedAccounts.mint.value),
+        owner: expectPublicKey(resolvedAccounts.authorityPda.value),
+      }
+    );
   }
   if (!resolvedAccounts.metadata.value) {
     resolvedAccounts.metadata.value = findMetadataPda(context, {

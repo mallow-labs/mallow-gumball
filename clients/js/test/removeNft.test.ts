@@ -139,6 +139,7 @@ test('it can remove nfts at a lower index than last from a gumball machine', asy
         seller: umi.identity.publicKey,
         buyer: undefined,
         tokenStandard: TokenStandard.NonFungible,
+        amount: 1,
       },
     ],
   });
