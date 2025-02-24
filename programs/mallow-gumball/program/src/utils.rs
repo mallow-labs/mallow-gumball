@@ -732,6 +732,7 @@ pub fn thaw_and_revoke_nft_v2<'a>(
 }
 
 pub fn thaw_nft<'a>(
+    payer: &AccountInfo<'a>,
     owner: &AccountInfo<'a>,
     mint: &AccountInfo<'a>,
     token_account: &AccountInfo<'a>,
@@ -756,7 +757,7 @@ pub fn thaw_nft<'a>(
         .mint(mint)
         .metadata(metadata_info)
         .edition(Some(edition))
-        .payer(owner)
+        .payer(payer)
         .spl_token_program(Some(token_program))
         .system_program(system_program)
         .sysvar_instructions(sysvar_instructions);

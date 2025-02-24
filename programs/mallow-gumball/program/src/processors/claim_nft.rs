@@ -127,19 +127,8 @@ pub fn claim_nft_v2<'a, 'b>(
 ) -> Result<()> {
     claim_item(gumball_machine, index)?;
 
-    ThawDelegatedAccountCpi::new(
-        token_metadata_program,
-        ThawDelegatedAccountCpiAccounts {
-            delegate: authority_pda,
-            token_account: from_token_account,
-            edition,
-            mint,
-            token_program,
-        },
-    )
-    .invoke_signed(&[&auth_seeds])?;
-
     thaw_nft(
+        payer,
         from,
         mint,
         from_token_account,
@@ -164,6 +153,7 @@ pub fn claim_nft_v2<'a, 'b>(
         from_token_account,
         authority_pda_token_account,
         mint,
+        edition,
         metadata,
         metadata_info,
         payer,
@@ -179,6 +169,7 @@ pub fn claim_nft_v2<'a, 'b>(
         authority_pda_token_record,
         rules,
         auth_rules_program,
+        sysvar_instructions,
     )?;
 
     transfer_nft(
@@ -187,6 +178,7 @@ pub fn claim_nft_v2<'a, 'b>(
         authority_pda_token_account,
         to_token_account,
         mint,
+        edition,
         metadata,
         metadata_info,
         payer,
@@ -202,6 +194,7 @@ pub fn claim_nft_v2<'a, 'b>(
         buyer_token_record,
         rules,
         auth_rules_program,
+        sysvar_instructions,
     )?;
 
     // Close the tmp account back to payer

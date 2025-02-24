@@ -267,6 +267,7 @@ pub fn transfer_nft<'a>(
     from_token_account: &AccountInfo<'a>,
     to_token_account: &AccountInfo<'a>,
     mint: &AccountInfo<'a>,
+    edition: &AccountInfo<'a>,
     metadata: &Metadata,
     metadata_info: &AccountInfo<'a>,
     fee_payer: &AccountInfo<'a>,
@@ -282,6 +283,7 @@ pub fn transfer_nft<'a>(
     to_token_record: Option<&UncheckedAccount<'a>>,
     rules: Option<&UncheckedAccount<'a>>,
     auth_rules_program: Option<&UncheckedAccount<'a>>,
+    sysvar_instructions: &UncheckedAccount<'a>,
 ) -> Result<()> {
     ensure_ata(
         to_token_account,
@@ -304,7 +306,12 @@ pub fn transfer_nft<'a>(
         .destination_owner(to)
         .mint(mint)
         .metadata(metadata_info)
-        .payer(fee_payer);
+        .edition(Some(edition))
+        .payer(fee_payer)
+        .system_program(system_program)
+        .sysvar_instructions(sysvar_instructions)
+        .spl_token_program(token_program)
+        .spl_ata_program(ata_program);
 
     if let Some(standard) = &metadata.token_standard {
         if *standard == TokenStandard::ProgrammableNonFungible

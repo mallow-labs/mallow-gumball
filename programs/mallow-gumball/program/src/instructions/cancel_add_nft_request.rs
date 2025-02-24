@@ -80,6 +80,7 @@ pub struct CancelAddNftRequest<'info> {
 
     /// OPTIONAL PNFT ACCOUNTS
     /// /// CHECK: Safe due to token metadata program check
+    #[account(mut)]
     pub metadata: Option<UncheckedAccount<'info>>,
     /// CHECK: Safe due to token metadata program check
     #[account(mut)]

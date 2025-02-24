@@ -17,12 +17,13 @@ import {
   getMerkleProof,
   getMerkleRoot,
   GumballMachine,
+  MPL_TOKEN_AUTH_RULES_PROGRAM_ID,
   removeNft,
   safeFetchSellerHistory,
   SellerHistory,
   TokenStandard,
 } from '../src';
-import { create, createNft, createUmi } from './_setup';
+import { create, createNft, createProgrammableNft, createUmi } from './_setup';
 
 test('it can remove nfts from a gumball machine', async (t) => {
   // Given a Gumball Machine with 5 nfts.
@@ -72,6 +73,72 @@ test('it can remove nfts from a gumball machine', async (t) => {
   );
   t.like(tokenAccount, {
     state: TokenState.Initialized,
+    owner: umi.identity.publicKey,
+    delegate: none(),
+  });
+
+  // Seller history should no longer exist
+  const sellerHistoryAccount = await safeFetchSellerHistory(
+    umi,
+    findSellerHistoryPda(umi, {
+      gumballMachine: gumballMachine.publicKey,
+      seller: umi.identity.publicKey,
+    })[0]
+  );
+
+  t.falsy(sellerHistoryAccount);
+});
+
+test('it can remove pnfts from a gumball machine', async (t) => {
+  // Given a Gumball Machine with 5 nfts.
+  const umi = await createUmi();
+  const gumballMachine = await create(umi, { settings: { itemCapacity: 5 } });
+  const nft = await createProgrammableNft(umi);
+
+  // When we add an nft to the Gumball Machine.
+  await transactionBuilder()
+    .add(
+      addNft(umi, {
+        gumballMachine: gumballMachine.publicKey,
+        mint: nft.publicKey,
+        authRulesProgram: MPL_TOKEN_AUTH_RULES_PROGRAM_ID,
+      })
+    )
+    .sendAndConfirm(umi);
+
+  // Then remove the nft
+  await transactionBuilder()
+    .add(
+      removeNft(umi, {
+        gumballMachine: gumballMachine.publicKey,
+        index: 0,
+        mint: nft.publicKey,
+        authRulesProgram: MPL_TOKEN_AUTH_RULES_PROGRAM_ID,
+      })
+    )
+    .sendAndConfirm(umi);
+
+  // Then the Gumball Machine has been updated properly.
+  const gumballMachineAccount = await fetchGumballMachine(
+    umi,
+    gumballMachine.publicKey
+  );
+
+  t.like(gumballMachineAccount, <Pick<GumballMachine, 'itemsLoaded' | 'items'>>{
+    itemsLoaded: 0,
+    items: [],
+  });
+
+  // Then nft is not delegated (still frozen due to being pnft)
+  const tokenAccount = await fetchToken(
+    umi,
+    findAssociatedTokenPda(umi, {
+      mint: nft.publicKey,
+      owner: umi.identity.publicKey,
+    })[0]
+  );
+  t.like(tokenAccount, {
+    state: TokenState.Frozen,
     owner: umi.identity.publicKey,
     delegate: none(),
   });

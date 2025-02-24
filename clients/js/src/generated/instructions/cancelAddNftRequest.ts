@@ -6,7 +6,11 @@
  * @see https://github.com/metaplex-foundation/kinobi
  */
 
-import { findMasterEditionPda } from '@metaplex-foundation/mpl-token-metadata';
+import {
+  findMasterEditionPda,
+  findMetadataPda,
+  findTokenRecordPda,
+} from '@metaplex-foundation/mpl-token-metadata';
 import { findAssociatedTokenPda } from '@metaplex-foundation/mpl-toolbox';
 import {
   Context,
@@ -151,7 +155,7 @@ export function cancelAddNftRequest(
       value: input.systemProgram ?? null,
     },
     rent: { index: 12, isWritable: false, value: input.rent ?? null },
-    metadata: { index: 13, isWritable: false, value: input.metadata ?? null },
+    metadata: { index: 13, isWritable: true, value: input.metadata ?? null },
     sellerTokenRecord: {
       index: 14,
       isWritable: true,
@@ -232,6 +236,28 @@ export function cancelAddNftRequest(
     resolvedAccounts.rent.value = publicKey(
       'SysvarRent111111111111111111111111111111111'
     );
+  }
+  if (!resolvedAccounts.metadata.value) {
+    if (resolvedAccounts.authRulesProgram.value) {
+      resolvedAccounts.metadata.value = findMetadataPda(context, {
+        mint: expectPublicKey(resolvedAccounts.mint.value),
+      });
+    }
+  }
+  if (!resolvedAccounts.sellerTokenRecord.value) {
+    if (resolvedAccounts.authRulesProgram.value) {
+      resolvedAccounts.sellerTokenRecord.value = findTokenRecordPda(context, {
+        mint: expectPublicKey(resolvedAccounts.mint.value),
+        token: expectPublicKey(resolvedAccounts.tokenAccount.value),
+      });
+    }
+  }
+  if (!resolvedAccounts.instructions.value) {
+    if (resolvedAccounts.authRulesProgram.value) {
+      resolvedAccounts.instructions.value = publicKey(
+        'Sysvar1nstructions1111111111111111111111111'
+      );
+    }
   }
 
   // Accounts in order.

@@ -11,12 +11,13 @@ import {
   fetchSellerHistory,
   findGumballMachineAuthorityPda,
   findSellerHistoryPda,
+  MPL_TOKEN_AUTH_RULES_PROGRAM_ID,
   requestAddCoreAsset,
   requestAddNft,
   SellerHistory,
   TokenStandard,
 } from '../src';
-import { create, createNft, createUmi } from './_setup';
+import { create, createNft, createProgrammableNft, createUmi } from './_setup';
 
 test('it can create a request to add nft to a gumball machine', async (t) => {
   // Given a Gumball Machine with 5 nfts.
@@ -46,6 +47,71 @@ test('it can create a request to add nft to a gumball machine', async (t) => {
     seller: sellerUmi.identity.publicKey,
     gumballMachine: gumballMachine.publicKey,
     tokenStandard: TokenStandard.NonFungible,
+  });
+
+  // Then nft is frozen and delegated
+  const tokenAccount = await fetchToken(
+    umi,
+    findAssociatedTokenPda(sellerUmi, {
+      mint: nft.publicKey,
+      owner: sellerUmi.identity.publicKey,
+    })[0]
+  );
+  t.like(tokenAccount, {
+    state: TokenState.Frozen,
+    owner: sellerUmi.identity.publicKey,
+    delegate: some(
+      findGumballMachineAuthorityPda(sellerUmi, {
+        gumballMachine: gumballMachine.publicKey,
+      })[0]
+    ),
+  });
+
+  // Seller history state is correct
+  const sellerHistoryAccount = await fetchSellerHistory(
+    sellerUmi,
+    findSellerHistoryPda(sellerUmi, {
+      gumballMachine: gumballMachine.publicKey,
+      seller: sellerUmi.identity.publicKey,
+    })[0]
+  );
+
+  t.like(sellerHistoryAccount, <SellerHistory>{
+    gumballMachine: gumballMachine.publicKey,
+    seller: sellerUmi.identity.publicKey,
+    itemCount: 1n,
+  });
+});
+
+test('it can create a request to add pnft to a gumball machine', async (t) => {
+  // Given a Gumball Machine with 5 nfts.
+  const umi = await createUmi();
+  const gumballMachine = await create(umi, { settings: { itemCapacity: 5 } });
+
+  const sellerUmi = await createUmi();
+  const nft = await createProgrammableNft(sellerUmi);
+
+  // When we add an nft to the Gumball Machine.
+  await transactionBuilder()
+    .add(
+      requestAddNft(sellerUmi, {
+        gumballMachine: gumballMachine.publicKey,
+        mint: nft.publicKey,
+        authRulesProgram: MPL_TOKEN_AUTH_RULES_PROGRAM_ID,
+      })
+    )
+    .sendAndConfirm(umi);
+
+  // Then the request is created properly.
+  const addItemRequestAccount = await fetchAddItemRequestFromSeeds(umi, {
+    asset: nft.publicKey,
+  });
+
+  t.like(addItemRequestAccount, <AddItemRequest>{
+    asset: nft.publicKey,
+    seller: sellerUmi.identity.publicKey,
+    gumballMachine: gumballMachine.publicKey,
+    tokenStandard: TokenStandard.ProgrammableNonFungible,
   });
 
   // Then nft is frozen and delegated

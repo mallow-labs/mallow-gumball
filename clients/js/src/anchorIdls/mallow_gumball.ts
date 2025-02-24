@@ -623,7 +623,7 @@ export type MallowGumball = {
         },
         {
           name: 'metadata';
-          isMut: false;
+          isMut: true;
           isSigner: false;
           isOptional: true;
           docs: [
@@ -843,7 +843,7 @@ export type MallowGumball = {
         },
         {
           name: 'metadata';
-          isMut: false;
+          isMut: true;
           isSigner: false;
           isOptional: true;
           docs: [
@@ -3553,7 +3553,7 @@ export const IDL: MallowGumball = {
         },
         {
           name: 'metadata',
-          isMut: false,
+          isMut: true,
           isSigner: false,
           isOptional: true,
           docs: [
@@ -3773,7 +3773,7 @@ export const IDL: MallowGumball = {
         },
         {
           name: 'metadata',
-          isMut: false,
+          isMut: true,
           isSigner: false,
           isOptional: true,
           docs: [

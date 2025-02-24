@@ -5,7 +5,7 @@ use crate::{
     processors::{self, claim_proceeds, is_item_claimed},
     state::GumballMachine,
     token_standard_from_mpl_token_standard, AssociatedToken, ConfigLine, GumballError,
-    GumballState, SellerHistory, Token,
+    GumballState, SellerHistory, Token, TokenStandard,
 };
 use anchor_lang::prelude::*;
 use mpl_token_metadata::{accounts::Metadata, instructions::UpdateMetadataAccountV2CpiBuilder};
@@ -164,6 +164,7 @@ pub fn settle_nft_sale<'info>(
     let mint = &ctx.accounts.mint.to_account_info();
     let metadata_info = &ctx.accounts.metadata.to_account_info();
     let metadata = &Metadata::try_from(metadata)?;
+    let token_standard = token_standard_from_mpl_token_standard(&metadata)?;
 
     assert_config_line(
         gumball_machine,
@@ -172,7 +173,7 @@ pub fn settle_nft_sale<'info>(
             mint: mint.key(),
             seller: seller.key(),
             buyer: buyer.key(),
-            token_standard: token_standard_from_mpl_token_standard(&metadata)?,
+            token_standard,
         },
     )?;
 
@@ -226,15 +227,16 @@ pub fn settle_nft_sale<'info>(
         &[ctx.bumps.authority_pda],
     ];
 
-    if royalty_info.is_primary_sale {
-        if metadata.update_authority == payer.key() {
-            let mut builder = UpdateMetadataAccountV2CpiBuilder::new(token_metadata_program);
-            builder
-                .metadata(metadata_info)
-                .update_authority(payer)
-                .primary_sale_happened(true)
-                .invoke()?;
-        }
+    if royalty_info.is_primary_sale
+        && token_standard == TokenStandard::NonFungible
+        && metadata.update_authority == payer.key()
+    {
+        let mut builder = UpdateMetadataAccountV2CpiBuilder::new(token_metadata_program);
+        builder
+            .metadata(metadata_info)
+            .update_authority(payer)
+            .primary_sale_happened(true)
+            .invoke()?;
     }
 
     let mut amount = 0;

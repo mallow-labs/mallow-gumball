@@ -287,6 +287,48 @@ kinobi.update(
 	])
 );
 
+const sellerPnftDefault = () => {
+	return {
+		instructions: {
+			defaultsTo: k.conditionalDefault("account", "authRulesProgram", {
+				ifTrue: defaultsToSysvarInstructions(),
+			}),
+		},
+		sellerTokenRecord: {
+			defaultsTo: k.conditionalDefault("account", "authRulesProgram", {
+				ifTrue: defaultsToTokenRecordPda(),
+			}),
+		},
+	};
+};
+
+const sellerWithMetadataPnftDefault = () => {
+	return {
+		...sellerPnftDefault(),
+		metadata: {
+			defaultsTo: k.conditionalDefault("account", "authRulesProgram", {
+				ifTrue: defaultsToMetadataPda(),
+			}),
+		},
+	};
+};
+
+const claimPnftDefault = () => {
+	return {
+		...sellerPnftDefault(),
+		authorityPdaTokenRecord: {
+			defaultsTo: k.conditionalDefault("account", "authRulesProgram", {
+				ifTrue: defaultsToTokenRecordPda("mint", "authorityPdaTokenAccount"),
+			}),
+		},
+		buyerTokenRecord: {
+			defaultsTo: k.conditionalDefault("account", "authRulesProgram", {
+				ifTrue: defaultsToTokenRecordPda("mint", "buyerTokenAccount"),
+			}),
+		},
+	};
+};
+
 // Update instructions.
 kinobi.update(
 	new k.UpdateInstructionsVisitor({
@@ -304,16 +346,7 @@ kinobi.update(
 			name: "addNft",
 			accounts: {
 				seller: { defaultsTo: k.identityDefault() },
-				instructions: {
-					defaultsTo: k.conditionalDefault("account", "authRulesProgram", {
-						ifTrue: defaultsToSysvarInstructions(),
-					}),
-				},
-				sellerTokenRecord: {
-					defaultsTo: k.conditionalDefault("account", "authRulesProgram", {
-						ifTrue: defaultsToTokenRecordPda(),
-					}),
-				},
+				...sellerPnftDefault(),
 			},
 		},
 		"mallowGumball.requestAddNft": {
@@ -321,6 +354,7 @@ kinobi.update(
 			accounts: {
 				seller: { defaultsTo: k.identityDefault() },
 				addItemRequest: { defaultsTo: defaultsToAddItemRequestPda("mint") },
+				...sellerPnftDefault(),
 			},
 		},
 		"mallowGumball.cancelAddNftRequest": {
@@ -331,6 +365,7 @@ kinobi.update(
 					defaultsTo: defaultsToAssociatedTokenPda("mint", "seller"),
 				},
 				addItemRequest: { defaultsTo: defaultsToAddItemRequestPda("mint") },
+				...sellerWithMetadataPnftDefault(),
 			},
 		},
 		"mallowGumball.removeNft": {
@@ -341,6 +376,7 @@ kinobi.update(
 				tokenAccount: {
 					defaultsTo: defaultsToAssociatedTokenPda("mint", "authority"),
 				},
+				...sellerWithMetadataPnftDefault(),
 			},
 		},
 		"mallowGumball.addCoreAsset": {
@@ -404,6 +440,7 @@ kinobi.update(
 				buyerTokenAccount: {
 					defaultsTo: defaultsToAssociatedTokenPda("mint", "buyer"),
 				},
+				...claimPnftDefault(),
 			},
 		},
 		"mallowGumball.claimCoreAsset": {
@@ -450,6 +487,7 @@ kinobi.update(
 						ifTrue: defaultsToAssociatedTokenPda("paymentMint", "seller"),
 					}),
 				},
+				...claimPnftDefault(),
 			},
 		},
 		"mallowGumball.settleCoreAssetSale": {

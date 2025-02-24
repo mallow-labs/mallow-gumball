@@ -9,6 +9,7 @@
 import {
   findMasterEditionPda,
   findMetadataPda,
+  findTokenRecordPda,
 } from '@metaplex-foundation/mpl-token-metadata';
 import { findAssociatedTokenPda } from '@metaplex-foundation/mpl-toolbox';
 import {
@@ -383,6 +384,42 @@ export function baseSettleNftSale(
       'metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s'
     );
     resolvedAccounts.tokenMetadataProgram.isWritable = false;
+  }
+  if (!resolvedAccounts.sellerTokenRecord.value) {
+    if (resolvedAccounts.authRulesProgram.value) {
+      resolvedAccounts.sellerTokenRecord.value = findTokenRecordPda(context, {
+        mint: expectPublicKey(resolvedAccounts.mint.value),
+        token: expectPublicKey(resolvedAccounts.tokenAccount.value),
+      });
+    }
+  }
+  if (!resolvedAccounts.authorityPdaTokenRecord.value) {
+    if (resolvedAccounts.authRulesProgram.value) {
+      resolvedAccounts.authorityPdaTokenRecord.value = findTokenRecordPda(
+        context,
+        {
+          mint: expectPublicKey(resolvedAccounts.mint.value),
+          token: expectPublicKey(
+            resolvedAccounts.authorityPdaTokenAccount.value
+          ),
+        }
+      );
+    }
+  }
+  if (!resolvedAccounts.buyerTokenRecord.value) {
+    if (resolvedAccounts.authRulesProgram.value) {
+      resolvedAccounts.buyerTokenRecord.value = findTokenRecordPda(context, {
+        mint: expectPublicKey(resolvedAccounts.mint.value),
+        token: expectPublicKey(resolvedAccounts.buyerTokenAccount.value),
+      });
+    }
+  }
+  if (!resolvedAccounts.instructions.value) {
+    if (resolvedAccounts.authRulesProgram.value) {
+      resolvedAccounts.instructions.value = publicKey(
+        'Sysvar1nstructions1111111111111111111111111'
+      );
+    }
   }
   if (!resolvedAccounts.eventAuthority.value) {
     resolvedAccounts.eventAuthority.value = findEventAuthorityPda(context);

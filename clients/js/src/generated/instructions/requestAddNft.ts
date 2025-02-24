@@ -9,12 +9,14 @@
 import {
   findMasterEditionPda,
   findMetadataPda,
+  findTokenRecordPda,
 } from '@metaplex-foundation/mpl-token-metadata';
 import { findAssociatedTokenPda } from '@metaplex-foundation/mpl-toolbox';
 import {
   Context,
   Pda,
   PublicKey,
+  publicKey,
   Signer,
   TransactionBuilder,
   transactionBuilder,
@@ -220,6 +222,21 @@ export function requestAddNft(
       '11111111111111111111111111111111'
     );
     resolvedAccounts.systemProgram.isWritable = false;
+  }
+  if (!resolvedAccounts.sellerTokenRecord.value) {
+    if (resolvedAccounts.authRulesProgram.value) {
+      resolvedAccounts.sellerTokenRecord.value = findTokenRecordPda(context, {
+        mint: expectPublicKey(resolvedAccounts.mint.value),
+        token: expectPublicKey(resolvedAccounts.tokenAccount.value),
+      });
+    }
+  }
+  if (!resolvedAccounts.instructions.value) {
+    if (resolvedAccounts.authRulesProgram.value) {
+      resolvedAccounts.instructions.value = publicKey(
+        'Sysvar1nstructions1111111111111111111111111'
+      );
+    }
   }
 
   // Accounts in order.

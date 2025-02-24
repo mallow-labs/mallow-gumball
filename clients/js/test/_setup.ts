@@ -55,6 +55,7 @@ import {
   GumballSettingsArgs,
   InitializeGumballGuardInstructionAccounts,
   mallowGumball,
+  MPL_TOKEN_AUTH_RULES_PROGRAM_ID,
   startSale,
   TokenStandard,
   wrap,
@@ -269,11 +270,18 @@ export const create = async <DA extends GuardSetArgs = DefaultGuardSetArgs>(
   }
 
   (input.items ?? []).forEach((item) => {
-    if (item.tokenStandard === TokenStandard.NonFungible) {
+    if (
+      item.tokenStandard === TokenStandard.NonFungible ||
+      item.tokenStandard === TokenStandard.ProgrammableNonFungible
+    ) {
       builder = builder.add(
         addNft(umi, {
           gumballMachine: gumballMachine.publicKey,
           mint: item.id,
+          authRulesProgram:
+            item.tokenStandard === TokenStandard.ProgrammableNonFungible
+              ? MPL_TOKEN_AUTH_RULES_PROGRAM_ID
+              : undefined,
         })
       );
     } else if (item.tokenStandard === TokenStandard.Fungible) {

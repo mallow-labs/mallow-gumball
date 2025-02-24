@@ -690,7 +690,7 @@
         },
         {
           "name": "metadata",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false,
           "isOptional": true,
           "docs": [
@@ -932,7 +932,7 @@
         },
         {
           "name": "metadata",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false,
           "isOptional": true,
           "docs": [

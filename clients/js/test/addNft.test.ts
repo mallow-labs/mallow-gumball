@@ -6,7 +6,6 @@ import {
 } from '@metaplex-foundation/mpl-toolbox';
 import {
   generateSigner,
-  publicKey,
   some,
   transactionBuilder,
 } from '@metaplex-foundation/umi';
@@ -20,6 +19,7 @@ import {
   getMerkleProof,
   getMerkleRoot,
   GumballMachine,
+  MPL_TOKEN_AUTH_RULES_PROGRAM_ID,
   SellerHistory,
   TokenStandard,
 } from '../src';
@@ -110,9 +110,7 @@ test('it can add pnft to a gumball machine as the authority', async (t) => {
       addNft(umi, {
         gumballMachine: gumballMachine.publicKey,
         mint: nft.publicKey,
-        authRulesProgram: publicKey(
-          'auth9SigNpDKz4sJJ1DfCTuZrZNSAgh9sFD3rboVmgg'
-        ),
+        authRulesProgram: MPL_TOKEN_AUTH_RULES_PROGRAM_ID,
       })
     )
     .sendAndConfirm(umi);
