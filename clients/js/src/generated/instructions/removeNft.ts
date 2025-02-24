@@ -53,6 +53,16 @@ export type RemoveNftInstructionAccounts = {
   tokenMetadataProgram?: PublicKey | Pda;
   systemProgram?: PublicKey | Pda;
   rent?: PublicKey | Pda;
+  /**
+   * OPTIONAL PNFT ACCOUNTS
+   * /// CHECK: Safe due to token metadata program check
+   */
+
+  metadata?: PublicKey | Pda;
+  sellerTokenRecord?: PublicKey | Pda;
+  authRules?: PublicKey | Pda;
+  instructions?: PublicKey | Pda;
+  authRulesProgram?: PublicKey | Pda;
 };
 
 // Data.
@@ -152,6 +162,23 @@ export function removeNft(
       value: input.systemProgram ?? null,
     },
     rent: { index: 13, isWritable: false, value: input.rent ?? null },
+    metadata: { index: 14, isWritable: false, value: input.metadata ?? null },
+    sellerTokenRecord: {
+      index: 15,
+      isWritable: true,
+      value: input.sellerTokenRecord ?? null,
+    },
+    authRules: { index: 16, isWritable: false, value: input.authRules ?? null },
+    instructions: {
+      index: 17,
+      isWritable: false,
+      value: input.instructions ?? null,
+    },
+    authRulesProgram: {
+      index: 18,
+      isWritable: false,
+      value: input.authRulesProgram ?? null,
+    },
   };
 
   // Arguments.

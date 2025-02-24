@@ -79,6 +79,13 @@ export type BaseSettleNftSaleInstructionAccounts = {
   metadata?: PublicKey | Pda;
   edition?: PublicKey | Pda;
   tokenMetadataProgram?: PublicKey | Pda;
+  /** OPTIONAL PNFT ACCOUNTS */
+  sellerTokenRecord?: PublicKey | Pda;
+  authorityPdaTokenRecord?: PublicKey | Pda;
+  buyerTokenRecord?: PublicKey | Pda;
+  authRules?: PublicKey | Pda;
+  instructions?: PublicKey | Pda;
+  authRulesProgram?: PublicKey | Pda;
   eventAuthority?: PublicKey | Pda;
   program?: PublicKey | Pda;
 };
@@ -222,12 +229,38 @@ export function baseSettleNftSale(
       isWritable: false,
       value: input.tokenMetadataProgram ?? null,
     },
-    eventAuthority: {
+    sellerTokenRecord: {
       index: 24,
+      isWritable: true,
+      value: input.sellerTokenRecord ?? null,
+    },
+    authorityPdaTokenRecord: {
+      index: 25,
+      isWritable: true,
+      value: input.authorityPdaTokenRecord ?? null,
+    },
+    buyerTokenRecord: {
+      index: 26,
+      isWritable: true,
+      value: input.buyerTokenRecord ?? null,
+    },
+    authRules: { index: 27, isWritable: false, value: input.authRules ?? null },
+    instructions: {
+      index: 28,
+      isWritable: false,
+      value: input.instructions ?? null,
+    },
+    authRulesProgram: {
+      index: 29,
+      isWritable: false,
+      value: input.authRulesProgram ?? null,
+    },
+    eventAuthority: {
+      index: 30,
       isWritable: false,
       value: input.eventAuthority ?? null,
     },
-    program: { index: 25, isWritable: false, value: input.program ?? null },
+    program: { index: 31, isWritable: false, value: input.program ?? null },
   };
 
   // Arguments.

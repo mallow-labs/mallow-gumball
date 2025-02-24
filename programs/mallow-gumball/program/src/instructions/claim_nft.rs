@@ -1,9 +1,14 @@
 use crate::{
-    assert_config_line, constants::AUTHORITY_SEED, events::ClaimItemEvent, processors,
-    state::GumballMachine, AssociatedToken, ConfigLine, GumballError, GumballState, Token,
-    TokenStandard,
+    assert_config_line,
+    constants::{AUTHORITY_SEED, MPL_TOKEN_AUTH_RULES_PROGRAM},
+    events::ClaimItemEvent,
+    processors,
+    state::GumballMachine,
+    token_standard_from_mpl_token_standard, AssociatedToken, ConfigLine, GumballError,
+    GumballState, Token,
 };
 use anchor_lang::prelude::*;
+use mpl_token_metadata::accounts::Metadata;
 
 /// Settles a legacy NFT sale
 #[event_cpi]
@@ -72,6 +77,25 @@ pub struct ClaimNft<'info> {
     /// CHECK: Safe due to constraint
     #[account(address = mpl_token_metadata::ID)]
     token_metadata_program: UncheckedAccount<'info>,
+
+    /// OPTIONAL PNFT ACCOUNTS
+    /// CHECK: Safe due to token metadata program check
+    #[account(mut)]
+    pub seller_token_record: Option<UncheckedAccount<'info>>,
+    /// CHECK: Safe due to token metadata program check
+    #[account(mut)]
+    pub authority_pda_token_record: Option<UncheckedAccount<'info>>,
+    /// CHECK: Safe due to token metadata program check
+    #[account(mut)]
+    pub buyer_token_record: Option<UncheckedAccount<'info>>,
+    /// CHECK: Safe due to token metadata program check
+    pub auth_rules: Option<UncheckedAccount<'info>>,
+    /// CHECK: Safe due to address check
+    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    pub instructions: Option<UncheckedAccount<'info>>,
+    /// CHECK: Safe due to address check
+    #[account(address = MPL_TOKEN_AUTH_RULES_PROGRAM)]
+    pub auth_rules_program: Option<UncheckedAccount<'info>>,
 }
 
 pub fn claim_nft<'info>(
@@ -93,6 +117,8 @@ pub fn claim_nft<'info>(
     let rent = &ctx.accounts.rent.to_account_info();
     let edition = &ctx.accounts.edition.to_account_info();
     let mint = &ctx.accounts.mint.to_account_info();
+    let metadata_info = &ctx.accounts.metadata.to_account_info();
+    let metadata = &Metadata::try_from(metadata_info)?;
 
     assert_config_line(
         gumball_machine,
@@ -101,7 +127,7 @@ pub fn claim_nft<'info>(
             mint: mint.key(),
             seller: seller.key(),
             buyer: buyer.key(),
-            token_standard: TokenStandard::NonFungible,
+            token_standard: token_standard_from_mpl_token_standard(&metadata)?,
         },
     )?;
 
@@ -111,25 +137,55 @@ pub fn claim_nft<'info>(
         &[ctx.bumps.authority_pda],
     ];
 
-    processors::claim_nft(
-        gumball_machine,
-        index,
-        authority_pda,
-        payer,
-        buyer,
-        buyer_token_account,
-        seller,
-        token_account,
-        authority_pda_token_account,
-        mint,
-        edition,
-        token_program,
-        associated_token_program,
-        token_metadata_program,
-        system_program,
-        rent,
-        &auth_seeds,
-    )?;
+    if let Some(_) = ctx.accounts.auth_rules_program {
+        processors::claim_nft_v2(
+            gumball_machine,
+            index,
+            authority_pda,
+            payer,
+            buyer,
+            buyer_token_account,
+            seller,
+            token_account,
+            authority_pda_token_account,
+            mint,
+            edition,
+            metadata,
+            metadata_info,
+            token_program,
+            associated_token_program,
+            token_metadata_program,
+            system_program,
+            rent,
+            &auth_seeds,
+            ctx.accounts.seller_token_record.as_ref(),
+            ctx.accounts.authority_pda_token_record.as_ref(),
+            ctx.accounts.buyer_token_record.as_ref(),
+            ctx.accounts.auth_rules.as_ref(),
+            ctx.accounts.instructions.as_ref().unwrap(),
+            ctx.accounts.auth_rules_program.as_ref(),
+        )?;
+    } else {
+        processors::claim_nft(
+            gumball_machine,
+            index,
+            authority_pda,
+            payer,
+            buyer,
+            buyer_token_account,
+            seller,
+            token_account,
+            authority_pda_token_account,
+            mint,
+            edition,
+            token_program,
+            associated_token_program,
+            token_metadata_program,
+            system_program,
+            rent,
+            &auth_seeds,
+        )?;
+    }
 
     emit_cpi!(ClaimItemEvent {
         mint: mint.key(),

@@ -53,6 +53,11 @@ export type RequestAddNftInstructionAccounts = {
   tokenProgram?: PublicKey | Pda;
   tokenMetadataProgram?: PublicKey | Pda;
   systemProgram?: PublicKey | Pda;
+  /** OPTIONAL PNFT ACCOUNTS */
+  sellerTokenRecord?: PublicKey | Pda;
+  authRules?: PublicKey | Pda;
+  instructions?: PublicKey | Pda;
+  authRulesProgram?: PublicKey | Pda;
 };
 
 // Data.
@@ -123,7 +128,7 @@ export function requestAddNft(
       isWritable: true,
       value: input.tokenAccount ?? null,
     },
-    metadata: { index: 7, isWritable: false, value: input.metadata ?? null },
+    metadata: { index: 7, isWritable: true, value: input.metadata ?? null },
     edition: { index: 8, isWritable: false, value: input.edition ?? null },
     tokenProgram: {
       index: 9,
@@ -139,6 +144,22 @@ export function requestAddNft(
       index: 11,
       isWritable: false,
       value: input.systemProgram ?? null,
+    },
+    sellerTokenRecord: {
+      index: 12,
+      isWritable: true,
+      value: input.sellerTokenRecord ?? null,
+    },
+    authRules: { index: 13, isWritable: false, value: input.authRules ?? null },
+    instructions: {
+      index: 14,
+      isWritable: false,
+      value: input.instructions ?? null,
+    },
+    authRulesProgram: {
+      index: 15,
+      isWritable: false,
+      value: input.authRulesProgram ?? null,
     },
   };
 

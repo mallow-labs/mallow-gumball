@@ -62,6 +62,13 @@ export type ClaimNftInstructionAccounts = {
   metadata?: PublicKey | Pda;
   edition?: PublicKey | Pda;
   tokenMetadataProgram?: PublicKey | Pda;
+  /** OPTIONAL PNFT ACCOUNTS */
+  sellerTokenRecord?: PublicKey | Pda;
+  authorityPdaTokenRecord?: PublicKey | Pda;
+  buyerTokenRecord?: PublicKey | Pda;
+  authRules?: PublicKey | Pda;
+  instructions?: PublicKey | Pda;
+  authRulesProgram?: PublicKey | Pda;
   eventAuthority?: PublicKey | Pda;
   program?: PublicKey | Pda;
 };
@@ -165,12 +172,38 @@ export function claimNft(
       isWritable: false,
       value: input.tokenMetadataProgram ?? null,
     },
-    eventAuthority: {
+    sellerTokenRecord: {
       index: 16,
+      isWritable: true,
+      value: input.sellerTokenRecord ?? null,
+    },
+    authorityPdaTokenRecord: {
+      index: 17,
+      isWritable: true,
+      value: input.authorityPdaTokenRecord ?? null,
+    },
+    buyerTokenRecord: {
+      index: 18,
+      isWritable: true,
+      value: input.buyerTokenRecord ?? null,
+    },
+    authRules: { index: 19, isWritable: false, value: input.authRules ?? null },
+    instructions: {
+      index: 20,
+      isWritable: false,
+      value: input.instructions ?? null,
+    },
+    authRulesProgram: {
+      index: 21,
+      isWritable: false,
+      value: input.authRulesProgram ?? null,
+    },
+    eventAuthority: {
+      index: 22,
       isWritable: false,
       value: input.eventAuthority ?? null,
     },
-    program: { index: 17, isWritable: false, value: input.program ?? null },
+    program: { index: 23, isWritable: false, value: input.program ?? null },
   };
 
   // Arguments.

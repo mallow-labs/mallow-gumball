@@ -176,12 +176,19 @@ const defaultsToMasterEditionPda = (mint = "mint") =>
 		importFrom: "mplTokenMetadata",
 		seeds: { mint: k.accountDefault(mint) },
 	});
+const defaultsToTokenRecordPda = (mint = "mint", tokenAccount = "tokenAccount") =>
+	k.pdaDefault("tokenRecord", {
+		importFrom: "mplTokenMetadata",
+		seeds: { mint: k.accountDefault(mint), token: k.accountDefault(tokenAccount) },
+	});
 const defaultsToSplAssociatedTokenProgram = () =>
 	k.programDefault("splAssociatedToken", "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
 const defaultsToMplCoreProgram = () =>
 	k.programDefault("mplCoreProgram", "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d");
 const defaultsToProgram = () =>
 	k.programDefault("mallowGumball", "MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa");
+const defaultsToSysvarInstructions = () =>
+	k.publicKeyDefault("Sysvar1nstructions1111111111111111111111111");
 
 // Automatically recognize account default values.
 kinobi.update(
@@ -297,6 +304,16 @@ kinobi.update(
 			name: "addNft",
 			accounts: {
 				seller: { defaultsTo: k.identityDefault() },
+				instructions: {
+					defaultsTo: k.conditionalDefault("account", "authRulesProgram", {
+						ifTrue: defaultsToSysvarInstructions(),
+					}),
+				},
+				sellerTokenRecord: {
+					defaultsTo: k.conditionalDefault("account", "authRulesProgram", {
+						ifTrue: defaultsToTokenRecordPda(),
+					}),
+				},
 			},
 		},
 		"mallowGumball.requestAddNft": {
