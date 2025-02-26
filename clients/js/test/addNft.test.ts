@@ -1,4 +1,7 @@
-import { printSupply } from '@metaplex-foundation/mpl-token-metadata';
+import {
+  fetchMetadataFromSeeds,
+  printSupply,
+} from '@metaplex-foundation/mpl-token-metadata';
 import {
   fetchToken,
   findAssociatedTokenPda,
@@ -6,6 +9,7 @@ import {
 } from '@metaplex-foundation/mpl-toolbox';
 import {
   generateSigner,
+  isSome,
   some,
   transactionBuilder,
 } from '@metaplex-foundation/umi';
@@ -102,7 +106,16 @@ test('it can add pnft to a gumball machine as the authority', async (t) => {
   // Given a Gumball Machine with 5 nfts.
   const umi = await createUmi();
   const gumballMachine = await create(umi, { settings: { itemCapacity: 5 } });
-  const nft = await createProgrammableNft(umi);
+  const nft = await createProgrammableNft(umi, undefined, {
+    withAuthRules: true,
+  });
+
+  const metadata = await fetchMetadataFromSeeds(umi, { mint: nft.publicKey });
+  const ruleSet =
+    isSome(metadata.programmableConfig) &&
+    isSome(metadata.programmableConfig.value.ruleSet)
+      ? metadata.programmableConfig.value.ruleSet.value
+      : undefined;
 
   // When we add an nft to the Gumball Machine.
   await transactionBuilder()
@@ -111,6 +124,7 @@ test('it can add pnft to a gumball machine as the authority', async (t) => {
         gumballMachine: gumballMachine.publicKey,
         mint: nft.publicKey,
         authRulesProgram: MPL_TOKEN_AUTH_RULES_PROGRAM_ID,
+        authRules: ruleSet,
       })
     )
     .sendAndConfirm(umi);

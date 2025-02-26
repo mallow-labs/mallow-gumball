@@ -113,13 +113,19 @@ export const createCoreAsset = async (
 
 export const createProgrammableNft = async (
   umi: Umi,
-  input: Partial<Parameters<typeof baseCreateProgrammableNft>[1]> = {}
+  input: Partial<Parameters<typeof baseCreateProgrammableNft>[1]> = {},
+  options: {
+    withAuthRules?: boolean;
+  } = {}
 ): Promise<Signer> => {
   const mint = generateSigner(umi);
   await baseCreateProgrammableNft(umi, {
     mint,
     ...defaultAssetData(),
     ...input,
+    ruleSet: options.withAuthRules
+      ? publicKey('eBJLFYPxJmMGKuFwpDWkzxZeUrad92kZRC5BJLpzyT9')
+      : undefined,
   }).sendAndConfirm(umi);
 
   return mint;
