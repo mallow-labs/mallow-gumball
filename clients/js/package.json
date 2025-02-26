@@ -1,6 +1,6 @@
 {
   "name": "@mallow-labs/mallow-gumball",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Client library for Gumball Machine related programs",
   "main": "dist/src/cjs/index.js",
   "module": "dist/src/esm/index.js",
@@ -43,7 +43,7 @@
   "devDependencies": {
     "@ava/typescript": "^3.0.1",
     "@identity.com/solana-gateway-ts": "^0.12.0",
-    "@metaplex-foundation/mpl-token-auth-rules": "^1.2.0",
+    "@metaplex-foundation/mpl-token-auth-rules": "^3.0.3",
     "@metaplex-foundation/umi": "^0.9.2",
     "@metaplex-foundation/umi-bundle-tests": "^0.9.2",
     "@metaplex-foundation/umi-web3js-adapters": "^0.9.2",
