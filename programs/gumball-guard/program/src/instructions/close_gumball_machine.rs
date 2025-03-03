@@ -51,7 +51,8 @@ pub fn withdraw<'info>(ctx: Context<'_, '_, '_, 'info, Withdraw<'info>>) -> Resu
         token_program: ctx.accounts.token_program.to_account_info(),
     };
 
-    let cpi_ctx = CpiContext::new_with_signer(gumball_machine_program, withdraw_ix, &signer);
+    let cpi_ctx = CpiContext::new_with_signer(gumball_machine_program, withdraw_ix, &signer)
+        .with_remaining_accounts(ctx.remaining_accounts.to_vec());
     withdraw_cpi(cpi_ctx)?;
 
     Ok(())

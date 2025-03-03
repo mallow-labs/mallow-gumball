@@ -1,4 +1,5 @@
 import {
+  fetchToken,
   findAssociatedTokenPda,
   setComputeUnitLimit,
 } from '@metaplex-foundation/mpl-toolbox';
@@ -12,7 +13,7 @@ import {
 import { generateSignerWithSol } from '@metaplex-foundation/umi-bundle-tests';
 import test from 'ava';
 import {
-  deleteGumballGuard,
+  closeGumballMachine,
   deleteGumballMachine,
   draw,
   findGumballGuardPda,
@@ -55,7 +56,7 @@ test('it can delete an empty gumball machine with guard', async (t) => {
   // When we delete it.
   await transactionBuilder()
     .add(
-      deleteGumballGuard(umi, {
+      closeGumballMachine(umi, {
         gumballGuard,
         gumballMachine: gumballMachine.publicKey,
       })
@@ -125,7 +126,7 @@ test('it can delete a settled gumball machine with native token', async (t) => {
   const gumballGuard = findGumballGuardPda(umi, { base: gumballMachine })[0];
   // When we delete it.
   await transactionBuilder()
-    .add(deleteGumballGuard(umi, { gumballMachine, gumballGuard }))
+    .add(closeGumballMachine(umi, { gumballMachine, gumballGuard }))
     .sendAndConfirm(umi);
 
   // Then the gumball machine account no longer exists.
@@ -211,10 +212,11 @@ test('it can delete a settled gumball machine with payment token', async (t) => 
   // When we delete it.
   await transactionBuilder()
     .add(
-      deleteGumballGuard(umi, {
+      closeGumballMachine(umi, {
         gumballGuard,
         gumballMachine,
         authorityPdaPaymentAccount,
+        paymentMint: tokenMint.publicKey,
       })
     )
     .sendAndConfirm(umi);
@@ -224,6 +226,16 @@ test('it can delete a settled gumball machine with payment token', async (t) => 
 
   // Then the payment token account account no longer exists.
   t.false(await umi.rpc.accountExists(authorityPdaPaymentAccount));
+
+  // Seller should have the one token left
+  const sellerTokenAccount = await fetchToken(
+    umi,
+    findAssociatedTokenPda(umi, {
+      mint: tokenMint.publicKey,
+      owner: umi.identity.publicKey,
+    })[0]
+  );
+  t.is(sellerTokenAccount.amount, 1n);
 });
 
 test('it cannot delete a gumball machine that has not been fully settled', async (t) => {

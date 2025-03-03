@@ -1,4 +1,5 @@
 export * as AnchorIdls from './anchorIdls';
+export * from './closeGumballMachine';
 export * from './constants';
 export * from './create';
 export * from './createGumballGuard';

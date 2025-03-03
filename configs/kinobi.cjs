@@ -544,9 +544,22 @@ kinobi.update(
 kinobi.update(new k.FlattenInstructionArgsStructVisitor());
 
 const addItemDefaultArgs = { sellerProofPath: k.vNone() };
+const nftDefaultArgs = {
+	authRulesProgram: k.vNone(),
+	sellerTokenRecord: k.vNone(),
+	buyerTokenRecord: k.vNone(),
+	authorityPdaTokenRecord: k.vNone(),
+	instructions: k.vNone(),
+	authRules: k.vNone(),
+};
 kinobi.update(
 	new k.SetStructDefaultValuesVisitor({
-		addNftInstructionData: addItemDefaultArgs,
+		addNftInstructionData: { ...addItemDefaultArgs, ...nftDefaultArgs },
+		removeNftInstructionData: nftDefaultArgs,
+		claimNftInstructionData: nftDefaultArgs,
+		settleNftSaleInstructionData: nftDefaultArgs,
+		requestAddNftInstructionData: addItemDefaultArgs,
+		cancelAddNftRequestInstructionData: addItemDefaultArgs,
 		addCoreAssetInstructionData: addItemDefaultArgs,
 		addTokensInstructionData: addItemDefaultArgs,
 		initializeGumballMachineInstructionData: {
