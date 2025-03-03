@@ -1,8 +1,9 @@
-use crate::{constants::AUTHORITY_SEED, get_config_count, GumballError, GumballMachine, Token};
+use crate::{constants::AUTHORITY_SEED, get_config_count, try_from, GumballError, GumballMachine, Token};
 use anchor_lang::prelude::*;
+use anchor_spl::token::TokenAccount;
 use solana_program::program::invoke_signed;
 use spl_token::instruction::close_account;
-use utils::{assert_is_ata, is_native_mint};
+use utils::{assert_is_ata, is_native_mint, transfer_spl};
 
 /// Withdraw the rent SOL from the gumball machine account.
 #[derive(Accounts)]
@@ -43,7 +44,7 @@ pub struct CloseGumballMachine<'info> {
     token_program: Program<'info, Token>,
 }
 
-pub fn close_gumball_machine(ctx: Context<CloseGumballMachine>) -> Result<()> {
+pub fn close_gumball_machine<'info>(ctx: Context<'_, '_, '_, 'info, CloseGumballMachine<'info>>) -> Result<()> {
     let account_info = ctx.accounts.gumball_machine.to_account_info();
     let account_data = account_info.data.borrow();
     let config_count = get_config_count(&account_data)? as u64;
@@ -85,6 +86,34 @@ pub fn close_gumball_machine(ctx: Context<CloseGumballMachine>) -> Result<()> {
                 authority_pda.key,
                 &payment_mint,
             )?;
+
+            // Transfer remaining balance to authority if there's any
+            let token_account = try_from!(Account::<'info, TokenAccount>, authority_pda_payment_account)?;
+            let iter = &mut ctx.remaining_accounts.iter();
+            let mint = next_account_info(iter)?;
+            let to_token_account = next_account_info(iter)?;
+            let ata_program = next_account_info(iter)?;
+            let system_program = next_account_info(iter)?;
+            let rent = next_account_info(iter)?;
+
+            if token_account.amount > 0 {
+                transfer_spl(
+                    authority_pda,
+                    authority,
+                    authority_pda_payment_account,
+                    to_token_account,
+                    mint,
+                    authority,
+                    ata_program,
+                    token_program,
+                    system_program,
+                    rent,
+                    Some(authority_pda),
+                    Some(&auth_seeds),
+                    None,
+                    token_account.amount,
+                )?;
+            }
 
             let close_ix = close_account(
                 token_program.key,

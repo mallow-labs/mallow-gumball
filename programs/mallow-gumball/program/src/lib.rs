@@ -360,7 +360,9 @@ pub mod mallow_gumball {
     ///
     ///   0. `[writable]` Gumball Machine account
     ///   1. `[signer]` Gumball Machine authority
-    pub fn withdraw(ctx: Context<CloseGumballMachine>) -> Result<()> {
+    pub fn withdraw<'info>(
+        ctx: Context<'_, '_, '_, 'info, CloseGumballMachine<'info>>,
+    ) -> Result<()> {
         instructions::close_gumball_machine(ctx)
     }
 }
