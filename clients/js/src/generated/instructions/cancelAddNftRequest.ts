@@ -6,7 +6,11 @@
  * @see https://github.com/metaplex-foundation/kinobi
  */
 
-import { findMasterEditionPda } from '@metaplex-foundation/mpl-token-metadata';
+import {
+  findMasterEditionPda,
+  findMetadataPda,
+  findTokenRecordPda,
+} from '@metaplex-foundation/mpl-token-metadata';
 import { findAssociatedTokenPda } from '@metaplex-foundation/mpl-toolbox';
 import {
   Context,
@@ -50,6 +54,16 @@ export type CancelAddNftRequestInstructionAccounts = {
   tokenMetadataProgram?: PublicKey | Pda;
   systemProgram?: PublicKey | Pda;
   rent?: PublicKey | Pda;
+  /**
+   * OPTIONAL PNFT ACCOUNTS
+   * /// CHECK: Safe due to token metadata program check
+   */
+
+  metadata?: PublicKey | Pda;
+  sellerTokenRecord?: PublicKey | Pda;
+  authRules?: PublicKey | Pda;
+  instructions?: PublicKey | Pda;
+  authRulesProgram?: PublicKey | Pda;
 };
 
 // Data.
@@ -141,6 +155,23 @@ export function cancelAddNftRequest(
       value: input.systemProgram ?? null,
     },
     rent: { index: 12, isWritable: false, value: input.rent ?? null },
+    metadata: { index: 13, isWritable: true, value: input.metadata ?? null },
+    sellerTokenRecord: {
+      index: 14,
+      isWritable: true,
+      value: input.sellerTokenRecord ?? null,
+    },
+    authRules: { index: 15, isWritable: false, value: input.authRules ?? null },
+    instructions: {
+      index: 16,
+      isWritable: false,
+      value: input.instructions ?? null,
+    },
+    authRulesProgram: {
+      index: 17,
+      isWritable: false,
+      value: input.authRulesProgram ?? null,
+    },
   };
 
   // Default values.
@@ -205,6 +236,28 @@ export function cancelAddNftRequest(
     resolvedAccounts.rent.value = publicKey(
       'SysvarRent111111111111111111111111111111111'
     );
+  }
+  if (!resolvedAccounts.metadata.value) {
+    if (resolvedAccounts.authRulesProgram.value) {
+      resolvedAccounts.metadata.value = findMetadataPda(context, {
+        mint: expectPublicKey(resolvedAccounts.mint.value),
+      });
+    }
+  }
+  if (!resolvedAccounts.sellerTokenRecord.value) {
+    if (resolvedAccounts.authRulesProgram.value) {
+      resolvedAccounts.sellerTokenRecord.value = findTokenRecordPda(context, {
+        mint: expectPublicKey(resolvedAccounts.mint.value),
+        token: expectPublicKey(resolvedAccounts.tokenAccount.value),
+      });
+    }
+  }
+  if (!resolvedAccounts.instructions.value) {
+    if (resolvedAccounts.authRulesProgram.value) {
+      resolvedAccounts.instructions.value = publicKey(
+        'Sysvar1nstructions1111111111111111111111111'
+      );
+    }
   }
 
   // Accounts in order.

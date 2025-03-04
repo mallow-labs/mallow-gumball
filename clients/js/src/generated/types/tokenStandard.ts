@@ -12,6 +12,7 @@ export enum TokenStandard {
   NonFungible,
   Core,
   Fungible,
+  ProgrammableNonFungible,
 }
 
 export type TokenStandardArgs = TokenStandard;

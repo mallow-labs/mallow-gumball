@@ -55,6 +55,7 @@ import {
   GumballSettingsArgs,
   InitializeGumballGuardInstructionAccounts,
   mallowGumball,
+  MPL_TOKEN_AUTH_RULES_PROGRAM_ID,
   startSale,
   TokenStandard,
   wrap,
@@ -112,13 +113,19 @@ export const createCoreAsset = async (
 
 export const createProgrammableNft = async (
   umi: Umi,
-  input: Partial<Parameters<typeof baseCreateProgrammableNft>[1]> = {}
+  input: Partial<Parameters<typeof baseCreateProgrammableNft>[1]> = {},
+  options: {
+    withAuthRules?: boolean;
+  } = {}
 ): Promise<Signer> => {
   const mint = generateSigner(umi);
   await baseCreateProgrammableNft(umi, {
     mint,
     ...defaultAssetData(),
     ...input,
+    ruleSet: options.withAuthRules
+      ? publicKey('eBJLFYPxJmMGKuFwpDWkzxZeUrad92kZRC5BJLpzyT9')
+      : undefined,
   }).sendAndConfirm(umi);
 
   return mint;
@@ -269,11 +276,18 @@ export const create = async <DA extends GuardSetArgs = DefaultGuardSetArgs>(
   }
 
   (input.items ?? []).forEach((item) => {
-    if (item.tokenStandard === TokenStandard.NonFungible) {
+    if (
+      item.tokenStandard === TokenStandard.NonFungible ||
+      item.tokenStandard === TokenStandard.ProgrammableNonFungible
+    ) {
       builder = builder.add(
         addNft(umi, {
           gumballMachine: gumballMachine.publicKey,
           mint: item.id,
+          authRulesProgram:
+            item.tokenStandard === TokenStandard.ProgrammableNonFungible
+              ? MPL_TOKEN_AUTH_RULES_PROGRAM_ID
+              : undefined,
         })
       );
     } else if (item.tokenStandard === TokenStandard.Fungible) {

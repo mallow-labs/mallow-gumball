@@ -1,11 +1,16 @@
-import { printSupply } from '@metaplex-foundation/mpl-token-metadata';
+import {
+  fetchMetadataFromSeeds,
+  printSupply,
+} from '@metaplex-foundation/mpl-token-metadata';
 import {
   fetchToken,
   findAssociatedTokenPda,
+  setComputeUnitLimit,
   TokenState,
 } from '@metaplex-foundation/mpl-toolbox';
 import {
   generateSigner,
+  isSome,
   some,
   transactionBuilder,
 } from '@metaplex-foundation/umi';
@@ -19,10 +24,11 @@ import {
   getMerkleProof,
   getMerkleRoot,
   GumballMachine,
+  MPL_TOKEN_AUTH_RULES_PROGRAM_ID,
   SellerHistory,
   TokenStandard,
 } from '../src';
-import { create, createNft, createUmi } from './_setup';
+import { create, createNft, createProgrammableNft, createUmi } from './_setup';
 
 test('it can add nft to a gumball machine as the authority', async (t) => {
   // Given a Gumball Machine with 5 nfts.
@@ -58,6 +64,95 @@ test('it can add nft to a gumball machine as the authority', async (t) => {
         seller: umi.identity.publicKey,
         buyer: undefined,
         tokenStandard: TokenStandard.NonFungible,
+        amount: 1,
+      },
+    ],
+  });
+
+  // Then nft is frozen and delegated
+  const tokenAccount = await fetchToken(
+    umi,
+    findAssociatedTokenPda(umi, {
+      mint: nft.publicKey,
+      owner: umi.identity.publicKey,
+    })[0]
+  );
+  t.like(tokenAccount, {
+    state: TokenState.Frozen,
+    owner: umi.identity.publicKey,
+    delegate: some(
+      findGumballMachineAuthorityPda(umi, {
+        gumballMachine: gumballMachine.publicKey,
+      })[0]
+    ),
+  });
+
+  // Seller history state is correct
+  const sellerHistoryAccount = await fetchSellerHistory(
+    umi,
+    findSellerHistoryPda(umi, {
+      gumballMachine: gumballMachine.publicKey,
+      seller: umi.identity.publicKey,
+    })[0]
+  );
+
+  t.like(sellerHistoryAccount, <SellerHistory>{
+    gumballMachine: gumballMachine.publicKey,
+    seller: umi.identity.publicKey,
+    itemCount: 1n,
+  });
+});
+
+test('it can add pnft to a gumball machine as the authority', async (t) => {
+  // Given a Gumball Machine with 5 nfts.
+  const umi = await createUmi();
+  const gumballMachine = await create(umi, { settings: { itemCapacity: 5 } });
+  const nft = await createProgrammableNft(umi, undefined, {
+    withAuthRules: true,
+  });
+
+  const metadata = await fetchMetadataFromSeeds(umi, { mint: nft.publicKey });
+  const ruleSet =
+    isSome(metadata.programmableConfig) &&
+    isSome(metadata.programmableConfig.value.ruleSet)
+      ? metadata.programmableConfig.value.ruleSet.value
+      : undefined;
+
+  // When we add an nft to the Gumball Machine.
+  await transactionBuilder()
+    .add(
+      setComputeUnitLimit(umi, {
+        units: 300_000,
+      })
+    )
+    .add(
+      addNft(umi, {
+        gumballMachine: gumballMachine.publicKey,
+        mint: nft.publicKey,
+        authRulesProgram: MPL_TOKEN_AUTH_RULES_PROGRAM_ID,
+        authRules: ruleSet,
+      })
+    )
+    .sendAndConfirm(umi);
+
+  // Then the Gumball Machine has been updated properly.
+  const gumballMachineAccount = await fetchGumballMachine(
+    umi,
+    gumballMachine.publicKey
+  );
+
+  t.like(gumballMachineAccount, <Pick<GumballMachine, 'itemsLoaded' | 'items'>>{
+    itemsLoaded: 1,
+    items: [
+      {
+        index: 0,
+        isDrawn: false,
+        isClaimed: false,
+        isSettled: false,
+        mint: nft.publicKey,
+        seller: umi.identity.publicKey,
+        buyer: undefined,
+        tokenStandard: TokenStandard.ProgrammableNonFungible,
         amount: 1,
       },
     ],

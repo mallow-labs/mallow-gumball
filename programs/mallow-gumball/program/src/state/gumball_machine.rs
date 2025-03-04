@@ -144,6 +144,7 @@ pub enum TokenStandard {
     NonFungible,
     Core,
     Fungible,
+    ProgrammableNonFungible,
 }
 
 #[derive(Copy, AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]

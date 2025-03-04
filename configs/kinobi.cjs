@@ -176,12 +176,19 @@ const defaultsToMasterEditionPda = (mint = "mint") =>
 		importFrom: "mplTokenMetadata",
 		seeds: { mint: k.accountDefault(mint) },
 	});
+const defaultsToTokenRecordPda = (mint = "mint", tokenAccount = "tokenAccount") =>
+	k.pdaDefault("tokenRecord", {
+		importFrom: "mplTokenMetadata",
+		seeds: { mint: k.accountDefault(mint), token: k.accountDefault(tokenAccount) },
+	});
 const defaultsToSplAssociatedTokenProgram = () =>
 	k.programDefault("splAssociatedToken", "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
 const defaultsToMplCoreProgram = () =>
 	k.programDefault("mplCoreProgram", "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d");
 const defaultsToProgram = () =>
 	k.programDefault("mallowGumball", "MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa");
+const defaultsToSysvarInstructions = () =>
+	k.publicKeyDefault("Sysvar1nstructions1111111111111111111111111");
 
 // Automatically recognize account default values.
 kinobi.update(
@@ -280,6 +287,48 @@ kinobi.update(
 	])
 );
 
+const sellerPnftDefault = () => {
+	return {
+		instructions: {
+			defaultsTo: k.conditionalDefault("account", "authRulesProgram", {
+				ifTrue: defaultsToSysvarInstructions(),
+			}),
+		},
+		sellerTokenRecord: {
+			defaultsTo: k.conditionalDefault("account", "authRulesProgram", {
+				ifTrue: defaultsToTokenRecordPda(),
+			}),
+		},
+	};
+};
+
+const sellerWithMetadataPnftDefault = () => {
+	return {
+		...sellerPnftDefault(),
+		metadata: {
+			defaultsTo: k.conditionalDefault("account", "authRulesProgram", {
+				ifTrue: defaultsToMetadataPda(),
+			}),
+		},
+	};
+};
+
+const claimPnftDefault = () => {
+	return {
+		...sellerPnftDefault(),
+		authorityPdaTokenRecord: {
+			defaultsTo: k.conditionalDefault("account", "authRulesProgram", {
+				ifTrue: defaultsToTokenRecordPda("mint", "authorityPdaTokenAccount"),
+			}),
+		},
+		buyerTokenRecord: {
+			defaultsTo: k.conditionalDefault("account", "authRulesProgram", {
+				ifTrue: defaultsToTokenRecordPda("mint", "buyerTokenAccount"),
+			}),
+		},
+	};
+};
+
 // Update instructions.
 kinobi.update(
 	new k.UpdateInstructionsVisitor({
@@ -297,6 +346,7 @@ kinobi.update(
 			name: "addNft",
 			accounts: {
 				seller: { defaultsTo: k.identityDefault() },
+				...sellerPnftDefault(),
 			},
 		},
 		"mallowGumball.requestAddNft": {
@@ -304,6 +354,7 @@ kinobi.update(
 			accounts: {
 				seller: { defaultsTo: k.identityDefault() },
 				addItemRequest: { defaultsTo: defaultsToAddItemRequestPda("mint") },
+				...sellerPnftDefault(),
 			},
 		},
 		"mallowGumball.cancelAddNftRequest": {
@@ -314,6 +365,7 @@ kinobi.update(
 					defaultsTo: defaultsToAssociatedTokenPda("mint", "seller"),
 				},
 				addItemRequest: { defaultsTo: defaultsToAddItemRequestPda("mint") },
+				...sellerWithMetadataPnftDefault(),
 			},
 		},
 		"mallowGumball.removeNft": {
@@ -324,6 +376,7 @@ kinobi.update(
 				tokenAccount: {
 					defaultsTo: defaultsToAssociatedTokenPda("mint", "authority"),
 				},
+				...sellerWithMetadataPnftDefault(),
 			},
 		},
 		"mallowGumball.addCoreAsset": {
@@ -387,6 +440,7 @@ kinobi.update(
 				buyerTokenAccount: {
 					defaultsTo: defaultsToAssociatedTokenPda("mint", "buyer"),
 				},
+				...claimPnftDefault(),
 			},
 		},
 		"mallowGumball.claimCoreAsset": {
@@ -433,6 +487,7 @@ kinobi.update(
 						ifTrue: defaultsToAssociatedTokenPda("paymentMint", "seller"),
 					}),
 				},
+				...claimPnftDefault(),
 			},
 		},
 		"mallowGumball.settleCoreAssetSale": {
@@ -489,9 +544,22 @@ kinobi.update(
 kinobi.update(new k.FlattenInstructionArgsStructVisitor());
 
 const addItemDefaultArgs = { sellerProofPath: k.vNone() };
+const nftDefaultArgs = {
+	authRulesProgram: k.vNone(),
+	sellerTokenRecord: k.vNone(),
+	buyerTokenRecord: k.vNone(),
+	authorityPdaTokenRecord: k.vNone(),
+	instructions: k.vNone(),
+	authRules: k.vNone(),
+};
 kinobi.update(
 	new k.SetStructDefaultValuesVisitor({
-		addNftInstructionData: addItemDefaultArgs,
+		addNftInstructionData: { ...addItemDefaultArgs, ...nftDefaultArgs },
+		removeNftInstructionData: nftDefaultArgs,
+		claimNftInstructionData: nftDefaultArgs,
+		settleNftSaleInstructionData: nftDefaultArgs,
+		requestAddNftInstructionData: addItemDefaultArgs,
+		cancelAddNftRequestInstructionData: addItemDefaultArgs,
 		addCoreAssetInstructionData: addItemDefaultArgs,
 		addTokensInstructionData: addItemDefaultArgs,
 		initializeGumballMachineInstructionData: {

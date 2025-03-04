@@ -1,8 +1,12 @@
 use crate::{
-    constants::{ADD_ITEM_REQUEST_SEED, AUTHORITY_SEED, SELLER_HISTORY_SEED},
-    thaw_and_revoke_nft, AddItemRequest, AssociatedToken, GumballError, SellerHistory, Token,
+    constants::{
+        ADD_ITEM_REQUEST_SEED, AUTHORITY_SEED, MPL_TOKEN_AUTH_RULES_PROGRAM, SELLER_HISTORY_SEED,
+    },
+    thaw_and_revoke_nft, thaw_and_revoke_nft_v2, AddItemRequest, AssociatedToken, GumballError,
+    SellerHistory, Token,
 };
 use anchor_lang::prelude::*;
+use mpl_token_metadata::accounts::Metadata;
 
 /// Add nft to a gumball machine.
 #[derive(Accounts)]
@@ -73,6 +77,22 @@ pub struct CancelAddNftRequest<'info> {
 
     system_program: Program<'info, System>,
     rent: Sysvar<'info, Rent>,
+
+    /// OPTIONAL PNFT ACCOUNTS
+    /// /// CHECK: Safe due to token metadata program check
+    #[account(mut)]
+    pub metadata: Option<UncheckedAccount<'info>>,
+    /// CHECK: Safe due to token metadata program check
+    #[account(mut)]
+    pub seller_token_record: Option<UncheckedAccount<'info>>,
+    /// CHECK: Safe due to token metadata program check
+    pub auth_rules: Option<UncheckedAccount<'info>>,
+    /// CHECK: Safe due to address check
+    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    pub instructions: Option<UncheckedAccount<'info>>,
+    /// CHECK: Safe due to address check
+    #[account(address = MPL_TOKEN_AUTH_RULES_PROGRAM)]
+    pub auth_rules_program: Option<UncheckedAccount<'info>>,
 }
 
 pub fn cancel_add_nft_request(ctx: Context<CancelAddNftRequest>) -> Result<()> {
@@ -95,20 +115,42 @@ pub fn cancel_add_nft_request(ctx: Context<CancelAddNftRequest>) -> Result<()> {
         &[ctx.bumps.authority_pda],
     ];
 
-    thaw_and_revoke_nft(
-        seller,
-        mint,
-        token_account,
-        authority_pda_token_account,
-        edition,
-        authority_pda,
-        &auth_seeds,
-        token_metadata_program,
-        token_program,
-        associated_token_program,
-        system_program,
-        rent,
-    )?;
+    if let Some(_) = ctx.accounts.auth_rules_program {
+        let metadata_account = &ctx.accounts.metadata.as_ref().unwrap().to_account_info();
+        let metadata = &Metadata::try_from(metadata_account)?;
+        thaw_and_revoke_nft_v2(
+            seller,
+            mint,
+            token_account,
+            edition,
+            authority_pda,
+            &auth_seeds,
+            token_metadata_program,
+            token_program,
+            metadata_account,
+            metadata,
+            ctx.accounts.seller_token_record.as_ref(),
+            ctx.accounts.auth_rules.as_ref(),
+            system_program,
+            ctx.accounts.instructions.as_ref().unwrap(),
+            ctx.accounts.auth_rules_program.as_ref(),
+        )?;
+    } else {
+        thaw_and_revoke_nft(
+            seller,
+            mint,
+            token_account,
+            authority_pda_token_account,
+            edition,
+            authority_pda,
+            &auth_seeds,
+            token_metadata_program,
+            token_program,
+            associated_token_program,
+            system_program,
+            rent,
+        )?;
+    }
 
     seller_history.item_count -= 1;
 

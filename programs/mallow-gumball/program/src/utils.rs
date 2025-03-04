@@ -1,3 +1,7 @@
+use crate::{
+    constants::GUMBALL_MACHINE_SIZE, ConfigLine, GumballError, GumballMachine, SellerHistory,
+    TokenStandard,
+};
 use anchor_lang::prelude::*;
 use arrayref::array_ref;
 use mpl_core::{
@@ -13,9 +17,17 @@ use mpl_core::{
     },
     Asset, Collection,
 };
-use mpl_token_metadata::instructions::{
-    FreezeDelegatedAccountCpi, FreezeDelegatedAccountCpiAccounts, ThawDelegatedAccountCpi,
-    ThawDelegatedAccountCpiAccounts,
+use mpl_token_metadata::{
+    accounts::{Metadata, TokenRecord},
+    instructions::{
+        DelegateCpiBuilder, FreezeDelegatedAccountCpi, FreezeDelegatedAccountCpiAccounts,
+        LockCpiBuilder, RevokeCpiBuilder, ThawDelegatedAccountCpi, ThawDelegatedAccountCpiAccounts,
+        UnlockCpiBuilder,
+    },
+    types::{
+        AuthorizationData, DelegateArgs, LockArgs, ProgrammableConfig, RevokeArgs,
+        TokenDelegateRole, TokenStandard as MplTokenStandard, UnlockArgs,
+    },
 };
 use solana_program::{
     account_info::AccountInfo,
@@ -25,11 +37,7 @@ use solana_program::{
 };
 use spl_associated_token_account::instruction::create_associated_token_account_idempotent;
 use spl_token::instruction::{approve, transfer_checked};
-use utils::{assert_keys_equal, verify_proof};
-
-use crate::{
-    constants::GUMBALL_MACHINE_SIZE, ConfigLine, GumballError, GumballMachine, SellerHistory,
-};
+use utils::{assert_keys_equal, get_auth_payload, verify_proof};
 
 /// Anchor wrapper for Token program.
 #[derive(Debug, Clone)]
@@ -523,6 +531,264 @@ pub fn thaw_and_revoke_nft<'a>(
         ],
         &[&authority_seeds],
     )?;
+    Ok(())
+}
+
+pub fn approve_and_freeze_nft_v2<'a>(
+    owner: &AccountInfo<'a>,
+    mint: &AccountInfo<'a>,
+    token_account: &AccountInfo<'a>,
+    edition: &AccountInfo<'a>,
+    new_authority_info: &AccountInfo<'a>,
+    new_authority_seeds: &[&[u8]],
+    token_metadata_program: &AccountInfo<'a>,
+    token_program: &AccountInfo<'a>,
+    metadata_info: &AccountInfo<'a>,
+    metadata: &Metadata,
+    token_record: Option<&UncheckedAccount<'a>>,
+    rules: Option<&UncheckedAccount<'a>>,
+    system_program: &AccountInfo<'a>,
+    sysvar_instructions: &UncheckedAccount<'a>,
+    auth_rules_program: Option<&UncheckedAccount<'a>>,
+) -> Result<()> {
+    let mut delegate_builder = DelegateCpiBuilder::new(token_metadata_program);
+    delegate_builder
+        .delegate(new_authority_info)
+        .authority(owner)
+        .metadata(metadata_info)
+        .master_edition(Some(edition))
+        .mint(mint)
+        .token(Some(token_account))
+        .payer(owner)
+        .spl_token_program(Some(token_program))
+        .system_program(system_program)
+        .sysvar_instructions(sysvar_instructions);
+
+    let mut delegate_args = DelegateArgs::StandardV1 { amount: 1 };
+
+    let mut lock_builder = LockCpiBuilder::new(token_metadata_program);
+    lock_builder
+        .authority(new_authority_info)
+        .token(token_account)
+        .mint(mint)
+        .metadata(metadata_info)
+        .edition(Some(edition))
+        .payer(owner)
+        .spl_token_program(Some(token_program))
+        .system_program(system_program)
+        .sysvar_instructions(sysvar_instructions);
+
+    if let Some(standard) = &metadata.token_standard {
+        if *standard == MplTokenStandard::ProgrammableNonFungible
+            || *standard == MplTokenStandard::ProgrammableNonFungibleEdition
+        {
+            delegate_args = DelegateArgs::LockedTransferV1 {
+                amount: 1,
+                locked_address: new_authority_info.key(),
+                authorization_data: Some(AuthorizationData {
+                    payload: get_auth_payload(new_authority_info),
+                }),
+            };
+            delegate_builder.token_record(token_record.map(|acc| acc.as_ref()));
+
+            lock_builder.token_record(token_record.map(|acc| acc.as_ref()));
+        }
+    }
+
+    if let Some(config) = &metadata.programmable_config {
+        match *config {
+            ProgrammableConfig::V1 { rule_set } => {
+                if let Some(_rule_set) = rule_set {
+                    delegate_builder
+                        .authorization_rules_program(auth_rules_program.map(|acc| acc.as_ref()));
+                    delegate_builder.authorization_rules(rules.map(|acc| acc.as_ref()));
+
+                    lock_builder
+                        .authorization_rules_program(auth_rules_program.map(|acc| acc.as_ref()));
+                    lock_builder.authorization_rules(rules.map(|acc| acc.as_ref()));
+                }
+            }
+        }
+    }
+
+    delegate_builder.delegate_args(delegate_args);
+    delegate_builder.invoke()?;
+
+    lock_builder.lock_args(LockArgs::V1 {
+        authorization_data: Some(AuthorizationData {
+            payload: get_auth_payload(new_authority_info),
+        }),
+    });
+    lock_builder.invoke_signed(&[new_authority_seeds])?;
+
+    Ok(())
+}
+
+pub fn token_standard_from_mpl_token_standard(metadata: &Metadata) -> Result<TokenStandard> {
+    if let Some(standard) = &metadata.token_standard {
+        if *standard == MplTokenStandard::ProgrammableNonFungible
+            || *standard == MplTokenStandard::ProgrammableNonFungibleEdition
+        {
+            return Ok(TokenStandard::ProgrammableNonFungible);
+        }
+
+        if *standard == MplTokenStandard::Fungible || *standard == MplTokenStandard::FungibleAsset {
+            return Ok(TokenStandard::Fungible);
+        }
+    }
+
+    Ok(TokenStandard::NonFungible)
+}
+
+pub fn thaw_and_revoke_nft_v2<'a>(
+    owner: &AccountInfo<'a>,
+    mint: &AccountInfo<'a>,
+    token_account: &AccountInfo<'a>,
+    edition: &AccountInfo<'a>,
+    authority: &AccountInfo<'a>,
+    authority_seeds: &[&[u8]],
+    token_metadata_program: &AccountInfo<'a>,
+    token_program: &AccountInfo<'a>,
+    metadata_info: &AccountInfo<'a>,
+    metadata: &Metadata,
+    token_record: Option<&UncheckedAccount<'a>>,
+    rules: Option<&UncheckedAccount<'a>>,
+    system_program: &AccountInfo<'a>,
+    sysvar_instructions: &UncheckedAccount<'a>,
+    auth_rules_program: Option<&UncheckedAccount<'a>>,
+) -> Result<()> {
+    let mut unlock_builder = UnlockCpiBuilder::new(token_metadata_program);
+    unlock_builder
+        .authority(authority)
+        .token_owner(Some(owner))
+        .token(token_account)
+        .mint(mint)
+        .metadata(metadata_info)
+        .edition(Some(edition))
+        .payer(owner)
+        .spl_token_program(Some(token_program))
+        .system_program(system_program)
+        .sysvar_instructions(sysvar_instructions);
+
+    let mut revoke_builder = RevokeCpiBuilder::new(token_metadata_program);
+    revoke_builder
+        .delegate(authority)
+        .authority(owner)
+        .metadata(metadata_info)
+        .master_edition(Some(edition))
+        .mint(mint)
+        .token(Some(token_account))
+        .payer(owner)
+        .spl_token_program(Some(token_program))
+        .system_program(system_program)
+        .sysvar_instructions(sysvar_instructions);
+    let mut revoke_args = RevokeArgs::StandardV1;
+
+    if let Some(standard) = &metadata.token_standard {
+        if *standard == MplTokenStandard::ProgrammableNonFungible
+            || *standard == MplTokenStandard::ProgrammableNonFungibleEdition
+        {
+            unlock_builder.token_record(token_record.map(|acc| acc.as_ref()));
+
+            let token_record_info = &token_record.unwrap().to_account_info();
+            let token_record_data = TokenRecord::try_from(token_record_info)?;
+            let delegate_role = token_record_data.delegate_role.unwrap();
+            if delegate_role == TokenDelegateRole::Migration {
+                revoke_args = RevokeArgs::MigrationV1;
+            } else {
+                revoke_args = RevokeArgs::LockedTransferV1;
+            }
+            revoke_builder.token_record(token_record.map(|acc| acc.as_ref()));
+        }
+    }
+
+    if let Some(config) = &metadata.programmable_config {
+        match *config {
+            ProgrammableConfig::V1 { rule_set } => {
+                if let Some(_rule_set) = rule_set {
+                    unlock_builder
+                        .authorization_rules_program(auth_rules_program.map(|acc| acc.as_ref()));
+                    unlock_builder.authorization_rules(rules.map(|acc| acc.as_ref()));
+
+                    revoke_builder
+                        .authorization_rules_program(auth_rules_program.map(|acc| acc.as_ref()));
+                    revoke_builder.authorization_rules(rules.map(|acc| acc.as_ref()));
+                }
+            }
+        }
+    }
+
+    unlock_builder.unlock_args(UnlockArgs::V1 {
+        authorization_data: Some(AuthorizationData {
+            payload: get_auth_payload(authority),
+        }),
+    });
+    unlock_builder.invoke_signed(&[authority_seeds])?;
+
+    revoke_builder.revoke_args(revoke_args);
+    revoke_builder.invoke()?;
+
+    Ok(())
+}
+
+pub fn thaw_nft<'a>(
+    payer: &AccountInfo<'a>,
+    owner: &AccountInfo<'a>,
+    mint: &AccountInfo<'a>,
+    token_account: &AccountInfo<'a>,
+    edition: &AccountInfo<'a>,
+    authority: &AccountInfo<'a>,
+    authority_seeds: &[&[u8]],
+    token_metadata_program: &AccountInfo<'a>,
+    token_program: &AccountInfo<'a>,
+    metadata_info: &AccountInfo<'a>,
+    metadata: &Metadata,
+    token_record: Option<&UncheckedAccount<'a>>,
+    rules: Option<&UncheckedAccount<'a>>,
+    system_program: &AccountInfo<'a>,
+    sysvar_instructions: &UncheckedAccount<'a>,
+    auth_rules_program: Option<&UncheckedAccount<'a>>,
+) -> Result<()> {
+    let mut unlock_builder = UnlockCpiBuilder::new(token_metadata_program);
+    unlock_builder
+        .authority(authority)
+        .token_owner(Some(owner))
+        .token(token_account)
+        .mint(mint)
+        .metadata(metadata_info)
+        .edition(Some(edition))
+        .payer(payer)
+        .spl_token_program(Some(token_program))
+        .system_program(system_program)
+        .sysvar_instructions(sysvar_instructions);
+
+    if let Some(standard) = &metadata.token_standard {
+        if *standard == MplTokenStandard::ProgrammableNonFungible
+            || *standard == MplTokenStandard::ProgrammableNonFungibleEdition
+        {
+            unlock_builder.token_record(token_record.map(|acc| acc.as_ref()));
+        }
+    }
+
+    if let Some(config) = &metadata.programmable_config {
+        match *config {
+            ProgrammableConfig::V1 { rule_set } => {
+                if let Some(_rule_set) = rule_set {
+                    unlock_builder
+                        .authorization_rules_program(auth_rules_program.map(|acc| acc.as_ref()));
+                    unlock_builder.authorization_rules(rules.map(|acc| acc.as_ref()));
+                }
+            }
+        }
+    }
+
+    unlock_builder.unlock_args(UnlockArgs::V1 {
+        authorization_data: Some(AuthorizationData {
+            payload: get_auth_payload(authority),
+        }),
+    });
+    unlock_builder.invoke_signed(&[authority_seeds])?;
+
     Ok(())
 }
 

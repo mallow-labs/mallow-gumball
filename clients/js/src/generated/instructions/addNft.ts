@@ -9,6 +9,7 @@
 import {
   findMasterEditionPda,
   findMetadataPda,
+  findTokenRecordPda,
 } from '@metaplex-foundation/mpl-token-metadata';
 import { findAssociatedTokenPda } from '@metaplex-foundation/mpl-toolbox';
 import {
@@ -18,6 +19,7 @@ import {
   OptionOrNullable,
   Pda,
   PublicKey,
+  publicKey,
   Signer,
   TransactionBuilder,
   transactionBuilder,
@@ -56,6 +58,11 @@ export type AddNftInstructionAccounts = {
   tokenProgram?: PublicKey | Pda;
   tokenMetadataProgram?: PublicKey | Pda;
   systemProgram?: PublicKey | Pda;
+  /** OPTIONAL PNFT ACCOUNTS */
+  sellerTokenRecord?: PublicKey | Pda;
+  authRules?: PublicKey | Pda;
+  instructions?: PublicKey | Pda;
+  authRulesProgram?: PublicKey | Pda;
 };
 
 // Data.
@@ -126,7 +133,7 @@ export function addNft(
       isWritable: true,
       value: input.tokenAccount ?? null,
     },
-    metadata: { index: 6, isWritable: false, value: input.metadata ?? null },
+    metadata: { index: 6, isWritable: true, value: input.metadata ?? null },
     edition: { index: 7, isWritable: false, value: input.edition ?? null },
     tokenProgram: {
       index: 8,
@@ -142,6 +149,22 @@ export function addNft(
       index: 10,
       isWritable: false,
       value: input.systemProgram ?? null,
+    },
+    sellerTokenRecord: {
+      index: 11,
+      isWritable: true,
+      value: input.sellerTokenRecord ?? null,
+    },
+    authRules: { index: 12, isWritable: false, value: input.authRules ?? null },
+    instructions: {
+      index: 13,
+      isWritable: false,
+      value: input.instructions ?? null,
+    },
+    authRulesProgram: {
+      index: 14,
+      isWritable: false,
+      value: input.authRulesProgram ?? null,
     },
   };
 
@@ -200,6 +223,21 @@ export function addNft(
       '11111111111111111111111111111111'
     );
     resolvedAccounts.systemProgram.isWritable = false;
+  }
+  if (!resolvedAccounts.sellerTokenRecord.value) {
+    if (resolvedAccounts.authRulesProgram.value) {
+      resolvedAccounts.sellerTokenRecord.value = findTokenRecordPda(context, {
+        mint: expectPublicKey(resolvedAccounts.mint.value),
+        token: expectPublicKey(resolvedAccounts.tokenAccount.value),
+      });
+    }
+  }
+  if (!resolvedAccounts.instructions.value) {
+    if (resolvedAccounts.authRulesProgram.value) {
+      resolvedAccounts.instructions.value = publicKey(
+        'Sysvar1nstructions1111111111111111111111111'
+      );
+    }
   }
 
   // Accounts in order.

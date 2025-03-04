@@ -1,7 +1,12 @@
+use std::collections::HashMap;
+
 use crate::{assert_is_ata, error::Error, is_native_mint};
 use anchor_lang::prelude::*;
 use anchor_spl::token;
 use anchor_spl::token::Transfer;
+use mpl_token_metadata::accounts::Metadata;
+use mpl_token_metadata::instructions::TransferV1CpiBuilder;
+use mpl_token_metadata::types::{Payload, PayloadType, ProgrammableConfig, TokenStandard};
 use solana_program::program::{invoke, invoke_signed};
 use solana_program::{account_info::AccountInfo, system_instruction};
 use spl_associated_token_account::instruction::create_associated_token_account;
@@ -254,4 +259,97 @@ pub fn make_ata<'a>(
     }
 
     Ok(())
+}
+
+pub fn transfer_nft<'a>(
+    from: &AccountInfo<'a>,
+    to: &AccountInfo<'a>,
+    from_token_account: &AccountInfo<'a>,
+    to_token_account: &AccountInfo<'a>,
+    mint: &AccountInfo<'a>,
+    edition: &AccountInfo<'a>,
+    metadata: &Metadata,
+    metadata_info: &AccountInfo<'a>,
+    fee_payer: &AccountInfo<'a>,
+    ata_program: &AccountInfo<'a>,
+    token_program: &AccountInfo<'a>,
+    token_metadata_program: &AccountInfo<'a>,
+    system_program: &AccountInfo<'a>,
+    rent: &AccountInfo<'a>,
+    authority: &AccountInfo<'a>,
+    authority_seeds: Option<&[&[u8]]>,
+    fee_payer_seeds: Option<&[&[u8]]>,
+    from_token_record: Option<&UncheckedAccount<'a>>,
+    to_token_record: Option<&UncheckedAccount<'a>>,
+    rules: Option<&UncheckedAccount<'a>>,
+    auth_rules_program: Option<&UncheckedAccount<'a>>,
+    sysvar_instructions: &UncheckedAccount<'a>,
+) -> Result<()> {
+    ensure_ata(
+        to_token_account,
+        to,
+        mint,
+        fee_payer,
+        ata_program,
+        token_program,
+        system_program,
+        rent,
+        fee_payer_seeds,
+    )?;
+
+    let mut builder = TransferV1CpiBuilder::new(token_metadata_program);
+    builder
+        .authority(authority)
+        .token_owner(from)
+        .token(from_token_account)
+        .destination_token(to_token_account)
+        .destination_owner(to)
+        .mint(mint)
+        .metadata(metadata_info)
+        .edition(Some(edition))
+        .payer(fee_payer)
+        .system_program(system_program)
+        .sysvar_instructions(sysvar_instructions)
+        .spl_token_program(token_program)
+        .spl_ata_program(ata_program);
+
+    if let Some(standard) = &metadata.token_standard {
+        if *standard == TokenStandard::ProgrammableNonFungible
+            || *standard == TokenStandard::ProgrammableNonFungibleEdition
+        {
+            builder.token_record(from_token_record.map(|acc| acc.as_ref()));
+            builder.destination_token_record(to_token_record.map(|acc| acc.as_ref()));
+        }
+    }
+
+    if let Some(config) = &metadata.programmable_config {
+        match *config {
+            ProgrammableConfig::V1 { rule_set } => {
+                if let Some(_rule_set) = rule_set {
+                    builder.authorization_rules_program(auth_rules_program.map(|acc| acc.as_ref()));
+                    builder.authorization_rules(rules.map(|acc| acc.as_ref()));
+                }
+            }
+        }
+    }
+
+    if let Some(seeds) = authority_seeds {
+        builder.invoke_signed(&[seeds])?;
+    } else {
+        builder.invoke()?;
+    }
+
+    Ok(())
+}
+
+pub fn get_auth_payload(delegate: &AccountInfo) -> Payload {
+    let mut map = HashMap::new();
+    map.insert(
+        "Destination".to_owned(),
+        PayloadType::Pubkey(delegate.key()),
+    );
+    map.insert("Source".to_owned(), PayloadType::Pubkey(delegate.key()));
+    map.insert("Authority".to_owned(), PayloadType::Pubkey(delegate.key()));
+
+    Payload { map }
 }

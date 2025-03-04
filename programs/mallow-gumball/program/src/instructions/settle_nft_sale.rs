@@ -1,10 +1,11 @@
 use crate::{
     assert_config_line,
-    constants::{AUTHORITY_SEED, SELLER_HISTORY_SEED},
+    constants::{AUTHORITY_SEED, MPL_TOKEN_AUTH_RULES_PROGRAM, SELLER_HISTORY_SEED},
     events::SettleItemSaleEvent,
     processors::{self, claim_proceeds, is_item_claimed},
     state::GumballMachine,
-    AssociatedToken, ConfigLine, GumballError, GumballState, SellerHistory, Token, TokenStandard,
+    token_standard_from_mpl_token_standard, AssociatedToken, ConfigLine, GumballError,
+    GumballState, SellerHistory, Token, TokenStandard,
 };
 use anchor_lang::prelude::*;
 use mpl_token_metadata::{accounts::Metadata, instructions::UpdateMetadataAccountV2CpiBuilder};
@@ -118,6 +119,25 @@ pub struct SettleNftSale<'info> {
     /// CHECK: Safe due to constraint
     #[account(address = mpl_token_metadata::ID)]
     token_metadata_program: UncheckedAccount<'info>,
+
+    /// OPTIONAL PNFT ACCOUNTS
+    /// CHECK: Safe due to token metadata program check
+    #[account(mut)]
+    pub seller_token_record: Option<UncheckedAccount<'info>>,
+    /// CHECK: Safe due to token metadata program check
+    #[account(mut)]
+    pub authority_pda_token_record: Option<UncheckedAccount<'info>>,
+    /// CHECK: Safe due to token metadata program check
+    #[account(mut)]
+    pub buyer_token_record: Option<UncheckedAccount<'info>>,
+    /// CHECK: Safe due to token metadata program check
+    pub auth_rules: Option<UncheckedAccount<'info>>,
+    /// CHECK: Safe due to address check
+    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    pub instructions: Option<UncheckedAccount<'info>>,
+    /// CHECK: Safe due to address check
+    #[account(address = MPL_TOKEN_AUTH_RULES_PROGRAM)]
+    pub auth_rules_program: Option<UncheckedAccount<'info>>,
 }
 
 pub fn settle_nft_sale<'info>(
@@ -142,6 +162,9 @@ pub fn settle_nft_sale<'info>(
     let metadata = &ctx.accounts.metadata.to_account_info();
     let edition = &ctx.accounts.edition.to_account_info();
     let mint = &ctx.accounts.mint.to_account_info();
+    let metadata_info = &ctx.accounts.metadata.to_account_info();
+    let metadata = &Metadata::try_from(metadata)?;
+    let token_standard = token_standard_from_mpl_token_standard(&metadata)?;
 
     assert_config_line(
         gumball_machine,
@@ -150,11 +173,11 @@ pub fn settle_nft_sale<'info>(
             mint: mint.key(),
             seller: seller.key(),
             buyer: buyer.key(),
-            token_standard: TokenStandard::NonFungible,
+            token_standard,
         },
     )?;
 
-    let royalty_info = get_verified_royalty_info(metadata, mint)?;
+    let royalty_info = get_verified_royalty_info(metadata_info, mint)?;
 
     let payment_mint_info = ctx
         .accounts
@@ -204,49 +227,79 @@ pub fn settle_nft_sale<'info>(
         &[ctx.bumps.authority_pda],
     ];
 
-    if royalty_info.is_primary_sale {
-        let metadata_account = Metadata::try_from(metadata)?;
-        if metadata_account.update_authority == payer.key() {
-            let mut builder = UpdateMetadataAccountV2CpiBuilder::new(token_metadata_program);
-            builder
-                .metadata(metadata)
-                .update_authority(payer)
-                .primary_sale_happened(true)
-                .invoke()?;
-        }
+    if royalty_info.is_primary_sale
+        && token_standard == TokenStandard::NonFungible
+        && metadata.update_authority == payer.key()
+    {
+        let mut builder = UpdateMetadataAccountV2CpiBuilder::new(token_metadata_program);
+        builder
+            .metadata(metadata_info)
+            .update_authority(payer)
+            .primary_sale_happened(true)
+            .invoke()?;
     }
 
     let mut amount = 0;
     if !is_item_claimed(gumball_machine, index)? {
         amount = 1;
 
-        processors::claim_nft(
-            gumball_machine,
-            index,
-            authority_pda,
-            payer,
-            if buyer.key() == Pubkey::default() {
-                seller
-            } else {
-                buyer
-            },
-            if buyer.key() == Pubkey::default() {
-                token_account
-            } else {
-                buyer_token_account
-            },
-            seller,
-            token_account,
-            authority_pda_token_account,
-            mint,
-            edition,
-            token_program,
-            associated_token_program,
-            token_metadata_program,
-            system_program,
-            rent,
-            &auth_seeds,
-        )?;
+        if let Some(_) = ctx.accounts.auth_rules_program {
+            processors::claim_nft_v2(
+                gumball_machine,
+                index,
+                authority_pda,
+                payer,
+                buyer,
+                buyer_token_account,
+                seller,
+                token_account,
+                authority_pda_token_account,
+                mint,
+                edition,
+                metadata,
+                metadata_info,
+                token_program,
+                associated_token_program,
+                token_metadata_program,
+                system_program,
+                rent,
+                &auth_seeds,
+                ctx.accounts.seller_token_record.as_ref(),
+                ctx.accounts.authority_pda_token_record.as_ref(),
+                ctx.accounts.buyer_token_record.as_ref(),
+                ctx.accounts.auth_rules.as_ref(),
+                ctx.accounts.instructions.as_ref().unwrap(),
+                ctx.accounts.auth_rules_program.as_ref(),
+            )?;
+        } else {
+            processors::claim_nft(
+                gumball_machine,
+                index,
+                authority_pda,
+                payer,
+                if buyer.key() == Pubkey::default() {
+                    seller
+                } else {
+                    buyer
+                },
+                if buyer.key() == Pubkey::default() {
+                    token_account
+                } else {
+                    buyer_token_account
+                },
+                seller,
+                token_account,
+                authority_pda_token_account,
+                mint,
+                edition,
+                token_program,
+                associated_token_program,
+                token_metadata_program,
+                system_program,
+                rent,
+                &auth_seeds,
+            )?;
+        }
     }
 
     let total_proceeds = claim_proceeds(

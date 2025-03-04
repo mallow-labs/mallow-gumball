@@ -157,7 +157,7 @@ export type MallowGumball = {
         },
         {
           name: 'metadata';
-          isMut: false;
+          isMut: true;
           isSigner: false;
         },
         {
@@ -179,6 +179,31 @@ export type MallowGumball = {
           name: 'systemProgram';
           isMut: false;
           isSigner: false;
+        },
+        {
+          name: 'sellerTokenRecord';
+          isMut: true;
+          isSigner: false;
+          isOptional: true;
+          docs: ['OPTIONAL PNFT ACCOUNTS'];
+        },
+        {
+          name: 'authRules';
+          isMut: false;
+          isSigner: false;
+          isOptional: true;
+        },
+        {
+          name: 'instructions';
+          isMut: false;
+          isSigner: false;
+          isOptional: true;
+        },
+        {
+          name: 'authRulesProgram';
+          isMut: false;
+          isSigner: false;
+          isOptional: true;
         }
       ];
       args: [
@@ -415,7 +440,7 @@ export type MallowGumball = {
         },
         {
           name: 'metadata';
-          isMut: false;
+          isMut: true;
           isSigner: false;
         },
         {
@@ -437,6 +462,31 @@ export type MallowGumball = {
           name: 'systemProgram';
           isMut: false;
           isSigner: false;
+        },
+        {
+          name: 'sellerTokenRecord';
+          isMut: true;
+          isSigner: false;
+          isOptional: true;
+          docs: ['OPTIONAL PNFT ACCOUNTS'];
+        },
+        {
+          name: 'authRules';
+          isMut: false;
+          isSigner: false;
+          isOptional: true;
+        },
+        {
+          name: 'instructions';
+          isMut: false;
+          isSigner: false;
+          isOptional: true;
+        },
+        {
+          name: 'authRulesProgram';
+          isMut: false;
+          isSigner: false;
+          isOptional: true;
         }
       ];
       args: [];
@@ -570,6 +620,40 @@ export type MallowGumball = {
           name: 'rent';
           isMut: false;
           isSigner: false;
+        },
+        {
+          name: 'metadata';
+          isMut: true;
+          isSigner: false;
+          isOptional: true;
+          docs: [
+            'OPTIONAL PNFT ACCOUNTS',
+            '/// CHECK: Safe due to token metadata program check'
+          ];
+        },
+        {
+          name: 'sellerTokenRecord';
+          isMut: true;
+          isSigner: false;
+          isOptional: true;
+        },
+        {
+          name: 'authRules';
+          isMut: false;
+          isSigner: false;
+          isOptional: true;
+        },
+        {
+          name: 'instructions';
+          isMut: false;
+          isSigner: false;
+          isOptional: true;
+        },
+        {
+          name: 'authRulesProgram';
+          isMut: false;
+          isSigner: false;
+          isOptional: true;
         }
       ];
       args: [];
@@ -756,6 +840,40 @@ export type MallowGumball = {
           name: 'rent';
           isMut: false;
           isSigner: false;
+        },
+        {
+          name: 'metadata';
+          isMut: true;
+          isSigner: false;
+          isOptional: true;
+          docs: [
+            'OPTIONAL PNFT ACCOUNTS',
+            '/// CHECK: Safe due to token metadata program check'
+          ];
+        },
+        {
+          name: 'sellerTokenRecord';
+          isMut: true;
+          isSigner: false;
+          isOptional: true;
+        },
+        {
+          name: 'authRules';
+          isMut: false;
+          isSigner: false;
+          isOptional: true;
+        },
+        {
+          name: 'instructions';
+          isMut: false;
+          isSigner: false;
+          isOptional: true;
+        },
+        {
+          name: 'authRulesProgram';
+          isMut: false;
+          isSigner: false;
+          isOptional: true;
         }
       ];
       args: [
@@ -1269,6 +1387,43 @@ export type MallowGumball = {
           isSigner: false;
         },
         {
+          name: 'sellerTokenRecord';
+          isMut: true;
+          isSigner: false;
+          isOptional: true;
+          docs: ['OPTIONAL PNFT ACCOUNTS'];
+        },
+        {
+          name: 'authorityPdaTokenRecord';
+          isMut: true;
+          isSigner: false;
+          isOptional: true;
+        },
+        {
+          name: 'buyerTokenRecord';
+          isMut: true;
+          isSigner: false;
+          isOptional: true;
+        },
+        {
+          name: 'authRules';
+          isMut: false;
+          isSigner: false;
+          isOptional: true;
+        },
+        {
+          name: 'instructions';
+          isMut: false;
+          isSigner: false;
+          isOptional: true;
+        },
+        {
+          name: 'authRulesProgram';
+          isMut: false;
+          isSigner: false;
+          isOptional: true;
+        },
+        {
           name: 'eventAuthority';
           isMut: false;
           isSigner: false;
@@ -1693,6 +1848,43 @@ export type MallowGumball = {
           name: 'tokenMetadataProgram';
           isMut: false;
           isSigner: false;
+        },
+        {
+          name: 'sellerTokenRecord';
+          isMut: true;
+          isSigner: false;
+          isOptional: true;
+          docs: ['OPTIONAL PNFT ACCOUNTS'];
+        },
+        {
+          name: 'authorityPdaTokenRecord';
+          isMut: true;
+          isSigner: false;
+          isOptional: true;
+        },
+        {
+          name: 'buyerTokenRecord';
+          isMut: true;
+          isSigner: false;
+          isOptional: true;
+        },
+        {
+          name: 'authRules';
+          isMut: false;
+          isSigner: false;
+          isOptional: true;
+        },
+        {
+          name: 'instructions';
+          isMut: false;
+          isSigner: false;
+          isOptional: true;
+        },
+        {
+          name: 'authRulesProgram';
+          isMut: false;
+          isSigner: false;
+          isOptional: true;
         },
         {
           name: 'eventAuthority';
@@ -2313,6 +2505,9 @@ export type MallowGumball = {
           },
           {
             name: 'Fungible';
+          },
+          {
+            name: 'ProgrammableNonFungible';
           }
         ];
       };
@@ -2892,7 +3087,7 @@ export const IDL: MallowGumball = {
         },
         {
           name: 'metadata',
-          isMut: false,
+          isMut: true,
           isSigner: false,
         },
         {
@@ -2914,6 +3109,31 @@ export const IDL: MallowGumball = {
           name: 'systemProgram',
           isMut: false,
           isSigner: false,
+        },
+        {
+          name: 'sellerTokenRecord',
+          isMut: true,
+          isSigner: false,
+          isOptional: true,
+          docs: ['OPTIONAL PNFT ACCOUNTS'],
+        },
+        {
+          name: 'authRules',
+          isMut: false,
+          isSigner: false,
+          isOptional: true,
+        },
+        {
+          name: 'instructions',
+          isMut: false,
+          isSigner: false,
+          isOptional: true,
+        },
+        {
+          name: 'authRulesProgram',
+          isMut: false,
+          isSigner: false,
+          isOptional: true,
         },
       ],
       args: [
@@ -3150,7 +3370,7 @@ export const IDL: MallowGumball = {
         },
         {
           name: 'metadata',
-          isMut: false,
+          isMut: true,
           isSigner: false,
         },
         {
@@ -3172,6 +3392,31 @@ export const IDL: MallowGumball = {
           name: 'systemProgram',
           isMut: false,
           isSigner: false,
+        },
+        {
+          name: 'sellerTokenRecord',
+          isMut: true,
+          isSigner: false,
+          isOptional: true,
+          docs: ['OPTIONAL PNFT ACCOUNTS'],
+        },
+        {
+          name: 'authRules',
+          isMut: false,
+          isSigner: false,
+          isOptional: true,
+        },
+        {
+          name: 'instructions',
+          isMut: false,
+          isSigner: false,
+          isOptional: true,
+        },
+        {
+          name: 'authRulesProgram',
+          isMut: false,
+          isSigner: false,
+          isOptional: true,
         },
       ],
       args: [],
@@ -3305,6 +3550,40 @@ export const IDL: MallowGumball = {
           name: 'rent',
           isMut: false,
           isSigner: false,
+        },
+        {
+          name: 'metadata',
+          isMut: true,
+          isSigner: false,
+          isOptional: true,
+          docs: [
+            'OPTIONAL PNFT ACCOUNTS',
+            '/// CHECK: Safe due to token metadata program check',
+          ],
+        },
+        {
+          name: 'sellerTokenRecord',
+          isMut: true,
+          isSigner: false,
+          isOptional: true,
+        },
+        {
+          name: 'authRules',
+          isMut: false,
+          isSigner: false,
+          isOptional: true,
+        },
+        {
+          name: 'instructions',
+          isMut: false,
+          isSigner: false,
+          isOptional: true,
+        },
+        {
+          name: 'authRulesProgram',
+          isMut: false,
+          isSigner: false,
+          isOptional: true,
         },
       ],
       args: [],
@@ -3491,6 +3770,40 @@ export const IDL: MallowGumball = {
           name: 'rent',
           isMut: false,
           isSigner: false,
+        },
+        {
+          name: 'metadata',
+          isMut: true,
+          isSigner: false,
+          isOptional: true,
+          docs: [
+            'OPTIONAL PNFT ACCOUNTS',
+            '/// CHECK: Safe due to token metadata program check',
+          ],
+        },
+        {
+          name: 'sellerTokenRecord',
+          isMut: true,
+          isSigner: false,
+          isOptional: true,
+        },
+        {
+          name: 'authRules',
+          isMut: false,
+          isSigner: false,
+          isOptional: true,
+        },
+        {
+          name: 'instructions',
+          isMut: false,
+          isSigner: false,
+          isOptional: true,
+        },
+        {
+          name: 'authRulesProgram',
+          isMut: false,
+          isSigner: false,
+          isOptional: true,
         },
       ],
       args: [
@@ -4004,6 +4317,43 @@ export const IDL: MallowGumball = {
           isSigner: false,
         },
         {
+          name: 'sellerTokenRecord',
+          isMut: true,
+          isSigner: false,
+          isOptional: true,
+          docs: ['OPTIONAL PNFT ACCOUNTS'],
+        },
+        {
+          name: 'authorityPdaTokenRecord',
+          isMut: true,
+          isSigner: false,
+          isOptional: true,
+        },
+        {
+          name: 'buyerTokenRecord',
+          isMut: true,
+          isSigner: false,
+          isOptional: true,
+        },
+        {
+          name: 'authRules',
+          isMut: false,
+          isSigner: false,
+          isOptional: true,
+        },
+        {
+          name: 'instructions',
+          isMut: false,
+          isSigner: false,
+          isOptional: true,
+        },
+        {
+          name: 'authRulesProgram',
+          isMut: false,
+          isSigner: false,
+          isOptional: true,
+        },
+        {
           name: 'eventAuthority',
           isMut: false,
           isSigner: false,
@@ -4428,6 +4778,43 @@ export const IDL: MallowGumball = {
           name: 'tokenMetadataProgram',
           isMut: false,
           isSigner: false,
+        },
+        {
+          name: 'sellerTokenRecord',
+          isMut: true,
+          isSigner: false,
+          isOptional: true,
+          docs: ['OPTIONAL PNFT ACCOUNTS'],
+        },
+        {
+          name: 'authorityPdaTokenRecord',
+          isMut: true,
+          isSigner: false,
+          isOptional: true,
+        },
+        {
+          name: 'buyerTokenRecord',
+          isMut: true,
+          isSigner: false,
+          isOptional: true,
+        },
+        {
+          name: 'authRules',
+          isMut: false,
+          isSigner: false,
+          isOptional: true,
+        },
+        {
+          name: 'instructions',
+          isMut: false,
+          isSigner: false,
+          isOptional: true,
+        },
+        {
+          name: 'authRulesProgram',
+          isMut: false,
+          isSigner: false,
+          isOptional: true,
         },
         {
           name: 'eventAuthority',
@@ -5048,6 +5435,9 @@ export const IDL: MallowGumball = {
           },
           {
             name: 'Fungible',
+          },
+          {
+            name: 'ProgrammableNonFungible',
           },
         ],
       },

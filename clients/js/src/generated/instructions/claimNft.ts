@@ -9,6 +9,7 @@
 import {
   findMasterEditionPda,
   findMetadataPda,
+  findTokenRecordPda,
 } from '@metaplex-foundation/mpl-token-metadata';
 import { findAssociatedTokenPda } from '@metaplex-foundation/mpl-toolbox';
 import {
@@ -62,6 +63,13 @@ export type ClaimNftInstructionAccounts = {
   metadata?: PublicKey | Pda;
   edition?: PublicKey | Pda;
   tokenMetadataProgram?: PublicKey | Pda;
+  /** OPTIONAL PNFT ACCOUNTS */
+  sellerTokenRecord?: PublicKey | Pda;
+  authorityPdaTokenRecord?: PublicKey | Pda;
+  buyerTokenRecord?: PublicKey | Pda;
+  authRules?: PublicKey | Pda;
+  instructions?: PublicKey | Pda;
+  authRulesProgram?: PublicKey | Pda;
   eventAuthority?: PublicKey | Pda;
   program?: PublicKey | Pda;
 };
@@ -165,12 +173,38 @@ export function claimNft(
       isWritable: false,
       value: input.tokenMetadataProgram ?? null,
     },
-    eventAuthority: {
+    sellerTokenRecord: {
       index: 16,
+      isWritable: true,
+      value: input.sellerTokenRecord ?? null,
+    },
+    authorityPdaTokenRecord: {
+      index: 17,
+      isWritable: true,
+      value: input.authorityPdaTokenRecord ?? null,
+    },
+    buyerTokenRecord: {
+      index: 18,
+      isWritable: true,
+      value: input.buyerTokenRecord ?? null,
+    },
+    authRules: { index: 19, isWritable: false, value: input.authRules ?? null },
+    instructions: {
+      index: 20,
+      isWritable: false,
+      value: input.instructions ?? null,
+    },
+    authRulesProgram: {
+      index: 21,
+      isWritable: false,
+      value: input.authRulesProgram ?? null,
+    },
+    eventAuthority: {
+      index: 22,
       isWritable: false,
       value: input.eventAuthority ?? null,
     },
-    program: { index: 17, isWritable: false, value: input.program ?? null },
+    program: { index: 23, isWritable: false, value: input.program ?? null },
   };
 
   // Arguments.
@@ -253,6 +287,42 @@ export function claimNft(
       'metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s'
     );
     resolvedAccounts.tokenMetadataProgram.isWritable = false;
+  }
+  if (!resolvedAccounts.sellerTokenRecord.value) {
+    if (resolvedAccounts.authRulesProgram.value) {
+      resolvedAccounts.sellerTokenRecord.value = findTokenRecordPda(context, {
+        mint: expectPublicKey(resolvedAccounts.mint.value),
+        token: expectPublicKey(resolvedAccounts.tokenAccount.value),
+      });
+    }
+  }
+  if (!resolvedAccounts.authorityPdaTokenRecord.value) {
+    if (resolvedAccounts.authRulesProgram.value) {
+      resolvedAccounts.authorityPdaTokenRecord.value = findTokenRecordPda(
+        context,
+        {
+          mint: expectPublicKey(resolvedAccounts.mint.value),
+          token: expectPublicKey(
+            resolvedAccounts.authorityPdaTokenAccount.value
+          ),
+        }
+      );
+    }
+  }
+  if (!resolvedAccounts.buyerTokenRecord.value) {
+    if (resolvedAccounts.authRulesProgram.value) {
+      resolvedAccounts.buyerTokenRecord.value = findTokenRecordPda(context, {
+        mint: expectPublicKey(resolvedAccounts.mint.value),
+        token: expectPublicKey(resolvedAccounts.buyerTokenAccount.value),
+      });
+    }
+  }
+  if (!resolvedAccounts.instructions.value) {
+    if (resolvedAccounts.authRulesProgram.value) {
+      resolvedAccounts.instructions.value = publicKey(
+        'Sysvar1nstructions1111111111111111111111111'
+      );
+    }
   }
   if (!resolvedAccounts.eventAuthority.value) {
     resolvedAccounts.eventAuthority.value = findEventAuthorityPda(context);
