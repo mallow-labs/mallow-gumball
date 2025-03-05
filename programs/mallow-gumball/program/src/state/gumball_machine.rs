@@ -35,17 +35,23 @@ pub struct GumballMachine {
     // - (item_capacity / 8) + 1 bit mask to keep track of which items have been claimed
     // - (item_capacity / 8) + 1 bit mask to keep track of which items have been settled
     // - (u32 * item_capacity) mint indices
+    //
+    // - version 3:
+    // - (boolean) disable_primary_split
 }
 
 impl GumballMachine {
+    pub const CURRENT_VERSION: u8 = 3;
+
     /// Gets the size of the gumball machine given the number of items.
-    pub fn get_size(item_count: u64) -> usize {
+    pub fn get_size(item_count: u64, version: u8) -> usize {
         GUMBALL_MACHINE_SIZE
             + 4 // number of items inserted
-            + (CONFIG_LINE_V2_SIZE * item_count as usize) // config lines
+            + ((if version >= 2 { CONFIG_LINE_V2_SIZE } else { CONFIG_LINE_SIZE }) * item_count as usize) // config lines
             + (item_count as usize / 8) + 1 // bit mask tracking claimed items
             + (item_count as usize / 8) + 1 // bit mask tracking settled items
             + 4 + (4 * item_count as usize) // mint indices
+            + if version >= 3 { 1 } else { 0 } // disable_primary_split
     }
 
     pub fn get_config_line_size(&self) -> usize {
@@ -75,6 +81,12 @@ impl GumballMachine {
             .checked_div(8)
             .ok_or(GumballError::NumericalOverflowError)? as usize;
         let position = self.get_settled_items_bit_mask_position()? + mask_size + 1;
+        Ok(position)
+    }
+
+    pub fn get_disable_primary_split_position(&self) -> Result<usize> {
+        let position =
+            self.get_mint_indices_position()? + 4 + (4 * self.settings.item_capacity as usize);
         Ok(position)
     }
 

@@ -32,8 +32,9 @@ pub mod mallow_gumball {
         ctx: Context<Initialize>,
         settings: GumballSettings,
         fee_config: Option<FeeConfig>,
+        disable_primary_split: bool,
     ) -> Result<()> {
-        instructions::initialize(ctx, settings, fee_config)
+        instructions::initialize(ctx, settings, fee_config, disable_primary_split)
     }
 
     /// Updates gumball machine settings.

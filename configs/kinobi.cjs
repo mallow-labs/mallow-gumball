@@ -564,6 +564,7 @@ kinobi.update(
 		addTokensInstructionData: addItemDefaultArgs,
 		initializeGumballMachineInstructionData: {
 			feeConfig: k.vNone(),
+			disablePrimarySplit: k.vScalar(false),
 		},
 	})
 );

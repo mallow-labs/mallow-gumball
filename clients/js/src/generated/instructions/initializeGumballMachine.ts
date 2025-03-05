@@ -19,6 +19,7 @@ import {
 } from '@metaplex-foundation/umi';
 import {
   array,
+  bool,
   mapSerializer,
   option,
   Serializer,
@@ -67,11 +68,13 @@ export type InitializeGumballMachineInstructionData = {
   discriminator: Array<number>;
   settings: GumballSettings;
   feeConfig: Option<FeeConfig>;
+  disablePrimarySplit: boolean;
 };
 
 export type InitializeGumballMachineInstructionDataArgs = {
   settings: GumballSettingsArgs;
   feeConfig?: OptionOrNullable<FeeConfigArgs>;
+  disablePrimarySplit?: boolean;
 };
 
 export function getInitializeGumballMachineInstructionDataSerializer(): Serializer<
@@ -88,6 +91,7 @@ export function getInitializeGumballMachineInstructionDataSerializer(): Serializ
         ['discriminator', array(u8(), { size: 8 })],
         ['settings', getGumballSettingsSerializer()],
         ['feeConfig', option(getFeeConfigSerializer())],
+        ['disablePrimarySplit', bool()],
       ],
       { description: 'InitializeGumballMachineInstructionData' }
     ),
@@ -95,6 +99,7 @@ export function getInitializeGumballMachineInstructionDataSerializer(): Serializ
       ...value,
       discriminator: [175, 175, 109, 31, 13, 152, 155, 237],
       feeConfig: value.feeConfig ?? none(),
+      disablePrimarySplit: value.disablePrimarySplit ?? false,
     })
   ) as Serializer<
     InitializeGumballMachineInstructionDataArgs,

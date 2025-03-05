@@ -437,6 +437,128 @@ test('it splits proceeds for a primary nft sale with multiple creators after cla
   );
 });
 
+test('it only splits royalty portion of proceeds for a primary nft sale with disablePrimarySplit set', async (t) => {
+  const umi = await createUmi();
+
+  const secondCreator = generateSigner(umi).publicKey;
+
+  // Given a gumball machine with some guards.
+  const nft = await createNft(umi, {
+    creators: [
+      { address: umi.identity.publicKey, verified: false, share: 50 },
+      { address: secondCreator, verified: false, share: 50 },
+    ],
+  });
+
+  const gumballMachineSigner = generateSigner(umi);
+  const gumballMachine = gumballMachineSigner.publicKey;
+
+  await create(umi, {
+    gumballMachine: gumballMachineSigner,
+    items: [
+      {
+        id: nft.publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      },
+    ],
+    startSale: true,
+    guards: {
+      botTax: { lamports: sol(0.01), lastInstruction: true },
+      solPayment: { lamports: sol(1) },
+    },
+    settings: {
+      curatorFeeBps: 0,
+    },
+    disablePrimarySplit: true,
+  });
+
+  // When we mint from the gumball guard.
+  const buyerUmi = await createUmi();
+  const buyer = buyerUmi.identity;
+  const payer = await generateSignerWithSol(umi, sol(10));
+  await transactionBuilder()
+    .add(setComputeUnitLimit(umi, { units: 600_000 }))
+    .add(
+      draw(umi, {
+        gumballMachine,
+        payer,
+        buyer,
+        mintArgs: {
+          solPayment: some(true),
+        },
+      })
+    )
+    .sendAndConfirm(umi);
+
+  await transactionBuilder()
+    .add(setComputeUnitLimit(umi, { units: 600_000 }))
+    .add(
+      claimNft(buyerUmi, {
+        gumballMachine,
+        index: 0,
+        payer,
+        buyer: buyerUmi.identity.publicKey,
+        mint: nft.publicKey,
+        seller: umi.identity.publicKey,
+      })
+    )
+    .sendAndConfirm(buyerUmi);
+
+  const sellerPreBalance = await umi.rpc.getBalance(umi.identity.publicKey);
+  const secondCreatorPreBalance = await umi.rpc.getBalance(secondCreator);
+  const authorityPdaPreBalance = await umi.rpc.getBalance(
+    findGumballMachineAuthorityPda(umi, { gumballMachine: gumballMachine })[0]
+  );
+
+  // Then settle the sale
+  await transactionBuilder()
+    .add(setComputeUnitLimit(buyerUmi, { units: 600_000 }))
+    .add(
+      settleNftSale(buyerUmi, {
+        index: 0,
+        gumballMachine,
+        authority: umi.identity.publicKey,
+        seller: umi.identity.publicKey,
+        mint: nft.publicKey,
+        creators: [umi.identity.publicKey, secondCreator],
+      })
+    )
+    .sendAndConfirm(buyerUmi);
+
+  const payerBalance = await umi.rpc.getBalance(payer.publicKey);
+  t.true(isEqualToAmount(payerBalance, sol(9), sol(0.1)));
+
+  const sellerPostBalance = await umi.rpc.getBalance(umi.identity.publicKey);
+  const secondCreatorPostBalance = await umi.rpc.getBalance(secondCreator);
+  const authorityPdaPostBalance = await umi.rpc.getBalance(
+    findGumballMachineAuthorityPda(umi, { gumballMachine: gumballMachine })[0]
+  );
+
+  t.true(
+    isEqualToAmount(
+      sellerPostBalance,
+      addAmounts(sellerPreBalance, sol(0.95)),
+      sol(0.01)
+    )
+  );
+
+  t.true(
+    isEqualToAmount(
+      secondCreatorPostBalance,
+      addAmounts(secondCreatorPreBalance, sol(0.05)),
+      sol(0.01)
+    )
+  );
+
+  t.true(
+    isEqualToAmount(
+      authorityPdaPostBalance,
+      subtractAmounts(authorityPdaPreBalance, sol(1)),
+      sol(0.01)
+    )
+  );
+});
+
 test('it splits proceeds for a primary nft sale with multiple creators before claim', async (t) => {
   const umi = await createUmi();
   const secondCreator = generateSigner(umi).publicKey;

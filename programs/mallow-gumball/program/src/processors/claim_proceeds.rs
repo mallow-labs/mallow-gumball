@@ -53,13 +53,23 @@ pub fn claim_proceeds<'a, 'b>(
 
     account_data[byte_position] |= mask;
 
+    let disable_primary_split_position = gumball_machine.get_disable_primary_split_position()?;
+    let disable_primary_split = if gumball_machine.version >= 3 {
+        // Read the boolean value from the data at the calculated position
+        account_data[disable_primary_split_position] == 1
+    } else {
+        // For versions < 3, this setting doesn't exist, so default to false
+        false
+    };
+
     msg!(
-        "Item processed: byte position={}, mask={}, current value={}, new value={}, bit position={}",
+        "Item processed: byte position={}, mask={}, current value={}, new value={}, bit position={}, disable primary split={}",
         byte_position - bit_mask_start,
         mask,
         current_value,
         account_data[byte_position],
-        bit
+        bit,
+        disable_primary_split
     );
 
     drop(account_data);
@@ -141,7 +151,7 @@ pub fn claim_proceeds<'a, 'b>(
             .ok_or(GumballError::NumericalOverflowError)?;
         msg!("Price less fees: {}", price_less_fees);
 
-        let total_royalty = if royalty_info.is_primary_sale {
+        let total_royalty = if royalty_info.is_primary_sale && !disable_primary_split {
             price_less_fees
         } else {
             get_bps_of(price_less_fees, royalty_info.seller_fee_basis_points)?

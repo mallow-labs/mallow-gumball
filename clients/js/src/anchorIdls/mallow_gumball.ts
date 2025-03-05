@@ -1,5 +1,5 @@
 export type MallowGumball = {
-  version: '0.6.0';
+  version: '0.6.1';
   name: 'mallow_gumball';
   instructions: [
     {
@@ -64,6 +64,10 @@ export type MallowGumball = {
               defined: 'FeeConfig';
             };
           };
+        },
+        {
+          name: 'disablePrimarySplit';
+          type: 'bool';
         }
       ];
     },
@@ -2929,7 +2933,7 @@ export type MallowGumball = {
 };
 
 export const IDL: MallowGumball = {
-  version: '0.6.0',
+  version: '0.6.1',
   name: 'mallow_gumball',
   instructions: [
     {
@@ -2994,6 +2998,10 @@ export const IDL: MallowGumball = {
               defined: 'FeeConfig',
             },
           },
+        },
+        {
+          name: 'disablePrimarySplit',
+          type: 'bool',
         },
       ],
     },

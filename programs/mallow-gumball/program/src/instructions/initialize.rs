@@ -17,7 +17,7 @@ pub struct Initialize<'info> {
     #[account(
         zero,
         rent_exempt = skip,
-        constraint = gumball_machine.to_account_info().owner == __program_id && gumball_machine.to_account_info().data_len() >= GumballMachine::get_size(settings.item_capacity)
+        constraint = gumball_machine.to_account_info().owner == __program_id && gumball_machine.to_account_info().data_len() >= GumballMachine::get_size(settings.item_capacity, GumballMachine::CURRENT_VERSION)
     )]
     gumball_machine: UncheckedAccount<'info>,
 
@@ -50,6 +50,7 @@ pub fn initialize(
     ctx: Context<Initialize>,
     settings: GumballSettings,
     fee_config: Option<FeeConfig>,
+    disable_primary_split: bool,
 ) -> Result<()> {
     let gumball_machine_account = &mut ctx.accounts.gumball_machine;
 
@@ -65,7 +66,7 @@ pub fn initialize(
     };
 
     let gumball_machine = GumballMachine {
-        version: 2,
+        version: GumballMachine::CURRENT_VERSION,
         authority: ctx.accounts.authority.key(),
         mint_authority: ctx.accounts.authority.key(),
         marketplace_fee_config: fee_config,
@@ -84,6 +85,12 @@ pub fn initialize(
     // set the initial number of config lines
     account_data[GUMBALL_MACHINE_SIZE..GUMBALL_MACHINE_SIZE + 4]
         .copy_from_slice(&u32::MIN.to_le_bytes());
+
+    if disable_primary_split {
+        let disable_primary_split_position =
+            gumball_machine.get_disable_primary_split_position()?;
+        account_data[disable_primary_split_position] = 1;
+    }
 
     Ok(())
 }
