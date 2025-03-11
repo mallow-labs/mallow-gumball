@@ -240,6 +240,14 @@ pub fn pay_creator_royalties<'a, 'b>(
 
     let remaining_accounts_clone = &mut remaining_accounts.iter().clone();
 
+    let minimum_balance_required = if is_native {
+        let rent = Rent::get()?;
+        let data_size: usize = 128; // System account size
+        rent.minimum_balance(data_size)
+    } else {
+        0
+    };
+
     for creator in creators {
         let creator_fee = (creator.share as u128)
             .checked_mul(total_royalty as u128)
@@ -260,7 +268,14 @@ pub fn pay_creator_royalties<'a, 'b>(
             Some(next_account_info(remaining_accounts_clone)?)
         };
 
-        if creator_fee == 0 {
+        if creator_fee == 0
+            || (is_native
+                && creator_fee + current_creator_info.lamports() < minimum_balance_required)
+        {
+            msg!(
+                "Minimum balance not met, skipping {}",
+                current_creator_info.key()
+            );
             continue;
         }
 

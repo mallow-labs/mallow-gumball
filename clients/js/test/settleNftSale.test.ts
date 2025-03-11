@@ -14,6 +14,7 @@ import {
   defaultPublicKey,
   generateSigner,
   isEqualToAmount,
+  lamports,
   none,
   publicKey,
   sol,
@@ -1972,4 +1973,74 @@ test('it can settle an nft sale with a marketplace config', async (t) => {
   );
 
   t.true(isEqualToAmount(authorityPdaPostBalance, sol(0), sol(0.01)));
+});
+
+test('it omits sending proceeds for a creator if the amount is too small to keep the account alive', async (t) => {
+  const umi = await createUmi();
+  const secondCreator = generateSigner(umi).publicKey;
+
+  // Given a gumball machine with some guards.
+  const nft = await createNft(umi, {
+    creators: [
+      { address: umi.identity.publicKey, verified: false, share: 99 },
+      { address: secondCreator, verified: false, share: 1 },
+    ],
+  });
+
+  const gumballMachineSigner = generateSigner(umi);
+  const gumballMachine = gumballMachineSigner.publicKey;
+
+  await create(umi, {
+    gumballMachine: gumballMachineSigner,
+    items: [
+      {
+        id: nft.publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      },
+    ],
+    startSale: true,
+    guards: {
+      botTax: { lamports: sol(0.01), lastInstruction: true },
+      solPayment: { lamports: sol(0.001) },
+    },
+    settings: {
+      curatorFeeBps: 0,
+    },
+  });
+
+  // When we mint from the gumball guard.
+  const buyerUmi = await createUmi();
+  const buyer = buyerUmi.identity;
+  const payer = await generateSignerWithSol(umi, sol(10));
+  await transactionBuilder()
+    .add(setComputeUnitLimit(umi, { units: 600_000 }))
+    .add(
+      draw(umi, {
+        gumballMachine,
+        payer,
+        buyer,
+        mintArgs: {
+          solPayment: some(true),
+        },
+      })
+    )
+    .sendAndConfirm(umi);
+
+  // Then settle the sale
+  await transactionBuilder()
+    .add(setComputeUnitLimit(buyerUmi, { units: 600_000 }))
+    .add(
+      settleNftSale(buyerUmi, {
+        index: 0,
+        gumballMachine,
+        authority: umi.identity.publicKey,
+        seller: umi.identity.publicKey,
+        mint: nft.publicKey,
+        creators: [umi.identity.publicKey, secondCreator],
+      })
+    )
+    .sendAndConfirm(buyerUmi);
+
+  const secondCreatorPostBalance = await umi.rpc.getBalance(secondCreator);
+  t.true(isEqualToAmount(secondCreatorPostBalance, lamports(0)));
 });
