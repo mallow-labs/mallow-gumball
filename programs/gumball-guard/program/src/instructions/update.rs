@@ -93,7 +93,7 @@ pub struct Update<'info> {
     #[account(
         mut, 
         constraint = gumball_guard.key() == gumball_machine.mint_authority,
-        constraint = gumball_machine.state == GumballState::None @ GumballGuardError::InvalidGumballMachineState
+        constraint = gumball_machine.state == GumballState::None || gumball_machine.items_redeemed == 0 @ GumballGuardError::InvalidGumballMachineState
     )]
     pub gumball_machine: Box<Account<'info, GumballMachine>>,
     pub authority: Signer<'info>,
