@@ -1,4 +1,4 @@
-use crate::{processors::claim_item, thaw_nft, GumballMachine};
+use crate::{processors::claim_item, thaw_nft, GumballError, GumballMachine};
 use anchor_lang::prelude::*;
 use mpl_token_metadata::{
     accounts::Metadata,
@@ -146,6 +146,11 @@ pub fn claim_nft_v2<'a, 'b>(
         auth_rules_program,
     )?;
 
+    require!(
+        authority_pda.key() != Pubkey::default(),
+        GumballError::IncorrectOwner
+    );
+
     // Transfer to authority pda first so transfer auth can be revoked
     transfer_nft(
         from,
@@ -171,6 +176,8 @@ pub fn claim_nft_v2<'a, 'b>(
         auth_rules_program,
         sysvar_instructions,
     )?;
+
+    require!(to.key() != Pubkey::default(), GumballError::IncorrectOwner);
 
     transfer_nft(
         authority_pda,

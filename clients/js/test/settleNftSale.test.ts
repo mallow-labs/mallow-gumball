@@ -1302,6 +1302,96 @@ test('it can settle an nft that was not sold', async (t) => {
   });
 });
 
+test('it can settle an pnft that was not sold', async (t) => {
+  // Given a gumball machine with some guards.
+  const umi = await createUmi();
+  const nft = await createProgrammableNft(umi);
+
+  const gumballMachineSigner = generateSigner(umi);
+  const gumballMachine = gumballMachineSigner.publicKey;
+
+  await create(umi, {
+    gumballMachine: gumballMachineSigner,
+    items: [
+      {
+        id: nft.publicKey,
+        tokenStandard: TokenStandard.ProgrammableNonFungible,
+      },
+    ],
+    startSale: true,
+    guards: {
+      botTax: { lamports: sol(0.01), lastInstruction: true },
+      solPayment: { lamports: sol(1) },
+    },
+  });
+
+  await endSale(umi, { gumballMachine }).sendAndConfirm(umi);
+
+  const sellerPreBalance = await umi.rpc.getBalance(umi.identity.publicKey);
+  const authorityPdaPreBalance = await umi.rpc.getBalance(
+    findGumballMachineAuthorityPda(umi, { gumballMachine: gumballMachine })[0]
+  );
+
+  // Then settle the sale
+  await transactionBuilder()
+    .add(setComputeUnitLimit(umi, { units: 600_000 }))
+    .add(
+      settleNftSale(umi, {
+        index: 0,
+        gumballMachine,
+        authority: umi.identity.publicKey,
+        seller: umi.identity.publicKey,
+        buyer: defaultPublicKey(),
+        mint: nft.publicKey,
+        creators: [umi.identity.publicKey],
+        authRulesProgram: MPL_TOKEN_AUTH_RULES_PROGRAM_ID,
+      })
+    )
+    .sendAndConfirm(umi);
+
+  const sellerPostBalance = await umi.rpc.getBalance(umi.identity.publicKey);
+  const authorityPdaPostBalance = await umi.rpc.getBalance(
+    findGumballMachineAuthorityPda(umi, { gumballMachine: gumballMachine })[0]
+  );
+
+  t.true(isEqualToAmount(sellerPostBalance, sellerPreBalance, sol(0.01)));
+  t.true(isEqualToAmount(authorityPdaPostBalance, authorityPdaPreBalance));
+
+  // And the gumball machine was updated.
+  const gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
+  t.like(gumballMachineAccount, <GumballMachine>{
+    itemsRedeemed: 0n,
+    itemsSettled: 1n,
+  });
+
+  // Seller history should be closed
+  const sellerHistoryAccount = await safeFetchSellerHistory(
+    umi,
+    findSellerHistoryPda(umi, {
+      gumballMachine,
+      seller: umi.identity.publicKey,
+    })
+  );
+  t.falsy(sellerHistoryAccount);
+
+  // Seller should be the owner
+  // Then nft is unfrozen and revoked
+  const tokenAccount = await fetchToken(
+    umi,
+    findAssociatedTokenPda(umi, {
+      mint: nft.publicKey,
+      owner: umi.identity.publicKey,
+    })[0]
+  );
+
+  t.like(tokenAccount, {
+    state: TokenState.Frozen,
+    owner: umi.identity.publicKey,
+    delegate: none(),
+    amount: 1n,
+  });
+});
+
 test('it can settle an nft that was not sold with proceeds from another sale', async (t) => {
   // Given a gumball machine with some guards.
   const umi = await createUmi();

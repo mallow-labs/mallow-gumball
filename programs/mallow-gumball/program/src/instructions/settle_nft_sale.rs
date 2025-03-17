@@ -153,6 +153,7 @@ pub fn settle_nft_sale<'info>(
     let authority_pda = &mut ctx.accounts.authority_pda.to_account_info();
     let authority = &mut ctx.accounts.authority.to_account_info();
     let seller = &mut ctx.accounts.seller.to_account_info();
+    let seller_for_to = &ctx.accounts.seller.to_account_info();
     let token_metadata_program = &ctx.accounts.token_metadata_program.to_account_info();
     let token_account = &ctx.accounts.token_account.to_account_info();
     let token_program = &ctx.accounts.token_program.to_account_info();
@@ -243,14 +244,26 @@ pub fn settle_nft_sale<'info>(
     if !is_item_claimed(gumball_machine, index)? {
         amount = 1;
 
+        let to = if buyer.key() == Pubkey::default() {
+            seller_for_to
+        } else {
+            buyer
+        };
+
+        let to_token_account = if buyer.key() == Pubkey::default() {
+            token_account
+        } else {
+            buyer_token_account
+        };
+
         if let Some(_) = ctx.accounts.auth_rules_program {
             processors::claim_nft_v2(
                 gumball_machine,
                 index,
                 authority_pda,
                 payer,
-                buyer,
-                buyer_token_account,
+                to,
+                to_token_account,
                 seller,
                 token_account,
                 authority_pda_token_account,
@@ -266,7 +279,11 @@ pub fn settle_nft_sale<'info>(
                 &auth_seeds,
                 ctx.accounts.seller_token_record.as_ref(),
                 ctx.accounts.authority_pda_token_record.as_ref(),
-                ctx.accounts.buyer_token_record.as_ref(),
+                if buyer.key() == Pubkey::default() {
+                    ctx.accounts.seller_token_record.as_ref()
+                } else {
+                    ctx.accounts.buyer_token_record.as_ref()
+                },
                 ctx.accounts.auth_rules.as_ref(),
                 ctx.accounts.instructions.as_ref().unwrap(),
                 ctx.accounts.auth_rules_program.as_ref(),
@@ -277,16 +294,8 @@ pub fn settle_nft_sale<'info>(
                 index,
                 authority_pda,
                 payer,
-                if buyer.key() == Pubkey::default() {
-                    seller
-                } else {
-                    buyer
-                },
-                if buyer.key() == Pubkey::default() {
-                    token_account
-                } else {
-                    buyer_token_account
-                },
+                to,
+                to_token_account,
                 seller,
                 token_account,
                 authority_pda_token_account,
