@@ -18,6 +18,7 @@ import {
   createMint,
   findAssociatedTokenPda,
   mintTokensTo,
+  setComputeUnitLimit,
 } from '@metaplex-foundation/mpl-toolbox';
 import {
   assertAccountExists,
@@ -47,6 +48,7 @@ import {
   CreateGumballGuardInstructionDataArgs,
   createGumballMachine as baseCreateGumballMachineV2,
   DefaultGuardSetArgs,
+  draw,
   fetchGumballMachine,
   findGumballGuardPda,
   GuardSetArgs,
@@ -484,3 +486,44 @@ export const getNewConfigLine = async (
   seller: publicKey(Keypair.generate().publicKey),
   ...overrides,
 });
+
+export const drawRemainingItems = async (
+  umi: Umi,
+  gumballMachine: PublicKey,
+  available: number,
+  batchSizeSetting: number = 10
+) => {
+  const indices: number[] = [];
+  for (let i = 0; i < available; i += batchSizeSetting) {
+    const buyer = generateSigner(umi);
+    const batchSize = Math.min(batchSizeSetting, available - i);
+
+    let builder = transactionBuilder().add(
+      setComputeUnitLimit(umi, { units: 1_400_000 })
+    );
+
+    // Add all draws to the same transaction
+    for (let j = 0; j < batchSize; j += 1) {
+      builder = builder.add(
+        draw(umi, {
+          gumballMachine,
+          buyer,
+        })
+      );
+    }
+
+    await builder.sendAndConfirm(umi);
+
+    // Fetch the machine once after the batch completes
+    const gumballMachineAccount = await fetchGumballMachine(
+      umi,
+      gumballMachine
+    );
+    const buyerItems = gumballMachineAccount.items.filter(
+      (item) => item.buyer === buyer.publicKey
+    );
+    indices.push(...buyerItems.map((item) => item.index));
+  }
+
+  return indices;
+};

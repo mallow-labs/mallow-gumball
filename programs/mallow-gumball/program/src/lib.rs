@@ -169,8 +169,33 @@ pub mod mallow_gumball {
     ///   8. `[]` Associated Token program
     ///   9. `[]` System program
     ///   10. `[]` Rent sysvar
+    /// DEPRECATED: Use remove_tokens_span instead
     pub fn remove_tokens(ctx: Context<RemoveTokens>, indices: Vec<u8>, amount: u64) -> Result<()> {
         instructions::remove_tokens(ctx, indices, amount)
+    }
+
+    /// Remove fungible tokens from the gumball machine.
+    ///
+    /// # Accounts
+    ///
+    ///   0. `[writable]` Gumball Machine account
+    ///   1. `[writable]` Seller history account (PDA, seeds: ["seller_history", gumball_machine, seller])
+    ///   2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine])
+    ///   3. `[signer, writable]` Seller
+    ///   4. `[]` Mint account
+    ///   5. `[writable]` Seller's token account
+    ///   6. `[writable]` Gumball machine's token account
+    ///   7. `[]` Token program
+    ///   8. `[]` Associated Token program
+    ///   9. `[]` System program
+    ///   10. `[]` Rent sysvar
+    pub fn remove_tokens_span(
+        ctx: Context<RemoveTokens>,
+        amount: u64,
+        start_index: u32,
+        end_index: u32,
+    ) -> Result<()> {
+        instructions::remove_tokens_span(ctx, amount, start_index, end_index)
     }
 
     /// Allows minting to begin.
@@ -332,6 +357,35 @@ pub mod mallow_gumball {
         index: u32,
     ) -> Result<()> {
         instructions::settle_tokens_sale(ctx, index)
+    }
+
+    /// Settles a fungible tokens sale that has already been claimed by the buyer or does not have a buyer.
+    ///
+    /// # Accounts
+    ///
+    ///   0. `[signer, writable]` Payer (anyone can settle the sale)
+    ///   1. `[writable]` Gumball Machine account (must be in SaleEnded state)
+    ///   2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine])
+    ///   3. `[writable]` Authority PDA payment account (optional)
+    ///   4. `[writable]` Authority account
+    ///   5. `[writable]` Authority payment account (optional)
+    ///   6. `[writable]` Seller account
+    ///   7. `[writable]` Seller token account
+    ///   9. `[writable]` Seller payment account (optional)
+    ///   10. `[writable]` Seller history account (PDA, seeds: ["seller_history", gumball_machine, seller])
+    ///   11. `[writable]` Fee account (optional)
+    ///   12. `[writable]` Fee payment account (optional)
+    ///   13. `[]` Payment mint (optional)
+    ///   14. `[]` Token program
+    ///   15. `[]` Associated Token program
+    ///   16. `[]` System program
+    ///   17. `[]` Rent sysvar
+    ///   18. `[]` Mint account
+    pub fn settle_tokens_sale_claimed<'info>(
+        ctx: Context<'_, '_, '_, 'info, SettleTokensSaleClaimed<'info>>,
+        args: SettleTokensSaleClaimedArgs,
+    ) -> Result<()> {
+        instructions::settle_tokens_sale_claimed(ctx, args)
     }
 
     /// Set a new authority of the gumball machine.

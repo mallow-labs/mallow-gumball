@@ -1,5 +1,5 @@
 use crate::{
-    approve_and_freeze_nft, approve_and_freeze_nft_v2, assert_can_request_add_item,
+    approve_and_freeze_nft_v2, assert_can_request_add_item,
     constants::{
         ADD_ITEM_REQUEST_SEED, AUTHORITY_SEED, MPL_TOKEN_AUTH_RULES_PROGRAM, SELLER_HISTORY_SEED,
     },
@@ -143,37 +143,25 @@ pub fn request_add_nft(ctx: Context<RequestAddNft>) -> Result<()> {
         &[ctx.bumps.authority_pda],
     ];
 
-    if let Some(_) = ctx.accounts.auth_rules_program {
-        let metadata = &Metadata::try_from(metadata_account)?;
-        approve_and_freeze_nft_v2(
-            seller,
-            mint,
-            token_account,
-            edition,
-            authority_pda,
-            &auth_seeds,
-            token_metadata_program,
-            token_program,
-            metadata_account,
-            metadata,
-            ctx.accounts.seller_token_record.as_ref(),
-            ctx.accounts.auth_rules.as_ref(),
-            system_program,
-            ctx.accounts.instructions.as_ref().unwrap(),
-            ctx.accounts.auth_rules_program.as_ref(),
-        )?;
-    } else {
-        approve_and_freeze_nft(
-            seller,
-            mint,
-            token_account,
-            edition,
-            authority_pda,
-            &auth_seeds,
-            token_metadata_program,
-            token_program,
-        )?;
-    }
+    let metadata = &Metadata::try_from(metadata_account)?;
+    approve_and_freeze_nft_v2(
+        seller,
+        seller,
+        mint,
+        token_account,
+        edition,
+        authority_pda,
+        &auth_seeds,
+        token_metadata_program,
+        token_program,
+        metadata_account,
+        metadata,
+        ctx.accounts.seller_token_record.as_ref(),
+        ctx.accounts.auth_rules.as_ref(),
+        system_program,
+        ctx.accounts.instructions.as_ref(),
+        ctx.accounts.auth_rules_program.as_ref(),
+    )?;
 
     Ok(())
 }

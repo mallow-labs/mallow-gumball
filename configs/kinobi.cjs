@@ -417,6 +417,13 @@ kinobi.update(
 				seller: { defaultsTo: k.identityDefault() },
 			},
 		},
+		"mallowGumball.removeTokensSpan": {
+			name: "removeTokensSpan",
+			accounts: {
+				authority: { defaultsTo: k.identityDefault() },
+				seller: { defaultsTo: k.identityDefault() },
+			},
+		},
 		"mallowGumball.draw": {
 			name: "drawFromGumballMachine",
 			accounts: {
@@ -530,6 +537,29 @@ kinobi.update(
 					defaultsTo: k.conditionalDefault("account", "paymentMint", {
 						ifTrue: defaultsToAssociatedTokenPda("paymentMint", "seller"),
 					}),
+				},
+			},
+		},
+		"mallowGumball.settleTokensSaleClaimed": {
+			name: "settleTokensSaleClaimed",
+			accounts: {
+				authorityPdaPaymentAccount: {
+					defaultsTo: k.conditionalDefault("account", "paymentMint", {
+						ifTrue: defaultsToAssociatedTokenPda("paymentMint", "authorityPda"),
+					}),
+				},
+				authorityPaymentAccount: {
+					defaultsTo: k.conditionalDefault("account", "paymentMint", {
+						ifTrue: defaultsToAssociatedTokenPda("paymentMint", "authority"),
+					}),
+				},
+				sellerPaymentAccount: {
+					defaultsTo: k.conditionalDefault("account", "paymentMint", {
+						ifTrue: defaultsToAssociatedTokenPda("paymentMint", "seller"),
+					}),
+				},
+				sellerTokenAccount: {
+					defaultsTo: defaultsToAssociatedTokenPda("mint", "seller"),
 				},
 			},
 		},

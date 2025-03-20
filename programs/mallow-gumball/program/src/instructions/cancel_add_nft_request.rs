@@ -2,11 +2,9 @@ use crate::{
     constants::{
         ADD_ITEM_REQUEST_SEED, AUTHORITY_SEED, MPL_TOKEN_AUTH_RULES_PROGRAM, SELLER_HISTORY_SEED,
     },
-    thaw_and_revoke_nft, thaw_and_revoke_nft_v2, AddItemRequest, AssociatedToken, GumballError,
-    SellerHistory, Token,
+    thaw_and_revoke_nft_v2, AddItemRequest, AssociatedToken, GumballError, SellerHistory, Token,
 };
 use anchor_lang::prelude::*;
-use mpl_token_metadata::accounts::Metadata;
 
 /// Add nft to a gumball machine.
 #[derive(Accounts)]
@@ -115,42 +113,33 @@ pub fn cancel_add_nft_request(ctx: Context<CancelAddNftRequest>) -> Result<()> {
         &[ctx.bumps.authority_pda],
     ];
 
-    if let Some(_) = ctx.accounts.auth_rules_program {
-        let metadata_account = &ctx.accounts.metadata.as_ref().unwrap().to_account_info();
-        let metadata = &Metadata::try_from(metadata_account)?;
-        thaw_and_revoke_nft_v2(
-            seller,
-            mint,
-            token_account,
-            edition,
-            authority_pda,
-            &auth_seeds,
-            token_metadata_program,
-            token_program,
-            metadata_account,
-            metadata,
-            ctx.accounts.seller_token_record.as_ref(),
-            ctx.accounts.auth_rules.as_ref(),
-            system_program,
-            ctx.accounts.instructions.as_ref().unwrap(),
-            ctx.accounts.auth_rules_program.as_ref(),
-        )?;
-    } else {
-        thaw_and_revoke_nft(
-            seller,
-            mint,
-            token_account,
-            authority_pda_token_account,
-            edition,
-            authority_pda,
-            &auth_seeds,
-            token_metadata_program,
-            token_program,
-            associated_token_program,
-            system_program,
-            rent,
-        )?;
-    }
+    let metadata_account = &ctx
+        .accounts
+        .metadata
+        .as_ref()
+        .map(|acc| acc.to_account_info());
+    let metadata_account_ref = metadata_account.as_ref();
+
+    thaw_and_revoke_nft_v2(
+        seller,
+        seller,
+        mint,
+        token_account,
+        edition,
+        authority_pda,
+        &auth_seeds,
+        token_metadata_program,
+        token_program,
+        metadata_account_ref,
+        ctx.accounts.seller_token_record.as_ref(),
+        ctx.accounts.auth_rules.as_ref(),
+        system_program,
+        ctx.accounts.instructions.as_ref(),
+        ctx.accounts.auth_rules_program.as_ref(),
+        associated_token_program,
+        authority_pda_token_account,
+        rent,
+    )?;
 
     seller_history.item_count -= 1;
 

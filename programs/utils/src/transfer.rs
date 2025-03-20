@@ -283,7 +283,7 @@ pub fn transfer_nft<'a>(
     to_token_record: Option<&UncheckedAccount<'a>>,
     rules: Option<&UncheckedAccount<'a>>,
     auth_rules_program: Option<&UncheckedAccount<'a>>,
-    sysvar_instructions: &UncheckedAccount<'a>,
+    sysvar_instructions: Option<&UncheckedAccount<'a>>,
 ) -> Result<()> {
     ensure_ata(
         to_token_account,
@@ -297,46 +297,67 @@ pub fn transfer_nft<'a>(
         fee_payer_seeds,
     )?;
 
-    let mut builder = TransferV1CpiBuilder::new(token_metadata_program);
-    builder
-        .authority(authority)
-        .token_owner(from)
-        .token(from_token_account)
-        .destination_token(to_token_account)
-        .destination_owner(to)
-        .mint(mint)
-        .metadata(metadata_info)
-        .edition(Some(edition))
-        .payer(fee_payer)
-        .system_program(system_program)
-        .sysvar_instructions(sysvar_instructions)
-        .spl_token_program(token_program)
-        .spl_ata_program(ata_program);
+    if let Some(sysvar_instructions) = sysvar_instructions {
+        let mut builder = TransferV1CpiBuilder::new(token_metadata_program);
+        builder
+            .authority(authority)
+            .token_owner(from)
+            .token(from_token_account)
+            .destination_token(to_token_account)
+            .destination_owner(to)
+            .mint(mint)
+            .metadata(metadata_info)
+            .edition(Some(edition))
+            .payer(fee_payer)
+            .system_program(system_program)
+            .spl_token_program(token_program)
+            .spl_ata_program(ata_program)
+            .sysvar_instructions(sysvar_instructions);
 
-    if let Some(standard) = &metadata.token_standard {
-        if *standard == TokenStandard::ProgrammableNonFungible
-            || *standard == TokenStandard::ProgrammableNonFungibleEdition
-        {
-            builder.token_record(from_token_record.map(|acc| acc.as_ref()));
-            builder.destination_token_record(to_token_record.map(|acc| acc.as_ref()));
+        if let Some(standard) = &metadata.token_standard {
+            if *standard == TokenStandard::ProgrammableNonFungible
+                || *standard == TokenStandard::ProgrammableNonFungibleEdition
+            {
+                builder.token_record(from_token_record.map(|acc| acc.as_ref()));
+                builder.destination_token_record(to_token_record.map(|acc| acc.as_ref()));
+            }
         }
-    }
 
-    if let Some(config) = &metadata.programmable_config {
-        match *config {
-            ProgrammableConfig::V1 { rule_set } => {
-                if let Some(_rule_set) = rule_set {
-                    builder.authorization_rules_program(auth_rules_program.map(|acc| acc.as_ref()));
-                    builder.authorization_rules(rules.map(|acc| acc.as_ref()));
+        if let Some(config) = &metadata.programmable_config {
+            match *config {
+                ProgrammableConfig::V1 { rule_set } => {
+                    if let Some(_rule_set) = rule_set {
+                        builder.authorization_rules_program(
+                            auth_rules_program.map(|acc| acc.as_ref()),
+                        );
+                        builder.authorization_rules(rules.map(|acc| acc.as_ref()));
+                    }
                 }
             }
         }
-    }
 
-    if let Some(seeds) = authority_seeds {
-        builder.invoke_signed(&[seeds])?;
+        if let Some(seeds) = authority_seeds {
+            builder.invoke_signed(&[seeds])?;
+        } else {
+            builder.invoke()?;
+        }
     } else {
-        builder.invoke()?;
+        transfer_spl(
+            from,
+            to,
+            from_token_account,
+            to_token_account,
+            mint,
+            fee_payer,
+            ata_program,
+            token_program,
+            system_program,
+            rent,
+            Some(authority),
+            authority_seeds,
+            None,
+            1,
+        )?;
     }
 
     Ok(())

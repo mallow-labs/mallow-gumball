@@ -244,71 +244,45 @@ pub fn settle_nft_sale<'info>(
     if !is_item_claimed(gumball_machine, index)? {
         amount = 1;
 
-        let to = if buyer.key() == Pubkey::default() {
-            seller_for_to
-        } else {
-            buyer
-        };
-
-        let to_token_account = if buyer.key() == Pubkey::default() {
-            token_account
-        } else {
-            buyer_token_account
-        };
-
-        if let Some(_) = ctx.accounts.auth_rules_program {
-            processors::claim_nft_v2(
-                gumball_machine,
-                index,
-                authority_pda,
-                payer,
-                to,
-                to_token_account,
-                seller,
-                token_account,
-                authority_pda_token_account,
-                mint,
-                edition,
-                metadata,
-                metadata_info,
-                token_program,
-                associated_token_program,
-                token_metadata_program,
-                system_program,
-                rent,
-                &auth_seeds,
-                ctx.accounts.seller_token_record.as_ref(),
-                ctx.accounts.authority_pda_token_record.as_ref(),
-                if buyer.key() == Pubkey::default() {
-                    ctx.accounts.seller_token_record.as_ref()
-                } else {
-                    ctx.accounts.buyer_token_record.as_ref()
-                },
-                ctx.accounts.auth_rules.as_ref(),
-                ctx.accounts.instructions.as_ref().unwrap(),
-                ctx.accounts.auth_rules_program.as_ref(),
-            )?;
-        } else {
-            processors::claim_nft(
-                gumball_machine,
-                index,
-                authority_pda,
-                payer,
-                to,
-                to_token_account,
-                seller,
-                token_account,
-                authority_pda_token_account,
-                mint,
-                edition,
-                token_program,
-                associated_token_program,
-                token_metadata_program,
-                system_program,
-                rent,
-                &auth_seeds,
-            )?;
-        }
+        processors::claim_nft_v2(
+            gumball_machine,
+            index,
+            authority_pda,
+            payer,
+            if buyer.key() == Pubkey::default() {
+                seller_for_to
+            } else {
+                buyer
+            },
+            if buyer.key() == Pubkey::default() {
+                token_account
+            } else {
+                buyer_token_account
+            },
+            seller,
+            token_account,
+            authority_pda_token_account,
+            mint,
+            edition,
+            metadata,
+            metadata_info,
+            token_program,
+            associated_token_program,
+            token_metadata_program,
+            system_program,
+            rent,
+            &auth_seeds,
+            ctx.accounts.seller_token_record.as_ref(),
+            ctx.accounts.authority_pda_token_record.as_ref(),
+            if buyer.key() == Pubkey::default() {
+                ctx.accounts.seller_token_record.as_ref()
+            } else {
+                ctx.accounts.buyer_token_record.as_ref()
+            },
+            ctx.accounts.auth_rules.as_ref(),
+            ctx.accounts.instructions.as_ref(),
+            ctx.accounts.auth_rules_program.as_ref(),
+        )?;
     }
 
     let total_proceeds = claim_proceeds(

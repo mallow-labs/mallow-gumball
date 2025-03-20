@@ -81,7 +81,7 @@ pub fn claim_proceeds<'a, 'b>(
     };
 
     // Version 1+ takes fee on draw
-    let fees_taken = if gumball_machine.version > 0 {
+    let fees_taken = if gumball_machine.version > 0 && marketplace_fee_bps > 0 {
         get_bps_of(gumball_machine.total_revenue, marketplace_fee_bps)?
     } else {
         0

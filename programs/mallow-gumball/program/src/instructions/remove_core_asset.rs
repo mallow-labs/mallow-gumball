@@ -74,13 +74,14 @@ pub fn remove_core_asset(ctx: Context<RemoveCoreAsset>, index: u32) -> Result<()
     let gumball_machine = &mut ctx.accounts.gumball_machine;
     let seller_history = &mut ctx.accounts.seller_history;
 
-    processors::remove_item(
+    processors::remove_multiple_items_span(
         gumball_machine,
         authority.key(),
         asset_info.key(),
         seller.key(),
-        index,
         1,
+        index,
+        index,
     )?;
 
     let collection_info = ctx

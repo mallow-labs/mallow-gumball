@@ -3,6 +3,7 @@ use crate::{
     TokenStandard,
 };
 use anchor_lang::prelude::*;
+use anchor_spl::token::TokenAccount;
 use arrayref::array_ref;
 use mpl_core::{
     accounts::{BaseAssetV1, BaseCollectionV1},
@@ -31,13 +32,12 @@ use mpl_token_metadata::{
 };
 use solana_program::{
     account_info::AccountInfo,
-    program::{invoke, invoke_signed},
+    program::invoke,
     program_memory::sol_memcmp,
     pubkey::{Pubkey, PUBKEY_BYTES},
 };
-use spl_associated_token_account::instruction::create_associated_token_account_idempotent;
-use spl_token::instruction::{approve, transfer_checked};
-use utils::{assert_keys_equal, get_auth_payload, verify_proof};
+use spl_token::instruction::approve;
+use utils::{assert_keys_equal, get_auth_payload, transfer_spl, verify_proof};
 
 /// Anchor wrapper for Token program.
 #[derive(Debug, Clone)]
@@ -398,143 +398,8 @@ pub fn thaw_and_revoke_core_asset<'a>(
     Ok(())
 }
 
-pub fn approve_and_freeze_nft<'a>(
-    payer: &AccountInfo<'a>,
-    mint: &AccountInfo<'a>,
-    token_account: &AccountInfo<'a>,
-    edition: &AccountInfo<'a>,
-    new_authority_info: &AccountInfo<'a>,
-    new_authority_seeds: &[&[u8]],
-    token_metadata_program: &AccountInfo<'a>,
-    token_program: &AccountInfo<'a>,
-) -> Result<()> {
-    let approve_ix = approve(
-        token_program.key,
-        token_account.key,
-        new_authority_info.key,
-        payer.key,
-        &[payer.key],
-        1,
-    )?;
-
-    invoke(
-        &approve_ix,
-        &[
-            token_program.to_account_info(),
-            token_account.to_account_info(),
-            new_authority_info.to_account_info(),
-            payer.to_account_info(),
-        ],
-    )?;
-
-    FreezeDelegatedAccountCpi::new(
-        token_metadata_program,
-        FreezeDelegatedAccountCpiAccounts {
-            delegate: new_authority_info,
-            token_account,
-            edition,
-            mint,
-            token_program,
-        },
-    )
-    .invoke_signed(&[&new_authority_seeds])?;
-
-    Ok(())
-}
-
-pub fn thaw_and_revoke_nft<'a>(
-    payer: &AccountInfo<'a>,
-    mint: &AccountInfo<'a>,
-    token_account: &AccountInfo<'a>,
-    authority_pda_token_account: &AccountInfo<'a>,
-    edition: &AccountInfo<'a>,
-    authority: &AccountInfo<'a>,
-    authority_seeds: &[&[u8]],
-    token_metadata_program: &AccountInfo<'a>,
-    token_program: &AccountInfo<'a>,
-    associated_token_program: &AccountInfo<'a>,
-    system_program: &AccountInfo<'a>,
-    rent: &AccountInfo<'a>,
-) -> Result<()> {
-    ThawDelegatedAccountCpi::new(
-        token_metadata_program,
-        ThawDelegatedAccountCpiAccounts {
-            delegate: authority,
-            token_account,
-            edition,
-            mint,
-            token_program,
-        },
-    )
-    .invoke_signed(&[&authority_seeds])?;
-
-    // Send to a temporary account to revoke
-    invoke(
-        &create_associated_token_account_idempotent(
-            payer.key,
-            authority.key,
-            mint.key,
-            token_program.key,
-        ),
-        &[
-            token_program.to_account_info(),
-            associated_token_program.to_account_info(),
-            authority.to_account_info(),
-            payer.to_account_info(),
-            mint.to_account_info(),
-            authority_pda_token_account.to_account_info(),
-            system_program.to_account_info(),
-            rent.to_account_info(),
-        ],
-    )?;
-
-    invoke_signed(
-        &transfer_checked(
-            token_program.key,
-            token_account.key,
-            mint.key,
-            authority_pda_token_account.key,
-            authority.key,
-            &[],
-            1,
-            0,
-        )?,
-        &[
-            token_program.to_account_info(),
-            token_account.to_account_info(),
-            mint.to_account_info(),
-            authority_pda_token_account.to_account_info(),
-            authority.to_account_info(),
-            system_program.to_account_info(),
-        ],
-        &[&authority_seeds],
-    )?;
-
-    invoke_signed(
-        &transfer_checked(
-            token_program.key,
-            authority_pda_token_account.key,
-            mint.key,
-            token_account.key,
-            authority.key,
-            &[],
-            1,
-            0,
-        )?,
-        &[
-            token_program.to_account_info(),
-            token_account.to_account_info(),
-            mint.to_account_info(),
-            authority_pda_token_account.to_account_info(),
-            authority.to_account_info(),
-            system_program.to_account_info(),
-        ],
-        &[&authority_seeds],
-    )?;
-    Ok(())
-}
-
 pub fn approve_and_freeze_nft_v2<'a>(
+    payer: &AccountInfo<'a>,
     owner: &AccountInfo<'a>,
     mint: &AccountInfo<'a>,
     token_account: &AccountInfo<'a>,
@@ -548,78 +413,113 @@ pub fn approve_and_freeze_nft_v2<'a>(
     token_record: Option<&UncheckedAccount<'a>>,
     rules: Option<&UncheckedAccount<'a>>,
     system_program: &AccountInfo<'a>,
-    sysvar_instructions: &UncheckedAccount<'a>,
+    sysvar_instructions: Option<&UncheckedAccount<'a>>,
     auth_rules_program: Option<&UncheckedAccount<'a>>,
 ) -> Result<()> {
-    let mut delegate_builder = DelegateCpiBuilder::new(token_metadata_program);
-    delegate_builder
-        .delegate(new_authority_info)
-        .authority(owner)
-        .metadata(metadata_info)
-        .master_edition(Some(edition))
-        .mint(mint)
-        .token(Some(token_account))
-        .payer(owner)
-        .spl_token_program(Some(token_program))
-        .system_program(system_program)
-        .sysvar_instructions(sysvar_instructions);
+    if let Some(sysvar_instructions) = sysvar_instructions {
+        let mut delegate_builder = DelegateCpiBuilder::new(token_metadata_program);
+        delegate_builder
+            .delegate(new_authority_info)
+            .authority(owner)
+            .metadata(metadata_info)
+            .master_edition(Some(edition))
+            .mint(mint)
+            .token(Some(token_account))
+            .payer(owner)
+            .spl_token_program(Some(token_program))
+            .system_program(system_program)
+            .sysvar_instructions(sysvar_instructions);
 
-    let mut delegate_args = DelegateArgs::StandardV1 { amount: 1 };
+        let mut delegate_args = DelegateArgs::StandardV1 { amount: 1 };
 
-    let mut lock_builder = LockCpiBuilder::new(token_metadata_program);
-    lock_builder
-        .authority(new_authority_info)
-        .token(token_account)
-        .mint(mint)
-        .metadata(metadata_info)
-        .edition(Some(edition))
-        .payer(owner)
-        .spl_token_program(Some(token_program))
-        .system_program(system_program)
-        .sysvar_instructions(sysvar_instructions);
+        let mut lock_builder = LockCpiBuilder::new(token_metadata_program);
+        lock_builder
+            .authority(new_authority_info)
+            .token(token_account)
+            .mint(mint)
+            .metadata(metadata_info)
+            .edition(Some(edition))
+            .payer(owner)
+            .spl_token_program(Some(token_program))
+            .system_program(system_program)
+            .sysvar_instructions(sysvar_instructions);
 
-    if let Some(standard) = &metadata.token_standard {
-        if *standard == MplTokenStandard::ProgrammableNonFungible
-            || *standard == MplTokenStandard::ProgrammableNonFungibleEdition
-        {
-            delegate_args = DelegateArgs::LockedTransferV1 {
-                amount: 1,
-                locked_address: new_authority_info.key(),
-                authorization_data: Some(AuthorizationData {
-                    payload: get_auth_payload(new_authority_info),
-                }),
-            };
-            delegate_builder.token_record(token_record.map(|acc| acc.as_ref()));
+        if let Some(standard) = &metadata.token_standard {
+            if *standard == MplTokenStandard::ProgrammableNonFungible
+                || *standard == MplTokenStandard::ProgrammableNonFungibleEdition
+            {
+                delegate_args = DelegateArgs::LockedTransferV1 {
+                    amount: 1,
+                    locked_address: new_authority_info.key(),
+                    authorization_data: Some(AuthorizationData {
+                        payload: get_auth_payload(new_authority_info),
+                    }),
+                };
+                delegate_builder.token_record(token_record.map(|acc| acc.as_ref()));
 
-            lock_builder.token_record(token_record.map(|acc| acc.as_ref()));
+                lock_builder.token_record(token_record.map(|acc| acc.as_ref()));
+            }
         }
-    }
 
-    if let Some(config) = &metadata.programmable_config {
-        match *config {
-            ProgrammableConfig::V1 { rule_set } => {
-                if let Some(_rule_set) = rule_set {
-                    delegate_builder
-                        .authorization_rules_program(auth_rules_program.map(|acc| acc.as_ref()));
-                    delegate_builder.authorization_rules(rules.map(|acc| acc.as_ref()));
+        if let Some(config) = &metadata.programmable_config {
+            match *config {
+                ProgrammableConfig::V1 { rule_set } => {
+                    if let Some(_rule_set) = rule_set {
+                        delegate_builder.authorization_rules_program(
+                            auth_rules_program.map(|acc| acc.as_ref()),
+                        );
+                        delegate_builder.authorization_rules(rules.map(|acc| acc.as_ref()));
 
-                    lock_builder
-                        .authorization_rules_program(auth_rules_program.map(|acc| acc.as_ref()));
-                    lock_builder.authorization_rules(rules.map(|acc| acc.as_ref()));
+                        lock_builder.authorization_rules_program(
+                            auth_rules_program.map(|acc| acc.as_ref()),
+                        );
+                        lock_builder.authorization_rules(rules.map(|acc| acc.as_ref()));
+                    }
                 }
             }
         }
+
+        delegate_builder.delegate_args(delegate_args);
+        delegate_builder.invoke()?;
+
+        lock_builder.lock_args(LockArgs::V1 {
+            authorization_data: Some(AuthorizationData {
+                payload: get_auth_payload(new_authority_info),
+            }),
+        });
+        lock_builder.invoke_signed(&[new_authority_seeds])?;
+    } else {
+        let approve_ix = approve(
+            token_program.key,
+            token_account.key,
+            new_authority_info.key,
+            payer.key,
+            &[payer.key],
+            1,
+        )?;
+
+        invoke(
+            &approve_ix,
+            &[
+                token_program.to_account_info(),
+                token_account.to_account_info(),
+                new_authority_info.to_account_info(),
+                payer.to_account_info(),
+            ],
+        )?;
+
+        FreezeDelegatedAccountCpi::new(
+            token_metadata_program,
+            FreezeDelegatedAccountCpiAccounts {
+                delegate: new_authority_info,
+                token_account,
+                edition,
+                mint,
+                token_program,
+            },
+        )
+        .invoke_signed(&[&new_authority_seeds])?;
     }
-
-    delegate_builder.delegate_args(delegate_args);
-    delegate_builder.invoke()?;
-
-    lock_builder.lock_args(LockArgs::V1 {
-        authorization_data: Some(AuthorizationData {
-            payload: get_auth_payload(new_authority_info),
-        }),
-    });
-    lock_builder.invoke_signed(&[new_authority_seeds])?;
 
     Ok(())
 }
@@ -641,6 +541,7 @@ pub fn token_standard_from_mpl_token_standard(metadata: &Metadata) -> Result<Tok
 }
 
 pub fn thaw_and_revoke_nft_v2<'a>(
+    payer: &AccountInfo<'a>,
     owner: &AccountInfo<'a>,
     mint: &AccountInfo<'a>,
     token_account: &AccountInfo<'a>,
@@ -649,84 +550,122 @@ pub fn thaw_and_revoke_nft_v2<'a>(
     authority_seeds: &[&[u8]],
     token_metadata_program: &AccountInfo<'a>,
     token_program: &AccountInfo<'a>,
-    metadata_info: &AccountInfo<'a>,
-    metadata: &Metadata,
+    metadata_info: Option<&AccountInfo<'a>>,
     token_record: Option<&UncheckedAccount<'a>>,
     rules: Option<&UncheckedAccount<'a>>,
     system_program: &AccountInfo<'a>,
-    sysvar_instructions: &UncheckedAccount<'a>,
+    sysvar_instructions: Option<&UncheckedAccount<'a>>,
     auth_rules_program: Option<&UncheckedAccount<'a>>,
+    associated_token_program: &AccountInfo<'a>,
+    authority_pda_token_account: &AccountInfo<'a>,
+    rent: &AccountInfo<'a>,
 ) -> Result<()> {
-    let mut unlock_builder = UnlockCpiBuilder::new(token_metadata_program);
-    unlock_builder
-        .authority(authority)
-        .token_owner(Some(owner))
-        .token(token_account)
-        .mint(mint)
-        .metadata(metadata_info)
-        .edition(Some(edition))
-        .payer(owner)
-        .spl_token_program(Some(token_program))
-        .system_program(system_program)
-        .sysvar_instructions(sysvar_instructions);
+    let metadata = if let Some(metadata_info) = metadata_info {
+        Some(Metadata::try_from(metadata_info)?)
+    } else {
+        None
+    };
 
-    let mut revoke_builder = RevokeCpiBuilder::new(token_metadata_program);
-    revoke_builder
-        .delegate(authority)
-        .authority(owner)
-        .metadata(metadata_info)
-        .master_edition(Some(edition))
-        .mint(mint)
-        .token(Some(token_account))
-        .payer(owner)
-        .spl_token_program(Some(token_program))
-        .system_program(system_program)
-        .sysvar_instructions(sysvar_instructions);
-    let mut revoke_args = RevokeArgs::StandardV1;
+    thaw_nft(
+        payer,
+        owner,
+        mint,
+        token_account,
+        edition,
+        authority,
+        authority_seeds,
+        token_metadata_program,
+        token_program,
+        metadata_info,
+        metadata.as_ref(),
+        token_record,
+        rules,
+        system_program,
+        sysvar_instructions,
+        auth_rules_program,
+    )?;
 
-    if let Some(standard) = &metadata.token_standard {
-        if *standard == MplTokenStandard::ProgrammableNonFungible
-            || *standard == MplTokenStandard::ProgrammableNonFungibleEdition
-        {
-            unlock_builder.token_record(token_record.map(|acc| acc.as_ref()));
+    if let Some(sysvar_instructions) = sysvar_instructions {
+        let mut revoke_builder = RevokeCpiBuilder::new(token_metadata_program);
+        revoke_builder
+            .delegate(authority)
+            .authority(owner)
+            .metadata(metadata_info.unwrap())
+            .master_edition(Some(edition))
+            .mint(mint)
+            .token(Some(token_account))
+            .payer(owner)
+            .spl_token_program(Some(token_program))
+            .system_program(system_program)
+            .sysvar_instructions(sysvar_instructions);
+        let mut revoke_args = RevokeArgs::StandardV1;
 
-            let token_record_info = &token_record.unwrap().to_account_info();
-            let token_record_data = TokenRecord::try_from(token_record_info)?;
-            let delegate_role = token_record_data.delegate_role.unwrap();
-            if delegate_role == TokenDelegateRole::Migration {
-                revoke_args = RevokeArgs::MigrationV1;
-            } else {
-                revoke_args = RevokeArgs::LockedTransferV1;
+        if let Some(standard) = &metadata.as_ref().unwrap().token_standard {
+            if *standard == MplTokenStandard::ProgrammableNonFungible
+                || *standard == MplTokenStandard::ProgrammableNonFungibleEdition
+            {
+                let token_record_info = &token_record.unwrap().to_account_info();
+                let token_record_data = TokenRecord::try_from(token_record_info)?;
+                let delegate_role = token_record_data.delegate_role.unwrap();
+                if delegate_role == TokenDelegateRole::Migration {
+                    revoke_args = RevokeArgs::MigrationV1;
+                } else {
+                    revoke_args = RevokeArgs::LockedTransferV1;
+                }
+                revoke_builder.token_record(token_record.map(|acc| acc.as_ref()));
             }
-            revoke_builder.token_record(token_record.map(|acc| acc.as_ref()));
         }
-    }
 
-    if let Some(config) = &metadata.programmable_config {
-        match *config {
-            ProgrammableConfig::V1 { rule_set } => {
-                if let Some(_rule_set) = rule_set {
-                    unlock_builder
-                        .authorization_rules_program(auth_rules_program.map(|acc| acc.as_ref()));
-                    unlock_builder.authorization_rules(rules.map(|acc| acc.as_ref()));
-
-                    revoke_builder
-                        .authorization_rules_program(auth_rules_program.map(|acc| acc.as_ref()));
-                    revoke_builder.authorization_rules(rules.map(|acc| acc.as_ref()));
+        if let Some(config) = &metadata.as_ref().unwrap().programmable_config {
+            match *config {
+                ProgrammableConfig::V1 { rule_set } => {
+                    if let Some(_rule_set) = rule_set {
+                        revoke_builder.authorization_rules_program(
+                            auth_rules_program.map(|acc| acc.as_ref()),
+                        );
+                        revoke_builder.authorization_rules(rules.map(|acc| acc.as_ref()));
+                    }
                 }
             }
         }
+
+        revoke_builder.revoke_args(revoke_args);
+        revoke_builder.invoke()?;
+    } else {
+        transfer_spl(
+            owner,
+            authority,
+            token_account,
+            authority_pda_token_account,
+            mint,
+            payer,
+            associated_token_program,
+            token_program,
+            system_program,
+            rent,
+            Some(authority),
+            Some(authority_seeds),
+            None,
+            1,
+        )?;
+
+        transfer_spl(
+            authority,
+            owner,
+            authority_pda_token_account,
+            token_account,
+            mint,
+            payer,
+            associated_token_program,
+            token_program,
+            system_program,
+            rent,
+            Some(authority),
+            Some(authority_seeds),
+            None,
+            1,
+        )?;
     }
-
-    unlock_builder.unlock_args(UnlockArgs::V1 {
-        authorization_data: Some(AuthorizationData {
-            payload: get_auth_payload(authority),
-        }),
-    });
-    unlock_builder.invoke_signed(&[authority_seeds])?;
-
-    revoke_builder.revoke_args(revoke_args);
-    revoke_builder.invoke()?;
 
     Ok(())
 }
@@ -741,53 +680,127 @@ pub fn thaw_nft<'a>(
     authority_seeds: &[&[u8]],
     token_metadata_program: &AccountInfo<'a>,
     token_program: &AccountInfo<'a>,
-    metadata_info: &AccountInfo<'a>,
-    metadata: &Metadata,
+    metadata_info: Option<&AccountInfo<'a>>,
+    metadata: Option<&Metadata>,
     token_record: Option<&UncheckedAccount<'a>>,
     rules: Option<&UncheckedAccount<'a>>,
     system_program: &AccountInfo<'a>,
-    sysvar_instructions: &UncheckedAccount<'a>,
+    sysvar_instructions: Option<&UncheckedAccount<'a>>,
     auth_rules_program: Option<&UncheckedAccount<'a>>,
 ) -> Result<()> {
-    let mut unlock_builder = UnlockCpiBuilder::new(token_metadata_program);
-    unlock_builder
-        .authority(authority)
-        .token_owner(Some(owner))
-        .token(token_account)
-        .mint(mint)
-        .metadata(metadata_info)
-        .edition(Some(edition))
-        .payer(payer)
-        .spl_token_program(Some(token_program))
-        .system_program(system_program)
-        .sysvar_instructions(sysvar_instructions);
+    if let Some(sysvar_instructions) = sysvar_instructions {
+        let mut unlock_builder = UnlockCpiBuilder::new(token_metadata_program);
+        unlock_builder
+            .authority(authority)
+            .token_owner(Some(owner))
+            .token(token_account)
+            .mint(mint)
+            .metadata(metadata_info.unwrap())
+            .edition(Some(edition))
+            .payer(payer)
+            .spl_token_program(Some(token_program))
+            .system_program(system_program)
+            .sysvar_instructions(sysvar_instructions);
 
-    if let Some(standard) = &metadata.token_standard {
-        if *standard == MplTokenStandard::ProgrammableNonFungible
-            || *standard == MplTokenStandard::ProgrammableNonFungibleEdition
-        {
-            unlock_builder.token_record(token_record.map(|acc| acc.as_ref()));
+        if let Some(standard) = &metadata.unwrap().token_standard {
+            if *standard == MplTokenStandard::ProgrammableNonFungible
+                || *standard == MplTokenStandard::ProgrammableNonFungibleEdition
+            {
+                unlock_builder.token_record(token_record.map(|acc| acc.as_ref()));
+            }
         }
-    }
 
-    if let Some(config) = &metadata.programmable_config {
-        match *config {
-            ProgrammableConfig::V1 { rule_set } => {
-                if let Some(_rule_set) = rule_set {
-                    unlock_builder
-                        .authorization_rules_program(auth_rules_program.map(|acc| acc.as_ref()));
-                    unlock_builder.authorization_rules(rules.map(|acc| acc.as_ref()));
+        if let Some(config) = &metadata.unwrap().programmable_config {
+            match *config {
+                ProgrammableConfig::V1 { rule_set } => {
+                    if let Some(_rule_set) = rule_set {
+                        unlock_builder.authorization_rules_program(
+                            auth_rules_program.map(|acc| acc.as_ref()),
+                        );
+                        unlock_builder.authorization_rules(rules.map(|acc| acc.as_ref()));
+                    }
                 }
             }
         }
+
+        unlock_builder.unlock_args(UnlockArgs::V1 {
+            authorization_data: Some(AuthorizationData {
+                payload: get_auth_payload(authority),
+            }),
+        });
+        unlock_builder.invoke_signed(&[authority_seeds])?;
+    } else {
+        ThawDelegatedAccountCpi::new(
+            token_metadata_program,
+            ThawDelegatedAccountCpiAccounts {
+                delegate: authority,
+                token_account,
+                edition,
+                mint,
+                token_program,
+            },
+        )
+        .invoke_signed(&[&authority_seeds])?;
     }
 
-    unlock_builder.unlock_args(UnlockArgs::V1 {
-        authorization_data: Some(AuthorizationData {
-            payload: get_auth_payload(authority),
-        }),
-    });
-    unlock_builder.invoke_signed(&[authority_seeds])?;
+    Ok(())
+}
+
+pub fn transfer_and_close<'a>(
+    payer: &AccountInfo<'a>,
+    authority: &AccountInfo<'a>,
+    token_account: &mut Box<Account<'a, TokenAccount>>,
+    recipient: &AccountInfo<'a>,
+    recipient_token_account: &AccountInfo<'a>,
+    mint: &AccountInfo<'a>,
+    token_program: &AccountInfo<'a>,
+    associated_token_program: &AccountInfo<'a>,
+    system_program: &AccountInfo<'a>,
+    rent: &AccountInfo<'a>,
+    rent_recipient: &AccountInfo<'a>,
+    auth_seeds: &[&[u8]],
+    amount: u64,
+) -> Result<()> {
+    if amount > 0 {
+        transfer_spl(
+            authority,
+            recipient,
+            &token_account.to_account_info(),
+            recipient_token_account,
+            mint,
+            payer,
+            associated_token_program,
+            token_program,
+            system_program,
+            rent,
+            Some(authority),
+            Some(&auth_seeds),
+            None,
+            amount,
+        )?;
+        token_account.reload()?;
+    }
+
+    // Close the token account back to authority if token account is empty
+    if token_account.amount == 0 {
+        solana_program::program::invoke_signed(
+            &spl_token::instruction::close_account(
+                token_program.key,
+                token_account.to_account_info().key,
+                rent_recipient.key,
+                authority.key,
+                &[],
+            )?,
+            &[
+                token_program.to_account_info(),
+                token_account.to_account_info(),
+                rent_recipient.to_account_info(),
+                authority.to_account_info(),
+                system_program.to_account_info(),
+            ],
+            &[auth_seeds],
+        )?;
+    }
 
     Ok(())
 }

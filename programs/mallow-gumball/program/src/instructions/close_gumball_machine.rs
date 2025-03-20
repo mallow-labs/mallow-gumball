@@ -1,11 +1,10 @@
 use crate::{
-    constants::AUTHORITY_SEED, get_config_count, try_from, GumballError, GumballMachine, Token,
+    constants::AUTHORITY_SEED, get_config_count, transfer_and_close, try_from, GumballError,
+    GumballMachine, Token,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token::TokenAccount;
-use solana_program::program::invoke_signed;
-use spl_token::instruction::close_account;
-use utils::{assert_is_ata, is_native_mint, transfer_spl};
+use utils::{assert_is_ata, is_native_mint};
 
 /// Withdraw the rent SOL from the gumball machine account.
 #[derive(Accounts)]
@@ -92,10 +91,10 @@ pub fn close_gumball_machine<'info>(
             )?;
 
             // Transfer remaining balance to authority if there's any
-            let token_account = try_from!(
+            let token_account = &mut Box::new(try_from!(
                 Account::<'info, TokenAccount>,
                 authority_pda_payment_account
-            )?;
+            )?);
             let iter = &mut ctx.remaining_accounts.iter();
             let mint = next_account_info(iter)?;
             let to_token_account = next_account_info(iter)?;
@@ -103,42 +102,20 @@ pub fn close_gumball_machine<'info>(
             let system_program = next_account_info(iter)?;
             let rent = next_account_info(iter)?;
 
-            if token_account.amount > 0 {
-                transfer_spl(
-                    authority_pda,
-                    authority,
-                    authority_pda_payment_account,
-                    to_token_account,
-                    mint,
-                    authority,
-                    ata_program,
-                    token_program,
-                    system_program,
-                    rent,
-                    Some(authority_pda),
-                    Some(&auth_seeds),
-                    None,
-                    token_account.amount,
-                )?;
-            }
-
-            let close_ix = close_account(
-                token_program.key,
-                authority_pda_payment_account.key,
-                authority.key,
-                authority_pda.key,
-                &[],
-            )?;
-
-            invoke_signed(
-                &close_ix,
-                &[
-                    token_program.to_account_info(),
-                    authority_pda_payment_account.to_account_info(),
-                    authority_pda.to_account_info(),
-                    authority.to_account_info(),
-                ],
-                &[&auth_seeds],
+            transfer_and_close(
+                authority,
+                authority_pda,
+                token_account,
+                authority,
+                to_token_account,
+                mint,
+                token_program,
+                ata_program,
+                system_program,
+                rent,
+                authority,
+                &auth_seeds,
+                token_account.amount,
             )?;
         }
     }

@@ -7,11 +7,9 @@ import {
   generateSigner,
   isEqualToAmount,
   none,
-  PublicKey,
   sol,
   some,
   transactionBuilder,
-  Umi,
 } from '@metaplex-foundation/umi';
 import { generateSignerWithSol } from '@metaplex-foundation/umi-bundle-tests';
 import test from 'ava';
@@ -31,6 +29,7 @@ import {
   createMintWithHolders,
   createNft,
   createUmi,
+  drawRemainingItems,
   tomorrow,
   yesterday,
 } from './_setup';
@@ -556,7 +555,12 @@ test('it can mint from a gumball machine in a random order', async (t) => {
     .sendAndConfirm(umi);
 
   // When we mint from it.
-  const minted = await drain(umi, gumballMachine, indices.length);
+  const minted = await drawRemainingItems(
+    umi,
+    gumballMachine,
+    indices.length,
+    1
+  );
 
   // Then the mints are not sequential.
   t.notDeepEqual(indices, minted);
@@ -565,35 +569,3 @@ test('it can mint from a gumball machine in a random order', async (t) => {
   minted.sort((a, b) => a - b);
   t.deepEqual(indices, minted);
 });
-
-const drain = async (
-  umi: Umi,
-  gumballMachine: PublicKey,
-  available: number
-) => {
-  const indices: number[] = [];
-
-  for (let i = 0; i < available; i += 1) {
-    const buyer = generateSigner(umi);
-    await transactionBuilder()
-      .add(setComputeUnitLimit(umi, { units: 600_000 }))
-      .add(
-        draw(umi, {
-          gumballMachine,
-          buyer,
-        })
-      )
-      .sendAndConfirm(umi);
-
-    const gumballMachineAccount = await fetchGumballMachine(
-      umi,
-      gumballMachine
-    );
-    const buyerItem = gumballMachineAccount.items.find(
-      (item) => item.buyer === buyer.publicKey
-    );
-    indices.push(buyerItem?.index ?? -1);
-  }
-
-  return indices;
-};

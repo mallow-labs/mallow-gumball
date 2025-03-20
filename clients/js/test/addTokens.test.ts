@@ -132,7 +132,7 @@ test('it can add multiple tokens items to a gumball machine as the authority', a
 
   // When we add an nft to the Gumball Machine.
   await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 500_000 }))
+    .add(setComputeUnitLimit(umi, { units: 1_400_000 }))
     .add(
       addTokens(umi, {
         gumballMachine: gumballMachine.publicKey,

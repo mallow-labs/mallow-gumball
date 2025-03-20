@@ -1,6 +1,6 @@
 [package]
 name = "mallow-gumball"
-version = "0.6.3"
+version = "0.7.0"
 description = "mallow Gumball: collaborative random sales of existing NFTs."
 authors = ["Mallow Developers <dev@mallow.art>"]
 repository = "https://github.com/mallow-labs/mallow-gumball"

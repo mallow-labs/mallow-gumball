@@ -1,8 +1,6 @@
-use crate::{processors::claim_item, GumballMachine};
+use crate::{processors::claim_item, transfer_and_close, GumballError, GumballMachine};
 use anchor_lang::prelude::*;
 use anchor_spl::token::TokenAccount;
-use solana_program::program::invoke_signed;
-use utils::transfer_spl;
 
 pub fn claim_tokens<'a, 'b>(
     gumball_machine: &mut Box<Account<'a, GumballMachine>>,
@@ -22,44 +20,26 @@ pub fn claim_tokens<'a, 'b>(
 ) -> Result<u64> {
     let amount = claim_item(gumball_machine, index)?;
 
-    transfer_spl(
+    require!(
+        to.key() != Pubkey::default(),
+        GumballError::InvalidAuthority
+    );
+
+    transfer_and_close(
+        payer,
         authority_pda,
+        authority_pda_token_account,
         to,
-        &authority_pda_token_account.to_account_info(),
         to_token_account,
         mint,
-        payer,
-        associated_token_program,
         token_program,
+        associated_token_program,
         system_program,
         rent,
-        Some(authority_pda),
-        Some(&auth_seeds),
-        None,
+        authority,
+        auth_seeds,
         amount,
     )?;
-
-    authority_pda_token_account.reload()?;
-    // Close the token account back to authority if token account is empty
-    if authority_pda_token_account.amount == 0 {
-        invoke_signed(
-            &spl_token::instruction::close_account(
-                token_program.key,
-                authority_pda_token_account.to_account_info().key,
-                authority.key,
-                authority_pda.key,
-                &[],
-            )?,
-            &[
-                token_program.to_account_info(),
-                authority_pda_token_account.to_account_info(),
-                authority.to_account_info(),
-                authority_pda.to_account_info(),
-                system_program.to_account_info(),
-            ],
-            &[&auth_seeds],
-        )?;
-    }
 
     Ok(amount)
 }

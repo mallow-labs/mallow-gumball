@@ -2,12 +2,10 @@ use crate::{
     constants::{AUTHORITY_SEED, SELLER_HISTORY_SEED},
     processors,
     state::GumballMachine,
-    AssociatedToken, GumballError, SellerHistory, Token,
+    transfer_and_close, AssociatedToken, GumballError, SellerHistory, Token,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, TokenAccount};
-use solana_program::program::invoke_signed;
-use utils::transfer_spl;
 
 /// Add nft to a gumball machine.
 #[derive(Accounts)]
@@ -17,7 +15,7 @@ pub struct RemoveTokens<'info> {
         mut,
         constraint = gumball_machine.can_edit_items() @ GumballError::InvalidState,
     )]
-    gumball_machine: Account<'info, GumballMachine>,
+    gumball_machine: Box<Account<'info, GumballMachine>>,
 
     /// Seller history account.
     #[account(
@@ -71,6 +69,7 @@ pub struct RemoveTokens<'info> {
     rent: Sysvar<'info, Rent>,
 }
 
+// DEPRECATED: Use remove_tokens_span instead
 pub fn remove_tokens(ctx: Context<RemoveTokens>, indices: Vec<u8>, amount: u64) -> Result<()> {
     let system_program = &ctx.accounts.system_program.to_account_info();
     let rent = &ctx.accounts.rent.to_account_info();
@@ -100,50 +99,94 @@ pub fn remove_tokens(ctx: Context<RemoveTokens>, indices: Vec<u8>, amount: u64) 
         &[ctx.bumps.authority_pda],
     ];
 
-    transfer_spl(
+    transfer_and_close(
+        authority,
         authority_pda,
+        authority_pda_token_account,
         seller,
-        &authority_pda_token_account.to_account_info(),
         seller_token_account,
         mint,
-        authority,
-        associated_token_program,
         token_program,
+        associated_token_program,
         system_program,
         rent,
-        Some(authority_pda),
-        Some(&auth_seeds),
-        None,
+        authority,
+        &auth_seeds,
         amount
             .checked_mul(indices.len() as u64)
             .ok_or(GumballError::NumericalOverflowError)?,
     )?;
 
-    authority_pda_token_account.reload()?;
-    // Close the token account back to authority if token account is empty
-    if authority_pda_token_account.amount == 0 {
-        invoke_signed(
-            &spl_token::instruction::close_account(
-                token_program.key,
-                authority_pda_token_account.to_account_info().key,
-                authority.key,
-                authority_pda.key,
-                &[],
-            )?,
-            &[
-                token_program.to_account_info(),
-                authority_pda_token_account.to_account_info(),
-                authority.to_account_info(),
-                authority_pda.to_account_info(),
-                system_program.to_account_info(),
-            ],
-            &[&auth_seeds],
-        )?;
-    }
-
     seller_history.item_count = seller_history
         .item_count
         .checked_sub(indices.len() as u64)
+        .ok_or(GumballError::NumericalOverflowError)?;
+
+    if seller_history.item_count == 0 {
+        seller_history.close(seller.to_account_info())?;
+    }
+
+    Ok(())
+}
+
+pub fn remove_tokens_span(
+    ctx: Context<RemoveTokens>,
+    amount: u64,
+    start_index: u32,
+    end_index: u32,
+) -> Result<()> {
+    let system_program = &ctx.accounts.system_program.to_account_info();
+    let rent = &ctx.accounts.rent.to_account_info();
+    let token_program = &ctx.accounts.token_program.to_account_info();
+    let associated_token_program = &ctx.accounts.associated_token_program.to_account_info();
+    let authority_pda_token_account = &mut ctx.accounts.authority_pda_token_account;
+    let seller_token_account = &ctx.accounts.token_account.to_account_info();
+    let authority_pda = &ctx.accounts.authority_pda.to_account_info();
+    let authority = &ctx.accounts.authority.to_account_info();
+    let mint = &ctx.accounts.mint.to_account_info();
+    let seller = &ctx.accounts.seller.to_account_info();
+    let gumball_machine = &mut ctx.accounts.gumball_machine;
+    let seller_history = &mut ctx.accounts.seller_history;
+
+    processors::remove_multiple_items_span(
+        gumball_machine,
+        authority.key(),
+        mint.key(),
+        seller.key(),
+        amount,
+        start_index,
+        end_index,
+    )?;
+
+    let auth_seeds = [
+        AUTHORITY_SEED.as_bytes(),
+        ctx.accounts.gumball_machine.to_account_info().key.as_ref(),
+        &[ctx.bumps.authority_pda],
+    ];
+
+    let prize_count = end_index - start_index + 1;
+
+    transfer_and_close(
+        authority,
+        authority_pda,
+        authority_pda_token_account,
+        seller,
+        seller_token_account,
+        mint,
+        token_program,
+        associated_token_program,
+        system_program,
+        rent,
+        authority,
+        &auth_seeds,
+        amount
+            .checked_mul(prize_count as u64)
+            .ok_or(GumballError::NumericalOverflowError)?,
+    )?;
+
+    seller_history.item_count = seller_history
+        .item_count
+        .checked_sub(prize_count as u64)
         .ok_or(GumballError::NumericalOverflowError)?;
 
     if seller_history.item_count == 0 {

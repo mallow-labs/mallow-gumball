@@ -1,5 +1,5 @@
 use crate::{
-    approve_and_freeze_nft, approve_and_freeze_nft_v2, assert_can_add_item,
+    approve_and_freeze_nft_v2, assert_can_add_item,
     constants::{AUTHORITY_SEED, MPL_TOKEN_AUTH_RULES_PROGRAM, SELLER_HISTORY_SEED},
     state::GumballMachine,
     token_standard_from_mpl_token_standard, ConfigLineV2Input, GumballError, SellerHistory, Token,
@@ -131,36 +131,24 @@ pub fn add_nft(ctx: Context<AddNft>, seller_proof_path: Option<Vec<[u8; 32]>>) -
         &[ctx.bumps.authority_pda],
     ];
 
-    if let Some(_) = ctx.accounts.auth_rules_program {
-        approve_and_freeze_nft_v2(
-            seller,
-            mint,
-            token_account,
-            edition,
-            authority_pda,
-            &auth_seeds,
-            token_metadata_program,
-            token_program,
-            metadata_account,
-            metadata,
-            ctx.accounts.seller_token_record.as_ref(),
-            ctx.accounts.auth_rules.as_ref(),
-            system_program,
-            ctx.accounts.instructions.as_ref().unwrap(),
-            ctx.accounts.auth_rules_program.as_ref(),
-        )?;
-    } else {
-        approve_and_freeze_nft(
-            seller,
-            mint,
-            token_account,
-            edition,
-            authority_pda,
-            &auth_seeds,
-            token_metadata_program,
-            token_program,
-        )?;
-    }
+    approve_and_freeze_nft_v2(
+        seller,
+        seller,
+        mint,
+        token_account,
+        edition,
+        authority_pda,
+        &auth_seeds,
+        token_metadata_program,
+        token_program,
+        metadata_account,
+        metadata,
+        ctx.accounts.seller_token_record.as_ref(),
+        ctx.accounts.auth_rules.as_ref(),
+        system_program,
+        ctx.accounts.instructions.as_ref(),
+        ctx.accounts.auth_rules_program.as_ref(),
+    )?;
 
     Ok(())
 }

@@ -22,6 +22,7 @@ pub mod set_mint_authority;
 pub mod settle_core_asset_sale;
 pub mod settle_nft_sale;
 pub mod settle_tokens_sale;
+pub mod settle_tokens_sale_claimed;
 pub mod start_sale;
 pub mod update_settings;
 
@@ -49,5 +50,6 @@ pub use set_mint_authority::*;
 pub use settle_core_asset_sale::*;
 pub use settle_nft_sale::*;
 pub use settle_tokens_sale::*;
+pub use settle_tokens_sale_claimed::*;
 pub use start_sale::*;
 pub use update_settings::*;

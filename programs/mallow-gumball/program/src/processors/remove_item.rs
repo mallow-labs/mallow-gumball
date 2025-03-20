@@ -4,92 +4,7 @@ use crate::{
 };
 use anchor_lang::prelude::*;
 
-pub fn remove_item(
-    gumball_machine: &mut Account<GumballMachine>,
-    authority: Pubkey,
-    mint: Pubkey,
-    expected_seller: Pubkey,
-    index: u32,
-    amount: u64,
-) -> Result<()> {
-    let account_info = gumball_machine.to_account_info();
-    // mutable reference to the account data (config lines are written in the
-    // 'hidden' section of the data array)
-    let mut data = account_info.data.borrow_mut();
-
-    // holds the total number of config lines
-    let mut count = get_config_count(&data)?;
-
-    if index >= count as u32 {
-        return err!(GumballError::IndexGreaterThanLength);
-    }
-
-    let last_index = count - 1;
-    let config_line_size = gumball_machine.get_config_line_size();
-    let config_line_position = GUMBALL_MACHINE_SIZE + 4 + (index as usize) * config_line_size;
-    let last_config_line_position = GUMBALL_MACHINE_SIZE + 4 + (last_index) * config_line_size;
-
-    let seller =
-        Pubkey::try_from(&data[config_line_position + 32..config_line_position + 64]).unwrap();
-    // Only the gumball machine authority or the seller can remove a config line
-    require!(
-        authority == gumball_machine.authority || seller == authority,
-        GumballError::InvalidAuthority
-    );
-    require!(expected_seller == seller, GumballError::InvalidSeller);
-
-    let item_mint =
-        Pubkey::try_from(&data[config_line_position..config_line_position + 32]).unwrap();
-    require!(mint == item_mint, GumballError::InvalidMint);
-
-    if gumball_machine.version >= 2 {
-        // Make sure the amount is correct
-        let item_amount = u64::from_le_bytes(
-            data[config_line_position + CONFIG_LINE_SIZE
-                ..config_line_position + CONFIG_LINE_SIZE + 8]
-                .try_into()
-                .unwrap(),
-        );
-        require!(item_amount == amount, GumballError::InvalidAmount);
-    }
-
-    // if it's the last line we'll just zero out the config slice
-    if index == count as u32 - 1 {
-        data[config_line_position..config_line_position + config_line_size]
-            .iter_mut()
-            .for_each(|x| *x = 0);
-    } else {
-        // if it's not the last line we'll move the last line to the current position
-        let last_config_slice: Vec<u8> =
-            data[last_config_line_position..last_config_line_position + config_line_size].to_vec();
-        data[config_line_position..config_line_position + config_line_size]
-            .copy_from_slice(&last_config_slice);
-        // zero out the last line
-        data[last_config_line_position..last_config_line_position + config_line_size]
-            .iter_mut()
-            .for_each(|x| *x = 0);
-    }
-
-    // (unordered) indices for the mint
-    let indices_start = gumball_machine.get_mint_indices_position()?;
-
-    // remove the last index from the mint indices vec
-    let index_position = indices_start + last_index * 4;
-    data[index_position..index_position + 4].copy_from_slice(&u32::MIN.to_le_bytes());
-
-    count = count
-        .checked_sub(1)
-        .ok_or(GumballError::NumericalOverflowError)?;
-
-    msg!("Item removed: position={}, new count={})", index, count,);
-
-    // updates the config lines count
-    data[GUMBALL_MACHINE_SIZE..GUMBALL_MACHINE_SIZE + 4]
-        .copy_from_slice(&(count as u32).to_le_bytes());
-
-    Ok(())
-}
-
+/// DEPRECATED: Use remove_multiple_items_span instead
 pub fn remove_multiple_items(
     gumball_machine: &mut Account<GumballMachine>,
     authority: Pubkey,
@@ -202,6 +117,122 @@ pub fn remove_multiple_items(
     // Update final count
     data[GUMBALL_MACHINE_SIZE..GUMBALL_MACHINE_SIZE + 4]
         .copy_from_slice(&(count as u32).to_le_bytes());
+
+    Ok(())
+}
+
+pub fn remove_multiple_items_span(
+    gumball_machine: &mut Account<GumballMachine>,
+    authority: Pubkey,
+    mint: Pubkey,
+    expected_seller: Pubkey,
+    amount: u64,
+    start_index: u32,
+    end_index: u32,
+) -> Result<()> {
+    require!(start_index <= end_index, GumballError::InvalidInputLength);
+
+    let account_info = gumball_machine.to_account_info();
+    let mut data = account_info.data.borrow_mut();
+    let mut count = get_config_count(&data)? as u32;
+    let config_line_size = gumball_machine.get_config_line_size();
+
+    // Validate indices are within bounds
+    require!(end_index < count, GumballError::IndexGreaterThanLength);
+
+    // Calculate how many items we're removing
+    let items_to_remove = end_index - start_index + 1;
+    require!(
+        items_to_remove <= count,
+        GumballError::NumericalOverflowError
+    );
+
+    // First, verify all items in the span
+    for index in start_index..=end_index {
+        let index_usize = index as usize;
+        require!(
+            index_usize <= usize::MAX / config_line_size, // Prevent multiplication overflow
+            GumballError::NumericalOverflowError
+        );
+
+        let config_line_position = GUMBALL_MACHINE_SIZE + 4 + index_usize * config_line_size;
+
+        // Verify seller and authority
+        let seller =
+            Pubkey::try_from(&data[config_line_position + 32..config_line_position + 64]).unwrap();
+        require!(
+            authority == gumball_machine.authority || seller == authority,
+            GumballError::InvalidAuthority
+        );
+        require!(expected_seller == seller, GumballError::InvalidSeller);
+
+        // Verify mint
+        let item_mint =
+            Pubkey::try_from(&data[config_line_position..config_line_position + 32]).unwrap();
+        require!(mint == item_mint, GumballError::InvalidMint);
+
+        // Verify amount for version 2+
+        if gumball_machine.version >= 2 {
+            let item_amount = u64::from_le_bytes(
+                data[config_line_position + CONFIG_LINE_SIZE
+                    ..config_line_position + CONFIG_LINE_SIZE + 8]
+                    .try_into()
+                    .unwrap(),
+            );
+            require!(amount == item_amount, GumballError::InvalidAmount);
+        }
+    }
+
+    // After verification, perform the actual removal
+    if end_index < count - 1 {
+        // Only move data if we're not removing the last items in the list
+        let items_after_removal = count
+            .checked_sub(end_index + 1)
+            .ok_or(GumballError::NumericalOverflowError)?;
+
+        if items_after_removal > 0 {
+            let source_start =
+                GUMBALL_MACHINE_SIZE + 4 + ((end_index + 1) as usize) * config_line_size;
+            let dest_start = GUMBALL_MACHINE_SIZE + 4 + (start_index as usize) * config_line_size;
+            let copy_size = items_after_removal as usize * config_line_size;
+
+            data.copy_within(source_start..source_start + copy_size, dest_start);
+        }
+    }
+
+    // Zero out the vacated space at the end
+    let zero_start =
+        GUMBALL_MACHINE_SIZE + 4 + ((count - items_to_remove) as usize) * config_line_size;
+    let zero_size = items_to_remove as usize * config_line_size;
+    data[zero_start..zero_start + zero_size]
+        .iter_mut()
+        .for_each(|x| *x = 0);
+
+    // Zero out the mint indices at the end
+    let indices_start = gumball_machine.get_mint_indices_position()?;
+    let zero_start = indices_start + ((count - items_to_remove) as usize) * 4;
+    let zero_size = items_to_remove as usize * 4;
+    data[zero_start..zero_start + zero_size]
+        .iter_mut()
+        .for_each(|x| *x = 0);
+
+    // Update the count
+    count = count
+        .checked_sub(items_to_remove)
+        .ok_or(GumballError::NumericalOverflowError)?;
+
+    msg!(
+        "Items removed: span from {} to {}, new count={}",
+        start_index,
+        end_index,
+        count
+    );
+
+    // Update final count
+    data[GUMBALL_MACHINE_SIZE..GUMBALL_MACHINE_SIZE + 4]
+        .copy_from_slice(&(count as u32).to_le_bytes());
+
+    drop(data);
 
     Ok(())
 }
