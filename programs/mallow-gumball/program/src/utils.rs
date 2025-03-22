@@ -204,53 +204,65 @@ pub fn assert_no_permanent_delegates(
     asset: &AccountInfo,
     collection: Option<&AccountInfo>,
 ) -> Result<()> {
-    if let Ok(_) = fetch_plugin::<BaseAssetV1, PermanentTransferDelegate>(
+    if let Ok(plugin) = fetch_plugin::<BaseAssetV1, PermanentTransferDelegate>(
         asset,
         PluginType::PermanentTransferDelegate,
     ) {
-        msg!("Asset cannot have the PermanentTransferDelegate plugin");
-        return err!(GumballError::InvalidAssetPlugin);
+        if plugin.0 != PluginAuthority::None {
+            msg!("Asset cannot have the PermanentTransferDelegate plugin");
+            return err!(GumballError::InvalidAssetPlugin);
+        }
     }
 
-    if let Ok(_) = fetch_plugin::<BaseAssetV1, PermanentFreezeDelegate>(
+    if let Ok(plugin) = fetch_plugin::<BaseAssetV1, PermanentFreezeDelegate>(
         asset,
         PluginType::PermanentFreezeDelegate,
     ) {
-        msg!("Asset cannot have the PermanentFreezeDelegate plugin");
-        return err!(GumballError::InvalidAssetPlugin);
+        if plugin.0 != PluginAuthority::None || plugin.1.frozen {
+            msg!("Asset cannot have the PermanentFreezeDelegate plugin");
+            return err!(GumballError::InvalidAssetPlugin);
+        }
     }
 
-    if let Ok(_) =
+    if let Ok(plugin) =
         fetch_plugin::<BaseAssetV1, PermanentBurnDelegate>(asset, PluginType::PermanentBurnDelegate)
     {
-        msg!("Asset cannot have the PermanentBurnDelegate plugin");
-        return err!(GumballError::InvalidAssetPlugin);
+        if plugin.0 != PluginAuthority::None {
+            msg!("Asset cannot have the PermanentBurnDelegate plugin");
+            return err!(GumballError::InvalidAssetPlugin);
+        }
     }
 
     // Make sure the collection doesn't have any Permanent delegates
     if let Some(collection) = collection {
-        if let Ok(_) = fetch_plugin::<BaseCollectionV1, PermanentTransferDelegate>(
+        if let Ok(plugin) = fetch_plugin::<BaseCollectionV1, PermanentTransferDelegate>(
             collection,
             PluginType::PermanentTransferDelegate,
         ) {
-            msg!("Collection cannot have the PermanentTransferDelegate plugin");
-            return err!(GumballError::InvalidCollection);
+            if plugin.0 != PluginAuthority::None {
+                msg!("Collection cannot have the PermanentTransferDelegate plugin");
+                return err!(GumballError::InvalidCollection);
+            }
         }
 
-        if let Ok(_) = fetch_plugin::<BaseCollectionV1, PermanentFreezeDelegate>(
+        if let Ok(plugin) = fetch_plugin::<BaseCollectionV1, PermanentFreezeDelegate>(
             collection,
             PluginType::PermanentFreezeDelegate,
         ) {
-            msg!("Collection cannot have the PermanentFreezeDelegate plugin");
-            return err!(GumballError::InvalidCollection);
+            if plugin.0 != PluginAuthority::None || plugin.1.frozen {
+                msg!("Collection cannot have the PermanentFreezeDelegate plugin");
+                return err!(GumballError::InvalidCollection);
+            }
         }
 
-        if let Ok(_) = fetch_plugin::<BaseCollectionV1, PermanentBurnDelegate>(
+        if let Ok(plugin) = fetch_plugin::<BaseCollectionV1, PermanentBurnDelegate>(
             collection,
             PluginType::PermanentBurnDelegate,
         ) {
-            msg!("Collection cannot have the PermanentBurnDelegate plugin");
-            return err!(GumballError::InvalidCollection);
+            if plugin.0 != PluginAuthority::None {
+                msg!("Collection cannot have the PermanentBurnDelegate plugin");
+                return err!(GumballError::InvalidCollection);
+            }
         }
     }
 

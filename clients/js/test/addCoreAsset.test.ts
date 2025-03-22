@@ -381,3 +381,167 @@ test('it cannot add more core assets than allowed per seller', async (t) => {
 
   await t.throwsAsync(promise, { message: /SellerTooManyItems/ });
 });
+
+test('it cannot add core asset with a permanent freeze delegate with a non-none authority', async (t) => {
+  const umi = await createUmi();
+  const gumballMachine = await create(umi, { settings: { itemCapacity: 5 } });
+  const coreAsset = await createCoreAsset(umi, {
+    plugins: [
+      {
+        type: 'PermanentFreezeDelegate',
+        authority: {
+          type: 'UpdateAuthority',
+        },
+        frozen: false,
+      },
+    ],
+  });
+
+  // When we add an coreAsset to the Gumball Machine.
+  const promise = transactionBuilder()
+    .add(
+      addCoreAsset(umi, {
+        gumballMachine: gumballMachine.publicKey,
+        asset: coreAsset.publicKey,
+      })
+    )
+    .sendAndConfirm(umi);
+
+  await t.throwsAsync(promise, { message: /InvalidAssetPlugin/ });
+});
+
+test('it can add core asset with a permanent freeze delegate with authority set to none', async (t) => {
+  const umi = await createUmi();
+  const gumballMachine = await create(umi, { settings: { itemCapacity: 5 } });
+  const coreAsset = await createCoreAsset(umi, {
+    plugins: [
+      {
+        type: 'PermanentFreezeDelegate',
+        authority: {
+          type: 'None',
+        },
+        frozen: false,
+      },
+    ],
+  });
+
+  // When we add an coreAsset to the Gumball Machine.
+  const promise = transactionBuilder()
+    .add(
+      addCoreAsset(umi, {
+        gumballMachine: gumballMachine.publicKey,
+        asset: coreAsset.publicKey,
+      })
+    )
+    .sendAndConfirm(umi);
+
+  await t.notThrowsAsync(promise);
+});
+
+test('it cannot add core asset with a permanent burn delegate with a non-none authority', async (t) => {
+  const umi = await createUmi();
+  const gumballMachine = await create(umi, { settings: { itemCapacity: 5 } });
+  const coreAsset = await createCoreAsset(umi, {
+    plugins: [
+      {
+        type: 'PermanentBurnDelegate',
+        authority: {
+          type: 'UpdateAuthority',
+        },
+      },
+    ],
+  });
+
+  // When we add an coreAsset to the Gumball Machine.
+  const promise = transactionBuilder()
+    .add(
+      addCoreAsset(umi, {
+        gumballMachine: gumballMachine.publicKey,
+        asset: coreAsset.publicKey,
+      })
+    )
+    .sendAndConfirm(umi);
+
+  await t.throwsAsync(promise, { message: /InvalidAssetPlugin/ });
+});
+
+test('it can add core asset with a permanent burn delegate with authority set to none', async (t) => {
+  const umi = await createUmi();
+  const gumballMachine = await create(umi, { settings: { itemCapacity: 5 } });
+  const coreAsset = await createCoreAsset(umi, {
+    plugins: [
+      {
+        type: 'PermanentBurnDelegate',
+        authority: {
+          type: 'None',
+        },
+      },
+    ],
+  });
+
+  // When we add an coreAsset to the Gumball Machine.
+  const promise = transactionBuilder()
+    .add(
+      addCoreAsset(umi, {
+        gumballMachine: gumballMachine.publicKey,
+        asset: coreAsset.publicKey,
+      })
+    )
+    .sendAndConfirm(umi);
+
+  await t.notThrowsAsync(promise);
+});
+
+test('it cannot add core asset with a permanent transfer delegate with a non-none authority', async (t) => {
+  const umi = await createUmi();
+  const gumballMachine = await create(umi, { settings: { itemCapacity: 5 } });
+  const coreAsset = await createCoreAsset(umi, {
+    plugins: [
+      {
+        type: 'PermanentTransferDelegate',
+        authority: {
+          type: 'UpdateAuthority',
+        },
+      },
+    ],
+  });
+
+  // When we add an coreAsset to the Gumball Machine.
+  const promise = transactionBuilder()
+    .add(
+      addCoreAsset(umi, {
+        gumballMachine: gumballMachine.publicKey,
+        asset: coreAsset.publicKey,
+      })
+    )
+    .sendAndConfirm(umi);
+
+  await t.throwsAsync(promise, { message: /InvalidAssetPlugin/ });
+});
+
+test('it can add core asset with a permanent transfer delegate with authority set to none', async (t) => {
+  const umi = await createUmi();
+  const gumballMachine = await create(umi, { settings: { itemCapacity: 5 } });
+  const coreAsset = await createCoreAsset(umi, {
+    plugins: [
+      {
+        type: 'PermanentTransferDelegate',
+        authority: {
+          type: 'None',
+        },
+      },
+    ],
+  });
+
+  // When we add an coreAsset to the Gumball Machine.
+  const promise = transactionBuilder()
+    .add(
+      addCoreAsset(umi, {
+        gumballMachine: gumballMachine.publicKey,
+        asset: coreAsset.publicKey,
+      })
+    )
+    .sendAndConfirm(umi);
+
+  await t.notThrowsAsync(promise);
+});
