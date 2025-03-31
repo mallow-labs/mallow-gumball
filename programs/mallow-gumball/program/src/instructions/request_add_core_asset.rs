@@ -1,5 +1,5 @@
 use crate::{
-    approve_and_freeze_core_asset, assert_can_request_add_item, assert_no_permanent_delegates,
+    approve_and_freeze_core_asset, assert_can_request_add_item,
     constants::{ADD_ITEM_REQUEST_SEED, AUTHORITY_SEED, SELLER_HISTORY_SEED},
     state::GumballMachine,
     AddItemRequest, GumballError, SellerHistory, TokenStandard,
@@ -104,8 +104,6 @@ pub fn request_add_core_asset(ctx: Context<RequestAddCoreAsset>) -> Result<()> {
         .as_ref()
         .map(|account| account.to_account_info());
     let collection = collection_info.as_ref();
-
-    assert_no_permanent_delegates(asset_info, collection)?;
 
     let auth_seeds = [
         AUTHORITY_SEED.as_bytes(),

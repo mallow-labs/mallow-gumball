@@ -6,15 +6,14 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::TokenAccount;
 use arrayref::array_ref;
 use mpl_core::{
-    accounts::{BaseAssetV1, BaseCollectionV1},
+    accounts::BaseAssetV1,
     fetch_plugin,
     instructions::{
         AddPluginV1CpiBuilder, ApprovePluginAuthorityV1CpiBuilder, RemovePluginV1CpiBuilder,
         RevokePluginAuthorityV1CpiBuilder, UpdatePluginV1CpiBuilder,
     },
     types::{
-        FreezeDelegate, PermanentBurnDelegate, PermanentFreezeDelegate, PermanentTransferDelegate,
-        Plugin, PluginAuthority, PluginType, TransferDelegate, UpdateAuthority,
+        FreezeDelegate, Plugin, PluginAuthority, PluginType, TransferDelegate, UpdateAuthority,
     },
     Asset, Collection,
 };
@@ -198,75 +197,6 @@ pub fn get_bit_byte_info(base_position: usize, position: usize) -> Result<(usize
     let mask = u8::pow(2, bit as u32);
 
     return Ok((byte_position, bit, mask));
-}
-
-pub fn assert_no_permanent_delegates(
-    asset: &AccountInfo,
-    collection: Option<&AccountInfo>,
-) -> Result<()> {
-    if let Ok(plugin) = fetch_plugin::<BaseAssetV1, PermanentTransferDelegate>(
-        asset,
-        PluginType::PermanentTransferDelegate,
-    ) {
-        if plugin.0 != PluginAuthority::None {
-            msg!("Asset cannot have the PermanentTransferDelegate plugin");
-            return err!(GumballError::InvalidAssetPlugin);
-        }
-    }
-
-    if let Ok(plugin) = fetch_plugin::<BaseAssetV1, PermanentFreezeDelegate>(
-        asset,
-        PluginType::PermanentFreezeDelegate,
-    ) {
-        if plugin.0 != PluginAuthority::None || plugin.1.frozen {
-            msg!("Asset cannot have the PermanentFreezeDelegate plugin");
-            return err!(GumballError::InvalidAssetPlugin);
-        }
-    }
-
-    if let Ok(plugin) =
-        fetch_plugin::<BaseAssetV1, PermanentBurnDelegate>(asset, PluginType::PermanentBurnDelegate)
-    {
-        if plugin.0 != PluginAuthority::None {
-            msg!("Asset cannot have the PermanentBurnDelegate plugin");
-            return err!(GumballError::InvalidAssetPlugin);
-        }
-    }
-
-    // Make sure the collection doesn't have any Permanent delegates
-    if let Some(collection) = collection {
-        if let Ok(plugin) = fetch_plugin::<BaseCollectionV1, PermanentTransferDelegate>(
-            collection,
-            PluginType::PermanentTransferDelegate,
-        ) {
-            if plugin.0 != PluginAuthority::None {
-                msg!("Collection cannot have the PermanentTransferDelegate plugin");
-                return err!(GumballError::InvalidCollection);
-            }
-        }
-
-        if let Ok(plugin) = fetch_plugin::<BaseCollectionV1, PermanentFreezeDelegate>(
-            collection,
-            PluginType::PermanentFreezeDelegate,
-        ) {
-            if plugin.0 != PluginAuthority::None || plugin.1.frozen {
-                msg!("Collection cannot have the PermanentFreezeDelegate plugin");
-                return err!(GumballError::InvalidCollection);
-            }
-        }
-
-        if let Ok(plugin) = fetch_plugin::<BaseCollectionV1, PermanentBurnDelegate>(
-            collection,
-            PluginType::PermanentBurnDelegate,
-        ) {
-            if plugin.0 != PluginAuthority::None {
-                msg!("Collection cannot have the PermanentBurnDelegate plugin");
-                return err!(GumballError::InvalidCollection);
-            }
-        }
-    }
-
-    Ok(())
 }
 
 pub fn approve_and_freeze_core_asset<'a>(

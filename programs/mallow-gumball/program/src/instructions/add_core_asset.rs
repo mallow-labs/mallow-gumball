@@ -1,5 +1,5 @@
 use crate::{
-    approve_and_freeze_core_asset, assert_can_add_item, assert_no_permanent_delegates,
+    approve_and_freeze_core_asset, assert_can_add_item,
     constants::{AUTHORITY_SEED, SELLER_HISTORY_SEED},
     state::GumballMachine,
     ConfigLineV2Input, GumballError, SellerHistory, TokenStandard,
@@ -86,8 +86,6 @@ pub fn add_core_asset(
         .as_ref()
         .map(|account| account.to_account_info());
     let collection = collection_info.as_ref();
-
-    assert_no_permanent_delegates(asset_info, collection)?;
 
     crate::processors::add_item(
         gumball_machine,
