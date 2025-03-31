@@ -1,5 +1,5 @@
 export type GumballGuard = {
-  version: '0.2.2';
+  version: '0.3.0';
   name: 'gumball_guard';
   instructions: [
     {
@@ -1436,7 +1436,7 @@ export type GumballGuard = {
 };
 
 export const IDL: GumballGuard = {
-  version: '0.2.2',
+  version: '0.3.0',
   name: 'gumball_guard',
   instructions: [
     {

@@ -1,7 +1,12 @@
 import { findMetadataPda } from '@metaplex-foundation/mpl-token-metadata';
 import { findAssociatedTokenPda } from '@metaplex-foundation/mpl-toolbox';
 import { PublicKey } from '@metaplex-foundation/umi';
-import { getNftGateSerializer, NftGate, NftGateArgs } from '../generated';
+import {
+  getNftGateSerializer,
+  NftGate,
+  NftGateArgs,
+  TokenStandard,
+} from '../generated';
 import { GuardManifest, noopParser } from '../guards';
 
 /**
@@ -19,20 +24,35 @@ export const nftGateGuardManifest: GuardManifest<
   name: 'nftGate',
   serializer: getNftGateSerializer,
   mintParser: (context, mintContext, args) => {
-    const tokenAccount =
-      args.tokenAccount ??
-      findAssociatedTokenPda(context, {
-        mint: args.mint,
-        owner: mintContext.buyer.publicKey,
-      })[0];
-    const [tokenMetadata] = findMetadataPda(context, { mint: args.mint });
-    return {
-      data: new Uint8Array(),
-      remainingAccounts: [
-        { publicKey: tokenAccount, isWritable: false },
-        { publicKey: tokenMetadata, isWritable: false },
-      ],
-    };
+    const tokenStandard = args.tokenStandard ?? TokenStandard.NonFungible;
+
+    switch (tokenStandard) {
+      case TokenStandard.Core: {
+        return {
+          data: new Uint8Array(),
+          remainingAccounts: [
+            { publicKey: args.mint, isWritable: false },
+            { publicKey: args.mint, isWritable: false },
+          ],
+        };
+      }
+      default: {
+        const tokenAccount =
+          args.tokenAccount ??
+          findAssociatedTokenPda(context, {
+            mint: args.mint,
+            owner: mintContext.buyer.publicKey,
+          })[0];
+        const [tokenMetadata] = findMetadataPda(context, { mint: args.mint });
+        return {
+          data: new Uint8Array(),
+          remainingAccounts: [
+            { publicKey: tokenAccount, isWritable: false },
+            { publicKey: tokenMetadata, isWritable: false },
+          ],
+        };
+      }
+    }
   },
   routeParser: noopParser,
 };
@@ -52,4 +72,12 @@ export type NftGateMintArgs = {
    * mint address of the NFT and the payer's address.
    */
   tokenAccount?: PublicKey;
+
+  /**
+   * The token standard of the NFT.
+   *
+   * @defaultValue
+   * Defaults to `TokenStandard.NonFungible`.
+   */
+  tokenStandard?: TokenStandard;
 };
