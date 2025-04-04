@@ -6,6 +6,7 @@
  * @see https://github.com/metaplex-foundation/kinobi
  */
 
+import { findAssociatedTokenPda } from '@metaplex-foundation/mpl-toolbox';
 import {
   Context,
   Pda,
@@ -164,6 +165,26 @@ export function manageBuyBackFunds(
       context,
       { gumballMachine: expectPublicKey(resolvedAccounts.gumballMachine.value) }
     );
+  }
+  if (!resolvedAccounts.authorityPaymentAccount.value) {
+    if (resolvedAccounts.paymentMint.value) {
+      resolvedAccounts.authorityPaymentAccount.value = findAssociatedTokenPda(
+        context,
+        {
+          mint: expectPublicKey(resolvedAccounts.paymentMint.value),
+          owner: expectPublicKey(resolvedAccounts.authority.value),
+        }
+      );
+    }
+  }
+  if (!resolvedAccounts.authorityPdaPaymentAccount.value) {
+    if (resolvedAccounts.paymentMint.value) {
+      resolvedAccounts.authorityPdaPaymentAccount.value =
+        findAssociatedTokenPda(context, {
+          mint: expectPublicKey(resolvedAccounts.paymentMint.value),
+          owner: expectPublicKey(resolvedAccounts.authorityPda.value),
+        });
+    }
   }
   if (!resolvedAccounts.tokenProgram.value) {
     resolvedAccounts.tokenProgram.value = context.programs.getPublicKey(

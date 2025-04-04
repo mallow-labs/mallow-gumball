@@ -50,8 +50,19 @@ pub fn close_gumball_machine<'info>(
 ) -> Result<()> {
     let account_info = ctx.accounts.gumball_machine.to_account_info();
     let account_data = account_info.data.borrow();
-    let config_count = get_config_count(&account_data)? as u64;
 
+    if ctx.accounts.gumball_machine.version >= 4 {
+        // Make sure user has withdrawn all buy back funds
+        require!(
+            ctx.accounts
+                .gumball_machine
+                .get_buy_back_funds_available(&account_data)?
+                == 0,
+            GumballError::BuyBackFundsNotZero
+        );
+    }
+
+    let config_count = get_config_count(&account_data)? as u64;
     // No items added so it's safe to close the account
     if config_count == 0 {
         return Ok(());
@@ -62,19 +73,6 @@ pub fn close_gumball_machine<'info>(
         config_count == ctx.accounts.gumball_machine.items_settled,
         GumballError::NotAllSettled
     );
-
-    if ctx.accounts.gumball_machine.version >= 4 {
-        let buy_back_config = ctx
-            .accounts
-            .gumball_machine
-            .get_buy_back_config(&account_data)?;
-
-        // Make sure user has withdrawn all buy back funds
-        require!(
-            buy_back_config.funds_available == 0,
-            GumballError::BuyBackFundsNotZero
-        );
-    }
 
     let token_program = &ctx.accounts.token_program.to_account_info();
     let authority = &ctx.accounts.authority.to_account_info();

@@ -96,21 +96,31 @@ pub fn initialize(ctx: Context<Initialize>, args: InitializeArgs) -> Result<()> 
     account_data[GUMBALL_MACHINE_SIZE..GUMBALL_MACHINE_SIZE + 4]
         .copy_from_slice(&u32::MIN.to_le_bytes());
 
-    if disable_primary_split {
-        let disable_primary_split_position =
-            gumball_machine.get_disable_primary_split_position()?;
-        account_data[disable_primary_split_position] = 1;
-    }
+    let disable_primary_split_position = gumball_machine.get_disable_primary_split_position()?;
+    msg!(
+        "disable_primary_split_position: {}",
+        disable_primary_split_position
+    );
+    account_data[disable_primary_split_position] = if disable_primary_split { 1 } else { 0 };
 
     let buy_back_config_position = gumball_machine.get_buy_back_config_position()?;
+    msg!("buy_back_config_position: {}", buy_back_config_position);
     let final_buy_back_config = if let Some(buy_back_config) = buy_back_config {
         buy_back_config
     } else {
         BuyBackConfig::default()
     };
-    account_data
-        [buy_back_config_position..buy_back_config_position + BuyBackConfig::INIT_SPACE]
+    account_data[buy_back_config_position..buy_back_config_position + BuyBackConfig::INIT_SPACE]
         .copy_from_slice(&final_buy_back_config.try_to_vec().unwrap());
+
+    let buy_back_funds_available_position =
+        gumball_machine.get_buy_back_funds_available_position()?;
+    msg!(
+        "buy_back_funds_available_position: {}",
+        buy_back_funds_available_position
+    );
+    account_data[buy_back_funds_available_position..buy_back_funds_available_position + 8]
+        .copy_from_slice(&u64::MIN.to_le_bytes());
 
     Ok(())
 }

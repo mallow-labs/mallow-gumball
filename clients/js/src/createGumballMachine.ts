@@ -22,6 +22,7 @@ export const createGumballMachine = async (
 ): Promise<TransactionBuilder> => {
   const space = getGumballMachineSizeForItemCount(input.settings.itemCapacity);
   const lamports = await context.rpc.getRent(space);
+
   return transactionBuilder()
     .add(
       createAccount(context, {

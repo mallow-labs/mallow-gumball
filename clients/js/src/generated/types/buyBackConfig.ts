@@ -13,7 +13,6 @@ import {
   Serializer,
   struct,
   u16,
-  u64,
   u8,
 } from '@metaplex-foundation/umi/serializers';
 
@@ -26,26 +25,11 @@ export type BuyBackConfig = {
   oracleSigner: PublicKey;
   /** Percentage of prize value the creator/gumball machine will pay for buying back prizes */
   valuePct: number;
-  /** Amount of funds available to buy back prizes */
-  fundsAvailable: bigint;
   /** Fee in basis points paid to marketplace authority when buying back prizes (paid from funds_available) */
   marketplaceFeeBps: number;
 };
 
-export type BuyBackConfigArgs = {
-  /** Whether buying back prizes is enabled */
-  enabled: boolean;
-  /** Whether buying back prizes should be added back to the gumball machine (not yet supported) */
-  toGumballMachine: boolean;
-  /** Authority that must sign when buying back prizes, to ensure pricing is correct */
-  oracleSigner: PublicKey;
-  /** Percentage of prize value the creator/gumball machine will pay for buying back prizes */
-  valuePct: number;
-  /** Amount of funds available to buy back prizes */
-  fundsAvailable: number | bigint;
-  /** Fee in basis points paid to marketplace authority when buying back prizes (paid from funds_available) */
-  marketplaceFeeBps: number;
-};
+export type BuyBackConfigArgs = BuyBackConfig;
 
 export function getBuyBackConfigSerializer(): Serializer<
   BuyBackConfigArgs,
@@ -57,7 +41,6 @@ export function getBuyBackConfigSerializer(): Serializer<
       ['toGumballMachine', bool()],
       ['oracleSigner', publicKeySerializer()],
       ['valuePct', u8()],
-      ['fundsAvailable', u64()],
       ['marketplaceFeeBps', u16()],
     ],
     { description: 'BuyBackConfig' }

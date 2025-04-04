@@ -2737,11 +2737,6 @@ export type MallowGumball = {
             type: 'u8';
           },
           {
-            name: 'fundsAvailable';
-            docs: ['Amount of funds available to buy back prizes'];
-            type: 'u64';
-          },
-          {
             name: 'marketplaceFeeBps';
             docs: [
               'Fee in basis points paid to marketplace authority when buying back prizes (paid from funds_available)'
@@ -6104,11 +6099,6 @@ export const IDL: MallowGumball = {
               'Percentage of prize value the creator/gumball machine will pay for buying back prizes',
             ],
             type: 'u8',
-          },
-          {
-            name: 'fundsAvailable',
-            docs: ['Amount of funds available to buy back prizes'],
-            type: 'u64',
           },
           {
             name: 'marketplaceFeeBps',

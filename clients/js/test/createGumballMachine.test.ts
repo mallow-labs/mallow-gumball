@@ -28,6 +28,14 @@ test('it can create a gumball machine using config line settings', async (t) => 
       await createGumballMachine(umi, {
         gumballMachine,
         settings,
+        disablePrimarySplit: true,
+        buyBackConfig: {
+          enabled: true,
+          toGumballMachine: false,
+          oracleSigner: umi.identity.publicKey,
+          valuePct: 70,
+          marketplaceFeeBps: 1000,
+        },
       })
     )
     .sendAndConfirm(umi);
@@ -47,6 +55,15 @@ test('it can create a gumball machine using config line settings', async (t) => 
     state: GumballState.None,
     itemsLoaded: 0,
     items: [] as GumballMachineItem[],
+    disablePrimarySplit: true,
+    buyBackConfig: {
+      enabled: true,
+      toGumballMachine: false,
+      oracleSigner: umi.identity.publicKey,
+      valuePct: 70,
+      marketplaceFeeBps: 1000,
+    },
+    buyBackFundsAvailable: 0n,
   });
 });
 

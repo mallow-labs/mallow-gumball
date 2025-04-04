@@ -37,10 +37,12 @@ pub struct GumballMachine {
     // - (u32 * item_capacity) mint indices
     //
     // - version 3:
+    // - (u32) unused
     // - (boolean) disable_primary_split
     //
     // - version 4:
     // - (BuyBackConfig) buy_back_config
+    // - (u64) buy_back_funds_available
 }
 
 impl GumballMachine {
@@ -55,7 +57,7 @@ impl GumballMachine {
             + (item_count as usize / 8) + 1 // bit mask tracking settled items
             + 4 + (4 * item_count as usize) // mint indices
             + if version >= 3 { 1 } else { 0 } // disable_primary_split
-            + if version >= 4 { BuyBackConfig::INIT_SPACE } else { 0 } // buy_back_config
+            + if version >= 4 { BuyBackConfig::INIT_SPACE + 8 } else { 0 } // buy_back_config
     }
 
     pub fn get_config_line_size(&self) -> usize {
@@ -89,6 +91,7 @@ impl GumballMachine {
     }
 
     pub fn get_disable_primary_split_position(&self) -> Result<usize> {
+        // NOTE: this extra 4 bytes is and unused field and can be used for future purposes
         let position =
             self.get_mint_indices_position()? + 4 + (4 * self.settings.item_capacity as usize);
         Ok(position)
@@ -108,6 +111,18 @@ impl GumballMachine {
         let buy_back_config =
             BuyBackConfig::try_from_slice(&data[position..position + BuyBackConfig::INIT_SPACE])?;
         Ok(buy_back_config)
+    }
+
+    pub fn get_buy_back_funds_available_position(&self) -> Result<usize> {
+        let position = self.get_buy_back_config_position()? + BuyBackConfig::INIT_SPACE;
+        Ok(position)
+    }
+
+    pub fn get_buy_back_funds_available(&self, data: &[u8]) -> Result<u64> {
+        let position = self.get_buy_back_funds_available_position()?;
+        Ok(u64::from_le_bytes(
+            data[position..position + 8].try_into().unwrap(),
+        ))
     }
 
     pub fn can_edit_items(&self) -> bool {
@@ -133,8 +148,6 @@ pub struct BuyBackConfig {
     pub oracle_signer: Pubkey,
     /// Percentage of prize value the creator/gumball machine will pay for buying back prizes
     pub value_pct: u8,
-    /// Amount of funds available to buy back prizes
-    pub funds_available: u64,
     /// Fee in basis points paid to marketplace authority when buying back prizes (paid from funds_available)
     pub marketplace_fee_bps: u16,
 }

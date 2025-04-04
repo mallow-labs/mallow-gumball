@@ -8,8 +8,7 @@ use utils::{is_native_mint, transfer, transfer_from_pda};
 pub struct ManageBuyBackFunds<'info> {
     /// Gumball Machine acccount.
     #[account(
-        mut, 
-        close = authority, 
+        mut,
         has_one = authority @ GumballError::InvalidAuthority,
     )]
     gumball_machine: Account<'info, GumballMachine>,
@@ -54,7 +53,7 @@ pub fn manage_buy_back_funds<'info>(
     is_withdraw: bool,
 ) -> Result<()> {
     let account_info = ctx.accounts.gumball_machine.to_account_info();
-    let account_data = account_info.data.borrow();
+    let mut account_data = account_info.data.borrow_mut();
     let token_program = &ctx.accounts.token_program.to_account_info();
     let authority = &mut ctx.accounts.authority.to_account_info();
     let authority_pda = &mut ctx.accounts.authority_pda.to_account_info();
@@ -79,7 +78,9 @@ pub fn manage_buy_back_funds<'info>(
         );
     } else {
         require!(
-            payment_mint.unwrap().key() == ctx.accounts.gumball_machine.settings.payment_mint,
+            payment_mint.is_some()
+                && payment_mint.unwrap().key()
+                    == ctx.accounts.gumball_machine.settings.payment_mint,
             GumballError::InvalidPaymentMint
         );
     }
@@ -105,7 +106,10 @@ pub fn manage_buy_back_funds<'info>(
 
     if is_withdraw {
         require!(
-            buy_back_config.funds_available >= amount,
+            ctx.accounts
+                .gumball_machine
+                .get_buy_back_funds_available(&account_data)?
+                >= amount,
             GumballError::InsufficientFunds
         );
 
@@ -149,6 +153,28 @@ pub fn manage_buy_back_funds<'info>(
             amount,
         )?;
     }
+
+    let buy_back_funds_available_position = ctx
+        .accounts
+        .gumball_machine
+        .get_buy_back_funds_available_position()?;
+    let buy_back_funds_available = ctx
+        .accounts
+        .gumball_machine
+        .get_buy_back_funds_available(&account_data)?;
+    let new_buy_back_funds_available = if is_withdraw {
+        buy_back_funds_available
+            .checked_sub(amount)
+            .ok_or(GumballError::NumericalOverflowError)?
+    } else {
+        buy_back_funds_available
+            .checked_add(amount)
+            .ok_or(GumballError::NumericalOverflowError)?
+    };
+    account_data[buy_back_funds_available_position..buy_back_funds_available_position + 8]
+        .copy_from_slice(&new_buy_back_funds_available.to_le_bytes());
+
+    drop(account_data);
 
     Ok(())
 }

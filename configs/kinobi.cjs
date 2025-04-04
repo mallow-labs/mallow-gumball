@@ -568,6 +568,21 @@ kinobi.update(
 		"gumballGuard.update": { name: "updateGumballGuard", internal: true },
 		"mallowGumball.withdraw": { name: "deleteGumballMachine" },
 		"gumballGuard.withdraw": { name: "deleteGumballGuard" },
+		"mallowGumball.manageBuyBackFunds": {
+			name: "manageBuyBackFunds",
+			accounts: {
+				authorityPdaPaymentAccount: {
+					defaultsTo: k.conditionalDefault("account", "paymentMint", {
+						ifTrue: defaultsToAssociatedTokenPda("paymentMint", "authorityPda"),
+					}),
+				},
+				authorityPaymentAccount: {
+					defaultsTo: k.conditionalDefault("account", "paymentMint", {
+						ifTrue: defaultsToAssociatedTokenPda("paymentMint", "authority"),
+					}),
+				},
+			},
+		},
 	})
 );
 

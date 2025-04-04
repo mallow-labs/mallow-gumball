@@ -11,6 +11,7 @@ import {
   transactionBuilder,
 } from '@metaplex-foundation/umi';
 import { generateSignerWithSol } from '@metaplex-foundation/umi-bundle-tests';
+import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 import test from 'ava';
 import {
   closeGumballMachine,
@@ -18,6 +19,8 @@ import {
   draw,
   findGumballGuardPda,
   findGumballMachineAuthorityPda,
+  getDefaultBuyBackConfig,
+  manageBuyBackFunds,
   settleNftSale,
   TokenStandard,
 } from '../src';
@@ -259,4 +262,81 @@ test('it cannot delete a gumball machine that has not been fully settled', async
 
   // Then the transaction fails.
   await t.throwsAsync(promise, { message: /NotAllSettled/ });
+});
+
+test('it cannot delete a gumball machine that has buy back funds remaining', async (t) => {
+  // Given an existing gumball machine with buyback enabled
+  const umi = await createUmi();
+
+  const gumballMachine = await create(umi, {
+    buyBackConfig: {
+      ...getDefaultBuyBackConfig(),
+      enabled: true,
+    },
+  });
+
+  // Add buy back funds
+  await transactionBuilder()
+    .add(
+      manageBuyBackFunds(umi, {
+        gumballMachine: gumballMachine.publicKey,
+        amount: 1 * LAMPORTS_PER_SOL, // 1 SOL
+        isWithdraw: false,
+      })
+    )
+    .sendAndConfirm(umi);
+
+  // When we try to delete it
+  const promise = transactionBuilder()
+    .add(
+      deleteGumballMachine(umi, { gumballMachine: gumballMachine.publicKey })
+    )
+    .sendAndConfirm(umi);
+
+  // Then the transaction fails due to funds not being withdrawn
+  await t.throwsAsync(promise, { message: /BuyBackFundsNotZero/ });
+});
+
+test('it can delete a gumball machine that has no buy back funds remaining', async (t) => {
+  // Given an existing gumball machine with buyback enabled
+  const umi = await createUmi();
+
+  const gumballMachine = await create(umi, {
+    buyBackConfig: {
+      ...getDefaultBuyBackConfig(),
+      enabled: true,
+    },
+  });
+
+  // Add buy back funds
+  await transactionBuilder()
+    .add(
+      manageBuyBackFunds(umi, {
+        gumballMachine: gumballMachine.publicKey,
+        amount: 1,
+        isWithdraw: false,
+      })
+    )
+    .sendAndConfirm(umi);
+
+  // Withdraw all buy back funds
+  await transactionBuilder()
+    .add(
+      manageBuyBackFunds(umi, {
+        gumballMachine: gumballMachine.publicKey,
+        amount: 1,
+        isWithdraw: true,
+      })
+    )
+    .sendAndConfirm(umi);
+
+  // When we delete it
+  await transactionBuilder()
+    .add(
+      deleteGumballMachine(umi, { gumballMachine: gumballMachine.publicKey })
+    )
+    .sendAndConfirm(umi);
+
+  // Then the gumball machine account no longer exists
+  t.false(await umi.rpc.accountExists(gumballMachine.publicKey));
 });

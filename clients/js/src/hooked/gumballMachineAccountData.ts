@@ -26,6 +26,9 @@ import {
 export type GumballMachineAccountData = BaseGumballMachineAccountData & {
   itemsLoaded: number;
   items: GumballMachineItem[];
+  disablePrimarySplit: boolean;
+  buyBackConfig: BuyBackConfig;
+  buyBackFundsAvailable: number | bigint;
 };
 
 export type GumballMachineAccountDataArgs = BaseGumballMachineAccountDataArgs;
@@ -92,20 +95,21 @@ type GumballMachineHiddenSectionV2 = {
 };
 
 type GumballMachineHiddenSectionV3 = GumballMachineHiddenSectionV2 & {
+  unused: number;
   disablePrimarySplit: boolean;
 };
 
 type GumballMachineHiddenSectionV4 = GumballMachineHiddenSectionV3 & {
   buyBackConfig: BuyBackConfig;
+  buyBackFundsAvailable: number | bigint;
 };
 
-function getDefaultBuyBackConfig(): BuyBackConfig {
+export function getDefaultBuyBackConfig(): BuyBackConfig {
   return {
     enabled: false,
     toGumballMachine: false,
     oracleSigner: defaultPublicKey(),
     valuePct: 0,
-    fundsAvailable: 0n,
     marketplaceFeeBps: 0,
   };
 }
@@ -119,8 +123,10 @@ function getHiddenSection(
     const v2 = getHiddenSectionV2(itemCapacity, slice);
     return {
       ...v2,
+      unused: 0,
       disablePrimarySplit: false,
       buyBackConfig: getDefaultBuyBackConfig(),
+      buyBackFundsAvailable: 0n,
     };
   }
 
@@ -128,7 +134,9 @@ function getHiddenSection(
     const v3 = getHiddenSectionV3(itemCapacity, slice);
     return {
       ...v3,
+      unused: 0,
       buyBackConfig: getDefaultBuyBackConfig(),
+      buyBackFundsAvailable: 0n,
     };
   }
 
@@ -170,6 +178,8 @@ function getHiddenSection(
     })),
     disablePrimarySplit: false,
     buyBackConfig: getDefaultBuyBackConfig(),
+    buyBackFundsAvailable: 0n,
+    unused: 0,
   };
 }
 
@@ -237,6 +247,7 @@ function getHiddenSectionV3(
       ['itemsClaimedMap', bitArray(Math.floor(itemCapacity / 8) + 1)],
       ['itemsSettledMap', bitArray(Math.floor(itemCapacity / 8) + 1)],
       ['itemsLeftToMint', array(u32(), { size: itemCapacity })],
+      ['unused', u32()],
       ['disablePrimarySplit', bool()],
     ]);
 
@@ -273,8 +284,10 @@ function getHiddenSectionV4(
       ['itemsClaimedMap', bitArray(Math.floor(itemCapacity / 8) + 1)],
       ['itemsSettledMap', bitArray(Math.floor(itemCapacity / 8) + 1)],
       ['itemsLeftToMint', array(u32(), { size: itemCapacity })],
+      ['unused', u32()],
       ['disablePrimarySplit', bool()],
       ['buyBackConfig', getBuyBackConfigSerializer()],
+      ['buyBackFundsAvailable', u64()],
     ]);
 
   const [hiddenSection] = hiddenSectionSerializer.deserialize(slice);
@@ -333,6 +346,9 @@ export function getGumballMachineAccountDataSerializer(): Serializer<
         ...base,
         items,
         itemsLoaded: hiddenSection.itemsLoaded,
+        disablePrimarySplit: hiddenSection.disablePrimarySplit,
+        buyBackConfig: hiddenSection.buyBackConfig,
+        buyBackFundsAvailable: hiddenSection.buyBackFundsAvailable,
       };
     }
   );
