@@ -1,7 +1,5 @@
 use crate::{
-    constants::{AUTHORITY_SEED, GUMBALL_MACHINE_SIZE},
-    state::GumballMachine,
-    FeeConfig, GumballError, GumballSettings, GumballState,
+    constants::{AUTHORITY_SEED, GUMBALL_MACHINE_SIZE}, state::GumballMachine, BuyBackConfig, FeeConfig, GumballError, GumballSettings, GumballState
 };
 use anchor_lang::{prelude::*, Discriminator};
 use mpl_token_metadata::MAX_URI_LENGTH;
@@ -46,13 +44,21 @@ pub struct Initialize<'info> {
     system_program: Program<'info, System>,
 }
 
-pub fn initialize(
-    ctx: Context<Initialize>,
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct InitializeArgs {
     settings: GumballSettings,
     fee_config: Option<FeeConfig>,
     disable_primary_split: bool,
+    buy_back_config: Option<BuyBackConfig>,
+}
+
+pub fn initialize(
+    ctx: Context<Initialize>,
+    args: InitializeArgs,
 ) -> Result<()> {
     let gumball_machine_account = &mut ctx.accounts.gumball_machine;
+
+    let InitializeArgs { settings, fee_config, disable_primary_split, buy_back_config } = args;
 
     if settings.uri.len() >= MAX_URI_LENGTH - 4 {
         return err!(GumballError::UriTooLong);
@@ -90,6 +96,11 @@ pub fn initialize(
         let disable_primary_split_position =
             gumball_machine.get_disable_primary_split_position()?;
         account_data[disable_primary_split_position] = 1;
+    }
+
+    if let Some(buy_back_config) = buy_back_config {
+        let buy_back_config_position = gumball_machine.get_buy_back_config_position()?;
+        account_data[buy_back_config_position..buy_back_config_position + BuyBackConfig::INIT_SPACE].copy_from_slice(&buy_back_config.try_to_vec().unwrap());
     }
 
     Ok(())

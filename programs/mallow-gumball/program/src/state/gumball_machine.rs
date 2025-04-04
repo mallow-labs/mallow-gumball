@@ -38,10 +38,13 @@ pub struct GumballMachine {
     //
     // - version 3:
     // - (boolean) disable_primary_split
+    //
+    // - version 4:
+    // - (BuyBackConfig) buy_back_config
 }
 
 impl GumballMachine {
-    pub const CURRENT_VERSION: u8 = 3;
+    pub const CURRENT_VERSION: u8 = 4;
 
     /// Gets the size of the gumball machine given the number of items.
     pub fn get_size(item_count: u64, version: u8) -> usize {
@@ -52,6 +55,7 @@ impl GumballMachine {
             + (item_count as usize / 8) + 1 // bit mask tracking settled items
             + 4 + (4 * item_count as usize) // mint indices
             + if version >= 3 { 1 } else { 0 } // disable_primary_split
+            + if version >= 4 { BuyBackConfig::INIT_SPACE } else { 0 } // buy_back_config
     }
 
     pub fn get_config_line_size(&self) -> usize {
@@ -90,6 +94,11 @@ impl GumballMachine {
         Ok(position)
     }
 
+    pub fn get_buy_back_config_position(&self) -> Result<usize> {
+        let position = self.get_disable_primary_split_position()? + 1;
+        Ok(position)
+    }
+
     pub fn can_edit_items(&self) -> bool {
         self.state == GumballState::None || self.state == GumballState::DetailsFinalized
     }
@@ -101,6 +110,22 @@ pub struct FeeConfig {
     pub fee_account: Pubkey,
     /// Sale basis points for fees
     pub fee_bps: u16,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, InitSpace)]
+pub struct BuyBackConfig {
+    /// Whether buying back prizes is enabled
+    pub enabled: bool,
+    /// Whether buying back prizes should be added back to the gumball machine
+    pub to_gumball_machine: bool,
+    /// Authority that must sign when buying back prizes, to ensure pricing is correct
+    pub oracle_signer: Pubkey,
+    /// Percentage of prize value the creator/gumball machine will pay for buying back prizes
+    pub value_pct: u8,
+    /// Amount of funds available to buy back prizes
+    pub funds_available: u64,
+    /// Fee in basis points paid to marketplace authority when buying back prizes (paid from funds_available)
+    pub marketplace_fee_bps: u16,
 }
 
 /// Config line struct for storing asset (NFT) data pre-mint.

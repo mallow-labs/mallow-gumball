@@ -28,13 +28,8 @@ pub mod mallow_gumball {
     ///   0. `[writable]` Gumball Machine account (must be pre-allocated but zero content)
     ///   2. `[]` Gumball Machine authority
     ///   3. `[signer]` Payer
-    pub fn initialize(
-        ctx: Context<Initialize>,
-        settings: GumballSettings,
-        fee_config: Option<FeeConfig>,
-        disable_primary_split: bool,
-    ) -> Result<()> {
-        instructions::initialize(ctx, settings, fee_config, disable_primary_split)
+    pub fn initialize(ctx: Context<Initialize>, args: InitializeArgs) -> Result<()> {
+        instructions::initialize(ctx, args)
     }
 
     /// Updates gumball machine settings.
