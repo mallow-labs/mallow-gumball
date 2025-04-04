@@ -52,22 +52,10 @@ export type MallowGumball = {
       ];
       args: [
         {
-          name: 'settings';
+          name: 'args';
           type: {
-            defined: 'GumballSettings';
+            defined: 'InitializeArgs';
           };
-        },
-        {
-          name: 'feeConfig';
-          type: {
-            option: {
-              defined: 'FeeConfig';
-            };
-          };
-        },
-        {
-          name: 'disablePrimarySplit';
-          type: 'bool';
         }
       ];
     },
@@ -2432,6 +2420,95 @@ export type MallowGumball = {
         }
       ];
       args: [];
+    },
+    {
+      name: 'manageBuyBackFunds';
+      docs: [
+        'Manage the buy back funds of the gumball machine.',
+        '',
+        '# Accounts',
+        '',
+        '0. `[writable]` Gumball Machine account',
+        '1. `[signer, writable]` Gumball Machine authority',
+        '2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine])',
+        "3. `[writable, optional]` Authority's payment account",
+        "4. `[writable, optional]` Authority PDA's payment account",
+        '5. `[optional]` Payment mint',
+        '6. `[]` Token program',
+        '7. `[]` Associated Token program',
+        '8. `[]` System program',
+        '9. `[]` Rent sysvar'
+      ];
+      accounts: [
+        {
+          name: 'gumballMachine';
+          isMut: true;
+          isSigner: false;
+          docs: ['Gumball Machine acccount.'];
+        },
+        {
+          name: 'authority';
+          isMut: true;
+          isSigner: true;
+          docs: ['Authority of the gumball machine.'];
+        },
+        {
+          name: 'authorityPda';
+          isMut: true;
+          isSigner: false;
+        },
+        {
+          name: 'authorityPaymentAccount';
+          isMut: true;
+          isSigner: false;
+          isOptional: true;
+          docs: ["Authority's token account if using token payment"];
+        },
+        {
+          name: 'authorityPdaPaymentAccount';
+          isMut: true;
+          isSigner: false;
+          isOptional: true;
+          docs: ['Payment account for authority pda if using token payment'];
+        },
+        {
+          name: 'paymentMint';
+          isMut: false;
+          isSigner: false;
+          isOptional: true;
+          docs: ['Payment mint if using non-native payment token'];
+        },
+        {
+          name: 'tokenProgram';
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: 'associatedTokenProgram';
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: 'systemProgram';
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: 'rent';
+          isMut: false;
+          isSigner: false;
+        }
+      ];
+      args: [
+        {
+          name: 'amount';
+          type: 'u64';
+        },
+        {
+          name: 'isWithdraw';
+          type: 'bool';
+        }
+      ];
     }
   ];
   accounts: [
@@ -2561,6 +2638,40 @@ export type MallowGumball = {
   ];
   types: [
     {
+      name: 'InitializeArgs';
+      type: {
+        kind: 'struct';
+        fields: [
+          {
+            name: 'settings';
+            type: {
+              defined: 'GumballSettings';
+            };
+          },
+          {
+            name: 'feeConfig';
+            type: {
+              option: {
+                defined: 'FeeConfig';
+              };
+            };
+          },
+          {
+            name: 'disablePrimarySplit';
+            type: 'bool';
+          },
+          {
+            name: 'buyBackConfig';
+            type: {
+              option: {
+                defined: 'BuyBackConfig';
+              };
+            };
+          }
+        ];
+      };
+    },
+    {
       name: 'SettleTokensSaleClaimedArgs';
       type: {
         kind: 'struct';
@@ -2589,6 +2700,52 @@ export type MallowGumball = {
           {
             name: 'feeBps';
             docs: ['Sale basis points for fees'];
+            type: 'u16';
+          }
+        ];
+      };
+    },
+    {
+      name: 'BuyBackConfig';
+      type: {
+        kind: 'struct';
+        fields: [
+          {
+            name: 'enabled';
+            docs: ['Whether buying back prizes is enabled'];
+            type: 'bool';
+          },
+          {
+            name: 'toGumballMachine';
+            docs: [
+              'Whether buying back prizes should be added back to the gumball machine (not yet supported)'
+            ];
+            type: 'bool';
+          },
+          {
+            name: 'oracleSigner';
+            docs: [
+              'Authority that must sign when buying back prizes, to ensure pricing is correct'
+            ];
+            type: 'publicKey';
+          },
+          {
+            name: 'valuePct';
+            docs: [
+              'Percentage of prize value the creator/gumball machine will pay for buying back prizes'
+            ];
+            type: 'u8';
+          },
+          {
+            name: 'fundsAvailable';
+            docs: ['Amount of funds available to buy back prizes'];
+            type: 'u64';
+          },
+          {
+            name: 'marketplaceFeeBps';
+            docs: [
+              'Fee in basis points paid to marketplace authority when buying back prizes (paid from funds_available)'
+            ];
             type: 'u16';
           }
         ];
@@ -3191,6 +3348,21 @@ export type MallowGumball = {
       code: 6056;
       name: 'InvalidInputLength';
       msg: 'Invalid input length';
+    },
+    {
+      code: 6057;
+      name: 'BuyBackNotEnabled';
+      msg: 'Buy back not enabled';
+    },
+    {
+      code: 6058;
+      name: 'BuyBackFundsNotZero';
+      msg: 'Buy back funds not zero';
+    },
+    {
+      code: 6059;
+      name: 'InsufficientFunds';
+      msg: 'Insufficient funds';
     }
   ];
 };
@@ -3249,22 +3421,10 @@ export const IDL: MallowGumball = {
       ],
       args: [
         {
-          name: 'settings',
+          name: 'args',
           type: {
-            defined: 'GumballSettings',
+            defined: 'InitializeArgs',
           },
-        },
-        {
-          name: 'feeConfig',
-          type: {
-            option: {
-              defined: 'FeeConfig',
-            },
-          },
-        },
-        {
-          name: 'disablePrimarySplit',
-          type: 'bool',
         },
       ],
     },
@@ -5630,6 +5790,95 @@ export const IDL: MallowGumball = {
       ],
       args: [],
     },
+    {
+      name: 'manageBuyBackFunds',
+      docs: [
+        'Manage the buy back funds of the gumball machine.',
+        '',
+        '# Accounts',
+        '',
+        '0. `[writable]` Gumball Machine account',
+        '1. `[signer, writable]` Gumball Machine authority',
+        '2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine])',
+        "3. `[writable, optional]` Authority's payment account",
+        "4. `[writable, optional]` Authority PDA's payment account",
+        '5. `[optional]` Payment mint',
+        '6. `[]` Token program',
+        '7. `[]` Associated Token program',
+        '8. `[]` System program',
+        '9. `[]` Rent sysvar',
+      ],
+      accounts: [
+        {
+          name: 'gumballMachine',
+          isMut: true,
+          isSigner: false,
+          docs: ['Gumball Machine acccount.'],
+        },
+        {
+          name: 'authority',
+          isMut: true,
+          isSigner: true,
+          docs: ['Authority of the gumball machine.'],
+        },
+        {
+          name: 'authorityPda',
+          isMut: true,
+          isSigner: false,
+        },
+        {
+          name: 'authorityPaymentAccount',
+          isMut: true,
+          isSigner: false,
+          isOptional: true,
+          docs: ["Authority's token account if using token payment"],
+        },
+        {
+          name: 'authorityPdaPaymentAccount',
+          isMut: true,
+          isSigner: false,
+          isOptional: true,
+          docs: ['Payment account for authority pda if using token payment'],
+        },
+        {
+          name: 'paymentMint',
+          isMut: false,
+          isSigner: false,
+          isOptional: true,
+          docs: ['Payment mint if using non-native payment token'],
+        },
+        {
+          name: 'tokenProgram',
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: 'associatedTokenProgram',
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: 'systemProgram',
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: 'rent',
+          isMut: false,
+          isSigner: false,
+        },
+      ],
+      args: [
+        {
+          name: 'amount',
+          type: 'u64',
+        },
+        {
+          name: 'isWithdraw',
+          type: 'bool',
+        },
+      ],
+    },
   ],
   accounts: [
     {
@@ -5758,6 +6007,40 @@ export const IDL: MallowGumball = {
   ],
   types: [
     {
+      name: 'InitializeArgs',
+      type: {
+        kind: 'struct',
+        fields: [
+          {
+            name: 'settings',
+            type: {
+              defined: 'GumballSettings',
+            },
+          },
+          {
+            name: 'feeConfig',
+            type: {
+              option: {
+                defined: 'FeeConfig',
+              },
+            },
+          },
+          {
+            name: 'disablePrimarySplit',
+            type: 'bool',
+          },
+          {
+            name: 'buyBackConfig',
+            type: {
+              option: {
+                defined: 'BuyBackConfig',
+              },
+            },
+          },
+        ],
+      },
+    },
+    {
       name: 'SettleTokensSaleClaimedArgs',
       type: {
         kind: 'struct',
@@ -5786,6 +6069,52 @@ export const IDL: MallowGumball = {
           {
             name: 'feeBps',
             docs: ['Sale basis points for fees'],
+            type: 'u16',
+          },
+        ],
+      },
+    },
+    {
+      name: 'BuyBackConfig',
+      type: {
+        kind: 'struct',
+        fields: [
+          {
+            name: 'enabled',
+            docs: ['Whether buying back prizes is enabled'],
+            type: 'bool',
+          },
+          {
+            name: 'toGumballMachine',
+            docs: [
+              'Whether buying back prizes should be added back to the gumball machine (not yet supported)',
+            ],
+            type: 'bool',
+          },
+          {
+            name: 'oracleSigner',
+            docs: [
+              'Authority that must sign when buying back prizes, to ensure pricing is correct',
+            ],
+            type: 'publicKey',
+          },
+          {
+            name: 'valuePct',
+            docs: [
+              'Percentage of prize value the creator/gumball machine will pay for buying back prizes',
+            ],
+            type: 'u8',
+          },
+          {
+            name: 'fundsAvailable',
+            docs: ['Amount of funds available to buy back prizes'],
+            type: 'u64',
+          },
+          {
+            name: 'marketplaceFeeBps',
+            docs: [
+              'Fee in basis points paid to marketplace authority when buying back prizes (paid from funds_available)',
+            ],
             type: 'u16',
           },
         ],
@@ -6388,6 +6717,21 @@ export const IDL: MallowGumball = {
       code: 6056,
       name: 'InvalidInputLength',
       msg: 'Invalid input length',
+    },
+    {
+      code: 6057,
+      name: 'BuyBackNotEnabled',
+      msg: 'Buy back not enabled',
+    },
+    {
+      code: 6058,
+      name: 'BuyBackFundsNotZero',
+      msg: 'Buy back funds not zero',
+    },
+    {
+      code: 6059,
+      name: 'InsufficientFunds',
+      msg: 'Insufficient funds',
     },
   ],
 };

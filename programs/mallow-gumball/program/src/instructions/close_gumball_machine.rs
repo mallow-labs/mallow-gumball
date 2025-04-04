@@ -1,6 +1,6 @@
 use crate::{
-    constants::AUTHORITY_SEED, get_config_count, transfer_and_close, try_from, GumballError,
-    GumballMachine, Token,
+    constants::AUTHORITY_SEED, get_config_count, transfer_and_close_if_empty, try_from,
+    GumballError, GumballMachine, Token,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token::TokenAccount;
@@ -63,6 +63,19 @@ pub fn close_gumball_machine<'info>(
         GumballError::NotAllSettled
     );
 
+    if ctx.accounts.gumball_machine.version >= 4 {
+        let buy_back_config = ctx
+            .accounts
+            .gumball_machine
+            .get_buy_back_config(&account_data)?;
+
+        // Make sure user has withdrawn all buy back funds
+        require!(
+            buy_back_config.funds_available == 0,
+            GumballError::BuyBackFundsNotZero
+        );
+    }
+
     let token_program = &ctx.accounts.token_program.to_account_info();
     let authority = &ctx.accounts.authority.to_account_info();
     let authority_pda = &ctx.accounts.authority_pda.to_account_info();
@@ -102,7 +115,7 @@ pub fn close_gumball_machine<'info>(
             let system_program = next_account_info(iter)?;
             let rent = next_account_info(iter)?;
 
-            transfer_and_close(
+            transfer_and_close_if_empty(
                 authority,
                 authority_pda,
                 token_account,

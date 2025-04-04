@@ -415,4 +415,26 @@ pub mod mallow_gumball {
     ) -> Result<()> {
         instructions::close_gumball_machine(ctx)
     }
+
+    /// Manage the buy back funds of the gumball machine.
+    ///
+    /// # Accounts
+    ///
+    ///   0. `[writable]` Gumball Machine account
+    ///   1. `[signer, writable]` Gumball Machine authority
+    ///   2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine])
+    ///   3. `[writable, optional]` Authority's payment account
+    ///   4. `[writable, optional]` Authority PDA's payment account
+    ///   5. `[optional]` Payment mint
+    ///   6. `[]` Token program
+    ///   7. `[]` Associated Token program
+    ///   8. `[]` System program
+    ///   9. `[]` Rent sysvar
+    pub fn manage_buy_back_funds<'info>(
+        ctx: Context<'_, '_, '_, 'info, ManageBuyBackFunds<'info>>,
+        amount: u64,
+        is_withdraw: bool,
+    ) -> Result<()> {
+        instructions::manage_buy_back_funds(ctx, amount, is_withdraw)
+    }
 }

@@ -3,8 +3,8 @@ use crate::{
     events::SettleItemSaleEvent,
     get_config_count,
     state::GumballMachine,
-    transfer_and_close, try_from, AssociatedToken, GumballError, GumballState, SellerHistory,
-    Token, TokenStandard,
+    transfer_and_close_if_empty, try_from, AssociatedToken, GumballError, GumballState,
+    SellerHistory, Token, TokenStandard,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, TokenAccount};
@@ -257,7 +257,7 @@ pub fn settle_tokens_sale_claimed<'info>(
             ctx.accounts.authority_pda_token_account
         )?);
 
-        transfer_and_close(
+        transfer_and_close_if_empty(
             payer,
             authority_pda,
             authority_pda_token_account,

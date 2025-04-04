@@ -2,7 +2,7 @@ use crate::{
     constants::{AUTHORITY_SEED, SELLER_HISTORY_SEED},
     processors,
     state::GumballMachine,
-    transfer_and_close, AssociatedToken, GumballError, SellerHistory, Token,
+    transfer_and_close_if_empty, AssociatedToken, GumballError, SellerHistory, Token,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, TokenAccount};
@@ -99,7 +99,7 @@ pub fn remove_tokens(ctx: Context<RemoveTokens>, indices: Vec<u8>, amount: u64) 
         &[ctx.bumps.authority_pda],
     ];
 
-    transfer_and_close(
+    transfer_and_close_if_empty(
         authority,
         authority_pda,
         authority_pda_token_account,
@@ -166,7 +166,7 @@ pub fn remove_tokens_span(
 
     let prize_count = end_index - start_index + 1;
 
-    transfer_and_close(
+    transfer_and_close_if_empty(
         authority,
         authority_pda,
         authority_pda_token_account,

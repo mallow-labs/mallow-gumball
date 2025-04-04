@@ -172,4 +172,13 @@ pub enum GumballError {
 
     #[msg("Invalid input length")]
     InvalidInputLength,
+
+    #[msg("Buy back not enabled")]
+    BuyBackNotEnabled,
+
+    #[msg("Buy back funds not zero")]
+    BuyBackFundsNotZero,
+
+    #[msg("Insufficient funds")]
+    InsufficientFunds,
 }

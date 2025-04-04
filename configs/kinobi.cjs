@@ -595,6 +595,7 @@ kinobi.update(
 		initializeGumballMachineInstructionData: {
 			feeConfig: k.vNone(),
 			disablePrimarySplit: k.vScalar(false),
+			buyBackConfig: k.vNone(),
 		},
 	})
 );

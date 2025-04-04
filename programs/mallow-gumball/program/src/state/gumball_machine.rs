@@ -99,6 +99,17 @@ impl GumballMachine {
         Ok(position)
     }
 
+    pub fn get_buy_back_config(&self, data: &[u8]) -> Result<BuyBackConfig> {
+        if self.version < 4 {
+            return Ok(BuyBackConfig::default());
+        }
+        let position = self.get_buy_back_config_position()?;
+
+        let buy_back_config =
+            BuyBackConfig::try_from_slice(&data[position..position + BuyBackConfig::INIT_SPACE])?;
+        Ok(buy_back_config)
+    }
+
     pub fn can_edit_items(&self) -> bool {
         self.state == GumballState::None || self.state == GumballState::DetailsFinalized
     }
@@ -112,11 +123,11 @@ pub struct FeeConfig {
     pub fee_bps: u16,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, InitSpace)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, InitSpace, Default)]
 pub struct BuyBackConfig {
     /// Whether buying back prizes is enabled
     pub enabled: bool,
-    /// Whether buying back prizes should be added back to the gumball machine
+    /// Whether buying back prizes should be added back to the gumball machine (not yet supported)
     pub to_gumball_machine: bool,
     /// Authority that must sign when buying back prizes, to ensure pricing is correct
     pub oracle_signer: Pubkey,

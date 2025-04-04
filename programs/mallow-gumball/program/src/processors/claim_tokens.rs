@@ -1,4 +1,4 @@
-use crate::{processors::claim_item, transfer_and_close, GumballError, GumballMachine};
+use crate::{processors::claim_item, transfer_and_close_if_empty, GumballError, GumballMachine};
 use anchor_lang::prelude::*;
 use anchor_spl::token::TokenAccount;
 
@@ -25,7 +25,7 @@ pub fn claim_tokens<'a, 'b>(
         GumballError::InvalidAuthority
     );
 
-    transfer_and_close(
+    transfer_and_close_if_empty(
         payer,
         authority_pda,
         authority_pda_token_account,

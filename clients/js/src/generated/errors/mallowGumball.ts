@@ -831,6 +831,45 @@ export class InvalidInputLengthError extends ProgramError {
 codeToErrorMap.set(0x17a8, InvalidInputLengthError);
 nameToErrorMap.set('InvalidInputLength', InvalidInputLengthError);
 
+/** BuyBackNotEnabled: Buy back not enabled */
+export class BuyBackNotEnabledError extends ProgramError {
+  readonly name: string = 'BuyBackNotEnabled';
+
+  readonly code: number = 0x17a9; // 6057
+
+  constructor(program: Program, cause?: Error) {
+    super('Buy back not enabled', program, cause);
+  }
+}
+codeToErrorMap.set(0x17a9, BuyBackNotEnabledError);
+nameToErrorMap.set('BuyBackNotEnabled', BuyBackNotEnabledError);
+
+/** BuyBackFundsNotZero: Buy back funds not zero */
+export class BuyBackFundsNotZeroError extends ProgramError {
+  readonly name: string = 'BuyBackFundsNotZero';
+
+  readonly code: number = 0x17aa; // 6058
+
+  constructor(program: Program, cause?: Error) {
+    super('Buy back funds not zero', program, cause);
+  }
+}
+codeToErrorMap.set(0x17aa, BuyBackFundsNotZeroError);
+nameToErrorMap.set('BuyBackFundsNotZero', BuyBackFundsNotZeroError);
+
+/** InsufficientFunds: Insufficient funds */
+export class InsufficientFundsError extends ProgramError {
+  readonly name: string = 'InsufficientFunds';
+
+  readonly code: number = 0x17ab; // 6059
+
+  constructor(program: Program, cause?: Error) {
+    super('Insufficient funds', program, cause);
+  }
+}
+codeToErrorMap.set(0x17ab, InsufficientFundsError);
+nameToErrorMap.set('InsufficientFunds', InsufficientFundsError);
+
 /**
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors

@@ -10,6 +10,7 @@ export * from './addressGate';
 export * from './allocation';
 export * from './allowList';
 export * from './botTax';
+export * from './buyBackConfig';
 export * from './configLine';
 export * from './configLineInput';
 export * from './configLineV2';

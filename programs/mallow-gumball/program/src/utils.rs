@@ -688,7 +688,7 @@ pub fn thaw_nft<'a>(
     Ok(())
 }
 
-pub fn transfer_and_close<'a>(
+pub fn transfer_and_close_if_empty<'a>(
     payer: &AccountInfo<'a>,
     authority: &AccountInfo<'a>,
     token_account: &mut Box<Account<'a, TokenAccount>>,

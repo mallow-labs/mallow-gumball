@@ -23,6 +23,7 @@ export * from './drawFromGumballMachine';
 export * from './endSale';
 export * from './incrementTotalRevenue';
 export * from './initializeGumballMachine';
+export * from './manageBuyBackFunds';
 export * from './removeCoreAsset';
 export * from './removeNft';
 export * from './removeTokens';

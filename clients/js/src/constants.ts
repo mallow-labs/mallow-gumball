@@ -26,6 +26,14 @@ export const GUMBALL_MACHINE_HIDDEN_SECTION =
 
 export const GUMBALL_MACHINE_SIZE = GUMBALL_MACHINE_HIDDEN_SECTION;
 
+export const BUY_BACK_CONFIG_SIZE =
+  1 + // enabled
+  1 + // toGumballMachine
+  32 + // oracleSigner
+  1 + // valuePct
+  8 + // fundsAvailable
+  2; // marketplaceFeeBps
+
 export const CONFIG_LINE_SIZE =
   32 + // mint
   32 + // seller
