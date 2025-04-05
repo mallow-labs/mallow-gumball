@@ -1,6 +1,6 @@
 use crate::{
-    constants::GUMBALL_MACHINE_SIZE, ConfigLine, GumballError, GumballMachine, SellerHistory,
-    TokenStandard,
+    constants::GUMBALL_MACHINE_SIZE, ConfigLine, ConfigLineV2, GumballError, GumballMachine,
+    SellerHistory, TokenStandard,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token::TokenAccount;
@@ -147,6 +147,32 @@ pub fn assert_config_line(
     drop(data);
 
     Ok(())
+}
+
+pub fn assert_config_line_values(
+    gumball_machine_data: &[u8],
+    config_line_position: usize,
+    index: u32,
+    mint: Pubkey,
+    seller: Pubkey,
+    buyer: Pubkey,
+) -> Result<ConfigLineV2> {
+    let count = get_config_count(gumball_machine_data)?;
+
+    if index >= count as u32 {
+        return err!(GumballError::IndexGreaterThanLength);
+    }
+
+    let config_line = ConfigLineV2::try_from_slice(
+        &gumball_machine_data
+            [config_line_position..config_line_position + ConfigLineV2::INIT_SPACE],
+    )?;
+
+    require!(mint == config_line.mint, GumballError::InvalidMint);
+    require!(seller == config_line.seller, GumballError::InvalidSeller);
+    require!(buyer == config_line.buyer, GumballError::InvalidBuyer);
+
+    Ok(config_line)
 }
 
 /// Return the current number of lines written to the account.

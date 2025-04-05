@@ -870,6 +870,58 @@ export class InsufficientFundsError extends ProgramError {
 codeToErrorMap.set(0x17ab, InsufficientFundsError);
 nameToErrorMap.set('InsufficientFunds', InsufficientFundsError);
 
+/** InvalidVersion: Invalid version */
+export class InvalidVersionError extends ProgramError {
+  readonly name: string = 'InvalidVersion';
+
+  readonly code: number = 0x17ac; // 6060
+
+  constructor(program: Program, cause?: Error) {
+    super('Invalid version', program, cause);
+  }
+}
+codeToErrorMap.set(0x17ac, InvalidVersionError);
+nameToErrorMap.set('InvalidVersion', InvalidVersionError);
+
+/** InvalidOracleSigner: Invalid oracle signer */
+export class InvalidOracleSignerError extends ProgramError {
+  readonly name: string = 'InvalidOracleSigner';
+
+  readonly code: number = 0x17ad; // 6061
+
+  constructor(program: Program, cause?: Error) {
+    super('Invalid oracle signer', program, cause);
+  }
+}
+codeToErrorMap.set(0x17ad, InvalidOracleSignerError);
+nameToErrorMap.set('InvalidOracleSigner', InvalidOracleSignerError);
+
+/** InvalidPayer: Invalid payer */
+export class InvalidPayerError extends ProgramError {
+  readonly name: string = 'InvalidPayer';
+
+  readonly code: number = 0x17ae; // 6062
+
+  constructor(program: Program, cause?: Error) {
+    super('Invalid payer', program, cause);
+  }
+}
+codeToErrorMap.set(0x17ae, InvalidPayerError);
+nameToErrorMap.set('InvalidPayer', InvalidPayerError);
+
+/** NotImplemented: Not implemented */
+export class NotImplementedError extends ProgramError {
+  readonly name: string = 'NotImplemented';
+
+  readonly code: number = 0x17af; // 6063
+
+  constructor(program: Program, cause?: Error) {
+    super('Not implemented', program, cause);
+  }
+}
+codeToErrorMap.set(0x17af, NotImplementedError);
+nameToErrorMap.set('NotImplemented', NotImplementedError);
+
 /**
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors

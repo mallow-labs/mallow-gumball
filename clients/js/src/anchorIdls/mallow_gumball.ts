@@ -1306,6 +1306,214 @@ export type MallowGumball = {
       ];
     },
     {
+      name: 'sellItem';
+      accounts: [
+        {
+          name: 'payer';
+          isMut: true;
+          isSigner: true;
+          docs: [
+            'Must be the oracle signer or seller (oracle signer can sell on behalf of the seller to allow auto-buy back)'
+          ];
+        },
+        {
+          name: 'oracleSigner';
+          isMut: false;
+          isSigner: true;
+          docs: ['Oracle signer'];
+        },
+        {
+          name: 'gumballMachine';
+          isMut: true;
+          isSigner: false;
+          docs: ['Gumball machine account.'];
+        },
+        {
+          name: 'authorityPda';
+          isMut: true;
+          isSigner: false;
+        },
+        {
+          name: 'mint';
+          isMut: true;
+          isSigner: false;
+          docs: ['Mint of the item (or asset for Core assets)'];
+        },
+        {
+          name: 'seller';
+          isMut: true;
+          isSigner: false;
+          docs: ['Seller of the item'];
+        },
+        {
+          name: 'buyer';
+          isMut: true;
+          isSigner: false;
+          docs: ['Buyer of the item'];
+        },
+        {
+          name: 'systemProgram';
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: 'tokenProgram';
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: 'associatedTokenProgram';
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: 'rent';
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: 'paymentMint';
+          isMut: true;
+          isSigner: false;
+          isOptional: true;
+          docs: [
+            'OPTIONAL SPL TOKEN ACCOUNTS - only required if selling for SPL token',
+            'Mint of payment token'
+          ];
+        },
+        {
+          name: 'sellerPaymentAccount';
+          isMut: true;
+          isSigner: false;
+          isOptional: true;
+          docs: ['Seller payment account'];
+        },
+        {
+          name: 'authorityPdaPaymentAccount';
+          isMut: true;
+          isSigner: false;
+          isOptional: true;
+          docs: ['Authority PDA payment account'];
+        },
+        {
+          name: 'collection';
+          isMut: true;
+          isSigner: false;
+          isOptional: true;
+          docs: [
+            'OPTIONAL CORE ASSET ACCOUNTS - only required if selling Core asset',
+            'Collection of the asset'
+          ];
+        },
+        {
+          name: 'mplCoreProgram';
+          isMut: false;
+          isSigner: false;
+          isOptional: true;
+        },
+        {
+          name: 'authorityPdaTokenAccount';
+          isMut: true;
+          isSigner: false;
+          isOptional: true;
+          docs: [
+            'OPTIONAL TOKEN ACCOUNTS - only required if selling NFT or Fungible assets',
+            'Authority PDA token account'
+          ];
+        },
+        {
+          name: 'sellerTokenAccount';
+          isMut: true;
+          isSigner: false;
+          isOptional: true;
+          docs: ['Seller token account'];
+        },
+        {
+          name: 'buyerTokenAccount';
+          isMut: true;
+          isSigner: false;
+          isOptional: true;
+          docs: ['Buyer token account'];
+        },
+        {
+          name: 'metadata';
+          isMut: true;
+          isSigner: false;
+          isOptional: true;
+          docs: [
+            'OPTIONAL NFT ACCOUNTS - only required if selling NFT or PNFT'
+          ];
+        },
+        {
+          name: 'edition';
+          isMut: true;
+          isSigner: false;
+          isOptional: true;
+        },
+        {
+          name: 'tokenMetadataProgram';
+          isMut: false;
+          isSigner: false;
+          isOptional: true;
+        },
+        {
+          name: 'authorityPdaTokenRecord';
+          isMut: true;
+          isSigner: false;
+          isOptional: true;
+          docs: ['OPTIONAL PNFT ACCOUNTS - only required if selling PNFT'];
+        },
+        {
+          name: 'buyerTokenRecord';
+          isMut: true;
+          isSigner: false;
+          isOptional: true;
+        },
+        {
+          name: 'authRules';
+          isMut: false;
+          isSigner: false;
+          isOptional: true;
+        },
+        {
+          name: 'instructions';
+          isMut: false;
+          isSigner: false;
+          isOptional: true;
+        },
+        {
+          name: 'authRulesProgram';
+          isMut: false;
+          isSigner: false;
+          isOptional: true;
+        },
+        {
+          name: 'eventAuthority';
+          isMut: false;
+          isSigner: false;
+        },
+        {
+          name: 'program';
+          isMut: false;
+          isSigner: false;
+        }
+      ];
+      args: [
+        {
+          name: 'index';
+          type: 'u32';
+        },
+        {
+          name: 'amount';
+          type: 'u64';
+        },
+        {
+          name: 'buyPrice';
+          type: 'u64';
+        }
+      ];
+    },
+    {
       name: 'claimCoreAsset';
       docs: [
         'Settles a Core asset sale',
@@ -3004,6 +3212,43 @@ export type MallowGumball = {
       ];
     },
     {
+      name: 'SellItemEvent';
+      fields: [
+        {
+          name: 'mint';
+          type: 'publicKey';
+          index: false;
+        },
+        {
+          name: 'authority';
+          type: 'publicKey';
+          index: false;
+        },
+        {
+          name: 'seller';
+          type: 'publicKey';
+          index: false;
+        },
+        {
+          name: 'buyer';
+          type: 'publicKey';
+          index: false;
+        },
+        {
+          name: 'amount';
+          type: 'u64';
+          index: false;
+        },
+        {
+          name: 'tokenStandard';
+          type: {
+            defined: 'TokenStandard';
+          };
+          index: false;
+        }
+      ];
+    },
+    {
       name: 'SettleItemSaleEvent';
       fields: [
         {
@@ -3358,6 +3603,26 @@ export type MallowGumball = {
       code: 6059;
       name: 'InsufficientFunds';
       msg: 'Insufficient funds';
+    },
+    {
+      code: 6060;
+      name: 'InvalidVersion';
+      msg: 'Invalid version';
+    },
+    {
+      code: 6061;
+      name: 'InvalidOracleSigner';
+      msg: 'Invalid oracle signer';
+    },
+    {
+      code: 6062;
+      name: 'InvalidPayer';
+      msg: 'Invalid payer';
+    },
+    {
+      code: 6063;
+      name: 'NotImplemented';
+      msg: 'Not implemented';
     }
   ];
 };
@@ -4665,6 +4930,214 @@ export const IDL: MallowGumball = {
       args: [
         {
           name: 'revenue',
+          type: 'u64',
+        },
+      ],
+    },
+    {
+      name: 'sellItem',
+      accounts: [
+        {
+          name: 'payer',
+          isMut: true,
+          isSigner: true,
+          docs: [
+            'Must be the oracle signer or seller (oracle signer can sell on behalf of the seller to allow auto-buy back)',
+          ],
+        },
+        {
+          name: 'oracleSigner',
+          isMut: false,
+          isSigner: true,
+          docs: ['Oracle signer'],
+        },
+        {
+          name: 'gumballMachine',
+          isMut: true,
+          isSigner: false,
+          docs: ['Gumball machine account.'],
+        },
+        {
+          name: 'authorityPda',
+          isMut: true,
+          isSigner: false,
+        },
+        {
+          name: 'mint',
+          isMut: true,
+          isSigner: false,
+          docs: ['Mint of the item (or asset for Core assets)'],
+        },
+        {
+          name: 'seller',
+          isMut: true,
+          isSigner: false,
+          docs: ['Seller of the item'],
+        },
+        {
+          name: 'buyer',
+          isMut: true,
+          isSigner: false,
+          docs: ['Buyer of the item'],
+        },
+        {
+          name: 'systemProgram',
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: 'tokenProgram',
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: 'associatedTokenProgram',
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: 'rent',
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: 'paymentMint',
+          isMut: true,
+          isSigner: false,
+          isOptional: true,
+          docs: [
+            'OPTIONAL SPL TOKEN ACCOUNTS - only required if selling for SPL token',
+            'Mint of payment token',
+          ],
+        },
+        {
+          name: 'sellerPaymentAccount',
+          isMut: true,
+          isSigner: false,
+          isOptional: true,
+          docs: ['Seller payment account'],
+        },
+        {
+          name: 'authorityPdaPaymentAccount',
+          isMut: true,
+          isSigner: false,
+          isOptional: true,
+          docs: ['Authority PDA payment account'],
+        },
+        {
+          name: 'collection',
+          isMut: true,
+          isSigner: false,
+          isOptional: true,
+          docs: [
+            'OPTIONAL CORE ASSET ACCOUNTS - only required if selling Core asset',
+            'Collection of the asset',
+          ],
+        },
+        {
+          name: 'mplCoreProgram',
+          isMut: false,
+          isSigner: false,
+          isOptional: true,
+        },
+        {
+          name: 'authorityPdaTokenAccount',
+          isMut: true,
+          isSigner: false,
+          isOptional: true,
+          docs: [
+            'OPTIONAL TOKEN ACCOUNTS - only required if selling NFT or Fungible assets',
+            'Authority PDA token account',
+          ],
+        },
+        {
+          name: 'sellerTokenAccount',
+          isMut: true,
+          isSigner: false,
+          isOptional: true,
+          docs: ['Seller token account'],
+        },
+        {
+          name: 'buyerTokenAccount',
+          isMut: true,
+          isSigner: false,
+          isOptional: true,
+          docs: ['Buyer token account'],
+        },
+        {
+          name: 'metadata',
+          isMut: true,
+          isSigner: false,
+          isOptional: true,
+          docs: [
+            'OPTIONAL NFT ACCOUNTS - only required if selling NFT or PNFT',
+          ],
+        },
+        {
+          name: 'edition',
+          isMut: true,
+          isSigner: false,
+          isOptional: true,
+        },
+        {
+          name: 'tokenMetadataProgram',
+          isMut: false,
+          isSigner: false,
+          isOptional: true,
+        },
+        {
+          name: 'authorityPdaTokenRecord',
+          isMut: true,
+          isSigner: false,
+          isOptional: true,
+          docs: ['OPTIONAL PNFT ACCOUNTS - only required if selling PNFT'],
+        },
+        {
+          name: 'buyerTokenRecord',
+          isMut: true,
+          isSigner: false,
+          isOptional: true,
+        },
+        {
+          name: 'authRules',
+          isMut: false,
+          isSigner: false,
+          isOptional: true,
+        },
+        {
+          name: 'instructions',
+          isMut: false,
+          isSigner: false,
+          isOptional: true,
+        },
+        {
+          name: 'authRulesProgram',
+          isMut: false,
+          isSigner: false,
+          isOptional: true,
+        },
+        {
+          name: 'eventAuthority',
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: 'program',
+          isMut: false,
+          isSigner: false,
+        },
+      ],
+      args: [
+        {
+          name: 'index',
+          type: 'u32',
+        },
+        {
+          name: 'amount',
+          type: 'u64',
+        },
+        {
+          name: 'buyPrice',
           type: 'u64',
         },
       ],
@@ -6368,6 +6841,43 @@ export const IDL: MallowGumball = {
       ],
     },
     {
+      name: 'SellItemEvent',
+      fields: [
+        {
+          name: 'mint',
+          type: 'publicKey',
+          index: false,
+        },
+        {
+          name: 'authority',
+          type: 'publicKey',
+          index: false,
+        },
+        {
+          name: 'seller',
+          type: 'publicKey',
+          index: false,
+        },
+        {
+          name: 'buyer',
+          type: 'publicKey',
+          index: false,
+        },
+        {
+          name: 'amount',
+          type: 'u64',
+          index: false,
+        },
+        {
+          name: 'tokenStandard',
+          type: {
+            defined: 'TokenStandard',
+          },
+          index: false,
+        },
+      ],
+    },
+    {
       name: 'SettleItemSaleEvent',
       fields: [
         {
@@ -6722,6 +7232,26 @@ export const IDL: MallowGumball = {
       code: 6059,
       name: 'InsufficientFunds',
       msg: 'Insufficient funds',
+    },
+    {
+      code: 6060,
+      name: 'InvalidVersion',
+      msg: 'Invalid version',
+    },
+    {
+      code: 6061,
+      name: 'InvalidOracleSigner',
+      msg: 'Invalid oracle signer',
+    },
+    {
+      code: 6062,
+      name: 'InvalidPayer',
+      msg: 'Invalid payer',
+    },
+    {
+      code: 6063,
+      name: 'NotImplemented',
+      msg: 'Not implemented',
     },
   ],
 };

@@ -247,6 +247,15 @@ pub mod mallow_gumball {
         instructions::increment_total_revenue(ctx, revenue)
     }
 
+    pub fn sell_item<'info>(
+        ctx: Context<'_, '_, '_, 'info, SellItem<'info>>,
+        index: u32,
+        amount: u64,
+        buy_price: u64,
+    ) -> Result<()> {
+        instructions::sell_item(ctx, index, amount, buy_price)
+    }
+
     /// Settles a Core asset sale
     ///
     /// # Accounts

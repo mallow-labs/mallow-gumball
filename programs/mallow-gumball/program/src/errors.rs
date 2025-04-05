@@ -181,4 +181,16 @@ pub enum GumballError {
 
     #[msg("Insufficient funds")]
     InsufficientFunds,
+
+    #[msg("Invalid version")]
+    InvalidVersion,
+
+    #[msg("Invalid oracle signer")]
+    InvalidOracleSigner,
+
+    #[msg("Invalid payer")]
+    InvalidPayer,
+
+    #[msg("Not implemented")]
+    NotImplemented,
 }

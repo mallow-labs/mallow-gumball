@@ -186,7 +186,7 @@ pub struct ConfigLine {
 }
 
 /// Config line struct for storing asset data.
-#[derive(AnchorSerialize, AnchorDeserialize, Debug)]
+#[derive(AnchorSerialize, AnchorDeserialize, Debug, InitSpace)]
 pub struct ConfigLineV2 {
     /// Mint account of the asset.
     pub mint: Pubkey,
@@ -200,7 +200,7 @@ pub struct ConfigLineV2 {
     pub amount: u64,
 }
 
-#[derive(Copy, AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug, InitSpace)]
 pub enum TokenStandard {
     NonFungible,
     Core,

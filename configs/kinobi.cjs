@@ -465,6 +465,16 @@ kinobi.update(
 				},
 			},
 		},
+		"mallowGumball.sellItem": {
+			name: "sellItem",
+			accounts: {
+				seller: { defaultsTo: k.identityDefault() },
+				buyerTokenAccount: {
+					defaultsTo: defaultsToAssociatedTokenPda("mint", "buyer"),
+				},
+				...claimPnftDefault(),
+			},
+		},
 		"gumballGuard.route": {
 			internal: true,
 			args: {
@@ -602,6 +612,7 @@ kinobi.update(
 		addNftInstructionData: { ...addItemDefaultArgs, ...nftDefaultArgs },
 		removeNftInstructionData: nftDefaultArgs,
 		claimNftInstructionData: nftDefaultArgs,
+		sellItemInstructionData: nftDefaultArgs,
 		settleNftSaleInstructionData: nftDefaultArgs,
 		requestAddNftInstructionData: addItemDefaultArgs,
 		cancelAddNftRequestInstructionData: addItemDefaultArgs,
