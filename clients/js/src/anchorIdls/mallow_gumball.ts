@@ -1372,6 +1372,23 @@ export type MallowGumball = {
           isSigner: false;
         },
         {
+          name: 'feeAccount';
+          isMut: true;
+          isSigner: false;
+          isOptional: true;
+          docs: [
+            'OPTIONAL FEE ACCOUNTS - only required if there is a fee config on the gumball machine',
+            'Marketplace fee account'
+          ];
+        },
+        {
+          name: 'feePaymentAccount';
+          isMut: true;
+          isSigner: false;
+          isOptional: true;
+          docs: ['Marketplace fee payment account'];
+        },
+        {
           name: 'paymentMint';
           isMut: true;
           isSigner: false;
@@ -4999,6 +5016,23 @@ export const IDL: MallowGumball = {
           name: 'rent',
           isMut: false,
           isSigner: false,
+        },
+        {
+          name: 'feeAccount',
+          isMut: true,
+          isSigner: false,
+          isOptional: true,
+          docs: [
+            'OPTIONAL FEE ACCOUNTS - only required if there is a fee config on the gumball machine',
+            'Marketplace fee account',
+          ],
+        },
+        {
+          name: 'feePaymentAccount',
+          isMut: true,
+          isSigner: false,
+          isOptional: true,
+          docs: ['Marketplace fee payment account'],
         },
         {
           name: 'paymentMint',

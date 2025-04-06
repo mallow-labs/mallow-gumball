@@ -5,7 +5,8 @@ use crate::{
     get_bit_byte_info,
     processors::transfer_nft_with_revoke,
     state::GumballMachine,
-    transfer_and_close_if_empty, AssociatedToken, GumballError, GumballState, Token, TokenStandard,
+    transfer_and_close_if_empty, try_from, AssociatedToken, GumballError, GumballState, Token,
+    TokenStandard,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token::TokenAccount;
@@ -69,7 +70,19 @@ pub struct SellItem<'info> {
     associated_token_program: Program<'info, AssociatedToken>,
     rent: Sysvar<'info, Rent>,
 
+    /// OPTIONAL FEE ACCOUNTS - only required if there is a fee config on the gumball machine
+
+    /// Marketplace fee account
+    /// CHECK: Safe due to constraint
+    #[account(mut)]
+    fee_account: Option<UncheckedAccount<'info>>,
+    /// Marketplace fee payment account
+    /// CHECK: Safe due to transfer checks
+    #[account(mut)]
+    fee_payment_account: Option<UncheckedAccount<'info>>,
+
     /// OPTIONAL SPL TOKEN ACCOUNTS - only required if selling for SPL token
+
     /// Mint of payment token
     /// CHECK: Safe due to item check
     #[account(mut)]
@@ -84,6 +97,7 @@ pub struct SellItem<'info> {
     authority_pda_payment_account: Option<UncheckedAccount<'info>>,
 
     /// OPTIONAL CORE ASSET ACCOUNTS - only required if selling Core asset
+
     /// Collection of the asset
     /// CHECK: Safe due to item check
     #[account(mut)]
@@ -93,13 +107,10 @@ pub struct SellItem<'info> {
     mpl_core_program: Option<UncheckedAccount<'info>>,
 
     /// OPTIONAL TOKEN ACCOUNTS - only required if selling NFT or Fungible assets
+
     /// Authority PDA token account
-    #[account(
-        mut,
-        constraint = authority_pda_token_account.mint == mint.key(),
-        constraint = authority_pda_token_account.owner == authority_pda.key(),
-    )]
-    authority_pda_token_account: Option<Box<Account<'info, TokenAccount>>>,
+    #[account(mut)]
+    authority_pda_token_account: Option<UncheckedAccount<'info>>,
     /// Seller token account
     /// CHECK: Safe due to transfer checks
     #[account(mut)]
@@ -110,6 +121,7 @@ pub struct SellItem<'info> {
     buyer_token_account: Option<UncheckedAccount<'info>>,
 
     /// OPTIONAL NFT ACCOUNTS - only required if selling NFT or PNFT
+
     /// CHECK: Safe due to processor royalties check
     #[account(mut)]
     metadata: Option<UncheckedAccount<'info>>,
@@ -121,6 +133,7 @@ pub struct SellItem<'info> {
     token_metadata_program: Option<UncheckedAccount<'info>>,
 
     /// OPTIONAL PNFT ACCOUNTS - only required if selling PNFT
+
     /// CHECK: Safe due to token metadata program check
     #[account(mut)]
     pub authority_pda_token_record: Option<UncheckedAccount<'info>>,
@@ -165,13 +178,6 @@ pub fn sell_item<'info>(
     require!(
         oracle_signer.key() == buy_back_config.oracle_signer,
         GumballError::InvalidOracleSigner
-    );
-
-    // Make sure there are enough buy back funds available
-    let buy_back_funds_available = gumball_machine.get_buy_back_funds_available(&gumball_data)?;
-    require!(
-        buy_back_funds_available >= buy_price,
-        GumballError::InsufficientFunds
     );
 
     let config_line_position =
@@ -221,10 +227,15 @@ pub fn sell_item<'info>(
     if !buy_back_config.to_gumball_machine {
         match config_line.token_standard {
             TokenStandard::Fungible => {
+                let authority_pda_token_account = &mut Box::new(try_from!(
+                    Account::<TokenAccount>,
+                    ctx.accounts.authority_pda_token_account.as_ref().unwrap()
+                )?);
+
                 transfer_and_close_if_empty(
                     payer,
                     authority_pda,
-                    &mut ctx.accounts.authority_pda_token_account.as_mut().unwrap(),
+                    authority_pda_token_account,
                     buyer,
                     &ctx.accounts
                         .buyer_token_account
@@ -272,7 +283,7 @@ pub fn sell_item<'info>(
                     .system_program(Some(system_program))
                     .invoke_signed(&[&auth_seeds])?;
             }
-            TokenStandard::NonFungible => {
+            TokenStandard::NonFungible | TokenStandard::ProgrammableNonFungible => {
                 let metadata_info = &ctx.accounts.metadata.as_ref().unwrap().to_account_info();
                 let metadata = &Metadata::try_from(metadata_info)?;
                 transfer_nft_with_revoke(
@@ -284,9 +295,9 @@ pub fn sell_item<'info>(
                         .as_ref()
                         .unwrap()
                         .to_account_info(),
-                    authority_pda,
+                    buyer,
                     &ctx.accounts
-                        .authority_pda_token_account
+                        .buyer_token_account
                         .as_ref()
                         .unwrap()
                         .to_account_info(),
@@ -309,59 +320,13 @@ pub fn sell_item<'info>(
                     system_program,
                     rent,
                     &auth_seeds,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    Some(buyer),
-                )?;
-            }
-            TokenStandard::ProgrammableNonFungible => {
-                let metadata_info = &ctx.accounts.metadata.as_ref().unwrap().to_account_info();
-                let metadata = &Metadata::try_from(metadata_info)?;
-                transfer_nft_with_revoke(
-                    authority_pda,
-                    payer,
-                    buyer,
-                    &ctx.accounts
-                        .buyer_token_account
-                        .as_ref()
-                        .unwrap()
-                        .to_account_info(),
-                    authority_pda,
-                    &ctx.accounts
-                        .authority_pda_token_account
-                        .as_ref()
-                        .unwrap()
-                        .to_account_info(),
-                    &ctx.accounts
-                        .authority_pda_token_account
-                        .as_ref()
-                        .unwrap()
-                        .to_account_info(),
-                    mint,
-                    &ctx.accounts.edition.as_ref().unwrap().to_account_info(),
-                    metadata,
-                    metadata_info,
-                    token_program,
-                    associated_token_program,
-                    &ctx.accounts
-                        .token_metadata_program
-                        .as_ref()
-                        .unwrap()
-                        .to_account_info(),
-                    system_program,
-                    rent,
-                    &auth_seeds,
-                    ctx.accounts.authority_pda_token_record.as_ref(),
+                    ctx.accounts.buyer_token_record.as_ref(),
                     ctx.accounts.authority_pda_token_record.as_ref(),
                     ctx.accounts.buyer_token_record.as_ref(),
                     ctx.accounts.auth_rules.as_ref(),
                     ctx.accounts.instructions.as_ref(),
                     ctx.accounts.auth_rules_program.as_ref(),
-                    Some(buyer),
+                    Some(seller),
                 )?;
             }
         }
@@ -420,12 +385,20 @@ pub fn sell_item<'info>(
     // Pay the marketplace fee
     let marketplace_fee = get_bps_of(buy_price, buy_back_config.marketplace_fee_bps)?;
     if marketplace_fee > 0 {
+        let fee_account = &mut ctx.accounts.fee_account.as_mut().unwrap().to_account_info();
+        let fee_payment_account = ctx
+            .accounts
+            .fee_payment_account
+            .as_ref()
+            .map(|a| a.to_account_info());
+        let fee_payment_account_info = fee_payment_account.as_ref();
+
         // Pay the marketplace fee from the buy back funds
         transfer_from_pda(
             authority_pda,
-            marketplace_fee_account,
+            fee_account,
             authority_pda_payment_account_info,
-            marketplace_fee_payment_account_info,
+            fee_payment_account_info,
             payment_mint_info,
             Some(payer),
             associated_token_program,
@@ -437,6 +410,16 @@ pub fn sell_item<'info>(
             marketplace_fee,
         )?;
     }
+
+    // Make sure there are enough buy back funds available
+    let buy_back_funds_available = gumball_machine.get_buy_back_funds_available(&gumball_data)?;
+    require!(
+        buy_back_funds_available
+            .checked_add(marketplace_fee)
+            .ok_or(GumballError::NumericalOverflowError)?
+            >= buy_price,
+        GumballError::InsufficientFunds
+    );
 
     // Decrement buy back funds available
     let buy_back_funds_available_position =

@@ -466,11 +466,43 @@ kinobi.update(
 			},
 		},
 		"mallowGumball.sellItem": {
-			name: "sellItem",
+			name: "sellItemBack",
 			accounts: {
 				seller: { defaultsTo: k.identityDefault() },
+				sellerPaymentAccount: {
+					defaultsTo: k.conditionalDefault("account", "paymentMint", {
+						ifTrue: defaultsToAssociatedTokenPda("paymentMint", "seller"),
+					}),
+				},
+				authorityPdaPaymentAccount: {
+					defaultsTo: k.conditionalDefault("account", "paymentMint", {
+						ifTrue: defaultsToAssociatedTokenPda("paymentMint", "authorityPda"),
+					}),
+				},
+				metadata: {
+					defaultsTo: k.conditionalDefault("account", "tokenMetadataProgram", {
+						ifTrue: defaultsToMetadataPda(),
+					}),
+				},
+				edition: {
+					defaultsTo: k.conditionalDefault("account", "tokenMetadataProgram", {
+						ifTrue: defaultsToMasterEditionPda(),
+					}),
+				},
+				authorityPdaTokenAccount: {
+					defaultsTo: k.conditionalDefault("account", "tokenMetadataProgram", {
+						ifTrue: defaultsToAssociatedTokenPda("mint", "authorityPda"),
+					}),
+				},
+				sellerTokenAccount: {
+					defaultsTo: k.conditionalDefault("account", "tokenMetadataProgram", {
+						ifTrue: defaultsToAssociatedTokenPda("mint", "seller"),
+					}),
+				},
 				buyerTokenAccount: {
-					defaultsTo: defaultsToAssociatedTokenPda("mint", "buyer"),
+					defaultsTo: k.conditionalDefault("account", "tokenMetadataProgram", {
+						ifTrue: defaultsToAssociatedTokenPda("mint", "buyer"),
+					}),
 				},
 				...claimPnftDefault(),
 			},
@@ -612,7 +644,11 @@ kinobi.update(
 		addNftInstructionData: { ...addItemDefaultArgs, ...nftDefaultArgs },
 		removeNftInstructionData: nftDefaultArgs,
 		claimNftInstructionData: nftDefaultArgs,
-		sellItemInstructionData: nftDefaultArgs,
+		sellItemInstructionData: {
+			...nftDefaultArgs,
+			feeAccount: k.vNone(),
+			feePaymentAccount: k.vNone(),
+		},
 		settleNftSaleInstructionData: nftDefaultArgs,
 		requestAddNftInstructionData: addItemDefaultArgs,
 		cancelAddNftRequestInstructionData: addItemDefaultArgs,

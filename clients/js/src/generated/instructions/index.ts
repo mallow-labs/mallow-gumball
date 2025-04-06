@@ -30,7 +30,7 @@ export * from './removeTokens';
 export * from './removeTokensSpan';
 export * from './requestAddCoreAsset';
 export * from './requestAddNft';
-export * from './sellItem';
+export * from './sellItemBack';
 export * from './setGumballGuardAuthority';
 export * from './setGumballMachineAuthority';
 export * from './setMintAuthority';

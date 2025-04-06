@@ -15,6 +15,7 @@ export * from './merkle';
 export * from './plugin';
 export * from './programs';
 export * from './route';
+export * from './sellItem';
 export * from './settleCoreAssetSale';
 export * from './settleNftSale';
 export * from './updateGumballGuard';

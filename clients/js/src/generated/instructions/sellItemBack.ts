@@ -6,7 +6,11 @@
  * @see https://github.com/metaplex-foundation/kinobi
  */
 
-import { findTokenRecordPda } from '@metaplex-foundation/mpl-token-metadata';
+import {
+  findMasterEditionPda,
+  findMetadataPda,
+  findTokenRecordPda,
+} from '@metaplex-foundation/mpl-token-metadata';
 import { findAssociatedTokenPda } from '@metaplex-foundation/mpl-toolbox';
 import {
   Context,
@@ -38,7 +42,7 @@ import {
 } from '../shared';
 
 // Accounts.
-export type SellItemInstructionAccounts = {
+export type SellItemBackInstructionAccounts = {
   /** Must be the oracle signer or seller (oracle signer can sell on behalf of the seller to allow auto-buy back) */
   payer?: Signer;
   /** Oracle signer */
@@ -56,6 +60,14 @@ export type SellItemInstructionAccounts = {
   tokenProgram?: PublicKey | Pda;
   associatedTokenProgram?: PublicKey | Pda;
   rent?: PublicKey | Pda;
+  /**
+   * OPTIONAL FEE ACCOUNTS - only required if there is a fee config on the gumball machine
+   * Marketplace fee account
+   */
+
+  feeAccount?: PublicKey | Pda;
+  /** Marketplace fee payment account */
+  feePaymentAccount?: PublicKey | Pda;
   /**
    * OPTIONAL SPL TOKEN ACCOUNTS - only required if selling for SPL token
    * Mint of payment token
@@ -98,51 +110,51 @@ export type SellItemInstructionAccounts = {
 };
 
 // Data.
-export type SellItemInstructionData = {
+export type SellItemBackInstructionData = {
   discriminator: Array<number>;
   index: number;
   amount: bigint;
   buyPrice: bigint;
 };
 
-export type SellItemInstructionDataArgs = {
+export type SellItemBackInstructionDataArgs = {
   index: number;
   amount: number | bigint;
   buyPrice: number | bigint;
 };
 
-export function getSellItemInstructionDataSerializer(): Serializer<
-  SellItemInstructionDataArgs,
-  SellItemInstructionData
+export function getSellItemBackInstructionDataSerializer(): Serializer<
+  SellItemBackInstructionDataArgs,
+  SellItemBackInstructionData
 > {
   return mapSerializer<
-    SellItemInstructionDataArgs,
+    SellItemBackInstructionDataArgs,
     any,
-    SellItemInstructionData
+    SellItemBackInstructionData
   >(
-    struct<SellItemInstructionData>(
+    struct<SellItemBackInstructionData>(
       [
         ['discriminator', array(u8(), { size: 8 })],
         ['index', u32()],
         ['amount', u64()],
         ['buyPrice', u64()],
       ],
-      { description: 'SellItemInstructionData' }
+      { description: 'SellItemBackInstructionData' }
     ),
     (value) => ({
       ...value,
       discriminator: [44, 114, 171, 76, 76, 10, 150, 246],
     })
-  ) as Serializer<SellItemInstructionDataArgs, SellItemInstructionData>;
+  ) as Serializer<SellItemBackInstructionDataArgs, SellItemBackInstructionData>;
 }
 
 // Args.
-export type SellItemInstructionArgs = SellItemInstructionDataArgs;
+export type SellItemBackInstructionArgs = SellItemBackInstructionDataArgs;
 
 // Instruction.
-export function sellItem(
+export function sellItemBack(
   context: Pick<Context, 'eddsa' | 'identity' | 'payer' | 'programs'>,
-  input: SellItemInstructionAccounts & SellItemInstructionArgs
+  input: SellItemBackInstructionAccounts & SellItemBackInstructionArgs
 ): TransactionBuilder {
   // Program ID.
   const programId = context.programs.getPublicKey(
@@ -187,84 +199,94 @@ export function sellItem(
       value: input.associatedTokenProgram ?? null,
     },
     rent: { index: 10, isWritable: false, value: input.rent ?? null },
-    paymentMint: {
+    feeAccount: {
       index: 11,
+      isWritable: true,
+      value: input.feeAccount ?? null,
+    },
+    feePaymentAccount: {
+      index: 12,
+      isWritable: true,
+      value: input.feePaymentAccount ?? null,
+    },
+    paymentMint: {
+      index: 13,
       isWritable: true,
       value: input.paymentMint ?? null,
     },
     sellerPaymentAccount: {
-      index: 12,
+      index: 14,
       isWritable: true,
       value: input.sellerPaymentAccount ?? null,
     },
     authorityPdaPaymentAccount: {
-      index: 13,
+      index: 15,
       isWritable: true,
       value: input.authorityPdaPaymentAccount ?? null,
     },
     collection: {
-      index: 14,
+      index: 16,
       isWritable: true,
       value: input.collection ?? null,
     },
     mplCoreProgram: {
-      index: 15,
+      index: 17,
       isWritable: false,
       value: input.mplCoreProgram ?? null,
     },
     authorityPdaTokenAccount: {
-      index: 16,
+      index: 18,
       isWritable: true,
       value: input.authorityPdaTokenAccount ?? null,
     },
     sellerTokenAccount: {
-      index: 17,
+      index: 19,
       isWritable: true,
       value: input.sellerTokenAccount ?? null,
     },
     buyerTokenAccount: {
-      index: 18,
+      index: 20,
       isWritable: true,
       value: input.buyerTokenAccount ?? null,
     },
-    metadata: { index: 19, isWritable: true, value: input.metadata ?? null },
-    edition: { index: 20, isWritable: true, value: input.edition ?? null },
+    metadata: { index: 21, isWritable: true, value: input.metadata ?? null },
+    edition: { index: 22, isWritable: true, value: input.edition ?? null },
     tokenMetadataProgram: {
-      index: 21,
+      index: 23,
       isWritable: false,
       value: input.tokenMetadataProgram ?? null,
     },
     authorityPdaTokenRecord: {
-      index: 22,
+      index: 24,
       isWritable: true,
       value: input.authorityPdaTokenRecord ?? null,
     },
     buyerTokenRecord: {
-      index: 23,
+      index: 25,
       isWritable: true,
       value: input.buyerTokenRecord ?? null,
     },
-    authRules: { index: 24, isWritable: false, value: input.authRules ?? null },
+    authRules: { index: 26, isWritable: false, value: input.authRules ?? null },
     instructions: {
-      index: 25,
+      index: 27,
       isWritable: false,
       value: input.instructions ?? null,
     },
     authRulesProgram: {
-      index: 26,
+      index: 28,
       isWritable: false,
       value: input.authRulesProgram ?? null,
     },
     eventAuthority: {
-      index: 27,
+      index: 29,
       isWritable: false,
       value: input.eventAuthority ?? null,
     },
-    program: { index: 28, isWritable: false, value: input.program ?? null },
+    program: { index: 30, isWritable: false, value: input.program ?? null },
   };
 
   // Arguments.
-  const resolvedArgs: SellItemInstructionArgs = { ...input };
+  const resolvedArgs: SellItemBackInstructionArgs = { ...input };
 
   // Default values.
   if (!resolvedAccounts.payer.value) {
@@ -306,11 +328,72 @@ export function sellItem(
       'SysvarRent111111111111111111111111111111111'
     );
   }
+  if (!resolvedAccounts.sellerPaymentAccount.value) {
+    if (resolvedAccounts.paymentMint.value) {
+      resolvedAccounts.sellerPaymentAccount.value = findAssociatedTokenPda(
+        context,
+        {
+          mint: expectPublicKey(resolvedAccounts.paymentMint.value),
+          owner: expectPublicKey(resolvedAccounts.seller.value),
+        }
+      );
+    }
+  }
+  if (!resolvedAccounts.authorityPdaPaymentAccount.value) {
+    if (resolvedAccounts.paymentMint.value) {
+      resolvedAccounts.authorityPdaPaymentAccount.value =
+        findAssociatedTokenPda(context, {
+          mint: expectPublicKey(resolvedAccounts.paymentMint.value),
+          owner: expectPublicKey(resolvedAccounts.authorityPda.value),
+        });
+    }
+  }
+  if (!resolvedAccounts.authorityPdaTokenAccount.value) {
+    if (resolvedAccounts.tokenMetadataProgram.value) {
+      resolvedAccounts.authorityPdaTokenAccount.value = findAssociatedTokenPda(
+        context,
+        {
+          mint: expectPublicKey(resolvedAccounts.mint.value),
+          owner: expectPublicKey(resolvedAccounts.authorityPda.value),
+        }
+      );
+    }
+  }
+  if (!resolvedAccounts.sellerTokenAccount.value) {
+    if (resolvedAccounts.tokenMetadataProgram.value) {
+      resolvedAccounts.sellerTokenAccount.value = findAssociatedTokenPda(
+        context,
+        {
+          mint: expectPublicKey(resolvedAccounts.mint.value),
+          owner: expectPublicKey(resolvedAccounts.seller.value),
+        }
+      );
+    }
+  }
   if (!resolvedAccounts.buyerTokenAccount.value) {
-    resolvedAccounts.buyerTokenAccount.value = findAssociatedTokenPda(context, {
-      mint: expectPublicKey(resolvedAccounts.mint.value),
-      owner: expectPublicKey(resolvedAccounts.buyer.value),
-    });
+    if (resolvedAccounts.tokenMetadataProgram.value) {
+      resolvedAccounts.buyerTokenAccount.value = findAssociatedTokenPda(
+        context,
+        {
+          mint: expectPublicKey(resolvedAccounts.mint.value),
+          owner: expectPublicKey(resolvedAccounts.buyer.value),
+        }
+      );
+    }
+  }
+  if (!resolvedAccounts.metadata.value) {
+    if (resolvedAccounts.tokenMetadataProgram.value) {
+      resolvedAccounts.metadata.value = findMetadataPda(context, {
+        mint: expectPublicKey(resolvedAccounts.mint.value),
+      });
+    }
+  }
+  if (!resolvedAccounts.edition.value) {
+    if (resolvedAccounts.tokenMetadataProgram.value) {
+      resolvedAccounts.edition.value = findMasterEditionPda(context, {
+        mint: expectPublicKey(resolvedAccounts.mint.value),
+      });
+    }
   }
   if (!resolvedAccounts.authorityPdaTokenRecord.value) {
     if (resolvedAccounts.authRulesProgram.value) {
@@ -364,8 +447,8 @@ export function sellItem(
   );
 
   // Data.
-  const data = getSellItemInstructionDataSerializer().serialize(
-    resolvedArgs as SellItemInstructionDataArgs
+  const data = getSellItemBackInstructionDataSerializer().serialize(
+    resolvedArgs as SellItemBackInstructionDataArgs
   );
 
   // Bytes Created On Chain.
