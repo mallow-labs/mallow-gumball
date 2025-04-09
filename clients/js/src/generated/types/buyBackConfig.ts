@@ -27,6 +27,12 @@ export type BuyBackConfig = {
   valuePct: number;
   /** Fee in basis points paid to marketplace authority when buying back prizes (paid from funds_available) */
   marketplaceFeeBps: number;
+  /**
+   * Buy backs are disabled when the percentage of items remaining is less than or equal to this value
+   * 0 means there is no cutoff, 100 means buy back is always disabled, 50 means buy back is disabled when 50% of items are sold
+   * If an item is sold back to the gumball machine to increase the remaining % above this cutoff, buy back is re-enabled
+   */
+  cutoffPct: number;
 };
 
 export type BuyBackConfigArgs = BuyBackConfig;
@@ -42,6 +48,7 @@ export function getBuyBackConfigSerializer(): Serializer<
       ['oracleSigner', publicKeySerializer()],
       ['valuePct', u8()],
       ['marketplaceFeeBps', u16()],
+      ['cutoffPct', u8()],
     ],
     { description: 'BuyBackConfig' }
   ) as Serializer<BuyBackConfigArgs, BuyBackConfig>;

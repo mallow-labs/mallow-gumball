@@ -2967,6 +2967,15 @@ export type MallowGumball = {
               'Fee in basis points paid to marketplace authority when buying back prizes (paid from funds_available)'
             ];
             type: 'u16';
+          },
+          {
+            name: 'cutoffPct';
+            docs: [
+              'Buy backs are disabled when the percentage of items remaining is less than or equal to this value',
+              '0 means there is no cutoff, 100 means buy back is always disabled, 50 means buy back is disabled when 50% of items are sold',
+              'If an item is sold back to the gumball machine to increase the remaining % above this cutoff, buy back is re-enabled'
+            ];
+            type: 'u8';
           }
         ];
       };
@@ -3640,6 +3649,11 @@ export type MallowGumball = {
       code: 6063;
       name: 'NotImplemented';
       msg: 'Not implemented';
+    },
+    {
+      code: 6064;
+      name: 'BuyBackCutoffReached';
+      msg: 'Buy back cutoff reached';
     }
   ];
 };
@@ -6614,6 +6628,15 @@ export const IDL: MallowGumball = {
             ],
             type: 'u16',
           },
+          {
+            name: 'cutoffPct',
+            docs: [
+              'Buy backs are disabled when the percentage of items remaining is less than or equal to this value',
+              '0 means there is no cutoff, 100 means buy back is always disabled, 50 means buy back is disabled when 50% of items are sold',
+              'If an item is sold back to the gumball machine to increase the remaining % above this cutoff, buy back is re-enabled',
+            ],
+            type: 'u8',
+          },
         ],
       },
     },
@@ -7286,6 +7309,11 @@ export const IDL: MallowGumball = {
       code: 6063,
       name: 'NotImplemented',
       msg: 'Not implemented',
+    },
+    {
+      code: 6064,
+      name: 'BuyBackCutoffReached',
+      msg: 'Buy back cutoff reached',
     },
   ],
 };

@@ -2,7 +2,7 @@ use crate::{
     assert_config_line_values,
     constants::{AUTHORITY_SEED, GUMBALL_MACHINE_SIZE, MPL_TOKEN_AUTH_RULES_PROGRAM},
     events::SellItemEvent,
-    get_bit_byte_info,
+    get_bit_byte_info, get_config_count,
     processors::transfer_nft_with_revoke,
     state::GumballMachine,
     transfer_and_close_if_empty, try_from, AssociatedToken, GumballError, GumballState, Token,
@@ -180,6 +180,24 @@ pub fn sell_item<'info>(
         GumballError::InvalidOracleSigner
     );
 
+    let cutoff_pct = buy_back_config.cutoff_pct;
+    if cutoff_pct > 0 {
+        let items_loaded = get_config_count(&gumball_data)? as u64;
+        let items_sold = gumball_machine.items_redeemed;
+        let items_remaining = items_loaded
+            .checked_sub(items_sold)
+            .ok_or(GumballError::NumericalOverflowError)?;
+        require!(
+            items_remaining
+                .checked_mul(100)
+                .ok_or(GumballError::NumericalOverflowError)?
+                .checked_div(items_loaded)
+                .ok_or(GumballError::NumericalOverflowError)?
+                > cutoff_pct as u64,
+            GumballError::BuyBackCutoffReached
+        );
+    }
+
     let config_line_position =
         GUMBALL_MACHINE_SIZE + 4 + (index as usize) * gumball_machine.get_config_line_size();
 
@@ -273,7 +291,6 @@ pub fn sell_item<'info>(
                     .authority(Some(authority_pda))
                     .system_program(system_program)
                     .invoke_signed(&[&auth_seeds])?;
-
                 TransferV1CpiBuilder::new(mpl_core_program)
                     .asset(mint)
                     .collection(collection_info)
@@ -425,12 +442,14 @@ pub fn sell_item<'info>(
     let buy_back_funds_available_position =
         gumball_machine.get_buy_back_funds_available_position()?;
     let new_buy_back_funds_available = buy_back_funds_available
-        .checked_sub(amount)
+        .checked_sub(buy_price)
         .ok_or(GumballError::NumericalOverflowError)?
         .checked_sub(marketplace_fee)
         .ok_or(GumballError::NumericalOverflowError)?;
     gumball_data[buy_back_funds_available_position..buy_back_funds_available_position + 8]
         .copy_from_slice(&new_buy_back_funds_available.to_le_bytes());
+
+    msg!("new_buy_back_funds_available: {}", new_buy_back_funds_available);
 
     drop(gumball_data);
 

@@ -35,6 +35,7 @@ test('it can create a gumball machine using config line settings', async (t) => 
           oracleSigner: umi.identity.publicKey,
           valuePct: 70,
           marketplaceFeeBps: 1000,
+          cutoffPct: 0,
         },
       })
     )
@@ -62,6 +63,7 @@ test('it can create a gumball machine using config line settings', async (t) => 
       oracleSigner: umi.identity.publicKey,
       valuePct: 70,
       marketplaceFeeBps: 1000,
+      cutoffPct: 0,
     },
     buyBackFundsAvailable: 0n,
   });

@@ -922,6 +922,19 @@ export class NotImplementedError extends ProgramError {
 codeToErrorMap.set(0x17af, NotImplementedError);
 nameToErrorMap.set('NotImplemented', NotImplementedError);
 
+/** BuyBackCutoffReached: Buy back cutoff reached */
+export class BuyBackCutoffReachedError extends ProgramError {
+  readonly name: string = 'BuyBackCutoffReached';
+
+  readonly code: number = 0x17b0; // 6064
+
+  constructor(program: Program, cause?: Error) {
+    super('Buy back cutoff reached', program, cause);
+  }
+}
+codeToErrorMap.set(0x17b0, BuyBackCutoffReachedError);
+nameToErrorMap.set('BuyBackCutoffReached', BuyBackCutoffReachedError);
+
 /**
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors

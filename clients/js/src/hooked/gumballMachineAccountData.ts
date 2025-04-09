@@ -111,6 +111,7 @@ export function getDefaultBuyBackConfig(): BuyBackConfig {
     oracleSigner: defaultPublicKey(),
     valuePct: 0,
     marketplaceFeeBps: 0,
+    cutoffPct: 0,
   };
 }
 

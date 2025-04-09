@@ -193,4 +193,7 @@ pub enum GumballError {
 
     #[msg("Not implemented")]
     NotImplemented,
+
+    #[msg("Buy back cutoff reached")]
+    BuyBackCutoffReached,
 }
