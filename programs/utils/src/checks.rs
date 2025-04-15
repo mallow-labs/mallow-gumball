@@ -1,8 +1,7 @@
 use crate::error::Error;
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::get_associated_token_address;
-use mpl_token_metadata::accounts::{Edition, MasterEdition, Metadata};
-use mpl_token_metadata::types::Key;
+use mpl_token_metadata::accounts::Metadata;
 use solana_program::program_pack::{IsInitialized, Pack};
 use solana_program::{account_info::AccountInfo, pubkey::Pubkey};
 use spl_token::state::Account as SplAccount;
@@ -58,27 +57,6 @@ pub fn assert_is_metadata_account(metadata_account: Pubkey, mint: Pubkey) -> Res
         expected_metadata_account,
         "Invalid metadata account",
     )?;
-
-    Ok(())
-}
-
-pub fn assert_is_non_printable_edition(account: &AccountInfo) -> Result<()> {
-    // Make sure we're listing a printed edition or a 1/1 master edition
-    let edition = Edition::try_from(account);
-
-    if edition.is_err() || edition.unwrap().key != Key::EditionV1 {
-        let master_edition = MasterEdition::try_from(account);
-        if master_edition.is_err() {
-            return err!(crate::error::Error::InvalidEdition);
-        }
-
-        let master_edition_unwrapped = master_edition.unwrap();
-        require!(
-            master_edition_unwrapped.max_supply.is_some()
-                && master_edition_unwrapped.max_supply.unwrap() == 0,
-            crate::error::Error::InvalidEditionMaxSupply
-        );
-    }
 
     Ok(())
 }

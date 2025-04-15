@@ -8,7 +8,6 @@ use crate::{
 };
 use anchor_lang::prelude::*;
 use mpl_token_metadata::accounts::Metadata;
-use utils::assert_is_non_printable_edition;
 
 /// Add nft to a gumball machine.
 #[derive(Accounts)]
@@ -133,9 +132,6 @@ pub fn request_add_nft(ctx: Context<RequestAddNft>) -> Result<()> {
     assert_can_request_add_item(gumball_machine, seller_history)?;
 
     seller_history.item_count += 1;
-
-    // Prevent selling printable master editions
-    assert_is_non_printable_edition(&ctx.accounts.edition.to_account_info())?;
 
     let auth_seeds = [
         AUTHORITY_SEED.as_bytes(),
