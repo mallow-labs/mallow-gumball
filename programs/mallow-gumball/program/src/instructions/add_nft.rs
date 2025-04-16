@@ -6,7 +6,6 @@ use crate::{
 };
 use anchor_lang::prelude::*;
 use mpl_token_metadata::accounts::Metadata;
-use utils::assert_is_non_printable_edition;
 
 /// Add nft to a gumball machine.
 #[derive(Accounts)]
@@ -110,9 +109,6 @@ pub fn add_nft(ctx: Context<AddNft>, seller_proof_path: Option<Vec<[u8; 32]>>) -
         metadata.mint == ctx.accounts.mint.key(),
         GumballError::MintMismatch
     );
-
-    // Prevent selling printable master editions
-    assert_is_non_printable_edition(&ctx.accounts.edition.to_account_info())?;
 
     crate::processors::add_item(
         gumball_machine,
