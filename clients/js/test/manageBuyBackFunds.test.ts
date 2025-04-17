@@ -8,7 +8,7 @@ import {
   GumballMachine,
   manageBuyBackFunds,
 } from '../src';
-import { create, createMintWithHolders, createUmi } from './_setup';
+import { create, createUmi } from './_setup';
 
 test('it can deposit buy back funds', async (t) => {
   // Given an existing gumball machine with buyback enabled
@@ -149,112 +149,6 @@ test('it can withdraw partial buy back funds', async (t) => {
   t.like(gumballMachineAccount, <GumballMachine>{
     buyBackFundsAvailable: 0n,
   });
-});
-
-test('it cannot manage using the wrong payment mint when payment mint is native mint', async (t) => {
-  // Given an existing gumball machine with buyback enabled using native SOL
-  const umi = await createUmi();
-
-  const gumballMachine = await create(umi, {
-    buyBackConfig: {
-      ...getDefaultBuyBackConfig(),
-      enabled: true,
-    },
-    // Using default settings which uses native SOL
-  });
-
-  // When we try to deposit with wrong payment mint
-  const [tokenMint] = await createMintWithHolders(umi, {
-    holders: [{ owner: umi.identity, amount: 10 }],
-  });
-
-  const promise = transactionBuilder()
-    .add(
-      manageBuyBackFunds(umi, {
-        gumballMachine: gumballMachine.publicKey,
-        amount: 1,
-        isWithdraw: false,
-        paymentMint: tokenMint.publicKey, // This should be wrong since we're using native SOL
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then the transaction fails
-  await t.throwsAsync(promise, { message: /InvalidPaymentMint/ });
-});
-
-test('it cannot manage using the wrong payment mint when payment mint is token mint', async (t) => {
-  // Given an existing gumball machine with buyback enabled using a token mint
-  const umi = await createUmi();
-
-  // Create a token mint for the gumball machine
-  const [tokenMint] = await createMintWithHolders(umi, {
-    holders: [{ owner: umi.identity, amount: 10 }],
-  });
-
-  const gumballMachine = await create(umi, {
-    settings: {
-      paymentMint: tokenMint.publicKey, // Use token mint for payment
-    },
-    buyBackConfig: {
-      ...getDefaultBuyBackConfig(),
-      enabled: true,
-    },
-  });
-
-  // Create another token mint (wrong one)
-  const [wrongTokenMint] = await createMintWithHolders(umi, {
-    holders: [{ owner: umi.identity, amount: 10 }],
-  });
-
-  // When we try to deposit with wrong payment mint
-  const promise = transactionBuilder()
-    .add(
-      manageBuyBackFunds(umi, {
-        gumballMachine: gumballMachine.publicKey,
-        amount: 1,
-        isWithdraw: false,
-        paymentMint: wrongTokenMint.publicKey, // Wrong token mint
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then the transaction fails
-  await t.throwsAsync(promise, { message: /InvalidPaymentMint/ });
-});
-
-test('it cannot manage using no mint when payment mint is token mint', async (t) => {
-  // Given an existing gumball machine with buyback enabled using a token mint
-  const umi = await createUmi();
-
-  // Create a token mint for the gumball machine
-  const [tokenMint] = await createMintWithHolders(umi, {
-    holders: [{ owner: umi.identity, amount: 10 }],
-  });
-
-  const gumballMachine = await create(umi, {
-    settings: {
-      paymentMint: tokenMint.publicKey, // Use token mint for payment
-    },
-    buyBackConfig: {
-      ...getDefaultBuyBackConfig(),
-      enabled: true,
-    },
-  });
-
-  // When we try to deposit with wrong payment mint
-  const promise = transactionBuilder()
-    .add(
-      manageBuyBackFunds(umi, {
-        gumballMachine: gumballMachine.publicKey,
-        amount: 1,
-        isWithdraw: false,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then the transaction fails
-  await t.throwsAsync(promise, { message: /InvalidPaymentMint/ });
 });
 
 test('it cannot withdraw more than the available buy back funds available', async (t) => {

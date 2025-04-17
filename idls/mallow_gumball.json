@@ -1,5 +1,5 @@
 {
-  "version": "0.7.3",
+  "version": "0.8.0",
   "name": "mallow_gumball",
   "instructions": [
     {
@@ -91,9 +91,9 @@
       ],
       "args": [
         {
-          "name": "settings",
+          "name": "args",
           "type": {
-            "defined": "GumballSettings"
+            "defined": "UpdateArgs"
           }
         }
       ]
@@ -3237,6 +3237,28 @@
           {
             "name": "endIndex",
             "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "UpdateArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "settings",
+            "type": {
+              "defined": "GumballSettings"
+            }
+          },
+          {
+            "name": "buyBackConfig",
+            "type": {
+              "option": {
+                "defined": "BuyBackConfig"
+              }
+            }
           }
         ]
       }

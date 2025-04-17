@@ -1,5 +1,5 @@
 export type MallowGumball = {
-  version: '0.7.3';
+  version: '0.8.0';
   name: 'mallow_gumball';
   instructions: [
     {
@@ -87,9 +87,9 @@ export type MallowGumball = {
       ];
       args: [
         {
-          name: 'settings';
+          name: 'args';
           type: {
-            defined: 'GumballSettings';
+            defined: 'UpdateArgs';
           };
         }
       ];
@@ -2913,6 +2913,28 @@ export type MallowGumball = {
       };
     },
     {
+      name: 'UpdateArgs';
+      type: {
+        kind: 'struct';
+        fields: [
+          {
+            name: 'settings';
+            type: {
+              defined: 'GumballSettings';
+            };
+          },
+          {
+            name: 'buyBackConfig';
+            type: {
+              option: {
+                defined: 'BuyBackConfig';
+              };
+            };
+          }
+        ];
+      };
+    },
+    {
       name: 'FeeConfig';
       type: {
         kind: 'struct';
@@ -3659,7 +3681,7 @@ export type MallowGumball = {
 };
 
 export const IDL: MallowGumball = {
-  version: '0.7.3',
+  version: '0.8.0',
   name: 'mallow_gumball',
   instructions: [
     {
@@ -3747,9 +3769,9 @@ export const IDL: MallowGumball = {
       ],
       args: [
         {
-          name: 'settings',
+          name: 'args',
           type: {
-            defined: 'GumballSettings',
+            defined: 'UpdateArgs',
           },
         },
       ],
@@ -6568,6 +6590,28 @@ export const IDL: MallowGumball = {
           {
             name: 'endIndex',
             type: 'u32',
+          },
+        ],
+      },
+    },
+    {
+      name: 'UpdateArgs',
+      type: {
+        kind: 'struct',
+        fields: [
+          {
+            name: 'settings',
+            type: {
+              defined: 'GumballSettings',
+            },
+          },
+          {
+            name: 'buyBackConfig',
+            type: {
+              option: {
+                defined: 'BuyBackConfig',
+              },
+            },
           },
         ],
       },

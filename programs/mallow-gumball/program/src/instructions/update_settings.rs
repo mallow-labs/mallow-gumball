@@ -1,6 +1,9 @@
 use anchor_lang::prelude::*;
 
-use crate::{get_config_count, state::GumballMachine, GumballError, GumballSettings, GumballState};
+use crate::{
+    get_config_count, state::GumballMachine, BuyBackConfig, GumballError, GumballSettings,
+    GumballState,
+};
 
 /// Initializes a new gumball machine.
 #[derive(Accounts)]
@@ -17,10 +20,21 @@ pub struct UpdateSettings<'info> {
     authority: Signer<'info>,
 }
 
-pub fn update_settings(ctx: Context<UpdateSettings>, settings: GumballSettings) -> Result<()> {
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct UpdateArgs {
+    pub settings: GumballSettings,
+    pub buy_back_config: Option<BuyBackConfig>,
+}
+
+pub fn update_settings(ctx: Context<UpdateSettings>, args: UpdateArgs) -> Result<()> {
+    let UpdateArgs {
+        settings,
+        buy_back_config,
+    } = args;
+
     let gumball_machine = &mut ctx.accounts.gumball_machine;
     let account_info = gumball_machine.to_account_info();
-    let account_data = account_info.data.borrow_mut();
+    let mut account_data = account_info.data.borrow_mut();
     let items_loaded = get_config_count(&account_data)? as u64;
 
     // uri and sellers_merkle_root can always be changed
@@ -29,6 +43,19 @@ pub fn update_settings(ctx: Context<UpdateSettings>, settings: GumballSettings) 
     if settings.item_capacity != gumball_machine.settings.item_capacity {
         msg!("Cannot update item capacity");
         return err!(GumballError::InvalidSettingUpdate);
+    }
+
+    if gumball_machine.items_redeemed > 0 {
+        require!(buy_back_config.is_none(), GumballError::InvalidState);
+    } else {
+        if let Some(buy_back_config) = buy_back_config {
+            let buy_back_config_position = gumball_machine.get_buy_back_config_position()?;
+            msg!("buy_back_config_position: {}", buy_back_config_position);
+
+            account_data
+                [buy_back_config_position..buy_back_config_position + BuyBackConfig::INIT_SPACE]
+                .copy_from_slice(&buy_back_config.try_to_vec().unwrap());
+        }
     }
 
     // Limit the possible updates when details are finalized or there are already items loaded

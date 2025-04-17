@@ -349,7 +349,6 @@ pub fn sell_item<'info>(
         }
     }
 
-    // Transfer the payment token from buyer to seller
     let authority_pda_payment_account = ctx
         .accounts
         .authority_pda_payment_account
@@ -449,7 +448,10 @@ pub fn sell_item<'info>(
     gumball_data[buy_back_funds_available_position..buy_back_funds_available_position + 8]
         .copy_from_slice(&new_buy_back_funds_available.to_le_bytes());
 
-    msg!("new_buy_back_funds_available: {}", new_buy_back_funds_available);
+    msg!(
+        "new_buy_back_funds_available: {}",
+        new_buy_back_funds_available
+    );
 
     drop(gumball_data);
 

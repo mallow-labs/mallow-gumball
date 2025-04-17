@@ -1,7 +1,7 @@
 use crate::{constants::AUTHORITY_SEED, GumballError, GumballMachine, Token};
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
-use utils::{is_native_mint, transfer, transfer_from_pda};
+use utils::{transfer, transfer_from_pda};
 
 /// Manage the buy back funds of the gumball machine.
 #[derive(Accounts)]
@@ -68,22 +68,6 @@ pub fn manage_buy_back_funds<'info>(
         .as_ref()
         .map(|mint| mint.to_account_info());
     let payment_mint = payment_mint_info.as_ref();
-
-    if is_native_mint(ctx.accounts.gumball_machine.settings.payment_mint) {
-        require!(
-            payment_mint.is_none()
-                || payment_mint.unwrap().key()
-                    == ctx.accounts.gumball_machine.settings.payment_mint,
-            GumballError::InvalidPaymentMint
-        );
-    } else {
-        require!(
-            payment_mint.is_some()
-                && payment_mint.unwrap().key()
-                    == ctx.accounts.gumball_machine.settings.payment_mint,
-            GumballError::InvalidPaymentMint
-        );
-    }
 
     let authority_pda_payment_account_info = ctx
         .accounts

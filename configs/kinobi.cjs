@@ -659,6 +659,9 @@ kinobi.update(
 			disablePrimarySplit: k.vScalar(false),
 			buyBackConfig: k.vNone(),
 		},
+		updateSettingsInstructionData: {
+			buyBackConfig: k.vNone(),
+		},
 	})
 );
 

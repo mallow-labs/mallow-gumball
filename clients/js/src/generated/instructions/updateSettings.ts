@@ -8,6 +8,9 @@
 
 import {
   Context,
+  none,
+  Option,
+  OptionOrNullable,
   Pda,
   PublicKey,
   Signer,
@@ -17,6 +20,7 @@ import {
 import {
   array,
   mapSerializer,
+  option,
   Serializer,
   struct,
   u8,
@@ -27,6 +31,9 @@ import {
   ResolvedAccountsWithIndices,
 } from '../shared';
 import {
+  BuyBackConfig,
+  BuyBackConfigArgs,
+  getBuyBackConfigSerializer,
   getGumballSettingsSerializer,
   GumballSettings,
   GumballSettingsArgs,
@@ -44,10 +51,12 @@ export type UpdateSettingsInstructionAccounts = {
 export type UpdateSettingsInstructionData = {
   discriminator: Array<number>;
   settings: GumballSettings;
+  buyBackConfig: Option<BuyBackConfig>;
 };
 
 export type UpdateSettingsInstructionDataArgs = {
   settings: GumballSettingsArgs;
+  buyBackConfig?: OptionOrNullable<BuyBackConfigArgs>;
 };
 
 export function getUpdateSettingsInstructionDataSerializer(): Serializer<
@@ -63,12 +72,14 @@ export function getUpdateSettingsInstructionDataSerializer(): Serializer<
       [
         ['discriminator', array(u8(), { size: 8 })],
         ['settings', getGumballSettingsSerializer()],
+        ['buyBackConfig', option(getBuyBackConfigSerializer())],
       ],
       { description: 'UpdateSettingsInstructionData' }
     ),
     (value) => ({
       ...value,
       discriminator: [81, 166, 51, 213, 158, 84, 157, 108],
+      buyBackConfig: value.buyBackConfig ?? none(),
     })
   ) as Serializer<
     UpdateSettingsInstructionDataArgs,

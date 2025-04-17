@@ -38,8 +38,8 @@ pub mod mallow_gumball {
     ///
     ///   0. `[writable]` Gumball Machine account
     ///   1. `[signer]` Gumball Machine authority
-    pub fn update_settings(ctx: Context<UpdateSettings>, settings: GumballSettings) -> Result<()> {
-        instructions::update_settings(ctx, settings)
+    pub fn update_settings(ctx: Context<UpdateSettings>, args: UpdateArgs) -> Result<()> {
+        instructions::update_settings(ctx, args)
     }
 
     /// Add legacy NFTs to the gumball machine.
