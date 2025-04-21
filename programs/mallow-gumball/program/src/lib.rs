@@ -25,6 +25,7 @@ pub mod mallow_gumball {
     ///
     /// # Accounts
     ///
+    ///   0. `[writable]` Gumball Machine account (must be pre-allocated but zero content)
     ///   1. `[]` Gumball Machine authority
     ///   2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine])
     ///   3. `[signer, writable]` Payer
@@ -558,6 +559,40 @@ pub mod mallow_gumball {
         index: u32,
     ) -> Result<()> {
         instructions::settle_nft_sale(ctx, index)
+    }
+
+    /// Settles a fungible tokens sale
+    /// If the item hasn't been claimed yet, it claims it for the seller (or buyer if specified).
+    /// Distributes proceeds according to fee configuration.
+    ///
+    /// # Accounts
+    ///
+    ///   0. `[signer, writable]` Payer (anyone can settle the sale)
+    ///   1. `[writable]` Gumball Machine account (must be in SaleEnded state)
+    ///   2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine])
+    ///   3. `[writable, optional]` Authority PDA payment account
+    ///   4. `[writable]` Authority account
+    ///   5. `[writable, optional]` Authority payment account
+    ///   6. `[writable]` Seller account
+    ///   7. `[writable, optional]` Seller payment account
+    ///   8. `[writable]` Seller history account (PDA, seeds: ["seller_history", gumball_machine, seller])
+    ///   9. `[]` Buyer account
+    ///   10. `[writable, optional]` Fee account
+    ///   11. `[writable, optional]` Fee payment account
+    ///   12. `[optional]` Payment mint
+    ///   13. `[]` Token program
+    ///   14. `[]` Associated Token program
+    ///   15. `[]` System program
+    ///   16. `[]` Rent sysvar
+    ///   17. `[]` Mint account
+    ///   18. `[writable]` Receiver's token account (buyer or seller if buyer is default)
+    ///   19. `[writable]` Authority PDA's token account
+    ///   Remaining accounts: Fee recipients
+    pub fn settle_tokens_sale<'info>(
+        ctx: Context<'_, '_, '_, 'info, SettleTokensSale<'info>>,
+        index: u32,
+    ) -> Result<()> {
+        instructions::settle_tokens_sale(ctx, index)
     }
 
     /// Settles a fungible tokens sale that has already been claimed by the buyer or does not have a buyer.
