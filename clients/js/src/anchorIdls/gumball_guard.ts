@@ -42,7 +42,7 @@ export type GumballGuard = {
     {
       name: 'draw';
       docs: [
-        'Mint an NFT from a gumball machine wrapped in the gumball guard.'
+        'Draw a prize from a gumball machine wrapped in the gumball guard.'
       ];
       accounts: [
         {
@@ -1479,7 +1479,7 @@ export const IDL: GumballGuard = {
     {
       name: 'draw',
       docs: [
-        'Mint an NFT from a gumball machine wrapped in the gumball guard.',
+        'Draw a prize from a gumball machine wrapped in the gumball guard.',
       ],
       accounts: [
         {

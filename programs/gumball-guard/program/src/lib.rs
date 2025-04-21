@@ -21,7 +21,7 @@ pub mod gumball_guard {
         instructions::initialize(ctx, data)
     }
 
-    /// Mint an NFT from a gumball machine wrapped in the gumball guard.
+    /// Draw a prize from a gumball machine wrapped in the gumball guard.
     pub fn draw<'c: 'info, 'info>(
         ctx: Context<'_, '_, 'c, 'info, Draw<'info>>,
         mint_args: Vec<u8>,

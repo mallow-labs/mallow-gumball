@@ -1,46 +1,21 @@
 # Metaplex Gumball Guard
 
----
-
-### 💡 Update:
-
-From Gumball Guard v0.2.0, the serialization logic for the arguments of the `initialize` and `update` instructions expect a `[u8]` represeting the custom serialized struct. This is to ensure adding new guards in the future does not affect clients.
-
-If you are using the `gumball-guard` npm package, you can serialize the `GumballMachineData` object using:
-
-```typescript
-import { serialize } from '@metaplex-foundation/gumball-guard';
-
-const data = { ... };
-const serializedData = serialize(data);
-```
-
-If you are using the `gumball-guard` Rust crate, you can serialize the `GumballMachineData` struct using:
-
-```rust
-let data = GumballGuardData { ... };
-let mut serialized_data = vec![0; data.size()];
-data.save(&mut serialized_data)?;
-```
-
----
-
 ## Overview
 
-The new `Gumball Guard` program is designed to take away the **access control** logic from the `Gumball Machine` to handle the additional mint features, while the Gumball Machine program retains its core mint functionality &mdash; the creation of the NFT. This not only provides a clear separation between **access controls** and **mint logic**, it also provides a modular and flexible architecture to add or remove mint features without having to modify the Gumball Machine program.
+The new `Gumball Guard` program is designed to take away the **access control** logic from the `Gumball Machine` to handle the additional mint features, while the Gumball Machine program retains its core draw functionality &mdash; the selection of prizes. This not only provides a clear separation between **access controls** and **draw logic**, it also provides a modular and flexible architecture to add or remove mint features without having to modify the Gumball Machine program.
 
 The access control on a Gumball Guard is encapsulated in individuals guards representing a specific rule that needs to be satisfied, which can be enabled or disabled. For example, the live date of the mint is represented as the `LiveDate` guard. This guard is satisfied only if the transaction time is on or after the configured start time on the guard. Other guards can validate different aspects of the access control – e.g., ensuring that the user holds a specific token (token gating).
 
 > **Note**
-> The Gumball Guard program can only be used in combination with `Gumball Machine Core` (`Gumball Machine V3`) accounts. When a Gumball Guard is used in combination with a Gumball Machine, it becomes its mint authority and minting is only possible through the Gumball Guard.
+> The Gumball Guard program can only be used in combination with `Gumball Machine` accounts. When a Gumball Guard is used in combination with a Gumball Machine, it becomes its mint authority and minting is only possible through the Gumball Guard.
 
 ### How the program works?
 
 ![image](https://user-images.githubusercontent.com/729235/192335006-d4f2c573-165f-4c5a-aef7-7428cd74bb2b.png)
 
-The main purpose of the Gumball Guard program is to hold the configuration of mint **guards** and apply them before a user can mint from a gumball machine. If all enabled guard conditions are valid, the mint transaction is forwarded to the Gumball Machine.
+The main purpose of the Gumball Guard program is to hold the configuration of draw **guards** and apply them before a user can draw from a gumball machine. If all enabled guard conditions are valid, the draw transaction is forwarded to the Gumball Machine.
 
-When a mint transaction is received, the program performs the following steps:
+When a draw transaction is received, the program performs the following steps:
 
 1. Validates the transaction against all enabled guards.
    - If any of the guards fail at this point, the transaction is subject to the `BotTax` (when the `BotTax` guard is enabled) and the transaction is then aborted.
@@ -57,8 +32,6 @@ The Gumball Guard program contains a set of core access control guards that can 
 - `AllowList`: uses a wallet address list to determine who is allowed to mint
 - `BotTax`: configurable tax (amount) to charge invalid transactions
 - `EndDate`: determines a date to end the mint
-- `FreezeSolPayment`: set the price of the mint in SOL with a freeze period.
-- `FreezeTokenPayment`: set the price of the mint in spl-token amount with a freeze period.
 - `Gatekeeper`: captcha integration
 - `MintLimit`: specified a limit on the number of mints per wallet
 - `NftBurn`: restricts the mint to holders of a specified collection, requiring a burn of the NFT
@@ -72,10 +45,7 @@ The Gumball Guard program contains a set of core access control guards that can 
 - `TokenBurn`: restricts the mint to holders of a specified spl-token, requiring a burn of the tokens
 - `TokenGate`: restricts the mint to holders of a specified spl-token
 - `TokenPayment`: set the price of the mint in spl-token amount
-
-Along with those guads, amazing teams in the community are making guard programs with new and cool checks. Here are a few teams who have created guards:
-
-- Civic: Civic Pass Guard ([Integration Docs](https://docs.civic.com/integrations/adding-civic-pass-protection-to-candy-machine-v3))
+- `Token22Payment`: set the price of the mint in spl-token-22 amount
 
 ## Account
 
@@ -128,83 +98,27 @@ The instruction uses a [custom serialization](https://docs.rs/gumball-guard/0.1.
 
 </details>
 
-### 📄 `mint` (deprecated)
+### 📄 `draw`
 
-This instruction mints an NFT from a Gumball Machine "wrapped" by a Gumball Guard. Only when the transaction is succesfully validated, it is forwarded to the Gumball Machine.
-
-<details>
-  <summary>Accounts</summary>
-
-| Name                          | Writable | Signer | Description                                                                                             |
-| ----------------------------- | :------: | :----: | ------------------------------------------------------------------------------------------------------- |
-| `gumball_guard`               |          |        | The `GumballGuard` account PDA key. The PDA is derived using the seed `["gumball_guard", base pubkey]`. |
-| `candy_machine_program`       |          |        | `GumballMachine` program ID.                                                                            |
-| `candy_machine`               |    ✅    |        | The `GumballMachine` account.                                                                           |
-| `candy_machine_authority_pda` |    ✅    |        | Authority PDA key (seeds `["candy_machine", candy_machine pubkey]`).                                    |
-| `payer`                       |    ✅    |   ✅   | Payer of the transaction.                                                                               |
-| `nft_metadata`                |    ✅    |        | Metadata account of the NFT.                                                                            |
-| `nft_mint`                    |    ✅    |        | Mint account for the NFT. The account should be created before executing the instruction.               |
-| `nft_mint_authority`          |          |   ✅   | Mint authority of the NFT.                                                                              |
-| `nft_master_edition`          |    ✅    |        | Master Edition account of the NFT.                                                                      |
-| `collection_authority_record` |          |        | Authority Record PDA of the collection.                                                                 |
-| `collection_mint`             |          |        | Mint account of the collection.                                                                         |
-| `collection_metadata`         |    ✅    |        | Metadata account of the collection.                                                                     |
-| `collection_master_edition`   |          |        | Master Edition account of the collection.                                                               |
-| `collection_update_authority` |          |        | Update authority of the collection.                                                                     |
-| `token_metadata_program`      |          |        | Metaplex `TokenMetadata` program ID.                                                                    |
-| `token_program`               |          |        | `spl-token` program ID.                                                                                 |
-| `system_program`              |          |        | `SystemProgram` account.                                                                                |
-| `rent`                        |          |        | `Rent` account.                                                                                         |
-| `recent_slothashes`           |          |        | `SlotHashes` account.                                                                                   |
-| `instruction_sysvar_account`  |          |        | `Sysvar1nstructions` account.                                                                           |
-| _remaining accounts_          |          |        | (optional) A list of optional accounts required by individual guards.                                   |
-
-</details>
-
-<details>
-  <summary>Arguments</summary>
-  
-| Argument        | Offset | Size | Description               |
-| --------------- | ------ | ---- | ------------------------- |
-| `mint_args`     | 0      | ~    | `[u8]` representing arguments for guards; an empty `[u8]` if there are no arguments. |
-| `label`         | ~      | 6    | (optional) `string` representing the group label to use for validation of guards. |
-</details>
-
-### 📄 `mint_v2`
-
-This instruction mints both `NFT` or `pNFT` from a Gumball Machine "wrapped" by a Gumball Guard. Only when the transaction is succesfully validated, it is forwarded to the Gumball Machine.
+This instruction draws an item from a Gumball Machine "wrapped" by a Gumball Guard. Only when the transaction is succesfully validated, it is forwarded to the Gumball Machine.
 
 <details>
   <summary>Accounts</summary>
 
-| Name                          | Writable | Signer | Description                                                                                             |
-| ----------------------------- | :------: | :----: | ------------------------------------------------------------------------------------------------------- |
-| `gumball_guard`               |          |        | The `GumballGuard` account PDA key. The PDA is derived using the seed `["gumball_guard", base pubkey]`. |
-| `candy_machine_program`       |          |        | `GumballMachine` program ID.                                                                            |
-| `candy_machine`               |    ✅    |        | The `GumballMachine` account.                                                                           |
-| `candy_machine_authority_pda` |    ✅    |        | Authority PDA key (seeds `["candy_machine", candy_machine pubkey]`).                                    |
-| `payer`                       |    ✅    |   ✅   | Payer of the transaction.                                                                               |
-| `minter`                      |    ✅    |   ✅   | Minter (owner) of the NFT.                                                                              |
-| `nft_mint`                    |    ✅    |        | Mint account for the NFT. The account should be created before executing the instruction.               |
-| `nft_mint_authority`          |          |   ✅   | Mint authority of the NFT.                                                                              |
-| `nft_metadata`                |    ✅    |        | Metadata account of the NFT.                                                                            |
-| `nft_master_edition`          |    ✅    |        | Master Edition account of the NFT.                                                                      |
-| `token`                       |    ✅    |        | (optional) NFT token account.                                                                           |
-| `token_record`                |    ✅    |        | (optional) Metadata `TokenRecord` account (required for `pNFT`)                                         |
-| `collection_delegate_record`  |          |        | Metadata Delegate Record of the collection.                                                             |
-| `collection_mint`             |          |        | Mint account of the collection.                                                                         |
-| `collection_metadata`         |    ✅    |        | Metadata account of the collection.                                                                     |
-| `collection_master_edition`   |          |        | Master Edition account of the collection.                                                               |
-| `collection_update_authority` |          |        | Update authority of the collection.                                                                     |
-| `token_metadata_program`      |          |        | Metaplex `TokenMetadata` program ID.                                                                    |
-| `spl_token_program`           |          |        | `spl-token` program ID.                                                                                 |
-| `spl_ata_program`             |          |        | (optional) `spl` associated token program.                                                              |
-| `system_program`              |          |        | `SystemProgram` account.                                                                                |
-| `sysvar_instructions`         |          |        | `sysvar::instructions` account.                                                                         |
-| `recent_slothashes`           |          |        | SlotHashes sysvar cluster data.                                                                         |
-| `authorization_rules_program` |          |        | (optional) Token Authorization Rules program.                                                           |
-| `authorization_rules`         |          |        | (optional) Token Authorization Rules account.                                                           |
-| _remaining accounts_          |          |        | (optional) A list of optional accounts required by individual guards.                                   |
+| Name                      | Writable | Signer | Description                                                                                             |
+| ------------------------- | :------: | :----: | ------------------------------------------------------------------------------------------------------- |
+| `gumball_guard`           |          |        | The `GumballGuard` account PDA key. The PDA is derived using the seed `["gumball_guard", base pubkey]`. |
+| `gumball_machine_program` |          |        | `GumballMachine` program ID (`mallow_gumball::id()`).                                                   |
+| `gumball_machine`         |    ✅    |        | The `GumballMachine` account (must be owned by `gumball_guard`).                                        |
+| `payer`                   |    ✅    |   ✅   | Payer for the mint transaction and SOL fees.                                                            |
+| `buyer`                   |    ✅    |   ✅   | Buyer account for validation and non-SOL fees.                                                          |
+| `token_metadata_program`  |          |        | Metaplex `TokenMetadata` program ID (`mpl_token_metadata::ID`).                                         |
+| `spl_token_program`       |          |        | `spl-token` program ID.                                                                                 |
+| `system_program`          |          |        | `SystemProgram` account.                                                                                |
+| `sysvar_instructions`     |          |        | `sysvar::instructions` account.                                                                         |
+| `recent_slothashes`       |          |        | SlotHashes sysvar cluster data (`sysvar::slot_hashes::id()`).                                           |
+| `gumball_event_authority` |          |        | Authority for emitting Gumball Machine events.                                                          |
+| _remaining accounts_      |          |        | (optional) A list of optional accounts required by individual guards.                                   |
 
 </details>
 
@@ -274,12 +188,13 @@ This instruction updates the Gumball Guard configuration. Given that there is a 
 <details>
   <summary>Accounts</summary>
 
-| Name             | Writable | Signer | Description                                  |
-| ---------------- | :------: | :----: | -------------------------------------------- |
-| `gumball_guard`  |    ✅    |        | The `GumballGuard` account PDA key.          |
-| `authority`      |          |        | Public key of the `gumball_guard` authority. |
-| `payer`          |          |   ✅   | Payer of the transaction.                    |
-| `system_program` |          |        | `SystemProgram` account.                     |
+| Name              | Writable | Signer | Description                                                               |
+| ----------------- | :------: | :----: | ------------------------------------------------------------------------- |
+| `gumball_guard`   |    ✅    |        | The `GumballGuard` account PDA key.                                       |
+| `gumball_machine` |    ✅    |        | The `GumballMachine` account. Constraints checked: `items_redeemed == 0`. |
+| `authority`       |          |   ✅   | Public key of the `gumball_guard` authority.                              |
+| `payer`           |    ✅    |   ✅   | Payer of the transaction and potential rent changes.                      |
+| `system_program`  |          |        | `SystemProgram` account.                                                  |
 
 </details>
 
@@ -296,15 +211,20 @@ The instruction uses a [custom serialization](https://docs.rs/gumball-guard/0.1.
 
 ### 📄 `withdraw`
 
-This instruction withdraws the rent lamports from the account and closes it. After executing this instruction, the Gumball Guard account will not be operational.
+This instruction closes the `GumballGuard` account, transferring its rent lamports to the `authority`. It also invokes the `CloseGumballMachine` instruction on the associated `GumballMachine` program to close the gumball machine account. After executing this instruction, both the Gumball Guard and Gumball Machine accounts will not be operational.
 
 <details>
   <summary>Accounts</summary>
 
-| Name            | Writable | Signer | Description                                  |
-| --------------- | :------: | :----: | -------------------------------------------- |
-| `gumball_guard` |    ✅    |        | The `GumballGuard` account.                  |
-| `authority`     |    ✅    |   ✅   | Public key of the `gumball_guard` authority. |
+| Name                            | Writable | Signer | Description                                                                   |
+| ------------------------------- | :------: | :----: | ----------------------------------------------------------------------------- |
+| `gumball_guard`                 |    ✅    |        | The `GumballGuard` account to close.                                          |
+| `authority`                     |    ✅    |   ✅   | Public key of the `gumball_guard` authority (receives rent lamports).         |
+| `gumball_machine`               |    ✅    |        | The associated `GumballMachine` account to close.                             |
+| `authority_pda`                 |    ✅    |        | PDA authority for the `GumballMachine`.                                       |
+| `authority_pda_payment_account` |    ✅    |        | (optional) Token account for the `authority_pda` if token payments were used. |
+| `gumball_machine_program`       |          |        | `GumballMachine` program ID.                                                  |
+| `token_program`                 |          |        | `spl-token` program ID.                                                       |
 
 </details>
 
@@ -462,242 +382,6 @@ pub struct EndDate {
 
 The `EndDate` guard is used to specify a date to end the mint. Any transaction received after the end date will fail.
 
-### `FreezeSolPayment`
-
-```rust
-pub struct FreezeSolPayment {
-    pub lamports: u64,
-    pub destination: Pubkey,
-}
-```
-
-The `FreezeSolPayment` guard is used to charge an amount in SOL (lamports) for the mint with a freeze period. The funds are transferred a freeze escrow until all NFTs are thawed, which at this point, can be transferred (unlock) to the destination account.
-
-**Note:** The freeze functionality must be initialized using the `initialize` route instruction before mint starts.
-
-<details>
-  <summary>Accounts</summary>
-
-| Name         | Writable | Signer | Description                                                                                                                    |
-| ------------ | :------: | :----: | ------------------------------------------------------------------------------------------------------------------------------ |
-| `freeze_pda` |    ✅    |        | Freeze PDA to receive the funds (seeds `["freeze_escrow", destination pubkey, gumball guard pubkey, gumball machine pubkey]`). |
-| `nft_ata`    |          |        | Associate token account of the NFT (seeds `[payer pubkey, token program pubkey, nft mint pubkey]`).                            |
-| `rule_set`   |          |        | (optional) Authorization rule set for the minted pNFT.                                                                         |
-
-</details>
-
-#### Route Instructions
-
-##### `initialize`: initializes the freeze escrow PDA.
-
-<details>
-  <summary>Accounts</summary>
-
-| Name             | Writable | Signer | Description                                                                                                                    |
-| ---------------- | :------: | :----: | ------------------------------------------------------------------------------------------------------------------------------ |
-| `freeze_pda`     |    ✅    |        | Freeze PDA to receive the funds (seeds `["freeze_escrow", destination pubkey, gumball guard pubkey, gumball machine pubkey]`). |
-| `authority`      |          |   ✅   | Gumball Guard authority.                                                                                                       |
-| `system_program` |          |        | System program account.                                                                                                        |
-
-</details>
-<details>
-  <summary>Arguments</summary>
-  
-| Argument     | Size | Description                                |
-| -------------| ---- | ------------------------------------------ |
-| `args`       |      | `RouteArgs` struct                         |
-| - *guard*    | 1    | `GuardType.FreezeSolPayment`               |
-| - *data*     | ~    |                                            |
-| -- *ix*      | 1    | `FreezeInstruction.Initialize`             |
-| -- *period*  | 8    | Freeze period in seconds (maximum 30 days) |
-</details>
-
-##### `thaw`: thaw an eligible NFT.
-
-<details>
-  <summary>Accounts</summary>
-
-| Name                          | Writable | Signer | Description                                                                                                                    |
-| ----------------------------- | :------: | :----: | ------------------------------------------------------------------------------------------------------------------------------ |
-| `freeze_pda`                  |    ✅    |        | Freeze PDA to receive the funds (seeds `["freeze_escrow", destination pubkey, gumball guard pubkey, gumball machine pubkey]`). |
-| `nft_mint`                    |          |        | Mint account for the NFT.                                                                                                      |
-| `owner`                       |          |        | Address of the owner of the NFT.                                                                                               |
-| `nft_ata`                     |    ✅    |        | Associate token account of the NFT (seeds `[owner pubkey, token program pubkey, nft mint pubkey]`).                            |
-| `nft_master_edition`          |          |        | Master Edition account of the NFT.                                                                                             |
-| `token_program`               |          |        | `spl-token` program ID.                                                                                                        |
-| `token_metadata_program`      |          |        | Metaplex `TokenMetadata` program.                                                                                              |
-|                               |          |        | _Below are accounts required for pNFTs:_                                                                                       |
-| `nft_metadata`                |    ✅    |        | Metadata account of the NFT.                                                                                                   |
-| `freeze_pda_ata`              |    ✅    |        | Freeze PDA associated token account of the NFT.                                                                                |
-| `system_program`              |          |        | System program.                                                                                                                |
-| `sysvar_instructions`         |          |        | Sysvar instructions account.                                                                                                   |
-| `spl_ata_program`             |          |        | SPL Associated Token Account program.                                                                                          |
-| `owner_token_record`          |    ✅    |        | Owner token record account.                                                                                                    |
-| `freeze_pda_token_record`     |    ✅    |        | Freeze PDA token record account.                                                                                               |
-| `authorization_rules_program` |          |        | (optional) Token Authorization Rules program.                                                                                  |
-| `authorization_rules`         |          |        | (optional) Token Authorization Rules account.                                                                                  |
-
-</details>
-<details>
-  <summary>Arguments</summary>
-  
-| Argument     | Size | Description                                |
-| -------------| ---- | ------------------------------------------ |
-| `args`       |      | `RouteArgs` struct                         |
-| - *guard*    | 1    | `GuardType.FreezeSolPayment`             |
-| - *data*     | 1    |                                            |
-| -- *ix*      | 1    | `FreezeInstruction.Thaw`                   |
-</details>
-
-##### `unlock_funds`: unlocks frozen funds.
-
-Unlock funds is only enabled after all frozen NFTs are thaw.
-
-<details>
-  <summary>Accounts</summary>
-
-| Name             | Writable | Signer | Description                                                                                                                    |
-| ---------------- | :------: | :----: | ------------------------------------------------------------------------------------------------------------------------------ |
-| `freeze_pda`     |    ✅    |        | Freeze PDA to receive the funds (seeds `["freeze_escrow", destination pubkey, gumball guard pubkey, gumball machine pubkey]`). |
-| `authority`      |          |   ✅   | Gumball Guard authority.                                                                                                       |
-| `destination`    |    ✅    |        | Address to receive the funds (must match the `destination` address of the guard configuration).                                |
-| `system_program` |          |        | `SystemProgram` account.                                                                                                       |
-
-</details>
-<details>
-  <summary>Arguments</summary>
-  
-| Argument     | Size | Description                                |
-| -------------| ---- | ------------------------------------------ |
-| `args`       |      | `RouteArgs` struct                         |
-| - *guard*    | 1    | `GuardType.FreezeSolPayment`             |
-| - *data*     | 1    |                                            |
-| -- *ix*      | 1    | `FreezeInstruction.UnlockFunds`            |
-</details>
-
-### `FreezeTokenPayment`
-
-```rust
-pub struct FreezeTokenPayment {
-    pub amount: u64,
-    pub mint: Pubkey,
-    pub destination_ata: Pubkey,
-}
-```
-
-The `FreezeTokenPayment` guard is used to charge an amount in a specified spl-token as payment for the mint with a freeze period. The funds are transferred a freeze escrow until all NFTs are thaw, which at this point, can be transferred (unlock) to the destination account.
-
-**Note:** The freeze functionality must be initialized using the `initialize` route instruction before mint starts.
-
-<details>
-  <summary>Accounts</summary>
-
-| Name            | Writable | Signer | Description                                                                                                                        |
-| --------------- | :------: | :----: | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `freeze_pda`    |    ✅    |        | Freeze PDA to receive the funds (seeds `["freeze_escrow", destination_ata pubkey, gumball guard pubkey, gumball machine pubkey]`). |
-| `nft_ata`       |          |        | Associate token account of the NFT (seeds `[payer pubkey, token program pubkey, nft mint pubkey]`).                                |
-| `token_account` |    ✅    |        | Token account holding the required amount (seeds `[payer pubkey, token program pubkey, mint pubkey]`).                             |
-| `freeze_ata`    |    ✅    |        | Associate token account of the Freeze PDA (seeds `[freeze PDA pubkey, token program pubkey, nft mint pubkey]`).                    |
-| `rule_set`      |          |        | (optional) Authorization rule set for the minted pNFT.                                                                             |
-
-</details>
-
-#### Route Instructions
-
-##### `initialize`: initializes the freeze escrow PDA.
-
-<details>
-  <summary>Accounts</summary>
-
-| Name                      | Writable | Signer | Description                                                                                                                        |
-| ------------------------- | :------: | :----: | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `freeze_pda`              |    ✅    |        | Freeze PDA to receive the funds (seeds `["freeze_escrow", destination_ata pubkey, gumball guard pubkey, gumball machine pubkey]`). |
-| `authority`               |          |   ✅   | Gumball Guard authority.                                                                                                           |
-| `system_program`          |          |        | System program account.                                                                                                            |
-| `freeze_ata`              |    ✅    |        | Associate token account of the Freeze PDA (seeds `[freeze PDA pubkey, token program pubkey, nft mint pubkey]`).                    |
-| `token_mint`              |          |        | Token mint account (must match the `mint` address of the guard configuration).                                                     |
-| `token_program`           |          |        | `spl-token` program ID.                                                                                                            |
-| `associate_token_program` |          |        | Associate token program account.                                                                                                   |
-| `destination_ata`         |    ✅    |        | Address to receive the funds (must match the `destination_ata` address of the guard configuration).                                |
-
-</details>
-<details>
-  <summary>Arguments</summary>
-  
-| Argument     | Size | Description                                |
-| -------------| ---- | ------------------------------------------ |
-| `args`       |      | `RouteArgs` struct                         |
-| - *guard*    | 1    | `GuardType.FreezeTokenPayment`             |
-| - *data*     | 9    |                                            |
-| -- *ix*      | 1    | `FreezeInstruction.Initialize`             |
-| -- *period*  | 8    | Freeze period in seconds (maximum 30 days) |
-</details>
-
-##### `thaw`: thaw an eligible NFT.
-
-<details>
-  <summary>Accounts</summary>
-
-| Name                          | Writable | Signer | Description                                                                                                                        |
-| ----------------------------- | :------: | :----: | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `freeze_pda`                  |    ✅    |        | Freeze PDA to receive the funds (seeds `["freeze_escrow", destination_ata pubkey, gumball guard pubkey, gumball machine pubkey]`). |
-| `nft_mint`                    |          |        | Mint account for the NFT.                                                                                                          |
-| `owner`                       |          |        | Address of the owner of the NFT.                                                                                                   |
-| `nft_ata`                     |    ✅    |        | Associate token account of the NFT (seeds `[owner pubkey, token program pubkey, nft mint pubkey]`).                                |
-| `nft_master_edition`          |          |        | Master Edition account of the NFT.                                                                                                 |
-| `token_program`               |          |        | `spl-token` program ID.                                                                                                            |
-| `system_program`              |          |        | `SystemProgram` account.                                                                                                           |
-|                               |          |        | _Below are accounts required for pNFTs:_                                                                                           |
-| `nft_metadata`                |    ✅    |        | Metadata account of the NFT.                                                                                                       |
-| `freeze_pda_ata`              |    ✅    |        | Freeze PDA associated token account of the NFT.                                                                                    |
-| `system_program`              |          |        | System program.                                                                                                                    |
-| `sysvar_instructions`         |          |        | Sysvar instructions account.                                                                                                       |
-| `spl_ata_program`             |          |        | SPL Associated Token Account program.                                                                                              |
-| `owner_token_record`          |    ✅    |        | Owner token record account.                                                                                                        |
-| `freeze_pda_token_record`     |    ✅    |        | Freeze PDA token record account.                                                                                                   |
-| `authorization_rules_program` |          |        | (optional) Token Authorization Rules program.                                                                                      |
-| `authorization_rules`         |          |        | (optional) Token Authorization Rules account.                                                                                      |
-
-</details>
-<details>
-  <summary>Arguments</summary>
-  
-| Argument     | Size | Description                                |
-| -------------| ---- | ------------------------------------------ |
-| `args`       |      | `RouteArgs` struct                         |
-| - *guard*    | 1    | `GuardType.FreezeTokenPayment`             |
-| - *data*     | 1    |                                            |
-| -- *ix*      | 1    | `FreezeInstruction.Thaw`                   |
-</details>
-
-##### `unlock_funds`: unlocks frozen funds.
-
-Unlock funds is only enabled after all frozen NFTs are thaw.
-
-<details>
-  <summary>Accounts</summary>
-
-| Name              | Writable | Signer | Description                                                                                                                        |
-| ----------------- | :------: | :----: | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `freeze_pda`      |    ✅    |        | Freeze PDA to receive the funds (seeds `["freeze_escrow", destination_ata pubkey, gumball guard pubkey, gumball machine pubkey]`). |
-| `authority`       |          |   ✅   | Gumball Guard authority.                                                                                                           |
-| `freeze_ata`      |    ✅    |        | Associate token account of the Freeze PDA (seeds `[freeze PDA pubkey, token program pubkey, nft mint pubkey]`).                    |
-| `destination_ata` |    ✅    |        | Address to receive the funds (must match the `destination_ata` address of the guard configuration).                                |
-| `token_program`   |          |        | `spl-token` program ID.                                                                                                            |
-| `system_program`  |          |        | `SystemProgram` account.                                                                                                           |
-
-</details>
-<details>
-  <summary>Arguments</summary>
-  
-| Argument     | Size | Description                                |
-| -------------| ---- | ------------------------------------------ |
-| `args`       |      | `RouteArgs` struct                         |
-| - *guard*    | 1    | `GuardType.FreezeTokenPayment`             |
-| - *data*     | 1    |                                            |
-| -- *ix*      | 1    | `FreezeInstruction.UnlockFunds`            |
-</details>
-
 ### `Gatekeeper`
 
 ```rust
@@ -838,18 +522,20 @@ The `RedeemedAmount` guard stops the mint when the number of `items_redeemed` of
 ```rust
 pub struct SolPayment {
     pub lamports: u64,
-    pub destination: Pubkey,
 }
 ```
 
-The `SolPayment` guard is used to charge an amount in SOL (lamports) for the mint. The funds are transferred to the configured `destination` address.
+The `SolPayment` guard is used to charge an amount in SOL (`lamports`) for the mint. The `payment_mint` in the `GumballMachine` settings must be the native SOL mint (`spl_token::native_mint::id()`).
+
+The specified `lamports` amount is transferred from the payer's account. If a marketplace fee is configured in the `GumballMachine` (version > 0), the fee is deducted from the `lamports` and transferred to the configured fee account. The remaining amount is then transferred to the Associated Token Account (ATA) owned by the `GumballMachine`'s derived authority PDA (`["gumball_authority", gumball_machine_key]`).
 
 <details>
   <summary>Accounts</summary>
 
-| Name          | Writable | Signer | Description                   |
-| ------------- | :------: | :----: | ----------------------------- |
-| `destination` |    ✅    |        | Address to receive the funds. |
+| Name              | Writable | Signer | Description                                                                                                             |
+| ----------------- | :------: | :----: | ----------------------------------------------------------------------------------------------------------------------- |
+| `destination`     |    ✅    |        | The Gumball Machine authority PDA (`["gumball_authority", gumball_machine_key]`) where payment SOL (less fees) is sent. |
+| `fee_destination` |    ✅    |        | (optional) The account for the marketplace fee, required if a fee is configured and `GumballMachine.version > 0`.       |
 
 </details>
 
@@ -928,19 +614,21 @@ The `TokenGate` restrict the mint to holder of a specified spl-token. The `amoun
 ```rust
 pub struct TokenPayment {
     pub amount: u64,
-    pub token_mint: Pubkey,
-    pub destination_ata: Pubkey,
+    pub mint: Pubkey,
 }
 ```
 
-The `TokenPayment` restrict the mint to holder of a specified spl-token, transferring the required amount to the `destination_ata` address. The `amount` determines how many tokens are required.
+The `TokenPayment` guard charges an amount in a specified spl-token as payment for the mint. The `mint` must match the `payment_mint` configured in the `GumballMachine` settings. The `amount` determines how many tokens are required from the payer.
+
+The specified `amount` is transferred from the payer's token account. If a marketplace fee is configured in the `GumballMachine` (version > 0), the fee is deducted from the `amount` and transferred to the configured fee account. The remaining amount is then transferred to the Associated Token Account (ATA) owned by the `GumballMachine`'s derived authority PDA (`["gumball_authority", gumball_machine_key]`).
 
 <details>
   <summary>Accounts</summary>
 
-| Name              | Writable | Signer | Description                                |
-| ----------------- | :------: | :----: | ------------------------------------------ |
-| `token_account`   |    ✅    |        | Token account holding the required amount. |
-| `destination_ata` |    ✅    |        | Address of the ATA to receive the tokens.  |
+| Name                  | Writable | Signer | Description                                                                          |
+| --------------------- | :------: | :----: | ------------------------------------------------------------------------------------ |
+| `token_account`       |    ✅    |        | Payer's token account holding the required `amount` of the specified `mint`.         |
+| `destination_ata`     |    ✅    |        | The ATA owned by the Gumball Machine authority PDA where payment tokens are sent.    |
+| `fee_destination_ata` |    ✅    |        | (optional) The ATA for the marketplace fee account, required if a fee is configured. |
 
 </details>

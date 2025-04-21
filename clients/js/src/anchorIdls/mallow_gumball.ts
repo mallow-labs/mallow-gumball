@@ -10,8 +10,10 @@ export type MallowGumball = {
         '# Accounts',
         '',
         '0. `[writable]` Gumball Machine account (must be pre-allocated but zero content)',
-        '2. `[]` Gumball Machine authority',
-        '3. `[signer]` Payer'
+        '1. `[]` Gumball Machine authority',
+        '2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine])',
+        '3. `[signer, writable]` Payer',
+        '4. `[]` System program'
       ];
       accounts: [
         {
@@ -79,7 +81,7 @@ export type MallowGumball = {
         '# Accounts',
         '',
         '0. `[writable]` Gumball Machine account',
-        '1. `[signer]` Gumball Machine authority'
+        '1. `[signer, writable]` Gumball Machine authority'
       ];
       accounts: [
         {
@@ -119,11 +121,15 @@ export type MallowGumball = {
         '3. `[signer, writable]` Seller',
         '4. `[]` Mint account',
         '5. `[writable]` Token account',
-        '6. `[]` Metadata account',
+        '6. `[writable]` Metadata account',
         '7. `[]` Edition account',
         '8. `[]` Token program',
         '9. `[]` Token Metadata program',
-        '10. `[]` System program'
+        '10. `[]` System program',
+        '11. `[writable, optional]` Seller token record (pNFT)',
+        '12. `[optional]` Auth rules account (pNFT)',
+        '13. `[optional]` Instructions sysvar (pNFT)',
+        '14. `[optional]` Auth rules program (pNFT)'
       ];
       accounts: [
         {
@@ -401,7 +407,29 @@ export type MallowGumball = {
     },
     {
       name: 'requestAddNft';
-      docs: ['Request to add a NFT to the gumball machine.'];
+      docs: [
+        'Request to add a NFT to the gumball machine.',
+        "Freezes the seller's NFT and creates a request account.",
+        '',
+        '# Accounts',
+        '',
+        '0. `[writable]` Gumball Machine account.',
+        '1. `[writable]` Seller history account (PDA, seeds: ["seller_history", gumball_machine, seller]).',
+        '2. `[writable]` Add item request account (PDA, seeds: ["add_item_request", mint]).',
+        '3. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine]).',
+        '4. `[signer, writable]` Seller of the nft.',
+        '5. `[]` Mint account of the NFT.',
+        "6. `[writable]` Seller's token account for the NFT.",
+        '7. `[writable]` Metadata account of the NFT.',
+        '8. `[]` Edition account of the NFT.',
+        '9. `[]` Token program.',
+        '10. `[]` Token Metadata program.',
+        '11. `[]` System program.',
+        '12. `[writable, optional]` Seller token record (pNFT).',
+        '13. `[optional]` Auth rules account (pNFT).',
+        '14. `[optional]` Instructions sysvar (pNFT).',
+        '15. `[optional]` Auth rules program (pNFT).'
+      ];
       accounts: [
         {
           name: 'gumballMachine';
@@ -497,7 +525,22 @@ export type MallowGumball = {
     },
     {
       name: 'requestAddCoreAsset';
-      docs: ['Request to add a core asset to the gumball machine.'];
+      docs: [
+        'Request to add a core asset to the gumball machine.',
+        "Freezes the seller's asset and creates a request account.",
+        '',
+        '# Accounts',
+        '',
+        '0. `[writable]` Gumball Machine account.',
+        '1. `[writable]` Seller history account (PDA, seeds: ["seller_history", gumball_machine, seller]).',
+        '2. `[writable]` Add item request account (PDA, seeds: ["add_item_request", asset]).',
+        '3. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine]).',
+        '4. `[signer, writable]` Seller of the asset.',
+        '5. `[writable]` Asset account.',
+        '6. `[writable, optional]` Collection account if asset is part of one.',
+        '7. `[]` MPL Core program.',
+        '8. `[]` System program.'
+      ];
       accounts: [
         {
           name: 'gumballMachine';
@@ -555,7 +598,31 @@ export type MallowGumball = {
     },
     {
       name: 'cancelAddNftRequest';
-      docs: ['Cancel a request to add a NFT to the gumball machine.'];
+      docs: [
+        'Cancel a request to add a NFT to the gumball machine.',
+        "Thaws and revokes delegate from the seller's NFT and closes the request account.",
+        '',
+        '# Accounts',
+        '',
+        '0. `[writable]` Seller history account (PDA, seeds: ["seller_history", add_item_request.gumball_machine, seller]).',
+        '1. `[writable]` Add item request account (PDA, seeds: ["add_item_request", mint]). Will be closed.',
+        '2. `[writable]` Authority PDA (PDA, seeds: ["authority", add_item_request.gumball_machine]).',
+        '3. `[signer, writable]` Seller of the NFT.',
+        '4. `[]` Mint account of the NFT.',
+        "5. `[writable]` Seller's token account for the NFT.",
+        "6. `[writable]` Authority PDA's token account.",
+        '7. `[]` Edition account of the NFT.',
+        '8. `[]` Token program.',
+        '9. `[]` Associated Token program.',
+        '10. `[]` Token Metadata program.',
+        '11. `[]` System program.',
+        '12. `[]` Rent sysvar.',
+        '13. `[writable, optional]` Metadata account (pNFT).',
+        '14. `[writable, optional]` Seller token record (pNFT).',
+        '15. `[optional]` Auth rules account (pNFT).',
+        '16. `[optional]` Instructions sysvar (pNFT).',
+        '17. `[optional]` Auth rules program (pNFT).'
+      ];
       accounts: [
         {
           name: 'sellerHistory';
@@ -664,7 +731,21 @@ export type MallowGumball = {
     },
     {
       name: 'cancelAddCoreAssetRequest';
-      docs: ['Cancel a request to add a core asset to the gumball machine.'];
+      docs: [
+        'Cancel a request to add a core asset to the gumball machine.',
+        "Thaws and revokes delegate from the seller's asset and closes the request account.",
+        '',
+        '# Accounts',
+        '',
+        '0. `[writable]` Seller history account (PDA, seeds: ["seller_history", add_item_request.gumball_machine, seller]).',
+        '1. `[writable]` Add item request account (PDA, seeds: ["add_item_request", asset]). Will be closed.',
+        '2. `[writable]` Authority PDA (PDA, seeds: ["authority", add_item_request.gumball_machine]).',
+        '3. `[signer, writable]` Seller of the asset.',
+        '4. `[writable]` Asset account.',
+        '5. `[writable, optional]` Collection account if asset is part of one.',
+        '6. `[]` MPL Core program.',
+        '7. `[]` System program.'
+      ];
       accounts: [
         {
           name: 'sellerHistory';
@@ -716,7 +797,20 @@ export type MallowGumball = {
     },
     {
       name: 'approveAddItem';
-      docs: ['Approve adding an item to the gumball machine.'];
+      docs: [
+        'Approve adding an item to the gumball machine.',
+        "Moves the item from the request to the gumball machine's config lines.",
+        '',
+        '# Accounts',
+        '',
+        '0. `[writable]` Gumball Machine account.',
+        '1. `[writable]` Add item request account (PDA, seeds: ["add_item_request", asset]). Will be closed.',
+        '2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine]).',
+        '3. `[signer, writable]` Authority of the gumball machine.',
+        '4. `[writable]` Seller account (receiver of closed request account rent).',
+        '5. `[]` Asset/Mint account (checked via add_item_request constraint).',
+        '6. `[]` System program.'
+      ];
       accounts: [
         {
           name: 'gumballMachine';
@@ -763,11 +857,30 @@ export type MallowGumball = {
       name: 'removeNft';
       docs: [
         'Remove legacy NFT from the gumball machine.',
+        "Thaws and revokes delegate from the seller's NFT and removes it from the config lines.",
+        'The signer can be the Gumball Machine authority or the seller of the specific item.',
         '',
         '# Accounts',
         '',
-        '0. `[writable]` Gumball Machine account',
-        '1. `[signer]` Gumball Machine authority'
+        '0. `[writable]` Gumball Machine account.',
+        '1. `[writable]` Seller history account (PDA, seeds: ["seller_history", gumball_machine, seller]).',
+        '2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine]).',
+        '3. `[signer]` Authority allowed to remove (gumball machine authority or item seller).',
+        '4. `[writable]` Seller account (owner of the NFT).',
+        '5. `[]` Mint account of the NFT.',
+        "6. `[writable]` Seller's token account for the NFT.",
+        "7. `[writable]` Authority PDA's token account.",
+        '8. `[]` Edition account of the NFT.',
+        '9. `[]` Token program.',
+        '10. `[]` Associated Token program.',
+        '11. `[]` Token Metadata program.',
+        '12. `[]` System program.',
+        '13. `[]` Rent sysvar.',
+        '14. `[writable, optional]` Metadata account (pNFT).',
+        '15. `[writable, optional]` Seller token record (pNFT).',
+        '16. `[optional]` Auth rules account (pNFT).',
+        '17. `[optional]` Instructions sysvar (pNFT).',
+        '18. `[optional]` Auth rules program (pNFT).'
       ];
       accounts: [
         {
@@ -891,11 +1004,20 @@ export type MallowGumball = {
       name: 'removeCoreAsset';
       docs: [
         'Remove Core asset from the gumball machine.',
+        "Thaws and revokes delegate from the seller's asset and removes it from the config lines.",
+        'The signer can be the Gumball Machine authority or the seller of the specific item.',
         '',
         '# Accounts',
         '',
-        '0. `[writable]` Gumball Machine account',
-        '1. `[signer]` Gumball Machine authority'
+        '0. `[writable]` Gumball Machine account.',
+        '1. `[writable]` Seller history account (PDA, seeds: ["seller_history", gumball_machine, seller]).',
+        '2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine]).',
+        '3. `[signer]` Authority allowed to remove (gumball machine authority or item seller).',
+        '4. `[writable]` Seller account (owner of the asset).',
+        '5. `[writable]` Asset account.',
+        '6. `[writable, optional]` Collection account if asset is part of one.',
+        '7. `[]` MPL Core program.',
+        '8. `[]` System program.'
       ];
       accounts: [
         {
@@ -960,20 +1082,22 @@ export type MallowGumball = {
       name: 'removeTokens';
       docs: [
         'Remove fungible tokens from the gumball machine.',
+        'The signer can be the Gumball Machine authority or the seller of the specific item.',
         '',
         '# Accounts',
         '',
         '0. `[writable]` Gumball Machine account',
         '1. `[writable]` Seller history account (PDA, seeds: ["seller_history", gumball_machine, seller])',
         '2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine])',
-        '3. `[signer, writable]` Seller',
-        '4. `[]` Mint account',
-        "5. `[writable]` Seller's token account",
-        "6. `[writable]` Gumball machine's token account",
-        '7. `[]` Token program',
-        '8. `[]` Associated Token program',
-        '9. `[]` System program',
-        '10. `[]` Rent sysvar',
+        '3. `[signer, writable]` Authority allowed to remove (gumball machine authority or item seller).',
+        '4. `[writable]` Seller account (owner of the tokens).',
+        '5. `[]` Mint account',
+        "6. `[writable]` Seller's token account",
+        "7. `[writable]` Gumball machine's token account",
+        '8. `[]` Token program',
+        '9. `[]` Associated Token program',
+        '10. `[]` System program',
+        '11. `[]` Rent sysvar',
         'DEPRECATED: Use remove_tokens_span instead'
       ];
       accounts: [
@@ -1058,20 +1182,22 @@ export type MallowGumball = {
       name: 'removeTokensSpan';
       docs: [
         'Remove fungible tokens from the gumball machine.',
+        'The signer can be the Gumball Machine authority or the seller of the specific item.',
         '',
         '# Accounts',
         '',
         '0. `[writable]` Gumball Machine account',
         '1. `[writable]` Seller history account (PDA, seeds: ["seller_history", gumball_machine, seller])',
         '2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine])',
-        '3. `[signer, writable]` Seller',
-        '4. `[]` Mint account',
-        "5. `[writable]` Seller's token account",
-        "6. `[writable]` Gumball machine's token account",
-        '7. `[]` Token program',
-        '8. `[]` Associated Token program',
-        '9. `[]` System program',
-        '10. `[]` Rent sysvar'
+        '3. `[signer, writable]` Authority allowed to remove (gumball machine authority or item seller).',
+        '4. `[writable]` Seller account (owner of the tokens).',
+        '5. `[]` Mint account',
+        "6. `[writable]` Seller's token account",
+        "7. `[writable]` Gumball machine's token account",
+        '8. `[]` Token program',
+        '9. `[]` Associated Token program',
+        '10. `[]` System program',
+        '11. `[]` Rent sysvar'
       ];
       accounts: [
         {
@@ -1163,7 +1289,7 @@ export type MallowGumball = {
         '# Accounts',
         '',
         '0. `[writable]` Gumball Machine account',
-        '1. `[signer]` Gumball Machine authority'
+        '1. `[signer]` Gumball Machine authority (authority or mint_authority)'
       ];
       accounts: [
         {
@@ -1191,7 +1317,7 @@ export type MallowGumball = {
         '# Accounts',
         '',
         '0. `[writable]` Gumball Machine account',
-        '1. `[signer]` Gumball Machine authority'
+        '1. `[signer, writable]` Gumball Machine authority'
       ];
       accounts: [
         {
@@ -1214,19 +1340,17 @@ export type MallowGumball = {
     {
       name: 'draw';
       docs: [
-        'Mint an NFT.',
-        '',
-        'Only the gumball machine mint authority is allowed to mint. This handler mints both',
-        'NFTs and Programmable NFTs.',
+        'Draw for a random item from the gumball machine.',
+        'Only the gumball machine mint authority is allowed to draw.',
         '',
         '# Accounts',
         '',
-        '0. `[writable]` Gumball Machine account (must be pre-allocated but zero content)',
-        '2. `[signer]` Gumball Machine mint authority',
-        '3. `[signer]` Payer',
-        '4. `[writable]` Mint account of the NFT',
-        '18. `[]` System program',
-        '20. `[]` SlotHashes sysvar cluster data.'
+        '0. `[writable]` Gumball Machine account',
+        '1. `[signer]` Gumball Machine mint authority',
+        '2. `[signer, writable]` Payer',
+        '3. `[]` Buyer account',
+        '4. `[]` System program',
+        '5. `[]` SlotHashes sysvar cluster data'
       ];
       accounts: [
         {
@@ -1291,8 +1415,8 @@ export type MallowGumball = {
         '',
         '# Accounts',
         '',
-        '0. `[writable]` Gumball Machine account (must be pre-allocated but zero content)',
-        '2. `[signer]` Gumball Machine mint authority'
+        '0. `[writable]` Gumball Machine account',
+        '1. `[signer]` Gumball Machine mint authority'
       ];
       accounts: [
         {
@@ -1320,12 +1444,20 @@ export type MallowGumball = {
     {
       name: 'claimCoreAsset';
       docs: [
-        'Settles a Core asset sale',
+        'Claims a Core asset from the gumball machine for a specific buyer.',
+        'Transfers the asset from the PDA to the buyer.',
         '',
         '# Accounts',
         '',
-        '0. `[writable]` Gumball Machine account',
-        '1. `[signer]` Gumball Machine authority'
+        '0. `[signer, writable]` Payer (anyone can claim the item)',
+        '1. `[writable]` Gumball Machine account (must be in SaleLive or SaleEnded state)',
+        '2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine])',
+        '3. `[writable]` Seller account',
+        '4. `[]` Buyer account',
+        '5. `[]` System program',
+        '6. `[writable]` Asset account',
+        '7. `[writable, optional]` Collection account if asset is part of one.',
+        '8. `[]` MPL Core program.'
       ];
       accounts: [
         {
@@ -1399,12 +1531,32 @@ export type MallowGumball = {
     {
       name: 'claimNft';
       docs: [
-        'Settles a legacy NFT sale',
+        'Claims a legacy NFT from the gumball machine for a specific buyer.',
+        'Thaws and transfers the NFT from the PDA to the buyer.',
         '',
         '# Accounts',
         '',
-        '0. `[writable]` Gumball Machine account',
-        '1. `[signer]` Gumball Machine authority'
+        '0. `[signer, writable]` Payer (anyone can claim the item)',
+        '1. `[writable]` Gumball Machine account (must be in SaleLive or SaleEnded state)',
+        '2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine])',
+        '3. `[writable]` Seller account',
+        '4. `[]` Buyer account',
+        '5. `[]` Token program',
+        '6. `[]` Associated Token program',
+        '7. `[]` System program',
+        '8. `[]` Rent sysvar',
+        '9. `[]` Mint account',
+        "10. `[writable]` Buyer's token account",
+        "11. `[writable]` Authority PDA's token account",
+        '12. `[writable]` Metadata account',
+        '13. `[writable]` Edition account',
+        '14. `[]` Token Metadata program',
+        '15. `[writable, optional]` Seller token record (pNFT)',
+        '16. `[writable, optional]` Authority PDA token record (pNFT)',
+        '17. `[writable, optional]` Buyer token record (pNFT)',
+        '18. `[optional]` Auth rules account (pNFT)',
+        '19. `[optional]` Instructions sysvar (pNFT)',
+        '20. `[optional]` Auth rules program (pNFT)'
       ];
       accounts: [
         {
@@ -1554,7 +1706,7 @@ export type MallowGumball = {
         '',
         '# Accounts',
         '',
-        '0. `[signer]` Payer (anyone can settle the sale)',
+        '0. `[signer, writable]` Payer (anyone can claim the tokens)',
         '1. `[writable]` Gumball Machine account (must be in SaleLive or SaleEnded state)',
         '2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine])',
         '3. `[writable]` Gumball Machine authority',
@@ -1661,11 +1813,32 @@ export type MallowGumball = {
       name: 'settleCoreAssetSale';
       docs: [
         'Settles a Core asset sale',
+        "If the item hasn't been claimed yet, it claims it for the seller (or buyer if specified).",
+        'Distributes proceeds according to royalties and fee configuration.',
         '',
         '# Accounts',
         '',
-        '0. `[writable]` Gumball Machine account',
-        '1. `[signer]` Gumball Machine authority'
+        '0. `[signer, writable]` Payer (anyone can settle the sale)',
+        '1. `[writable]` Gumball Machine account (must be in SaleEnded state)',
+        '2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine])',
+        '3. `[writable, optional]` Authority PDA payment account',
+        '4. `[writable]` Authority account',
+        '5. `[writable, optional]` Authority payment account',
+        '6. `[writable]` Seller account',
+        '7. `[writable, optional]` Seller payment account',
+        '8. `[writable]` Seller history account (PDA, seeds: ["seller_history", gumball_machine, seller])',
+        '9. `[]` Buyer account',
+        '10. `[writable, optional]` Fee account',
+        '11. `[writable, optional]` Fee payment account',
+        '12. `[optional]` Payment mint',
+        '13. `[]` Token program',
+        '14. `[]` Associated Token program',
+        '15. `[]` System program',
+        '16. `[]` Rent sysvar',
+        '17. `[writable]` Asset account',
+        '18. `[writable, optional]` Collection account if asset is part of one.',
+        '19. `[]` MPL Core program.',
+        'Remaining accounts: Royalty recipients'
       ];
       accounts: [
         {
@@ -1809,11 +1982,41 @@ export type MallowGumball = {
       name: 'settleNftSale';
       docs: [
         'Settles a legacy NFT sale',
+        "If the item hasn't been claimed yet, it claims it for the seller (or buyer if specified).",
+        'Distributes proceeds according to royalties and fee configuration. Marks primary sale happened if applicable.',
         '',
         '# Accounts',
         '',
-        '0. `[writable]` Gumball Machine account',
-        '1. `[signer]` Gumball Machine authority'
+        '0. `[signer, writable]` Payer (anyone can settle the sale)',
+        '1. `[writable]` Gumball Machine account (must be in SaleEnded state)',
+        '2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine])',
+        '3. `[writable, optional]` Authority PDA payment account',
+        '4. `[writable]` Authority account',
+        '5. `[writable, optional]` Authority payment account',
+        '6. `[writable]` Seller account',
+        '7. `[writable, optional]` Seller payment account',
+        '8. `[writable]` Seller history account (PDA, seeds: ["seller_history", gumball_machine, seller])',
+        '9. `[]` Buyer account',
+        '10. `[writable, optional]` Fee account',
+        '11. `[writable, optional]` Fee payment account',
+        '12. `[optional]` Payment mint',
+        '13. `[]` Token program',
+        '14. `[]` Associated Token program',
+        '15. `[]` System program',
+        '16. `[]` Rent sysvar',
+        '17. `[]` Mint account',
+        "18. `[writable]` Buyer's token account",
+        "19. `[writable]` Authority PDA's token account",
+        '20. `[writable]` Metadata account',
+        '21. `[writable]` Edition account',
+        '22. `[]` Token Metadata program',
+        '23. `[writable, optional]` Seller token record (pNFT)',
+        '24. `[writable, optional]` Authority PDA token record (pNFT)',
+        '25. `[writable, optional]` Buyer token record (pNFT)',
+        '26. `[optional]` Auth rules account (pNFT)',
+        '27. `[optional]` Instructions sysvar (pNFT)',
+        '28. `[optional]` Auth rules program (pNFT)',
+        'Remaining accounts: Royalty recipients'
       ];
       accounts: [
         {
@@ -2014,29 +2217,32 @@ export type MallowGumball = {
       name: 'settleTokensSale';
       docs: [
         'Settles a fungible tokens sale',
+        "If the item hasn't been claimed yet, it claims it for the seller (or buyer if specified).",
+        'Distributes proceeds according to fee configuration.',
         '',
         '# Accounts',
         '',
         '0. `[signer, writable]` Payer (anyone can settle the sale)',
         '1. `[writable]` Gumball Machine account (must be in SaleEnded state)',
         '2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine])',
-        '3. `[writable]` Authority PDA payment account (optional)',
+        '3. `[writable, optional]` Authority PDA payment account',
         '4. `[writable]` Authority account',
-        '5. `[writable]` Authority payment account (optional)',
+        '5. `[writable, optional]` Authority payment account',
         '6. `[writable]` Seller account',
-        '7. `[writable]` Seller payment account (optional)',
+        '7. `[writable, optional]` Seller payment account',
         '8. `[writable]` Seller history account (PDA, seeds: ["seller_history", gumball_machine, seller])',
         '9. `[]` Buyer account',
-        '10. `[writable]` Fee account (optional)',
-        '11. `[writable]` Fee payment account (optional)',
-        '12. `[]` Payment mint (optional)',
+        '10. `[writable, optional]` Fee account',
+        '11. `[writable, optional]` Fee payment account',
+        '12. `[optional]` Payment mint',
         '13. `[]` Token program',
         '14. `[]` Associated Token program',
         '15. `[]` System program',
         '16. `[]` Rent sysvar',
         '17. `[]` Mint account',
-        '18. `[writable]` Receiver token account (must match mint)',
-        '19. `[writable]` Authority PDA token account (must match mint and authority PDA)'
+        "18. `[writable]` Receiver's token account (buyer or seller if buyer is default)",
+        "19. `[writable]` Authority PDA's token account",
+        'Remaining accounts: Fee recipients'
       ];
       accounts: [
         {
@@ -2179,27 +2385,29 @@ export type MallowGumball = {
       name: 'settleTokensSaleClaimed';
       docs: [
         'Settles a fungible tokens sale that has already been claimed by the buyer or does not have a buyer.',
+        'This can settle multiple items in a single transaction via the `start_index` and `end_index` args.',
+        'Distributes proceeds according to fee configuration and sends unsold tokens back to the seller.',
         '',
         '# Accounts',
         '',
         '0. `[signer, writable]` Payer (anyone can settle the sale)',
         '1. `[writable]` Gumball Machine account (must be in SaleEnded state)',
         '2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine])',
-        '3. `[writable]` Authority PDA payment account (optional)',
+        '3. `[writable, optional]` Authority PDA payment account',
         '4. `[writable]` Authority account',
-        '5. `[writable]` Authority payment account (optional)',
+        '5. `[writable, optional]` Authority payment account',
         '6. `[writable]` Seller account',
-        '7. `[writable]` Seller token account',
-        '9. `[writable]` Seller payment account (optional)',
-        '10. `[writable]` Seller history account (PDA, seeds: ["seller_history", gumball_machine, seller])',
-        '11. `[writable]` Fee account (optional)',
-        '12. `[writable]` Fee payment account (optional)',
-        '13. `[]` Payment mint (optional)',
-        '14. `[]` Token program',
-        '15. `[]` Associated Token program',
-        '16. `[]` System program',
-        '17. `[]` Rent sysvar',
-        '18. `[]` Mint account'
+        '7. `[writable, optional]` Seller payment account',
+        '8. `[writable]` Seller history account (PDA, seeds: ["seller_history", gumball_machine, seller])',
+        '9. `[optional]` Payment mint',
+        '10. `[]` Token program',
+        '11. `[]` Associated Token program',
+        '12. `[]` System program',
+        '13. `[]` Rent sysvar',
+        '14. `[]` Mint account',
+        "15. `[writable]` Seller's token account (for receiving unsold tokens)",
+        "16. `[writable]` Authority PDA's token account",
+        'Remaining accounts: Fee recipients'
       ];
       accounts: [
         {
@@ -2360,7 +2568,7 @@ export type MallowGumball = {
         '',
         '0. `[writable]` Gumball Machine account',
         '1. `[signer]` Gumball Machine authority',
-        '1. `[signer]` New gumball machine authority'
+        '2. `[signer]` New gumball machine authority'
       ];
       accounts: [
         {
@@ -2388,11 +2596,23 @@ export type MallowGumball = {
       name: 'withdraw';
       docs: [
         'Withdraw the rent lamports and send them to the authority address.',
+        'If a non-native payment mint was used, also closes the PDA payment token account,',
+        "sending its balance to the authority's associated token account.",
         '',
         '# Accounts',
         '',
-        '0. `[writable]` Gumball Machine account',
-        '1. `[signer]` Gumball Machine authority'
+        '0. `[writable]` Gumball Machine account (will be closed)',
+        '1. `[signer, writable]` Gumball Machine authority',
+        '2. `[signer, writable]` Gumball Machine mint authority',
+        '3. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine])',
+        '4. `[writable, optional]` Authority PDA payment account',
+        '5. `[]` Token program',
+        'Remaining accounts (if closing non-native payment account):',
+        '- `[]` Payment Mint',
+        "- `[writable]` Authority's token account for payment mint",
+        '- `[]` Associated Token program',
+        '- `[]` System program',
+        '- `[]` Rent sysvar'
       ];
       accounts: [
         {
@@ -3207,8 +3427,10 @@ export const IDL: MallowGumball = {
         '# Accounts',
         '',
         '0. `[writable]` Gumball Machine account (must be pre-allocated but zero content)',
-        '2. `[]` Gumball Machine authority',
-        '3. `[signer]` Payer',
+        '1. `[]` Gumball Machine authority',
+        '2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine])',
+        '3. `[signer, writable]` Payer',
+        '4. `[]` System program',
       ],
       accounts: [
         {
@@ -3276,7 +3498,7 @@ export const IDL: MallowGumball = {
         '# Accounts',
         '',
         '0. `[writable]` Gumball Machine account',
-        '1. `[signer]` Gumball Machine authority',
+        '1. `[signer, writable]` Gumball Machine authority',
       ],
       accounts: [
         {
@@ -3316,11 +3538,15 @@ export const IDL: MallowGumball = {
         '3. `[signer, writable]` Seller',
         '4. `[]` Mint account',
         '5. `[writable]` Token account',
-        '6. `[]` Metadata account',
+        '6. `[writable]` Metadata account',
         '7. `[]` Edition account',
         '8. `[]` Token program',
         '9. `[]` Token Metadata program',
         '10. `[]` System program',
+        '11. `[writable, optional]` Seller token record (pNFT)',
+        '12. `[optional]` Auth rules account (pNFT)',
+        '13. `[optional]` Instructions sysvar (pNFT)',
+        '14. `[optional]` Auth rules program (pNFT)',
       ],
       accounts: [
         {
@@ -3598,7 +3824,29 @@ export const IDL: MallowGumball = {
     },
     {
       name: 'requestAddNft',
-      docs: ['Request to add a NFT to the gumball machine.'],
+      docs: [
+        'Request to add a NFT to the gumball machine.',
+        "Freezes the seller's NFT and creates a request account.",
+        '',
+        '# Accounts',
+        '',
+        '0. `[writable]` Gumball Machine account.',
+        '1. `[writable]` Seller history account (PDA, seeds: ["seller_history", gumball_machine, seller]).',
+        '2. `[writable]` Add item request account (PDA, seeds: ["add_item_request", mint]).',
+        '3. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine]).',
+        '4. `[signer, writable]` Seller of the nft.',
+        '5. `[]` Mint account of the NFT.',
+        "6. `[writable]` Seller's token account for the NFT.",
+        '7. `[writable]` Metadata account of the NFT.',
+        '8. `[]` Edition account of the NFT.',
+        '9. `[]` Token program.',
+        '10. `[]` Token Metadata program.',
+        '11. `[]` System program.',
+        '12. `[writable, optional]` Seller token record (pNFT).',
+        '13. `[optional]` Auth rules account (pNFT).',
+        '14. `[optional]` Instructions sysvar (pNFT).',
+        '15. `[optional]` Auth rules program (pNFT).',
+      ],
       accounts: [
         {
           name: 'gumballMachine',
@@ -3694,7 +3942,22 @@ export const IDL: MallowGumball = {
     },
     {
       name: 'requestAddCoreAsset',
-      docs: ['Request to add a core asset to the gumball machine.'],
+      docs: [
+        'Request to add a core asset to the gumball machine.',
+        "Freezes the seller's asset and creates a request account.",
+        '',
+        '# Accounts',
+        '',
+        '0. `[writable]` Gumball Machine account.',
+        '1. `[writable]` Seller history account (PDA, seeds: ["seller_history", gumball_machine, seller]).',
+        '2. `[writable]` Add item request account (PDA, seeds: ["add_item_request", asset]).',
+        '3. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine]).',
+        '4. `[signer, writable]` Seller of the asset.',
+        '5. `[writable]` Asset account.',
+        '6. `[writable, optional]` Collection account if asset is part of one.',
+        '7. `[]` MPL Core program.',
+        '8. `[]` System program.',
+      ],
       accounts: [
         {
           name: 'gumballMachine',
@@ -3752,7 +4015,31 @@ export const IDL: MallowGumball = {
     },
     {
       name: 'cancelAddNftRequest',
-      docs: ['Cancel a request to add a NFT to the gumball machine.'],
+      docs: [
+        'Cancel a request to add a NFT to the gumball machine.',
+        "Thaws and revokes delegate from the seller's NFT and closes the request account.",
+        '',
+        '# Accounts',
+        '',
+        '0. `[writable]` Seller history account (PDA, seeds: ["seller_history", add_item_request.gumball_machine, seller]).',
+        '1. `[writable]` Add item request account (PDA, seeds: ["add_item_request", mint]). Will be closed.',
+        '2. `[writable]` Authority PDA (PDA, seeds: ["authority", add_item_request.gumball_machine]).',
+        '3. `[signer, writable]` Seller of the NFT.',
+        '4. `[]` Mint account of the NFT.',
+        "5. `[writable]` Seller's token account for the NFT.",
+        "6. `[writable]` Authority PDA's token account.",
+        '7. `[]` Edition account of the NFT.',
+        '8. `[]` Token program.',
+        '9. `[]` Associated Token program.',
+        '10. `[]` Token Metadata program.',
+        '11. `[]` System program.',
+        '12. `[]` Rent sysvar.',
+        '13. `[writable, optional]` Metadata account (pNFT).',
+        '14. `[writable, optional]` Seller token record (pNFT).',
+        '15. `[optional]` Auth rules account (pNFT).',
+        '16. `[optional]` Instructions sysvar (pNFT).',
+        '17. `[optional]` Auth rules program (pNFT).',
+      ],
       accounts: [
         {
           name: 'sellerHistory',
@@ -3861,7 +4148,21 @@ export const IDL: MallowGumball = {
     },
     {
       name: 'cancelAddCoreAssetRequest',
-      docs: ['Cancel a request to add a core asset to the gumball machine.'],
+      docs: [
+        'Cancel a request to add a core asset to the gumball machine.',
+        "Thaws and revokes delegate from the seller's asset and closes the request account.",
+        '',
+        '# Accounts',
+        '',
+        '0. `[writable]` Seller history account (PDA, seeds: ["seller_history", add_item_request.gumball_machine, seller]).',
+        '1. `[writable]` Add item request account (PDA, seeds: ["add_item_request", asset]). Will be closed.',
+        '2. `[writable]` Authority PDA (PDA, seeds: ["authority", add_item_request.gumball_machine]).',
+        '3. `[signer, writable]` Seller of the asset.',
+        '4. `[writable]` Asset account.',
+        '5. `[writable, optional]` Collection account if asset is part of one.',
+        '6. `[]` MPL Core program.',
+        '7. `[]` System program.',
+      ],
       accounts: [
         {
           name: 'sellerHistory',
@@ -3913,7 +4214,20 @@ export const IDL: MallowGumball = {
     },
     {
       name: 'approveAddItem',
-      docs: ['Approve adding an item to the gumball machine.'],
+      docs: [
+        'Approve adding an item to the gumball machine.',
+        "Moves the item from the request to the gumball machine's config lines.",
+        '',
+        '# Accounts',
+        '',
+        '0. `[writable]` Gumball Machine account.',
+        '1. `[writable]` Add item request account (PDA, seeds: ["add_item_request", asset]). Will be closed.',
+        '2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine]).',
+        '3. `[signer, writable]` Authority of the gumball machine.',
+        '4. `[writable]` Seller account (receiver of closed request account rent).',
+        '5. `[]` Asset/Mint account (checked via add_item_request constraint).',
+        '6. `[]` System program.',
+      ],
       accounts: [
         {
           name: 'gumballMachine',
@@ -3960,11 +4274,30 @@ export const IDL: MallowGumball = {
       name: 'removeNft',
       docs: [
         'Remove legacy NFT from the gumball machine.',
+        "Thaws and revokes delegate from the seller's NFT and removes it from the config lines.",
+        'The signer can be the Gumball Machine authority or the seller of the specific item.',
         '',
         '# Accounts',
         '',
-        '0. `[writable]` Gumball Machine account',
-        '1. `[signer]` Gumball Machine authority',
+        '0. `[writable]` Gumball Machine account.',
+        '1. `[writable]` Seller history account (PDA, seeds: ["seller_history", gumball_machine, seller]).',
+        '2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine]).',
+        '3. `[signer]` Authority allowed to remove (gumball machine authority or item seller).',
+        '4. `[writable]` Seller account (owner of the NFT).',
+        '5. `[]` Mint account of the NFT.',
+        "6. `[writable]` Seller's token account for the NFT.",
+        "7. `[writable]` Authority PDA's token account.",
+        '8. `[]` Edition account of the NFT.',
+        '9. `[]` Token program.',
+        '10. `[]` Associated Token program.',
+        '11. `[]` Token Metadata program.',
+        '12. `[]` System program.',
+        '13. `[]` Rent sysvar.',
+        '14. `[writable, optional]` Metadata account (pNFT).',
+        '15. `[writable, optional]` Seller token record (pNFT).',
+        '16. `[optional]` Auth rules account (pNFT).',
+        '17. `[optional]` Instructions sysvar (pNFT).',
+        '18. `[optional]` Auth rules program (pNFT).',
       ],
       accounts: [
         {
@@ -4088,11 +4421,20 @@ export const IDL: MallowGumball = {
       name: 'removeCoreAsset',
       docs: [
         'Remove Core asset from the gumball machine.',
+        "Thaws and revokes delegate from the seller's asset and removes it from the config lines.",
+        'The signer can be the Gumball Machine authority or the seller of the specific item.',
         '',
         '# Accounts',
         '',
-        '0. `[writable]` Gumball Machine account',
-        '1. `[signer]` Gumball Machine authority',
+        '0. `[writable]` Gumball Machine account.',
+        '1. `[writable]` Seller history account (PDA, seeds: ["seller_history", gumball_machine, seller]).',
+        '2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine]).',
+        '3. `[signer]` Authority allowed to remove (gumball machine authority or item seller).',
+        '4. `[writable]` Seller account (owner of the asset).',
+        '5. `[writable]` Asset account.',
+        '6. `[writable, optional]` Collection account if asset is part of one.',
+        '7. `[]` MPL Core program.',
+        '8. `[]` System program.',
       ],
       accounts: [
         {
@@ -4157,20 +4499,22 @@ export const IDL: MallowGumball = {
       name: 'removeTokens',
       docs: [
         'Remove fungible tokens from the gumball machine.',
+        'The signer can be the Gumball Machine authority or the seller of the specific item.',
         '',
         '# Accounts',
         '',
         '0. `[writable]` Gumball Machine account',
         '1. `[writable]` Seller history account (PDA, seeds: ["seller_history", gumball_machine, seller])',
         '2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine])',
-        '3. `[signer, writable]` Seller',
-        '4. `[]` Mint account',
-        "5. `[writable]` Seller's token account",
-        "6. `[writable]` Gumball machine's token account",
-        '7. `[]` Token program',
-        '8. `[]` Associated Token program',
-        '9. `[]` System program',
-        '10. `[]` Rent sysvar',
+        '3. `[signer, writable]` Authority allowed to remove (gumball machine authority or item seller).',
+        '4. `[writable]` Seller account (owner of the tokens).',
+        '5. `[]` Mint account',
+        "6. `[writable]` Seller's token account",
+        "7. `[writable]` Gumball machine's token account",
+        '8. `[]` Token program',
+        '9. `[]` Associated Token program',
+        '10. `[]` System program',
+        '11. `[]` Rent sysvar',
         'DEPRECATED: Use remove_tokens_span instead',
       ],
       accounts: [
@@ -4255,20 +4599,22 @@ export const IDL: MallowGumball = {
       name: 'removeTokensSpan',
       docs: [
         'Remove fungible tokens from the gumball machine.',
+        'The signer can be the Gumball Machine authority or the seller of the specific item.',
         '',
         '# Accounts',
         '',
         '0. `[writable]` Gumball Machine account',
         '1. `[writable]` Seller history account (PDA, seeds: ["seller_history", gumball_machine, seller])',
         '2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine])',
-        '3. `[signer, writable]` Seller',
-        '4. `[]` Mint account',
-        "5. `[writable]` Seller's token account",
-        "6. `[writable]` Gumball machine's token account",
-        '7. `[]` Token program',
-        '8. `[]` Associated Token program',
-        '9. `[]` System program',
-        '10. `[]` Rent sysvar',
+        '3. `[signer, writable]` Authority allowed to remove (gumball machine authority or item seller).',
+        '4. `[writable]` Seller account (owner of the tokens).',
+        '5. `[]` Mint account',
+        "6. `[writable]` Seller's token account",
+        "7. `[writable]` Gumball machine's token account",
+        '8. `[]` Token program',
+        '9. `[]` Associated Token program',
+        '10. `[]` System program',
+        '11. `[]` Rent sysvar',
       ],
       accounts: [
         {
@@ -4360,7 +4706,7 @@ export const IDL: MallowGumball = {
         '# Accounts',
         '',
         '0. `[writable]` Gumball Machine account',
-        '1. `[signer]` Gumball Machine authority',
+        '1. `[signer]` Gumball Machine authority (authority or mint_authority)',
       ],
       accounts: [
         {
@@ -4388,7 +4734,7 @@ export const IDL: MallowGumball = {
         '# Accounts',
         '',
         '0. `[writable]` Gumball Machine account',
-        '1. `[signer]` Gumball Machine authority',
+        '1. `[signer, writable]` Gumball Machine authority',
       ],
       accounts: [
         {
@@ -4411,19 +4757,17 @@ export const IDL: MallowGumball = {
     {
       name: 'draw',
       docs: [
-        'Mint an NFT.',
-        '',
-        'Only the gumball machine mint authority is allowed to mint. This handler mints both',
-        'NFTs and Programmable NFTs.',
+        'Draw for a random item from the gumball machine.',
+        'Only the gumball machine mint authority is allowed to draw.',
         '',
         '# Accounts',
         '',
-        '0. `[writable]` Gumball Machine account (must be pre-allocated but zero content)',
-        '2. `[signer]` Gumball Machine mint authority',
-        '3. `[signer]` Payer',
-        '4. `[writable]` Mint account of the NFT',
-        '18. `[]` System program',
-        '20. `[]` SlotHashes sysvar cluster data.',
+        '0. `[writable]` Gumball Machine account',
+        '1. `[signer]` Gumball Machine mint authority',
+        '2. `[signer, writable]` Payer',
+        '3. `[]` Buyer account',
+        '4. `[]` System program',
+        '5. `[]` SlotHashes sysvar cluster data',
       ],
       accounts: [
         {
@@ -4488,8 +4832,8 @@ export const IDL: MallowGumball = {
         '',
         '# Accounts',
         '',
-        '0. `[writable]` Gumball Machine account (must be pre-allocated but zero content)',
-        '2. `[signer]` Gumball Machine mint authority',
+        '0. `[writable]` Gumball Machine account',
+        '1. `[signer]` Gumball Machine mint authority',
       ],
       accounts: [
         {
@@ -4517,12 +4861,20 @@ export const IDL: MallowGumball = {
     {
       name: 'claimCoreAsset',
       docs: [
-        'Settles a Core asset sale',
+        'Claims a Core asset from the gumball machine for a specific buyer.',
+        'Transfers the asset from the PDA to the buyer.',
         '',
         '# Accounts',
         '',
-        '0. `[writable]` Gumball Machine account',
-        '1. `[signer]` Gumball Machine authority',
+        '0. `[signer, writable]` Payer (anyone can claim the item)',
+        '1. `[writable]` Gumball Machine account (must be in SaleLive or SaleEnded state)',
+        '2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine])',
+        '3. `[writable]` Seller account',
+        '4. `[]` Buyer account',
+        '5. `[]` System program',
+        '6. `[writable]` Asset account',
+        '7. `[writable, optional]` Collection account if asset is part of one.',
+        '8. `[]` MPL Core program.',
       ],
       accounts: [
         {
@@ -4596,12 +4948,32 @@ export const IDL: MallowGumball = {
     {
       name: 'claimNft',
       docs: [
-        'Settles a legacy NFT sale',
+        'Claims a legacy NFT from the gumball machine for a specific buyer.',
+        'Thaws and transfers the NFT from the PDA to the buyer.',
         '',
         '# Accounts',
         '',
-        '0. `[writable]` Gumball Machine account',
-        '1. `[signer]` Gumball Machine authority',
+        '0. `[signer, writable]` Payer (anyone can claim the item)',
+        '1. `[writable]` Gumball Machine account (must be in SaleLive or SaleEnded state)',
+        '2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine])',
+        '3. `[writable]` Seller account',
+        '4. `[]` Buyer account',
+        '5. `[]` Token program',
+        '6. `[]` Associated Token program',
+        '7. `[]` System program',
+        '8. `[]` Rent sysvar',
+        '9. `[]` Mint account',
+        "10. `[writable]` Buyer's token account",
+        "11. `[writable]` Authority PDA's token account",
+        '12. `[writable]` Metadata account',
+        '13. `[writable]` Edition account',
+        '14. `[]` Token Metadata program',
+        '15. `[writable, optional]` Seller token record (pNFT)',
+        '16. `[writable, optional]` Authority PDA token record (pNFT)',
+        '17. `[writable, optional]` Buyer token record (pNFT)',
+        '18. `[optional]` Auth rules account (pNFT)',
+        '19. `[optional]` Instructions sysvar (pNFT)',
+        '20. `[optional]` Auth rules program (pNFT)',
       ],
       accounts: [
         {
@@ -4751,7 +5123,7 @@ export const IDL: MallowGumball = {
         '',
         '# Accounts',
         '',
-        '0. `[signer]` Payer (anyone can settle the sale)',
+        '0. `[signer, writable]` Payer (anyone can claim the tokens)',
         '1. `[writable]` Gumball Machine account (must be in SaleLive or SaleEnded state)',
         '2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine])',
         '3. `[writable]` Gumball Machine authority',
@@ -4858,11 +5230,32 @@ export const IDL: MallowGumball = {
       name: 'settleCoreAssetSale',
       docs: [
         'Settles a Core asset sale',
+        "If the item hasn't been claimed yet, it claims it for the seller (or buyer if specified).",
+        'Distributes proceeds according to royalties and fee configuration.',
         '',
         '# Accounts',
         '',
-        '0. `[writable]` Gumball Machine account',
-        '1. `[signer]` Gumball Machine authority',
+        '0. `[signer, writable]` Payer (anyone can settle the sale)',
+        '1. `[writable]` Gumball Machine account (must be in SaleEnded state)',
+        '2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine])',
+        '3. `[writable, optional]` Authority PDA payment account',
+        '4. `[writable]` Authority account',
+        '5. `[writable, optional]` Authority payment account',
+        '6. `[writable]` Seller account',
+        '7. `[writable, optional]` Seller payment account',
+        '8. `[writable]` Seller history account (PDA, seeds: ["seller_history", gumball_machine, seller])',
+        '9. `[]` Buyer account',
+        '10. `[writable, optional]` Fee account',
+        '11. `[writable, optional]` Fee payment account',
+        '12. `[optional]` Payment mint',
+        '13. `[]` Token program',
+        '14. `[]` Associated Token program',
+        '15. `[]` System program',
+        '16. `[]` Rent sysvar',
+        '17. `[writable]` Asset account',
+        '18. `[writable, optional]` Collection account if asset is part of one.',
+        '19. `[]` MPL Core program.',
+        'Remaining accounts: Royalty recipients',
       ],
       accounts: [
         {
@@ -5006,11 +5399,41 @@ export const IDL: MallowGumball = {
       name: 'settleNftSale',
       docs: [
         'Settles a legacy NFT sale',
+        "If the item hasn't been claimed yet, it claims it for the seller (or buyer if specified).",
+        'Distributes proceeds according to royalties and fee configuration. Marks primary sale happened if applicable.',
         '',
         '# Accounts',
         '',
-        '0. `[writable]` Gumball Machine account',
-        '1. `[signer]` Gumball Machine authority',
+        '0. `[signer, writable]` Payer (anyone can settle the sale)',
+        '1. `[writable]` Gumball Machine account (must be in SaleEnded state)',
+        '2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine])',
+        '3. `[writable, optional]` Authority PDA payment account',
+        '4. `[writable]` Authority account',
+        '5. `[writable, optional]` Authority payment account',
+        '6. `[writable]` Seller account',
+        '7. `[writable, optional]` Seller payment account',
+        '8. `[writable]` Seller history account (PDA, seeds: ["seller_history", gumball_machine, seller])',
+        '9. `[]` Buyer account',
+        '10. `[writable, optional]` Fee account',
+        '11. `[writable, optional]` Fee payment account',
+        '12. `[optional]` Payment mint',
+        '13. `[]` Token program',
+        '14. `[]` Associated Token program',
+        '15. `[]` System program',
+        '16. `[]` Rent sysvar',
+        '17. `[]` Mint account',
+        "18. `[writable]` Buyer's token account",
+        "19. `[writable]` Authority PDA's token account",
+        '20. `[writable]` Metadata account',
+        '21. `[writable]` Edition account',
+        '22. `[]` Token Metadata program',
+        '23. `[writable, optional]` Seller token record (pNFT)',
+        '24. `[writable, optional]` Authority PDA token record (pNFT)',
+        '25. `[writable, optional]` Buyer token record (pNFT)',
+        '26. `[optional]` Auth rules account (pNFT)',
+        '27. `[optional]` Instructions sysvar (pNFT)',
+        '28. `[optional]` Auth rules program (pNFT)',
+        'Remaining accounts: Royalty recipients',
       ],
       accounts: [
         {
@@ -5211,29 +5634,32 @@ export const IDL: MallowGumball = {
       name: 'settleTokensSale',
       docs: [
         'Settles a fungible tokens sale',
+        "If the item hasn't been claimed yet, it claims it for the seller (or buyer if specified).",
+        'Distributes proceeds according to fee configuration.',
         '',
         '# Accounts',
         '',
         '0. `[signer, writable]` Payer (anyone can settle the sale)',
         '1. `[writable]` Gumball Machine account (must be in SaleEnded state)',
         '2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine])',
-        '3. `[writable]` Authority PDA payment account (optional)',
+        '3. `[writable, optional]` Authority PDA payment account',
         '4. `[writable]` Authority account',
-        '5. `[writable]` Authority payment account (optional)',
+        '5. `[writable, optional]` Authority payment account',
         '6. `[writable]` Seller account',
-        '7. `[writable]` Seller payment account (optional)',
+        '7. `[writable, optional]` Seller payment account',
         '8. `[writable]` Seller history account (PDA, seeds: ["seller_history", gumball_machine, seller])',
         '9. `[]` Buyer account',
-        '10. `[writable]` Fee account (optional)',
-        '11. `[writable]` Fee payment account (optional)',
-        '12. `[]` Payment mint (optional)',
+        '10. `[writable, optional]` Fee account',
+        '11. `[writable, optional]` Fee payment account',
+        '12. `[optional]` Payment mint',
         '13. `[]` Token program',
         '14. `[]` Associated Token program',
         '15. `[]` System program',
         '16. `[]` Rent sysvar',
         '17. `[]` Mint account',
-        '18. `[writable]` Receiver token account (must match mint)',
-        '19. `[writable]` Authority PDA token account (must match mint and authority PDA)',
+        "18. `[writable]` Receiver's token account (buyer or seller if buyer is default)",
+        "19. `[writable]` Authority PDA's token account",
+        'Remaining accounts: Fee recipients',
       ],
       accounts: [
         {
@@ -5376,27 +5802,29 @@ export const IDL: MallowGumball = {
       name: 'settleTokensSaleClaimed',
       docs: [
         'Settles a fungible tokens sale that has already been claimed by the buyer or does not have a buyer.',
+        'This can settle multiple items in a single transaction via the `start_index` and `end_index` args.',
+        'Distributes proceeds according to fee configuration and sends unsold tokens back to the seller.',
         '',
         '# Accounts',
         '',
         '0. `[signer, writable]` Payer (anyone can settle the sale)',
         '1. `[writable]` Gumball Machine account (must be in SaleEnded state)',
         '2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine])',
-        '3. `[writable]` Authority PDA payment account (optional)',
+        '3. `[writable, optional]` Authority PDA payment account',
         '4. `[writable]` Authority account',
-        '5. `[writable]` Authority payment account (optional)',
+        '5. `[writable, optional]` Authority payment account',
         '6. `[writable]` Seller account',
-        '7. `[writable]` Seller token account',
-        '9. `[writable]` Seller payment account (optional)',
-        '10. `[writable]` Seller history account (PDA, seeds: ["seller_history", gumball_machine, seller])',
-        '11. `[writable]` Fee account (optional)',
-        '12. `[writable]` Fee payment account (optional)',
-        '13. `[]` Payment mint (optional)',
-        '14. `[]` Token program',
-        '15. `[]` Associated Token program',
-        '16. `[]` System program',
-        '17. `[]` Rent sysvar',
-        '18. `[]` Mint account',
+        '7. `[writable, optional]` Seller payment account',
+        '8. `[writable]` Seller history account (PDA, seeds: ["seller_history", gumball_machine, seller])',
+        '9. `[optional]` Payment mint',
+        '10. `[]` Token program',
+        '11. `[]` Associated Token program',
+        '12. `[]` System program',
+        '13. `[]` Rent sysvar',
+        '14. `[]` Mint account',
+        "15. `[writable]` Seller's token account (for receiving unsold tokens)",
+        "16. `[writable]` Authority PDA's token account",
+        'Remaining accounts: Fee recipients',
       ],
       accounts: [
         {
@@ -5557,7 +5985,7 @@ export const IDL: MallowGumball = {
         '',
         '0. `[writable]` Gumball Machine account',
         '1. `[signer]` Gumball Machine authority',
-        '1. `[signer]` New gumball machine authority',
+        '2. `[signer]` New gumball machine authority',
       ],
       accounts: [
         {
@@ -5585,11 +6013,23 @@ export const IDL: MallowGumball = {
       name: 'withdraw',
       docs: [
         'Withdraw the rent lamports and send them to the authority address.',
+        'If a non-native payment mint was used, also closes the PDA payment token account,',
+        "sending its balance to the authority's associated token account.",
         '',
         '# Accounts',
         '',
-        '0. `[writable]` Gumball Machine account',
-        '1. `[signer]` Gumball Machine authority',
+        '0. `[writable]` Gumball Machine account (will be closed)',
+        '1. `[signer, writable]` Gumball Machine authority',
+        '2. `[signer, writable]` Gumball Machine mint authority',
+        '3. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine])',
+        '4. `[writable, optional]` Authority PDA payment account',
+        '5. `[]` Token program',
+        'Remaining accounts (if closing non-native payment account):',
+        '- `[]` Payment Mint',
+        "- `[writable]` Authority's token account for payment mint",
+        '- `[]` Associated Token program',
+        '- `[]` System program',
+        '- `[]` Rent sysvar',
       ],
       accounts: [
         {
