@@ -8,35 +8,35 @@
 
 import {
   Context,
-  none,
   Option,
   OptionOrNullable,
   Pda,
   PublicKey,
   Signer,
   TransactionBuilder,
+  none,
   transactionBuilder,
 } from '@metaplex-foundation/umi';
 import {
+  Serializer,
   array,
   mapSerializer,
   option,
-  Serializer,
   struct,
   u8,
 } from '@metaplex-foundation/umi/serializers';
 import {
-  getAccountMetasAndSigners,
   ResolvedAccount,
   ResolvedAccountsWithIndices,
+  getAccountMetasAndSigners,
 } from '../shared';
 import {
   BuyBackConfig,
   BuyBackConfigArgs,
-  getBuyBackConfigSerializer,
-  getGumballSettingsSerializer,
   GumballSettings,
   GumballSettingsArgs,
+  getBuyBackConfigSerializer,
+  getGumballSettingsSerializer,
 } from '../types';
 
 // Accounts.

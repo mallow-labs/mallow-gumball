@@ -5,6 +5,7 @@
         "outDir": "dist/test/esm",
         "target": "esnext",
         "rootDir": ".",
+        "lib": ["es2020", "dom"]
     },
     "include": ["test"],
 }

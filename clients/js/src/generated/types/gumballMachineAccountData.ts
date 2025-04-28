@@ -8,11 +8,11 @@
 
 import { Option, OptionOrNullable, PublicKey } from '@metaplex-foundation/umi';
 import {
+  Serializer,
   array,
   mapSerializer,
   option,
   publicKey as publicKeySerializer,
-  Serializer,
   struct,
   u64,
   u8,
@@ -20,13 +20,13 @@ import {
 import {
   FeeConfig,
   FeeConfigArgs,
-  getFeeConfigSerializer,
-  getGumballSettingsSerializer,
-  getGumballStateSerializer,
   GumballSettings,
   GumballSettingsArgs,
   GumballState,
   GumballStateArgs,
+  getFeeConfigSerializer,
+  getGumballSettingsSerializer,
+  getGumballStateSerializer,
 } from '.';
 
 /** Gumball machine state and config data. */

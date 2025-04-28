@@ -9,22 +9,22 @@
 import { findAssociatedTokenPda } from '@metaplex-foundation/mpl-toolbox';
 import {
   Context,
-  none,
   Option,
   OptionOrNullable,
   Pda,
   PublicKey,
-  publicKey,
   Signer,
   TransactionBuilder,
+  none,
+  publicKey,
   transactionBuilder,
 } from '@metaplex-foundation/umi';
 import {
+  Serializer,
   array,
   bytes,
   mapSerializer,
   option,
-  Serializer,
   struct,
   u16,
   u64,
@@ -33,10 +33,10 @@ import {
 import { findGumballMachineAuthorityPda } from '../../hooked';
 import { findSellerHistoryPda } from '../accounts';
 import {
-  expectPublicKey,
-  getAccountMetasAndSigners,
   ResolvedAccount,
   ResolvedAccountsWithIndices,
+  expectPublicKey,
+  getAccountMetasAndSigners,
 } from '../shared';
 
 // Accounts.

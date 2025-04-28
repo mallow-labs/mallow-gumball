@@ -8,41 +8,41 @@
 
 import {
   Context,
-  none,
   Option,
   OptionOrNullable,
   Pda,
   PublicKey,
   Signer,
   TransactionBuilder,
+  none,
   transactionBuilder,
 } from '@metaplex-foundation/umi';
 import {
+  Serializer,
   array,
   bool,
   mapSerializer,
   option,
-  Serializer,
   struct,
   u8,
 } from '@metaplex-foundation/umi/serializers';
 import { findGumballMachineAuthorityPda } from '../../hooked';
 import {
-  expectPublicKey,
-  getAccountMetasAndSigners,
   ResolvedAccount,
   ResolvedAccountsWithIndices,
+  expectPublicKey,
+  getAccountMetasAndSigners,
 } from '../shared';
 import {
   BuyBackConfig,
   BuyBackConfigArgs,
   FeeConfig,
   FeeConfigArgs,
+  GumballSettings,
+  GumballSettingsArgs,
   getBuyBackConfigSerializer,
   getFeeConfigSerializer,
   getGumballSettingsSerializer,
-  GumballSettings,
-  GumballSettingsArgs,
 } from '../types';
 
 // Accounts.

@@ -8,17 +8,17 @@
 
 import {
   Account,
-  assertAccountExists,
   Context,
-  deserializeAccount,
-  gpaBuilder,
   OptionOrNullable,
   Pda,
   PublicKey,
-  publicKey as toPublicKey,
   RpcAccount,
   RpcGetAccountOptions,
   RpcGetAccountsOptions,
+  assertAccountExists,
+  deserializeAccount,
+  gpaBuilder,
+  publicKey as toPublicKey,
 } from '@metaplex-foundation/umi';
 import {
   array,
@@ -28,16 +28,16 @@ import {
   u8,
 } from '@metaplex-foundation/umi/serializers';
 import {
-  getGumballMachineAccountDataSerializer,
   GumballMachineAccountData,
+  getGumballMachineAccountDataSerializer,
 } from '../../hooked';
 import {
   FeeConfigArgs,
+  GumballSettingsArgs,
+  GumballStateArgs,
   getFeeConfigSerializer,
   getGumballSettingsSerializer,
   getGumballStateSerializer,
-  GumballSettingsArgs,
-  GumballStateArgs,
 } from '../types';
 
 /** Gumball machine state and config data. */
