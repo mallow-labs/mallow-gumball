@@ -8,11 +8,11 @@
 
 import { Option, OptionOrNullable, PublicKey } from '@metaplex-foundation/umi';
 import {
+  Serializer,
   bool,
   bytes,
   option,
   publicKey as publicKeySerializer,
-  Serializer,
   string,
   struct,
   u16,

@@ -6,8 +6,8 @@
   "module": "dist/src/esm/index.js",
   "exports": {
     ".": {
-        "import": "./dist/src/esm/index.js",
-        "require": "./dist/src/cjs/index.js"
+      "import": "./dist/src/esm/index.js",
+      "require": "./dist/src/cjs/index.js"
     }
   },
   "types": "dist/src/esm/index.d.ts",
@@ -35,11 +35,12 @@
   },
   "dependencies": {
     "@metaplex-foundation/mpl-core": "^1.1.1",
-		"@metaplex-foundation/mpl-token-metadata": "^3.2.1",
+    "@metaplex-foundation/mpl-token-metadata": "^3.2.1",
     "@metaplex-foundation/mpl-toolbox": "^0.9.0",
     "@metaplex-foundation/umi": "^0.9.2",
     "@noble/hashes": "^1.2.0",
-    "merkletreejs": "^0.3.9"
+    "merkletreejs": "^0.3.9",
+    "sha3": "link:@noble/hashes/sha3"
   },
   "devDependencies": {
     "@ava/typescript": "^3.0.1",
@@ -64,7 +65,7 @@
     "typedoc": "^0.23.16",
     "typedoc-plugin-expand-object-like-types": "^0.1.2",
     "typedoc-plugin-missing-exports": "^1.0.0",
-    "typescript": "^4.6.2",
+    "typescript": "^5.8.3",
     "vercel": "^28.16.0"
   },
   "ava": {
@@ -79,5 +80,5 @@
       }
     }
   },
-  "packageManager": "pnpm@9.1.0"
+  "packageManager": "pnpm@10.9.0"
 }

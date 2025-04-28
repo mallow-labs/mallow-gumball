@@ -6,10 +6,10 @@ import {
   gpaBuilder,
   Pda,
   PublicKey,
-  publicKey as toPublicKey,
   RpcAccount,
   RpcGetAccountOptions,
   RpcGetAccountsOptions,
+  publicKey as toPublicKey,
 } from '@metaplex-foundation/umi';
 import {
   array,

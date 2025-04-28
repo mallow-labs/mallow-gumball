@@ -15,9 +15,9 @@ import {
   transactionBuilder,
 } from '@metaplex-foundation/umi';
 import {
+  Serializer,
   array,
   mapSerializer,
-  Serializer,
   struct,
   u32,
   u8,
@@ -27,10 +27,10 @@ import {
   findGumballMachineAuthorityPda,
 } from '../../hooked';
 import {
-  expectPublicKey,
-  getAccountMetasAndSigners,
   ResolvedAccount,
   ResolvedAccountsWithIndices,
+  expectPublicKey,
+  getAccountMetasAndSigners,
 } from '../shared';
 
 // Accounts.

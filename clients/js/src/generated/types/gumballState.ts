@@ -6,7 +6,7 @@
  * @see https://github.com/metaplex-foundation/kinobi
  */
 
-import { scalarEnum, Serializer } from '@metaplex-foundation/umi/serializers';
+import { Serializer, scalarEnum } from '@metaplex-foundation/umi/serializers';
 
 export enum GumballState {
   None,

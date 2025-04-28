@@ -16,15 +16,15 @@ import {
   Context,
   Pda,
   PublicKey,
-  publicKey,
   Signer,
   TransactionBuilder,
+  publicKey,
   transactionBuilder,
 } from '@metaplex-foundation/umi';
 import {
+  Serializer,
   array,
   mapSerializer,
-  Serializer,
   struct,
   u32,
   u8,
@@ -32,10 +32,10 @@ import {
 import { findGumballMachineAuthorityPda } from '../../hooked';
 import { findSellerHistoryPda } from '../accounts';
 import {
-  expectPublicKey,
-  getAccountMetasAndSigners,
   ResolvedAccount,
   ResolvedAccountsWithIndices,
+  expectPublicKey,
+  getAccountMetasAndSigners,
 } from '../shared';
 
 // Accounts.

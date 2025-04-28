@@ -8,31 +8,31 @@
 
 import {
   Context,
-  none,
   Option,
   OptionOrNullable,
   Pda,
   PublicKey,
   Signer,
   TransactionBuilder,
+  none,
   transactionBuilder,
 } from '@metaplex-foundation/umi';
 import {
+  Serializer,
   array,
   bytes,
   mapSerializer,
   option,
-  Serializer,
   struct,
   u8,
 } from '@metaplex-foundation/umi/serializers';
 import { findGumballMachineAuthorityPda } from '../../hooked';
 import { findSellerHistoryPda } from '../accounts';
 import {
-  expectPublicKey,
-  getAccountMetasAndSigners,
   ResolvedAccount,
   ResolvedAccountsWithIndices,
+  expectPublicKey,
+  getAccountMetasAndSigners,
 } from '../shared';
 
 // Accounts.

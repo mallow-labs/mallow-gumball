@@ -8,8 +8,8 @@
 
 import { PublicKey } from '@metaplex-foundation/umi';
 import {
-  publicKey as publicKeySerializer,
   Serializer,
+  publicKey as publicKeySerializer,
   struct,
   u64,
 } from '@metaplex-foundation/umi/serializers';
