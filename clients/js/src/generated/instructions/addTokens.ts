@@ -9,8 +9,6 @@
 import { findAssociatedTokenPda } from '@metaplex-foundation/mpl-toolbox';
 import {
   Context,
-  Option,
-  OptionOrNullable,
   Pda,
   PublicKey,
   Signer,
@@ -22,9 +20,7 @@ import {
 import {
   Serializer,
   array,
-  bytes,
   mapSerializer,
-  option,
   struct,
   u16,
   u64,
@@ -38,6 +34,11 @@ import {
   expectPublicKey,
   getAccountMetasAndSigners,
 } from '../shared';
+import {
+  AddItemArgs,
+  AddItemArgsArgs,
+  getAddItemArgsSerializer,
+} from '../types';
 
 // Accounts.
 export type AddTokensInstructionAccounts = {
@@ -62,13 +63,13 @@ export type AddTokensInstructionData = {
   discriminator: Array<number>;
   amount: bigint;
   quantity: number;
-  sellerProofPath: Option<Array<Uint8Array>>;
+  args: AddItemArgs;
 };
 
 export type AddTokensInstructionDataArgs = {
   amount: number | bigint;
   quantity: number;
-  sellerProofPath?: OptionOrNullable<Array<Uint8Array>>;
+  args?: AddItemArgsArgs;
 };
 
 export function getAddTokensInstructionDataSerializer(): Serializer<
@@ -85,14 +86,14 @@ export function getAddTokensInstructionDataSerializer(): Serializer<
         ['discriminator', array(u8(), { size: 8 })],
         ['amount', u64()],
         ['quantity', u16()],
-        ['sellerProofPath', option(array(bytes({ size: 32 })))],
+        ['args', getAddItemArgsSerializer()],
       ],
       { description: 'AddTokensInstructionData' }
     ),
     (value) => ({
       ...value,
       discriminator: [28, 218, 30, 209, 175, 155, 153, 240],
-      sellerProofPath: value.sellerProofPath ?? none(),
+      args: value.args ?? { sellerProofPath: none(), index: none() },
     })
   ) as Serializer<AddTokensInstructionDataArgs, AddTokensInstructionData>;
 }

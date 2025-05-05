@@ -6,6 +6,7 @@
  * @see https://github.com/metaplex-foundation/kinobi
  */
 
+export * from './addItemArgs';
 export * from './addressGate';
 export * from './allocation';
 export * from './allowList';

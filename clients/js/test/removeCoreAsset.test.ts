@@ -286,10 +286,12 @@ test('it can remove another seller core asset as the gumball authority', async (
       addCoreAsset(otherSellerUmi, {
         gumballMachine: gumballMachine.publicKey,
         asset: coreAsset.publicKey,
-        sellerProofPath: getMerkleProof(
-          [otherSellerUmi.identity.publicKey],
-          otherSellerUmi.identity.publicKey
-        ),
+        args: {
+          sellerProofPath: getMerkleProof(
+            [otherSellerUmi.identity.publicKey],
+            otherSellerUmi.identity.publicKey
+          ),
+        },
       })
     )
     .sendAndConfirm(otherSellerUmi);
@@ -351,10 +353,12 @@ test('it can remove own asset as non gumball authority', async (t) => {
       addCoreAsset(otherSellerUmi, {
         gumballMachine: gumballMachine.publicKey,
         asset: coreAsset.publicKey,
-        sellerProofPath: getMerkleProof(
-          [otherSellerUmi.identity.publicKey],
-          otherSellerUmi.identity.publicKey
-        ),
+        args: {
+          sellerProofPath: getMerkleProof(
+            [otherSellerUmi.identity.publicKey],
+            otherSellerUmi.identity.publicKey
+          ),
+        },
       })
     )
     .sendAndConfirm(otherSellerUmi);

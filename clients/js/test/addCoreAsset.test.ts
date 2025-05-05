@@ -108,10 +108,12 @@ test('it can add core asset to a gumball machine as allowlisted seller', async (
       addCoreAsset(otherSellerUmi, {
         gumballMachine: gumballMachine.publicKey,
         asset: coreAsset.publicKey,
-        sellerProofPath: getMerkleProof(
-          [otherSellerUmi.identity.publicKey],
-          otherSellerUmi.identity.publicKey
-        ),
+        args: {
+          sellerProofPath: getMerkleProof(
+            [otherSellerUmi.identity.publicKey],
+            otherSellerUmi.identity.publicKey
+          ),
+        },
       })
     )
     .sendAndConfirm(otherSellerUmi);
@@ -175,10 +177,12 @@ test('it cannot add core asset as non gumball authority when there is no seller 
       addCoreAsset(otherSellerUmi, {
         gumballMachine: gumballMachine.publicKey,
         asset: coreAsset.publicKey,
-        sellerProofPath: getMerkleProof(
-          [otherSellerUmi.identity.publicKey],
-          otherSellerUmi.identity.publicKey
-        ),
+        args: {
+          sellerProofPath: getMerkleProof(
+            [otherSellerUmi.identity.publicKey],
+            otherSellerUmi.identity.publicKey
+          ),
+        },
       })
     )
     .sendAndConfirm(otherSellerUmi);
@@ -204,10 +208,12 @@ test('it cannot add core asset as non-allowlisted seller when there is a seller 
       addCoreAsset(otherSellerUmi, {
         gumballMachine: gumballMachine.publicKey,
         asset: coreAsset.publicKey,
-        sellerProofPath: getMerkleProof(
-          [otherSellerUmi.identity.publicKey],
-          otherSellerUmi.identity.publicKey
-        ),
+        args: {
+          sellerProofPath: getMerkleProof(
+            [otherSellerUmi.identity.publicKey],
+            otherSellerUmi.identity.publicKey
+          ),
+        },
       })
     )
     .sendAndConfirm(otherSellerUmi);
@@ -358,10 +364,12 @@ test('it cannot add more core assets than allowed per seller', async (t) => {
       addCoreAsset(otherSellerUmi, {
         gumballMachine: gumballMachine.publicKey,
         asset: coreAssets[0].publicKey,
-        sellerProofPath: getMerkleProof(
-          [otherSellerUmi.identity.publicKey],
-          otherSellerUmi.identity.publicKey
-        ),
+        args: {
+          sellerProofPath: getMerkleProof(
+            [otherSellerUmi.identity.publicKey],
+            otherSellerUmi.identity.publicKey
+          ),
+        },
       })
     )
     .sendAndConfirm(otherSellerUmi);
@@ -371,10 +379,12 @@ test('it cannot add more core assets than allowed per seller', async (t) => {
       addCoreAsset(otherSellerUmi, {
         gumballMachine: gumballMachine.publicKey,
         asset: coreAssets[1].publicKey,
-        sellerProofPath: getMerkleProof(
-          [otherSellerUmi.identity.publicKey],
-          otherSellerUmi.identity.publicKey
-        ),
+        args: {
+          sellerProofPath: getMerkleProof(
+            [otherSellerUmi.identity.publicKey],
+            otherSellerUmi.identity.publicKey
+          ),
+        },
       })
     )
     .sendAndConfirm(otherSellerUmi);

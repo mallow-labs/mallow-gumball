@@ -63,8 +63,8 @@ pub mod mallow_gumball {
     ///   12. `[optional]` Auth rules account (pNFT)
     ///   13. `[optional]` Instructions sysvar (pNFT)
     ///   14. `[optional]` Auth rules program (pNFT)
-    pub fn add_nft(ctx: Context<AddNft>, seller_proof_path: Option<Vec<[u8; 32]>>) -> Result<()> {
-        instructions::add_nft(ctx, seller_proof_path)
+    pub fn add_nft(ctx: Context<AddNft>, args: AddItemArgs) -> Result<()> {
+        instructions::add_nft(ctx, args)
     }
 
     /// Add Core assets to the gumball machine.
@@ -79,11 +79,8 @@ pub mod mallow_gumball {
     ///   5. `[writable, optional]` Collection account
     ///   6. `[]` MPL Core program
     ///   7. `[]` System program
-    pub fn add_core_asset(
-        ctx: Context<AddCoreAsset>,
-        seller_proof_path: Option<Vec<[u8; 32]>>,
-    ) -> Result<()> {
-        instructions::add_core_asset(ctx, seller_proof_path)
+    pub fn add_core_asset(ctx: Context<AddCoreAsset>, args: AddItemArgs) -> Result<()> {
+        instructions::add_core_asset(ctx, args)
     }
 
     /// Add fungible tokens to the gumball machine.
@@ -105,9 +102,9 @@ pub mod mallow_gumball {
         ctx: Context<AddTokens>,
         amount: u64,
         quantity: u16,
-        seller_proof_path: Option<Vec<[u8; 32]>>,
+        args: AddItemArgs,
     ) -> Result<()> {
-        instructions::add_tokens(ctx, amount, quantity, seller_proof_path)
+        instructions::add_tokens(ctx, amount, quantity, args)
     }
 
     /// Request to add a NFT to the gumball machine.

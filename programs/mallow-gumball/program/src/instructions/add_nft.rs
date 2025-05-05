@@ -82,7 +82,13 @@ pub struct AddNft<'info> {
     pub auth_rules_program: Option<UncheckedAccount<'info>>,
 }
 
-pub fn add_nft(ctx: Context<AddNft>, seller_proof_path: Option<Vec<[u8; 32]>>) -> Result<()> {
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct AddItemArgs {
+    pub seller_proof_path: Option<Vec<[u8; 32]>>,
+    pub index: Option<u32>,
+}
+
+pub fn add_nft(ctx: Context<AddNft>, args: AddItemArgs) -> Result<()> {
     let token_program = &ctx.accounts.token_program.to_account_info();
     let token_account = &ctx.accounts.token_account.to_account_info();
     let token_metadata_program = &ctx.accounts.token_metadata_program.to_account_info();
@@ -99,7 +105,7 @@ pub fn add_nft(ctx: Context<AddNft>, seller_proof_path: Option<Vec<[u8; 32]>>) -
     seller_history.seller = seller.key();
 
     // Validate the seller
-    assert_can_add_item(gumball_machine, seller_history, 1, seller_proof_path)?;
+    assert_can_add_item(gumball_machine, seller_history, 1, &args)?;
 
     seller_history.item_count += 1;
 
@@ -119,6 +125,7 @@ pub fn add_nft(ctx: Context<AddNft>, seller_proof_path: Option<Vec<[u8; 32]>>) -
         },
         token_standard_from_mpl_token_standard(&metadata)?,
         1,
+        args.index,
     )?;
 
     let auth_seeds = [

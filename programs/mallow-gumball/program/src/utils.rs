@@ -1,6 +1,6 @@
 use crate::{
-    constants::GUMBALL_MACHINE_SIZE, ConfigLine, ConfigLineV2, GumballError, GumballMachine,
-    SellerHistory, TokenStandard,
+    constants::GUMBALL_MACHINE_SIZE, instructions::AddItemArgs, ConfigLine, ConfigLineV2,
+    GumballError, GumballMachine, GumballState, SellerHistory, TokenStandard,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token::TokenAccount;
@@ -62,8 +62,23 @@ pub fn assert_can_add_item(
     gumball_machine: &mut Box<Account<GumballMachine>>,
     seller_history: &mut Box<Account<SellerHistory>>,
     quantity: u16,
-    seller_proof_path: Option<Vec<[u8; 32]>>,
+    args: &AddItemArgs,
 ) -> Result<()> {
+    let AddItemArgs {
+        seller_proof_path,
+        index,
+    } = args;
+
+    // Having an index means we're re-adding an item
+    if index.is_some() {
+        // Can only add item back to a live solo gumball
+        require!(!gumball_machine.is_collab(), GumballError::NotASoloGumball);
+        require!(
+            gumball_machine.state == GumballState::SaleLive,
+            GumballError::InvalidState
+        );
+    }
+
     let seller = seller_history.seller;
 
     if seller == gumball_machine.authority {
@@ -83,7 +98,7 @@ pub fn assert_can_add_item(
     let leaf = solana_program::keccak::hashv(&[seller.to_string().as_bytes()]);
     require!(
         verify_proof(
-            &seller_proof_path.unwrap()[..],
+            &seller_proof_path.as_ref().unwrap()[..],
             &gumball_machine.settings.sellers_merkle_root.unwrap(),
             &leaf.0,
         ),

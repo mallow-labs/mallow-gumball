@@ -368,10 +368,12 @@ test('it can remove another seller nft as the gumball authority', async (t) => {
       addNft(otherSellerUmi, {
         gumballMachine: gumballMachine.publicKey,
         mint: nft.publicKey,
-        sellerProofPath: getMerkleProof(
-          [otherSellerUmi.identity.publicKey],
-          otherSellerUmi.identity.publicKey
-        ),
+        args: {
+          sellerProofPath: getMerkleProof(
+            [otherSellerUmi.identity.publicKey],
+            otherSellerUmi.identity.publicKey
+          ),
+        },
       })
     )
     .sendAndConfirm(otherSellerUmi);
@@ -434,10 +436,12 @@ test('it can remove own nft as non gumball authority', async (t) => {
       addNft(otherSellerUmi, {
         gumballMachine: gumballMachine.publicKey,
         mint: nft.publicKey,
-        sellerProofPath: getMerkleProof(
-          [otherSellerUmi.identity.publicKey],
-          otherSellerUmi.identity.publicKey
-        ),
+        args: {
+          sellerProofPath: getMerkleProof(
+            [otherSellerUmi.identity.publicKey],
+            otherSellerUmi.identity.publicKey
+          ),
+        },
       })
     )
     .sendAndConfirm(otherSellerUmi);

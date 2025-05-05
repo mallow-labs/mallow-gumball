@@ -5,7 +5,7 @@ use crate::{
     processors::{self, claim_proceeds, is_item_claimed},
     state::GumballMachine,
     token_standard_from_mpl_token_standard, AssociatedToken, ConfigLine, GumballError,
-    GumballState, SellerHistory, Token, TokenStandard,
+    SellerHistory, Token, TokenStandard,
 };
 use anchor_lang::prelude::*;
 use mpl_token_metadata::{accounts::Metadata, instructions::UpdateMetadataAccountV2CpiBuilder};
@@ -23,7 +23,7 @@ pub struct SettleNftSale<'info> {
     #[account(
         mut,
         has_one = authority @ GumballError::InvalidAuthority,
-        constraint = gumball_machine.state == GumballState::SaleEnded @ GumballError::InvalidState
+        constraint = gumball_machine.can_settle_items() @ GumballError::InvalidState
     )]
     gumball_machine: Box<Account<'info, GumballMachine>>,
 

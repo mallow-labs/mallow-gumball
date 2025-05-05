@@ -8,8 +8,6 @@
 
 import {
   Context,
-  Option,
-  OptionOrNullable,
   Pda,
   PublicKey,
   Signer,
@@ -20,9 +18,7 @@ import {
 import {
   Serializer,
   array,
-  bytes,
   mapSerializer,
-  option,
   struct,
   u8,
 } from '@metaplex-foundation/umi/serializers';
@@ -34,6 +30,11 @@ import {
   expectPublicKey,
   getAccountMetasAndSigners,
 } from '../shared';
+import {
+  AddItemArgs,
+  AddItemArgsArgs,
+  getAddItemArgsSerializer,
+} from '../types';
 
 // Accounts.
 export type AddCoreAssetInstructionAccounts = {
@@ -54,12 +55,10 @@ export type AddCoreAssetInstructionAccounts = {
 // Data.
 export type AddCoreAssetInstructionData = {
   discriminator: Array<number>;
-  sellerProofPath: Option<Array<Uint8Array>>;
+  args: AddItemArgs;
 };
 
-export type AddCoreAssetInstructionDataArgs = {
-  sellerProofPath?: OptionOrNullable<Array<Uint8Array>>;
-};
+export type AddCoreAssetInstructionDataArgs = { args?: AddItemArgsArgs };
 
 export function getAddCoreAssetInstructionDataSerializer(): Serializer<
   AddCoreAssetInstructionDataArgs,
@@ -73,14 +72,14 @@ export function getAddCoreAssetInstructionDataSerializer(): Serializer<
     struct<AddCoreAssetInstructionData>(
       [
         ['discriminator', array(u8(), { size: 8 })],
-        ['sellerProofPath', option(array(bytes({ size: 32 })))],
+        ['args', getAddItemArgsSerializer()],
       ],
       { description: 'AddCoreAssetInstructionData' }
     ),
     (value) => ({
       ...value,
       discriminator: [30, 144, 222, 2, 197, 195, 17, 163],
-      sellerProofPath: value.sellerProofPath ?? none(),
+      args: value.args ?? { sellerProofPath: none(), index: none() },
     })
   ) as Serializer<AddCoreAssetInstructionDataArgs, AddCoreAssetInstructionData>;
 }

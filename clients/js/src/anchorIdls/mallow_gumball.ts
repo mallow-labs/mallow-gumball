@@ -206,13 +206,9 @@ export type MallowGumball = {
       ];
       args: [
         {
-          name: 'sellerProofPath';
+          name: 'args';
           type: {
-            option: {
-              vec: {
-                array: ['u8', 32];
-              };
-            };
+            defined: 'AddItemArgs';
           };
         }
       ];
@@ -282,13 +278,9 @@ export type MallowGumball = {
       ];
       args: [
         {
-          name: 'sellerProofPath';
+          name: 'args';
           type: {
-            option: {
-              vec: {
-                array: ['u8', 32];
-              };
-            };
+            defined: 'AddItemArgs';
           };
         }
       ];
@@ -382,13 +374,9 @@ export type MallowGumball = {
           type: 'u16';
         },
         {
-          name: 'sellerProofPath';
+          name: 'args';
           type: {
-            option: {
-              vec: {
-                array: ['u8', 32];
-              };
-            };
+            defined: 'AddItemArgs';
           };
         }
       ];
@@ -3121,6 +3109,30 @@ export type MallowGumball = {
   ];
   types: [
     {
+      name: 'AddItemArgs';
+      type: {
+        kind: 'struct';
+        fields: [
+          {
+            name: 'sellerProofPath';
+            type: {
+              option: {
+                vec: {
+                  array: ['u8', 32];
+                };
+              };
+            };
+          },
+          {
+            name: 'index';
+            type: {
+              option: 'u32';
+            };
+          }
+        ];
+      };
+    },
+    {
       name: 'InitializeArgs';
       type: {
         kind: 'struct';
@@ -3934,6 +3946,21 @@ export type MallowGumball = {
       code: 6064;
       name: 'BuyBackCutoffReached';
       msg: 'Buy back cutoff reached';
+    },
+    {
+      code: 6065;
+      name: 'NotASoloGumball';
+      msg: 'Not a solo gumball';
+    },
+    {
+      code: 6066;
+      name: 'ItemNotClaimed';
+      msg: 'Item not claimed';
+    },
+    {
+      code: 6067;
+      name: 'ItemNotSettled';
+      msg: 'Item not settled';
     }
   ];
 };
@@ -4146,13 +4173,9 @@ export const IDL: MallowGumball = {
       ],
       args: [
         {
-          name: 'sellerProofPath',
+          name: 'args',
           type: {
-            option: {
-              vec: {
-                array: ['u8', 32],
-              },
-            },
+            defined: 'AddItemArgs',
           },
         },
       ],
@@ -4222,13 +4245,9 @@ export const IDL: MallowGumball = {
       ],
       args: [
         {
-          name: 'sellerProofPath',
+          name: 'args',
           type: {
-            option: {
-              vec: {
-                array: ['u8', 32],
-              },
-            },
+            defined: 'AddItemArgs',
           },
         },
       ],
@@ -4322,13 +4341,9 @@ export const IDL: MallowGumball = {
           type: 'u16',
         },
         {
-          name: 'sellerProofPath',
+          name: 'args',
           type: {
-            option: {
-              vec: {
-                array: ['u8', 32],
-              },
-            },
+            defined: 'AddItemArgs',
           },
         },
       ],
@@ -7061,6 +7076,30 @@ export const IDL: MallowGumball = {
   ],
   types: [
     {
+      name: 'AddItemArgs',
+      type: {
+        kind: 'struct',
+        fields: [
+          {
+            name: 'sellerProofPath',
+            type: {
+              option: {
+                vec: {
+                  array: ['u8', 32],
+                },
+              },
+            },
+          },
+          {
+            name: 'index',
+            type: {
+              option: 'u32',
+            },
+          },
+        ],
+      },
+    },
+    {
       name: 'InitializeArgs',
       type: {
         kind: 'struct',
@@ -7874,6 +7913,21 @@ export const IDL: MallowGumball = {
       code: 6064,
       name: 'BuyBackCutoffReached',
       msg: 'Buy back cutoff reached',
+    },
+    {
+      code: 6065,
+      name: 'NotASoloGumball',
+      msg: 'Not a solo gumball',
+    },
+    {
+      code: 6066,
+      name: 'ItemNotClaimed',
+      msg: 'Item not claimed',
+    },
+    {
+      code: 6067,
+      name: 'ItemNotSettled',
+      msg: 'Item not settled',
     },
   ],
 };

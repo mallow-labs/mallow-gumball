@@ -196,4 +196,13 @@ pub enum GumballError {
 
     #[msg("Buy back cutoff reached")]
     BuyBackCutoffReached,
+
+    #[msg("Not a solo gumball")]
+    NotASoloGumball,
+
+    #[msg("Item not claimed")]
+    ItemNotClaimed,
+
+    #[msg("Item not settled")]
+    ItemNotSettled,
 }

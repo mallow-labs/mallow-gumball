@@ -359,10 +359,12 @@ test('it can remove another seller tokens as the gumball authority', async (t) =
         mint: tokenMint.publicKey,
         amount: 100,
         quantity: 1,
-        sellerProofPath: getMerkleProof(
-          [otherSellerUmi.identity.publicKey],
-          otherSellerUmi.identity.publicKey
-        ),
+        args: {
+          sellerProofPath: getMerkleProof(
+            [otherSellerUmi.identity.publicKey],
+            otherSellerUmi.identity.publicKey
+          ),
+        },
       })
     )
     .sendAndConfirm(otherSellerUmi);
@@ -431,10 +433,12 @@ test('it can remove own tokens as non gumball authority', async (t) => {
         mint: tokenMint.publicKey,
         amount: 100,
         quantity: 1,
-        sellerProofPath: getMerkleProof(
-          [otherSellerUmi.identity.publicKey],
-          otherSellerUmi.identity.publicKey
-        ),
+        args: {
+          sellerProofPath: getMerkleProof(
+            [otherSellerUmi.identity.publicKey],
+            otherSellerUmi.identity.publicKey
+          ),
+        },
       })
     )
     .sendAndConfirm(otherSellerUmi);

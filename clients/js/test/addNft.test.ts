@@ -205,10 +205,12 @@ test('it can add nft to a gumball machine as allowlisted seller', async (t) => {
       addNft(otherSellerUmi, {
         gumballMachine: gumballMachine.publicKey,
         mint: nft.publicKey,
-        sellerProofPath: getMerkleProof(
-          [otherSellerUmi.identity.publicKey],
-          otherSellerUmi.identity.publicKey
-        ),
+        args: {
+          sellerProofPath: getMerkleProof(
+            [otherSellerUmi.identity.publicKey],
+            otherSellerUmi.identity.publicKey
+          ),
+        },
       })
     )
     .sendAndConfirm(otherSellerUmi);
@@ -276,10 +278,12 @@ test('it can add nft to a gumball machine as allowlisted seller on allowlist of 
       addNft(otherSellerUmi, {
         gumballMachine: gumballMachine.publicKey,
         mint: nft.publicKey,
-        sellerProofPath: getMerkleProof(
-          addresses,
-          otherSellerUmi.identity.publicKey
-        ),
+        args: {
+          sellerProofPath: getMerkleProof(
+            addresses,
+            otherSellerUmi.identity.publicKey
+          ),
+        },
       })
     )
     .sendAndConfirm(otherSellerUmi);
@@ -509,10 +513,12 @@ test('it cannot add more nfts than allowed per seller', async (t) => {
       addNft(otherSellerUmi, {
         gumballMachine: gumballMachine.publicKey,
         mint: nfts[0].publicKey,
-        sellerProofPath: getMerkleProof(
-          [otherSellerUmi.identity.publicKey],
-          otherSellerUmi.identity.publicKey
-        ),
+        args: {
+          sellerProofPath: getMerkleProof(
+            [otherSellerUmi.identity.publicKey],
+            otherSellerUmi.identity.publicKey
+          ),
+        },
       })
     )
     .sendAndConfirm(otherSellerUmi);
@@ -522,10 +528,12 @@ test('it cannot add more nfts than allowed per seller', async (t) => {
       addNft(otherSellerUmi, {
         gumballMachine: gumballMachine.publicKey,
         mint: nfts[1].publicKey,
-        sellerProofPath: getMerkleProof(
-          [otherSellerUmi.identity.publicKey],
-          otherSellerUmi.identity.publicKey
-        ),
+        args: {
+          sellerProofPath: getMerkleProof(
+            [otherSellerUmi.identity.publicKey],
+            otherSellerUmi.identity.publicKey
+          ),
+        },
       })
     )
     .sendAndConfirm(otherSellerUmi);

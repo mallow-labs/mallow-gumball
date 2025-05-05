@@ -935,6 +935,45 @@ export class BuyBackCutoffReachedError extends ProgramError {
 codeToErrorMap.set(0x17b0, BuyBackCutoffReachedError);
 nameToErrorMap.set('BuyBackCutoffReached', BuyBackCutoffReachedError);
 
+/** NotASoloGumball: Not a solo gumball */
+export class NotASoloGumballError extends ProgramError {
+  readonly name: string = 'NotASoloGumball';
+
+  readonly code: number = 0x17b1; // 6065
+
+  constructor(program: Program, cause?: Error) {
+    super('Not a solo gumball', program, cause);
+  }
+}
+codeToErrorMap.set(0x17b1, NotASoloGumballError);
+nameToErrorMap.set('NotASoloGumball', NotASoloGumballError);
+
+/** ItemNotClaimed: Item not claimed */
+export class ItemNotClaimedError extends ProgramError {
+  readonly name: string = 'ItemNotClaimed';
+
+  readonly code: number = 0x17b2; // 6066
+
+  constructor(program: Program, cause?: Error) {
+    super('Item not claimed', program, cause);
+  }
+}
+codeToErrorMap.set(0x17b2, ItemNotClaimedError);
+nameToErrorMap.set('ItemNotClaimed', ItemNotClaimedError);
+
+/** ItemNotSettled: Item not settled */
+export class ItemNotSettledError extends ProgramError {
+  readonly name: string = 'ItemNotSettled';
+
+  readonly code: number = 0x17b3; // 6067
+
+  constructor(program: Program, cause?: Error) {
+    super('Item not settled', program, cause);
+  }
+}
+codeToErrorMap.set(0x17b3, ItemNotSettledError);
+nameToErrorMap.set('ItemNotSettled', ItemNotSettledError);
+
 /**
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors

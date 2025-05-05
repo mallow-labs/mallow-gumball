@@ -218,16 +218,9 @@
       ],
       "args": [
         {
-          "name": "sellerProofPath",
+          "name": "args",
           "type": {
-            "option": {
-              "vec": {
-                "array": [
-                  "u8",
-                  32
-                ]
-              }
-            }
+            "defined": "AddItemArgs"
           }
         }
       ]
@@ -305,16 +298,9 @@
       ],
       "args": [
         {
-          "name": "sellerProofPath",
+          "name": "args",
           "type": {
-            "option": {
-              "vec": {
-                "array": [
-                  "u8",
-                  32
-                ]
-              }
-            }
+            "defined": "AddItemArgs"
           }
         }
       ]
@@ -414,16 +400,9 @@
           "type": "u16"
         },
         {
-          "name": "sellerProofPath",
+          "name": "args",
           "type": {
-            "option": {
-              "vec": {
-                "array": [
-                  "u8",
-                  32
-                ]
-              }
-            }
+            "defined": "AddItemArgs"
           }
         }
       ]
@@ -3440,6 +3419,33 @@
   ],
   "types": [
     {
+      "name": "AddItemArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "sellerProofPath",
+            "type": {
+              "option": {
+                "vec": {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "name": "index",
+            "type": {
+              "option": "u32"
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "InitializeArgs",
       "type": {
         "kind": "struct",
@@ -4304,6 +4310,21 @@
       "code": 6064,
       "name": "BuyBackCutoffReached",
       "msg": "Buy back cutoff reached"
+    },
+    {
+      "code": 6065,
+      "name": "NotASoloGumball",
+      "msg": "Not a solo gumball"
+    },
+    {
+      "code": 6066,
+      "name": "ItemNotClaimed",
+      "msg": "Item not claimed"
+    },
+    {
+      "code": 6067,
+      "name": "ItemNotSettled",
+      "msg": "Item not settled"
     }
   ],
   "metadata": {

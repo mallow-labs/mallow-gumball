@@ -14,8 +14,6 @@ import {
 import { findAssociatedTokenPda } from '@metaplex-foundation/mpl-toolbox';
 import {
   Context,
-  Option,
-  OptionOrNullable,
   Pda,
   PublicKey,
   Signer,
@@ -27,9 +25,7 @@ import {
 import {
   Serializer,
   array,
-  bytes,
   mapSerializer,
-  option,
   struct,
   u8,
 } from '@metaplex-foundation/umi/serializers';
@@ -41,6 +37,11 @@ import {
   expectPublicKey,
   getAccountMetasAndSigners,
 } from '../shared';
+import {
+  AddItemArgs,
+  AddItemArgsArgs,
+  getAddItemArgsSerializer,
+} from '../types';
 
 // Accounts.
 export type AddNftInstructionAccounts = {
@@ -68,12 +69,10 @@ export type AddNftInstructionAccounts = {
 // Data.
 export type AddNftInstructionData = {
   discriminator: Array<number>;
-  sellerProofPath: Option<Array<Uint8Array>>;
+  args: AddItemArgs;
 };
 
-export type AddNftInstructionDataArgs = {
-  sellerProofPath?: OptionOrNullable<Array<Uint8Array>>;
-};
+export type AddNftInstructionDataArgs = { args?: AddItemArgsArgs };
 
 export function getAddNftInstructionDataSerializer(): Serializer<
   AddNftInstructionDataArgs,
@@ -83,14 +82,14 @@ export function getAddNftInstructionDataSerializer(): Serializer<
     struct<AddNftInstructionData>(
       [
         ['discriminator', array(u8(), { size: 8 })],
-        ['sellerProofPath', option(array(bytes({ size: 32 })))],
+        ['args', getAddItemArgsSerializer()],
       ],
       { description: 'AddNftInstructionData' }
     ),
     (value) => ({
       ...value,
       discriminator: [55, 57, 85, 145, 81, 134, 220, 223],
-      sellerProofPath: value.sellerProofPath ?? none(),
+      args: value.args ?? { sellerProofPath: none(), index: none() },
     })
   ) as Serializer<AddNftInstructionDataArgs, AddNftInstructionData>;
 }

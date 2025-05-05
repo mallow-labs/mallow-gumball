@@ -43,10 +43,13 @@ pub struct GumballMachine {
     // - version 4:
     // - (BuyBackConfig) buy_back_config
     // - (u64) buy_back_funds_available
+    //
+    // - version 5:
+    // - (u64) total_proceeds_settled
 }
 
 impl GumballMachine {
-    pub const CURRENT_VERSION: u8 = 4;
+    pub const CURRENT_VERSION: u8 = 5;
 
     /// Gets the size of the gumball machine given the number of items.
     pub fn get_size(item_count: u64, version: u8) -> usize {
@@ -58,6 +61,7 @@ impl GumballMachine {
             + 4 + (4 * item_count as usize) // mint indices
             + if version >= 3 { 1 } else { 0 } // disable_primary_split
             + if version >= 4 { BuyBackConfig::INIT_SPACE + 8 } else { 0 } // buy_back_config
+            + if version >= 5 { 8 } else { 0 } // total_proceeds_settled
     }
 
     pub fn get_config_line_size(&self) -> usize {
@@ -125,8 +129,29 @@ impl GumballMachine {
         ))
     }
 
+    pub fn get_total_proceeds_settled_position(&self) -> Result<usize> {
+        let position = self.get_buy_back_funds_available_position()? + 8;
+        Ok(position)
+    }
+
+    pub fn get_total_proceeds_settled(&self, data: &[u8]) -> Result<u64> {
+        let position = self.get_total_proceeds_settled_position()?;
+        Ok(u64::from_le_bytes(
+            data[position..position + 8].try_into().unwrap(),
+        ))
+    }
+
     pub fn can_edit_items(&self) -> bool {
         self.state == GumballState::None || self.state == GumballState::DetailsFinalized
+    }
+
+    pub fn is_collab(&self) -> bool {
+        self.settings.sellers_merkle_root.is_some()
+    }
+
+    pub fn can_settle_items(&self) -> bool {
+        self.state == GumballState::SaleEnded
+            || (self.state == GumballState::SaleLive && !self.is_collab() && self.version >= 5)
     }
 }
 

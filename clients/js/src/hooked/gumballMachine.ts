@@ -21,7 +21,10 @@ export function getGumballMachineSizeForItemCount(
       (4 + Math.floor(items / 8) + 1) +
       // Mint indices.
       (4 + items * 4) +
+      4 + // Unused
       1 + // disablePrimarySplit
-      BUY_BACK_CONFIG_SIZE
+      BUY_BACK_CONFIG_SIZE +
+      8 + // buyBackFundsAvailable
+      8 // totalProceedsSettled
   );
 }
