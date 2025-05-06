@@ -246,8 +246,12 @@ pub fn settle_tokens_sale_claimed<'info>(
 
     let mut total_proceeds_settled = gumball_machine.get_total_proceeds_settled(&account_data)?;
 
-    let (total_proceeds, _) =
+    let (mut total_proceeds, _) =
         get_total_proceeds(gumball_machine, total_proceeds_settled, config_count)?;
+
+    total_proceeds = total_proceeds
+        .checked_mul(total_items_settled as u64)
+        .ok_or(GumballError::NumericalOverflowError)?;
 
     total_proceeds_settled = total_proceeds_settled
         .checked_add(total_proceeds)

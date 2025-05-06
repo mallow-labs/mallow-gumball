@@ -567,10 +567,7 @@ test('it can settle a tokens item that was not sold with proceeds from another s
   const authorityPdaPostBalance = await umi.rpc.getBalance(
     findGumballMachineAuthorityPda(umi, { gumballMachine: gumballMachine })[0]
   );
-  console.log({
-    authorityPdaPreBalance: authorityPdaPreBalance.basisPoints.toString(),
-    authorityPdaPostBalance: authorityPdaPostBalance.basisPoints.toString(),
-  });
+
   t.true(
     isEqualToAmount(
       subtractAmounts(authorityPdaPreBalance, authorityPdaPostBalance),
