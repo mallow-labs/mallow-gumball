@@ -135,6 +135,10 @@ impl GumballMachine {
     }
 
     pub fn get_total_proceeds_settled(&self, data: &[u8]) -> Result<u64> {
+        if self.version < 5 {
+            return Ok(0);
+        }
+
         let position = self.get_total_proceeds_settled_position()?;
         Ok(u64::from_le_bytes(
             data[position..position + 8].try_into().unwrap(),
@@ -143,6 +147,11 @@ impl GumballMachine {
 
     pub fn can_edit_items(&self) -> bool {
         self.state == GumballState::None || self.state == GumballState::DetailsFinalized
+    }
+
+    pub fn can_add_items(&self) -> bool {
+        self.can_edit_items()
+            || (self.state == GumballState::SaleLive && !self.is_collab() && self.version >= 5)
     }
 
     pub fn is_collab(&self) -> bool {

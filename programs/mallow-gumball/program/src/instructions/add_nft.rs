@@ -13,7 +13,7 @@ pub struct AddNft<'info> {
     /// Gumball Machine account.
     #[account(
         mut,
-        constraint = gumball_machine.can_edit_items() @ GumballError::InvalidState,
+        constraint = gumball_machine.can_add_items() @ GumballError::InvalidState,
     )]
     gumball_machine: Box<Account<'info, GumballMachine>>,
 

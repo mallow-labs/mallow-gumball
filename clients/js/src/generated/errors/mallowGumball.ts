@@ -974,6 +974,19 @@ export class ItemNotSettledError extends ProgramError {
 codeToErrorMap.set(0x17b3, ItemNotSettledError);
 nameToErrorMap.set('ItemNotSettled', ItemNotSettledError);
 
+/** MissingItemIndex: Missing item index */
+export class MissingItemIndexError extends ProgramError {
+  readonly name: string = 'MissingItemIndex';
+
+  readonly code: number = 0x17b4; // 6068
+
+  constructor(program: Program, cause?: Error) {
+    super('Missing item index', program, cause);
+  }
+}
+codeToErrorMap.set(0x17b4, MissingItemIndexError);
+nameToErrorMap.set('MissingItemIndex', MissingItemIndexError);
+
 /**
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors

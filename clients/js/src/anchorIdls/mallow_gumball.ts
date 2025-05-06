@@ -3961,6 +3961,11 @@ export type MallowGumball = {
       code: 6067;
       name: 'ItemNotSettled';
       msg: 'Item not settled';
+    },
+    {
+      code: 6068;
+      name: 'MissingItemIndex';
+      msg: 'Missing item index';
     }
   ];
 };
@@ -7928,6 +7933,11 @@ export const IDL: MallowGumball = {
       code: 6067,
       name: 'ItemNotSettled',
       msg: 'Item not settled',
+    },
+    {
+      code: 6068,
+      name: 'MissingItemIndex',
+      msg: 'Missing item index',
     },
   ],
 };

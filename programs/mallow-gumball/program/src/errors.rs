@@ -205,4 +205,7 @@ pub enum GumballError {
 
     #[msg("Item not settled")]
     ItemNotSettled,
+
+    #[msg("Missing item index")]
+    MissingItemIndex,
 }

@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 
 use crate::{
     constants::GUMBALL_MACHINE_SIZE, get_bit_byte_info, get_config_count, ConfigLineV2Input,
-    GumballError, GumballMachine, TokenStandard,
+    GumballError, GumballMachine, GumballState, TokenStandard,
 };
 
 pub fn add_item(
@@ -16,6 +16,10 @@ pub fn add_item(
     let is_re_add = re_add_index.is_some();
     if is_re_add {
         require!(gumball_machine.version >= 5, GumballError::InvalidVersion);
+    }
+
+    if gumball_machine.state == GumballState::SaleLive {
+        require!(is_re_add, GumballError::MissingItemIndex);
     }
 
     let account_info = gumball_machine.to_account_info();
@@ -58,6 +62,7 @@ pub fn add_item(
         seller_slice.copy_from_slice(&config_line.seller.to_bytes());
 
         if is_re_add {
+            position += 32;
             // Zero out buyer
             let buyer_slice: &mut [u8] = &mut data[position..position + 32];
             buyer_slice.copy_from_slice(&[0; 32]);
@@ -119,21 +124,21 @@ pub fn add_item(
             .items_settled
             .checked_sub(quantity.into())
             .ok_or(GumballError::NumericalOverflowError)?;
+    } else {
+        config_count = config_count
+            .checked_add(quantity.into())
+            .ok_or(GumballError::NumericalOverflowError)?;
+
+        msg!(
+            "New item added: position={}, new count={})",
+            position,
+            config_count,
+        );
+
+        // updates the config lines count
+        data[GUMBALL_MACHINE_SIZE..GUMBALL_MACHINE_SIZE + 4]
+            .copy_from_slice(&(config_count as u32).to_le_bytes());
     }
-
-    config_count = config_count
-        .checked_add(quantity.into())
-        .ok_or(GumballError::NumericalOverflowError)?;
-
-    msg!(
-        "New item added: position={}, new count={})",
-        position,
-        config_count,
-    );
-
-    // updates the config lines count
-    data[GUMBALL_MACHINE_SIZE..GUMBALL_MACHINE_SIZE + 4]
-        .copy_from_slice(&(config_count as u32).to_le_bytes());
 
     Ok(())
 }
