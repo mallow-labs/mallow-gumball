@@ -21,6 +21,7 @@ import { generateSignerWithSol } from '@metaplex-foundation/umi-bundle-tests';
 import test from 'ava';
 import {
   addNft,
+  claimNft,
   draw,
   fetchGumballMachine,
   fetchSellerHistory,
@@ -867,4 +868,148 @@ test('it can re-add pnft to a gumball machine as the authority', async (t) => {
     seller: umi.identity.publicKey,
     itemCount: 2n,
   });
+});
+
+test('it cannot add nft without index to a live gumball machine', async (t) => {
+  // Given a Gumball Machine with 5 nfts.
+  const umi = await createUmi();
+  const nfts = await Promise.all([createNft(umi), createNft(umi)]);
+
+  const gumballMachineSigner = generateSigner(umi);
+  const gumballMachine = gumballMachineSigner.publicKey;
+
+  await create(umi, {
+    gumballMachine: gumballMachineSigner,
+    items: [
+      {
+        id: nfts[0].publicKey,
+        tokenStandard: TokenStandard.ProgrammableNonFungible,
+      },
+    ],
+    startSale: true,
+  });
+
+  // When we add an nft to the Gumball Machine.
+  const promise = transactionBuilder()
+    .add(
+      addNft(umi, {
+        gumballMachine,
+        mint: nfts[1].publicKey,
+      })
+    )
+    .sendAndConfirm(umi);
+
+  await t.throwsAsync(promise, { message: /MissingItemIndex/ });
+});
+
+test('it cannot re-add nft to index with an unclaimed item', async (t) => {
+  // Given a Gumball Machine with 5 nfts.
+  const umi = await createUmi();
+  const nfts = await Promise.all([createNft(umi), createNft(umi)]);
+
+  const gumballMachineSigner = generateSigner(umi);
+  const gumballMachine = gumballMachineSigner.publicKey;
+
+  await create(umi, {
+    gumballMachine: gumballMachineSigner,
+    items: [
+      {
+        id: nfts[0].publicKey,
+        tokenStandard: TokenStandard.ProgrammableNonFungible,
+      },
+    ],
+    startSale: true,
+  });
+
+  // When we add an nft to the Gumball Machine.
+  const promise = transactionBuilder()
+    .add(
+      addNft(umi, {
+        gumballMachine,
+        mint: nfts[0].publicKey,
+        args: {
+          index: 0,
+        },
+      })
+    )
+    .sendAndConfirm(umi);
+
+  await t.throwsAsync(promise, { message: /ItemNotClaimed/ });
+});
+
+test('it cannot re-add nft to index with an unsettled item', async (t) => {
+  // Given a Gumball Machine with 5 nfts.
+  const umi = await createUmi();
+  const nfts = await Promise.all([createNft(umi), createNft(umi)]);
+
+  const gumballMachineSigner = generateSigner(umi);
+  const gumballMachine = gumballMachineSigner.publicKey;
+
+  await create(umi, {
+    gumballMachine: gumballMachineSigner,
+    items: [
+      {
+        id: nfts[0].publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      },
+      {
+        id: nfts[1].publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      },
+    ],
+    startSale: true,
+    guards: {
+      solPayment: some({ lamports: sol(1) }),
+    },
+  });
+
+  const buyer = await generateSignerWithSol(umi, sol(10));
+  const buyerUmi = await createUmi();
+  buyerUmi.use(signerIdentity(buyer));
+
+  // When we draw the nft from the Gumball Machine.
+  await transactionBuilder()
+    .add(setComputeUnitLimit(umi, { units: 600_000 }))
+    .add(
+      draw(umi, {
+        gumballMachine,
+        buyer,
+        mintArgs: { solPayment: some(true) },
+      })
+    )
+    .sendAndConfirm(umi);
+
+  // Figure out which was drawn
+  let gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
+  const drawnIndex = gumballMachineAccount.items.findIndex(
+    (item) => item.isDrawn
+  );
+
+  // Claim the item as the buyer
+  await transactionBuilder()
+    .add(
+      claimNft(umi, {
+        gumballMachine,
+        buyer: buyer.publicKey,
+        mint: nfts[drawnIndex].publicKey,
+        seller: umi.identity.publicKey,
+        index: drawnIndex,
+      })
+    )
+    .sendAndConfirm(buyerUmi);
+
+  // When we add an nft to the Gumball Machine.
+  const promise = transactionBuilder()
+    .add(
+      addNft(umi, {
+        gumballMachine,
+        mint: nfts[0].publicKey,
+        args: {
+          index: drawnIndex,
+        },
+      })
+    )
+    .sendAndConfirm(umi);
+
+  await t.throwsAsync(promise, { message: /ItemNotSettled/ });
 });
