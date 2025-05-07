@@ -706,3 +706,165 @@ test('it can re-add nft to a gumball machine as the authority', async (t) => {
     itemCount: 2n,
   });
 });
+
+test('it can re-add pnft to a gumball machine as the authority', async (t) => {
+  // Given a Gumball Machine with 5 nfts.
+  const umi = await createUmi();
+  const nfts = await Promise.all([
+    createProgrammableNft(umi),
+    createProgrammableNft(umi),
+  ]);
+
+  const gumballMachineSigner = generateSigner(umi);
+  const gumballMachine = gumballMachineSigner.publicKey;
+
+  await create(umi, {
+    gumballMachine: gumballMachineSigner,
+    items: [
+      {
+        id: nfts[0].publicKey,
+        tokenStandard: TokenStandard.ProgrammableNonFungible,
+      },
+      {
+        id: nfts[1].publicKey,
+        tokenStandard: TokenStandard.ProgrammableNonFungible,
+      },
+    ],
+    startSale: true,
+    guards: {
+      solPayment: some({ lamports: sol(1) }),
+    },
+  });
+
+  const buyer = await generateSignerWithSol(umi, sol(10));
+  const buyerUmi = await createUmi();
+  buyerUmi.use(signerIdentity(buyer));
+
+  // When we draw the nft from the Gumball Machine.
+  await transactionBuilder()
+    .add(setComputeUnitLimit(umi, { units: 600_000 }))
+    .add(
+      draw(umi, {
+        gumballMachine,
+        buyer,
+        mintArgs: { solPayment: some(true) },
+      })
+    )
+    .sendAndConfirm(umi);
+
+  // Figure out which was drawn
+  let gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
+  const drawnIndex = gumballMachineAccount.items.findIndex(
+    (item) => item.isDrawn
+  );
+
+  // Then settle the sale
+  await transactionBuilder()
+    .add(setComputeUnitLimit(umi, { units: 600_000 }))
+    .add(
+      settleNftSale(umi, {
+        index: drawnIndex,
+        gumballMachine,
+        authority: umi.identity.publicKey,
+        buyer: buyer.publicKey,
+        seller: umi.identity.publicKey,
+        mint: nfts[drawnIndex].publicKey,
+        creators: [umi.identity.publicKey],
+        authRulesProgram: MPL_TOKEN_AUTH_RULES_PROGRAM_ID,
+      })
+    )
+    .sendAndConfirm(umi);
+
+  // Transfer back to the seller
+  await transactionBuilder()
+    .add(
+      transferV1(buyerUmi, {
+        mint: nfts[drawnIndex].publicKey,
+        destinationOwner: umi.identity.publicKey,
+        tokenStandard: MplTokenStandard.ProgrammableNonFungible,
+      })
+    )
+    .sendAndConfirm(buyerUmi);
+
+  // When we re-add the nft to the Gumball Machine.
+  await transactionBuilder()
+    .add(
+      addNft(umi, {
+        gumballMachine,
+        mint: nfts[drawnIndex].publicKey,
+        args: {
+          index: drawnIndex,
+        },
+        authRulesProgram: MPL_TOKEN_AUTH_RULES_PROGRAM_ID,
+      })
+    )
+    .sendAndConfirm(umi);
+
+  // Then the Gumball Machine has been updated properly.
+  gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
+
+  t.like(gumballMachineAccount, <Pick<GumballMachine, 'itemsLoaded' | 'items'>>{
+    itemsLoaded: 2,
+    itemsRedeemed: 0n,
+    itemsSettled: 0n,
+    // Half of the proceeds were settled since we settled one item
+    totalProceedsSettled: sol(0.5).basisPoints,
+    items: [
+      {
+        index: 0,
+        isDrawn: false,
+        isClaimed: false,
+        isSettled: false,
+        mint: nfts[0].publicKey,
+        seller: umi.identity.publicKey,
+        buyer: undefined,
+        tokenStandard: TokenStandard.ProgrammableNonFungible,
+        amount: 1,
+      },
+      {
+        index: 1,
+        isDrawn: false,
+        isClaimed: false,
+        isSettled: false,
+        mint: nfts[1].publicKey,
+        seller: umi.identity.publicKey,
+        buyer: undefined,
+        tokenStandard: TokenStandard.ProgrammableNonFungible,
+        amount: 1,
+      },
+    ],
+  });
+
+  // Then nft is frozen and delegated
+  const tokenAccount = await fetchToken(
+    umi,
+    findAssociatedTokenPda(umi, {
+      mint: nfts[drawnIndex].publicKey,
+      owner: umi.identity.publicKey,
+    })[0]
+  );
+  t.like(tokenAccount, {
+    state: TokenState.Frozen,
+    owner: umi.identity.publicKey,
+    delegate: some(
+      findGumballMachineAuthorityPda(umi, {
+        gumballMachine,
+      })[0]
+    ),
+  });
+
+  // Seller history state is correct
+  const sellerHistoryAccount = await fetchSellerHistory(
+    umi,
+    findSellerHistoryPda(umi, {
+      gumballMachine,
+      seller: umi.identity.publicKey,
+    })[0]
+  );
+
+  t.like(sellerHistoryAccount, <SellerHistory>{
+    gumballMachine,
+    seller: umi.identity.publicKey,
+    itemCount: 2n,
+  });
+});

@@ -12,11 +12,14 @@ import {
   isEqualToAmount,
   none,
   sol,
+  some,
+  subtractAmounts,
   transactionBuilder,
 } from '@metaplex-foundation/umi';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 import test from 'ava';
 import {
+  addNft,
   closeGumballMachine,
   draw,
   fetchGumballMachine,
@@ -1471,4 +1474,254 @@ test('it cannot sell a tokens item with a different amount', async (t) => {
     .sendAndConfirm(buyerUmi);
 
   await t.throwsAsync(promise, { message: /InvalidAmount/ });
+});
+
+test('it can sell an nft item, re-add it, and sell it again', async (t) => {
+  // Given a gumball machine with a gumball guard that has no guards.
+  const umi = await createUmi();
+  const nfts = await Promise.all([createNft(umi), createNft(umi)]);
+  // Oracle signer (authorized to sell on behalf of sellers)
+  const oracleSigner = generateSigner(umi);
+
+  const gumballMachineSigner = generateSigner(umi);
+  const gumballMachine = gumballMachineSigner.publicKey;
+
+  await create(umi, {
+    gumballMachine: gumballMachineSigner,
+    items: [
+      {
+        id: nfts[0].publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      },
+      {
+        id: nfts[1].publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      },
+    ],
+    startSale: true,
+    guards: {
+      solPayment: some({ lamports: sol(1) }),
+    },
+    buyBackConfig: {
+      ...getDefaultBuyBackConfig(),
+      oracleSigner: oracleSigner.publicKey,
+      enabled: true,
+      cutoffPct: 0,
+    },
+  });
+
+  // Deposit buy back funds
+  const depositAmount = LAMPORTS_PER_SOL;
+  await transactionBuilder()
+    .add(
+      manageBuyBackFunds(umi, {
+        gumballMachine,
+        amount: depositAmount,
+        isWithdraw: false,
+      })
+    )
+    .sendAndConfirm(umi);
+
+  // When we mint from the gumball guard.
+  const buyerUmi = await createUmi();
+  const preBuyerBalance = await umi.rpc.getBalance(buyerUmi.identity.publicKey);
+  const preSellerBalance = await umi.rpc.getBalance(umi.identity.publicKey);
+
+  await transactionBuilder()
+    .add(setComputeUnitLimit(umi, { units: 600_000 }))
+    .add(
+      draw(buyerUmi, {
+        gumballMachine,
+        mintArgs: { solPayment: some(true) },
+      })
+    )
+    .sendAndConfirm(buyerUmi);
+
+  // Figure out which was drawn
+  let gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
+  const drawnIndex = gumballMachineAccount.items.findIndex(
+    (item) => item.isDrawn
+  );
+
+  // Buyer can sell back to the seller
+  await transactionBuilder()
+    .add(setComputeUnitLimit(umi, { units: 600_000 }))
+    .add(
+      sellItem(buyerUmi, {
+        gumballMachine,
+        index: drawnIndex,
+        amount: 1,
+        buyPrice: LAMPORTS_PER_SOL / 2,
+        oracleSigner,
+        buyer: umi.identity.publicKey,
+        mint: nfts[drawnIndex].publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      })
+    )
+    .sendAndConfirm(buyerUmi);
+
+  // Then settle the sale
+  await transactionBuilder()
+    .add(setComputeUnitLimit(umi, { units: 600_000 }))
+    .add(
+      settleNftSale(umi, {
+        index: drawnIndex,
+        gumballMachine,
+        authority: umi.identity.publicKey,
+        buyer: buyerUmi.identity.publicKey,
+        seller: umi.identity.publicKey,
+        mint: nfts[drawnIndex].publicKey,
+        creators: [umi.identity.publicKey],
+      })
+    )
+    .sendAndConfirm(umi);
+
+  // When we re-add the nft to the Gumball Machine.
+  await transactionBuilder()
+    .add(
+      addNft(umi, {
+        gumballMachine,
+        mint: nfts[drawnIndex].publicKey,
+        args: {
+          index: drawnIndex,
+        },
+      })
+    )
+    .sendAndConfirm(umi);
+
+  // Draw all items
+  await transactionBuilder()
+    .add(setComputeUnitLimit(umi, { units: 600_000 }))
+    .add(
+      draw(buyerUmi, {
+        gumballMachine,
+        mintArgs: { solPayment: some(true) },
+      })
+    )
+    .add(
+      draw(buyerUmi, {
+        gumballMachine,
+        mintArgs: { solPayment: some(true) },
+      })
+    )
+    .sendAndConfirm(buyerUmi);
+
+  // Buyer can sell back again to the seller
+  await transactionBuilder()
+    .add(setComputeUnitLimit(umi, { units: 600_000 }))
+    .add(
+      sellItem(buyerUmi, {
+        gumballMachine,
+        index: 0,
+        amount: 1,
+        buyPrice: LAMPORTS_PER_SOL / 2,
+        oracleSigner,
+        buyer: umi.identity.publicKey,
+        mint: nfts[0].publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      })
+    )
+    .sendAndConfirm(buyerUmi);
+
+  const postBuyerBalance = await umi.rpc.getBalance(
+    buyerUmi.identity.publicKey
+  );
+
+  // 3 draws @ 1 SOL + 2 sells @ .5 SOL means 2 SOL were spent
+  t.true(
+    isEqualToAmount(
+      postBuyerBalance,
+      subtractAmounts(preBuyerBalance, sol(2)),
+      sol(0.001)
+    )
+  );
+
+  // Then settle all sales
+  await transactionBuilder()
+    .add(setComputeUnitLimit(umi, { units: 600_000 }))
+    .add(
+      settleNftSale(umi, {
+        index: 0,
+        gumballMachine,
+        authority: umi.identity.publicKey,
+        buyer: buyerUmi.identity.publicKey,
+        seller: umi.identity.publicKey,
+        mint: nfts[0].publicKey,
+        creators: [umi.identity.publicKey],
+      })
+    )
+    .sendAndConfirm(umi);
+
+  await transactionBuilder()
+    .add(setComputeUnitLimit(umi, { units: 600_000 }))
+    .add(
+      settleNftSale(umi, {
+        index: 1,
+        gumballMachine,
+        authority: umi.identity.publicKey,
+        buyer: buyerUmi.identity.publicKey,
+        seller: umi.identity.publicKey,
+        mint: nfts[1].publicKey,
+        creators: [umi.identity.publicKey],
+      })
+    )
+    .sendAndConfirm(umi);
+
+  const postSellerBalance = await umi.rpc.getBalance(umi.identity.publicKey);
+
+  // 3 draws @ 1 SOL
+  t.true(
+    isEqualToAmount(
+      postSellerBalance,
+      addAmounts(preSellerBalance, sol(3)),
+      sol(0.001)
+    )
+  );
+
+  // Then the Gumball Machine has been updated properly.
+  gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
+
+  t.like(gumballMachineAccount, <Pick<GumballMachine, 'itemsLoaded' | 'items'>>{
+    itemsLoaded: 2,
+    itemsRedeemed: 2n,
+    itemsSettled: 2n,
+    // All proceeds were settled
+    totalProceedsSettled: sol(3).basisPoints,
+    buyBackFundsAvailable: 0n,
+    items: [
+      {
+        index: 0,
+        isDrawn: true,
+        isClaimed: true,
+        isSettled: true,
+        mint: nfts[0].publicKey,
+        seller: umi.identity.publicKey,
+        buyer: buyerUmi.identity.publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+        amount: 1,
+      },
+      {
+        index: 1,
+        isDrawn: true,
+        isClaimed: true,
+        isSettled: true,
+        mint: nfts[1].publicKey,
+        seller: umi.identity.publicKey,
+        buyer: buyerUmi.identity.publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+        amount: 1,
+      },
+    ],
+  });
+
+  // Seller can close the gumball machine
+  await transactionBuilder()
+    .add(setComputeUnitLimit(umi, { units: 600_000 }))
+    .add(
+      closeGumballMachine(umi, {
+        gumballMachine,
+        gumballGuard: findGumballGuardPda(umi, { base: gumballMachine }),
+      })
+    )
+    .sendAndConfirm(umi);
 });
