@@ -253,13 +253,15 @@ pub fn settle_tokens_sale_claimed<'info>(
         .checked_mul(total_items_settled as u64)
         .ok_or(GumballError::NumericalOverflowError)?;
 
-    total_proceeds_settled = total_proceeds_settled
-        .checked_add(total_proceeds)
-        .ok_or(GumballError::NumericalOverflowError)?;
-    // Update the total proceeds settled
-    let total_proceeds_settled_position = gumball_machine.get_total_proceeds_settled_position()?;
-    account_data[total_proceeds_settled_position..total_proceeds_settled_position + 8]
-        .copy_from_slice(&total_proceeds_settled.to_le_bytes());
+    if gumball_machine.version >= 5 {
+        total_proceeds_settled = total_proceeds_settled
+            .checked_add(total_proceeds)
+            .ok_or(GumballError::NumericalOverflowError)?;
+        // Update the total proceeds settled
+        let total_proceeds_settled_position = gumball_machine.get_total_proceeds_settled_position()?;
+        account_data[total_proceeds_settled_position..total_proceeds_settled_position + 8]
+            .copy_from_slice(&total_proceeds_settled.to_le_bytes());
+    }
 
     // Done with the data borrow
     drop(account_data);
