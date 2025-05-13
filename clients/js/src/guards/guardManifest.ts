@@ -5,7 +5,7 @@ export type GuardManifest<
   DA extends object = {},
   D extends DA = DA,
   MA extends object = {},
-  RA extends object = {}
+  RA extends object = {},
 > = {
   name: string;
   serializer: () => Serializer<DA, D>;

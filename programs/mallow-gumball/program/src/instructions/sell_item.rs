@@ -429,6 +429,7 @@ pub fn sell_item<'info>(
 
     // Make sure there are enough buy back funds available
     let buy_back_funds_available = gumball_machine.get_buy_back_funds_available(&gumball_data)?;
+    msg!("buy_back_funds_available: {}", buy_back_funds_available);
     require!(
         buy_back_funds_available
             .checked_add(marketplace_fee)

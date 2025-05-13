@@ -47,7 +47,7 @@ export type GumballGuardAccountData<D extends GuardSet = DefaultGuardSet> = {
 } & GumballGuardData<D>;
 
 export type GumballGuardAccountDataArgs<
-  DA extends GuardSetArgs = DefaultGuardSetArgs
+  DA extends GuardSetArgs = DefaultGuardSetArgs,
 > = {
   base: PublicKey;
   bump: number;
@@ -56,7 +56,7 @@ export type GumballGuardAccountDataArgs<
 
 export function getGumballGuardAccountDataSerializer<
   DA extends GuardSetArgs,
-  D extends DA & GuardSet
+  D extends DA & GuardSet,
 >(
   context: Pick<Context, 'programs'> & {
     guards: GuardRepository;
@@ -110,7 +110,7 @@ export async function fetchGumballGuard<D extends GuardSet = DefaultGuardSet>(
 }
 
 export async function safeFetchGumballGuard<
-  D extends GuardSet = DefaultGuardSet
+  D extends GuardSet = DefaultGuardSet,
 >(
   context: Pick<Context, 'programs' | 'rpc'> & {
     guards: GuardRepository;
@@ -129,7 +129,7 @@ export async function safeFetchGumballGuard<
 }
 
 export async function fetchAllGumballGuard<
-  D extends GuardSet = DefaultGuardSet
+  D extends GuardSet = DefaultGuardSet,
 >(
   context: Pick<Context, 'programs' | 'rpc'> & {
     guards: GuardRepository;
@@ -149,7 +149,7 @@ export async function fetchAllGumballGuard<
 }
 
 export async function safeFetchAllGumballGuard<
-  D extends GuardSet = DefaultGuardSet
+  D extends GuardSet = DefaultGuardSet,
 >(
   context: Pick<Context, 'programs' | 'rpc'> & {
     guards: GuardRepository;

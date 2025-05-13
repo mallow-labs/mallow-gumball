@@ -748,9 +748,8 @@ test('it splits proceeds for a secondary nft sale with multiple creators after c
     seller: umi.identity.publicKey,
   })[0];
 
-  const sellerHistoryAccountRent = await umi.rpc.getBalance(
-    sellerHistoryAccount
-  );
+  const sellerHistoryAccountRent =
+    await umi.rpc.getBalance(sellerHistoryAccount);
 
   // Then settle the sale
   await transactionBuilder()
@@ -879,9 +878,8 @@ test('it splits proceeds for a secondary nft sale with multiple creators before 
     seller: umi.identity.publicKey,
   })[0];
 
-  const sellerHistoryAccountRent = await umi.rpc.getBalance(
-    sellerHistoryAccount
-  );
+  const sellerHistoryAccountRent =
+    await umi.rpc.getBalance(sellerHistoryAccount);
 
   // Then settle the sale
   await transactionBuilder()

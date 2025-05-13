@@ -370,7 +370,7 @@ export const defaultGumballSettings = (): GumballSettings => ({
 });
 
 export const createGumballGuard = async <
-  DA extends GuardSetArgs = DefaultGuardSetArgs
+  DA extends GuardSetArgs = DefaultGuardSetArgs,
 >(
   umi: Umi,
   input: Partial<

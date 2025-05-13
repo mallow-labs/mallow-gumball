@@ -30,19 +30,19 @@ export type GumballGuard = {
           name: 'systemProgram';
           isMut: false;
           isSigner: false;
-        }
+        },
       ];
       args: [
         {
           name: 'data';
           type: 'bytes';
-        }
+        },
       ];
     },
     {
       name: 'draw';
       docs: [
-        'Draw a prize from a gumball machine wrapped in the gumball guard.'
+        'Draw a prize from a gumball machine wrapped in the gumball guard.',
       ];
       accounts: [
         {
@@ -109,7 +109,7 @@ export type GumballGuard = {
           name: 'gumballEventAuthority';
           isMut: false;
           isSigner: false;
-        }
+        },
       ];
       args: [
         {
@@ -121,7 +121,7 @@ export type GumballGuard = {
           type: {
             option: 'string';
           };
-        }
+        },
       ];
     },
     {
@@ -142,7 +142,7 @@ export type GumballGuard = {
           name: 'payer';
           isMut: true;
           isSigner: true;
-        }
+        },
       ];
       args: [
         {
@@ -156,7 +156,7 @@ export type GumballGuard = {
           type: {
             option: 'string';
           };
-        }
+        },
       ];
     },
     {
@@ -172,20 +172,20 @@ export type GumballGuard = {
           name: 'authority';
           isMut: false;
           isSigner: true;
-        }
+        },
       ];
       args: [
         {
           name: 'newAuthority';
           type: 'publicKey';
-        }
+        },
       ];
     },
     {
       name: 'unwrap';
       docs: [
         'Remove a gumball guard from a gumball machine, setting the authority to the',
-        'gumball guard authority.'
+        'gumball guard authority.',
       ];
       accounts: [
         {
@@ -212,7 +212,7 @@ export type GumballGuard = {
           name: 'gumballMachineProgram';
           isMut: false;
           isSigner: false;
-        }
+        },
       ];
       args: [];
     },
@@ -245,13 +245,13 @@ export type GumballGuard = {
           name: 'systemProgram';
           isMut: false;
           isSigner: false;
-        }
+        },
       ];
       args: [
         {
           name: 'data';
           type: 'bytes';
-        }
+        },
       ];
     },
     {
@@ -294,7 +294,7 @@ export type GumballGuard = {
           name: 'tokenProgram';
           isMut: false;
           isSigner: false;
-        }
+        },
       ];
       args: [];
     },
@@ -302,7 +302,7 @@ export type GumballGuard = {
       name: 'wrap';
       docs: [
         'Add a gumball guard to a gumball machine. After the guard is added, mint',
-        'is only allowed through the gumball guard.'
+        'is only allowed through the gumball guard.',
       ];
       accounts: [
         {
@@ -329,10 +329,10 @@ export type GumballGuard = {
           name: 'gumballMachineAuthority';
           isMut: false;
           isSigner: true;
-        }
+        },
       ];
       args: [];
-    }
+    },
   ];
   accounts: [
     {
@@ -351,10 +351,10 @@ export type GumballGuard = {
           {
             name: 'authority';
             type: 'publicKey';
-          }
+          },
         ];
       };
-    }
+    },
   ];
   types: [
     {
@@ -366,7 +366,7 @@ export type GumballGuard = {
           {
             name: 'address';
             type: 'publicKey';
-          }
+          },
         ];
       };
     },
@@ -379,7 +379,7 @@ export type GumballGuard = {
         '',
         '0. `[writable]` Allocation tracker PDA. The PDA is derived',
         'using the seed `["allocation", allocation id,',
-        'gumball guard pubkey, gumball machine pubkey]`.'
+        'gumball guard pubkey, gumball machine pubkey]`.',
       ];
       type: {
         kind: 'struct';
@@ -393,7 +393,7 @@ export type GumballGuard = {
             name: 'limit';
             docs: ['The limit of the allocation.'];
             type: 'u32';
-          }
+          },
         ];
       };
     },
@@ -406,7 +406,7 @@ export type GumballGuard = {
           {
             name: 'count';
             type: 'u32';
-          }
+          },
         ];
       };
     },
@@ -418,7 +418,7 @@ export type GumballGuard = {
         'List of accounts required:',
         '',
         '0. `[]` Pda created by the merkle proof instruction (seeds `["allow_list", merke tree root,',
-        'payer key, gumball guard pubkey, gumball machine pubkey]`).'
+        'payer key, gumball guard pubkey, gumball machine pubkey]`).',
       ];
       type: {
         kind: 'struct';
@@ -429,7 +429,7 @@ export type GumballGuard = {
             type: {
               array: ['u8', 32];
             };
-          }
+          },
         ];
       };
     },
@@ -442,7 +442,7 @@ export type GumballGuard = {
           {
             name: 'timestamp';
             type: 'i64';
-          }
+          },
         ];
       };
     },
@@ -455,7 +455,7 @@ export type GumballGuard = {
         '* verify that only authorized programs have instructions',
         '',
         'The `bot_tax` is applied to any error that occurs during the',
-        'validation of the guards.'
+        'validation of the guards.',
       ];
       type: {
         kind: 'struct';
@@ -467,7 +467,7 @@ export type GumballGuard = {
           {
             name: 'lastInstruction';
             type: 'bool';
-          }
+          },
         ];
       };
     },
@@ -480,7 +480,7 @@ export type GumballGuard = {
           {
             name: 'date';
             type: 'i64';
-          }
+          },
         ];
       };
     },
@@ -494,7 +494,7 @@ export type GumballGuard = {
         '',
         '0. `[writeable]` Gatekeeper token account.',
         '1. `[]` Gatekeeper program account.',
-        '2. `[]` Gatekeeper expire account.'
+        '2. `[]` Gatekeeper expire account.',
       ];
       type: {
         kind: 'struct';
@@ -508,10 +508,10 @@ export type GumballGuard = {
             name: 'expireOnUse';
             docs: [
               'Whether or not the token should expire after minting.',
-              'The gatekeeper network must support this if true.'
+              'The gatekeeper network must support this if true.',
             ];
             type: 'bool';
-          }
+          },
         ];
       };
     },
@@ -524,7 +524,7 @@ export type GumballGuard = {
         '',
         '0. `[writable]` Mint counter PDA. The PDA is derived',
         'using the seed `["mint_limit", mint guard id, payer key,',
-        'gumball guard pubkey, gumball machine pubkey]`.'
+        'gumball guard pubkey, gumball machine pubkey]`.',
       ];
       type: {
         kind: 'struct';
@@ -538,7 +538,7 @@ export type GumballGuard = {
             name: 'limit';
             docs: ['Limit of mints per individual address.'];
             type: 'u16';
-          }
+          },
         ];
       };
     },
@@ -551,7 +551,7 @@ export type GumballGuard = {
           {
             name: 'count';
             type: 'u16';
-          }
+          },
         ];
       };
     },
@@ -567,7 +567,7 @@ export type GumballGuard = {
         '2. `[writeable]` Master Edition account of the NFT.',
         '3. `[writeable]` Mint account of the NFT.',
         '4. `[writeable]` Collection metadata account of the NFT.',
-        '5. `[writeable]` Token Record of the NFT (pNFT).'
+        '5. `[writeable]` Token Record of the NFT (pNFT).',
       ];
       type: {
         kind: 'struct';
@@ -575,7 +575,7 @@ export type GumballGuard = {
           {
             name: 'requiredCollection';
             type: 'publicKey';
-          }
+          },
         ];
       };
     },
@@ -587,7 +587,7 @@ export type GumballGuard = {
         'List of accounts required:',
         '',
         '0. `[]` Token account of the NFT.',
-        '1. `[]` Metadata account of the NFT.'
+        '1. `[]` Metadata account of the NFT.',
       ];
       type: {
         kind: 'struct';
@@ -595,7 +595,7 @@ export type GumballGuard = {
           {
             name: 'requiredCollection';
             type: 'publicKey';
-          }
+          },
         ];
       };
     },
@@ -617,7 +617,7 @@ export type GumballGuard = {
         '7. `[writable]` Owner token record (pNFT)',
         '8. `[writable]` Destination token record (pNFT)',
         '9. `[]` Token Authorization Rules program (pNFT)',
-        '10. `[]` Token Authorization Rules account (pNFT)'
+        '10. `[]` Token Authorization Rules account (pNFT)',
       ];
       type: {
         kind: 'struct';
@@ -629,7 +629,7 @@ export type GumballGuard = {
           {
             name: 'destination';
             type: 'publicKey';
-          }
+          },
         ];
       };
     },
@@ -637,7 +637,7 @@ export type GumballGuard = {
       name: 'ProgramGate';
       docs: [
         'Guard that restricts the programs that can be in a mint transaction. The guard allows the',
-        'necessary programs for the mint and any other program specified in the configuration.'
+        'necessary programs for the mint and any other program specified in the configuration.',
       ];
       type: {
         kind: 'struct';
@@ -647,7 +647,7 @@ export type GumballGuard = {
             type: {
               vec: 'publicKey';
             };
-          }
+          },
         ];
       };
     },
@@ -655,7 +655,7 @@ export type GumballGuard = {
       name: 'RedeemedAmount';
       docs: [
         'Guard that stop the mint once the specified amount of items',
-        'redeenmed is reached.'
+        'redeenmed is reached.',
       ];
       type: {
         kind: 'struct';
@@ -663,7 +663,7 @@ export type GumballGuard = {
           {
             name: 'maximum';
             type: 'u64';
-          }
+          },
         ];
       };
     },
@@ -674,7 +674,7 @@ export type GumballGuard = {
         '',
         'List of accounts required:',
         '',
-        '0. `[]` Account to receive the funds.'
+        '0. `[]` Account to receive the funds.',
       ];
       type: {
         kind: 'struct';
@@ -682,7 +682,7 @@ export type GumballGuard = {
           {
             name: 'lamports';
             type: 'u64';
-          }
+          },
         ];
       };
     },
@@ -695,7 +695,7 @@ export type GumballGuard = {
           {
             name: 'date';
             type: 'i64';
-          }
+          },
         ];
       };
     },
@@ -706,7 +706,7 @@ export type GumballGuard = {
         '',
         'List of accounts required:',
         '',
-        '0. `[signer]` Signer of the transaction.'
+        '0. `[signer]` Signer of the transaction.',
       ];
       type: {
         kind: 'struct';
@@ -714,7 +714,7 @@ export type GumballGuard = {
           {
             name: 'signerKey';
             type: 'publicKey';
-          }
+          },
         ];
       };
     },
@@ -728,7 +728,7 @@ export type GumballGuard = {
         '0. `[writable]` Token account holding the required amount.',
         '1. `[writable]` Address of the ATA to receive the tokens.',
         '2. `[]` Mint account.',
-        '3. `[]` SPL Token-2022 program account.'
+        '3. `[]` SPL Token-2022 program account.',
       ];
       type: {
         kind: 'struct';
@@ -744,7 +744,7 @@ export type GumballGuard = {
           {
             name: 'destinationAta';
             type: 'publicKey';
-          }
+          },
         ];
       };
     },
@@ -757,7 +757,7 @@ export type GumballGuard = {
         'List of accounts required:',
         '',
         '0. `[writable]` Token account holding the required amount.',
-        '1. `[writable]` Token mint account.'
+        '1. `[writable]` Token mint account.',
       ];
       type: {
         kind: 'struct';
@@ -769,7 +769,7 @@ export type GumballGuard = {
           {
             name: 'mint';
             type: 'publicKey';
-          }
+          },
         ];
       };
     },
@@ -780,7 +780,7 @@ export type GumballGuard = {
         '',
         'List of accounts required:',
         '',
-        '0. `[]` Token account holding the required amount.'
+        '0. `[]` Token account holding the required amount.',
       ];
       type: {
         kind: 'struct';
@@ -792,7 +792,7 @@ export type GumballGuard = {
           {
             name: 'mint';
             type: 'publicKey';
-          }
+          },
         ];
       };
     },
@@ -804,7 +804,7 @@ export type GumballGuard = {
         'List of accounts required:',
         '',
         '0. `[writable]` Token account holding the required amount.',
-        '1. `[writable]` Address of the ATA to receive the tokens.'
+        '1. `[writable]` Address of the ATA to receive the tokens.',
       ];
       type: {
         kind: 'struct';
@@ -816,7 +816,7 @@ export type GumballGuard = {
           {
             name: 'mint';
             type: 'publicKey';
-          }
+          },
         ];
       };
     },
@@ -837,7 +837,7 @@ export type GumballGuard = {
             name: 'data';
             docs: ['Arguments for the guard instruction.'];
             type: 'bytes';
-          }
+          },
         ];
       };
     },
@@ -861,7 +861,7 @@ export type GumballGuard = {
                 };
               };
             };
-          }
+          },
         ];
       };
     },
@@ -869,7 +869,7 @@ export type GumballGuard = {
       name: 'Group';
       docs: [
         'A group represent a specific set of guards. When groups are used, transactions',
-        'must specify which group should be used during validation.'
+        'must specify which group should be used during validation.',
       ];
       type: {
         kind: 'struct';
@@ -883,7 +883,7 @@ export type GumballGuard = {
             type: {
               defined: 'GuardSet';
             };
-          }
+          },
         ];
       };
     },
@@ -896,7 +896,7 @@ export type GumballGuard = {
           {
             name: 'botTax';
             docs: [
-              'Last instruction check and bot tax (penalty for invalid transactions).'
+              'Last instruction check and bot tax (penalty for invalid transactions).',
             ];
             type: {
               option: {
@@ -916,7 +916,7 @@ export type GumballGuard = {
           {
             name: 'solPayment';
             docs: [
-              'Sol payment guard (set the price for the mint in lamports).'
+              'Sol payment guard (set the price for the mint in lamports).',
             ];
             type: {
               option: {
@@ -927,7 +927,7 @@ export type GumballGuard = {
           {
             name: 'tokenPayment';
             docs: [
-              'Token payment guard (set the price for the mint in spl-token amount).'
+              'Token payment guard (set the price for the mint in spl-token amount).',
             ];
             type: {
               option: {
@@ -938,7 +938,7 @@ export type GumballGuard = {
           {
             name: 'thirdPartySigner';
             docs: [
-              'Third party signer guard (requires an extra signer for the transaction).'
+              'Third party signer guard (requires an extra signer for the transaction).',
             ];
             type: {
               option: {
@@ -949,7 +949,7 @@ export type GumballGuard = {
           {
             name: 'tokenGate';
             docs: [
-              'Token gate guard (restrict access to holders of a specific token).'
+              'Token gate guard (restrict access to holders of a specific token).',
             ];
             type: {
               option: {
@@ -987,7 +987,7 @@ export type GumballGuard = {
           {
             name: 'mintLimit';
             docs: [
-              'Mint limit guard (add a limit on the number of mints per wallet).'
+              'Mint limit guard (add a limit on the number of mints per wallet).',
             ];
             type: {
               option: {
@@ -1007,7 +1007,7 @@ export type GumballGuard = {
           {
             name: 'redeemedAmount';
             docs: [
-              'Redeemed amount guard (add a limit on the overall number of items minted).'
+              'Redeemed amount guard (add a limit on the overall number of items minted).',
             ];
             type: {
               option: {
@@ -1027,7 +1027,7 @@ export type GumballGuard = {
           {
             name: 'nftGate';
             docs: [
-              'NFT gate guard (check access based on holding a specified NFT).'
+              'NFT gate guard (check access based on holding a specified NFT).',
             ];
             type: {
               option: {
@@ -1056,7 +1056,7 @@ export type GumballGuard = {
           {
             name: 'programGate';
             docs: [
-              'Program gate guard (restricts the programs that can be in a mint transaction).'
+              'Program gate guard (restricts the programs that can be in a mint transaction).',
             ];
             type: {
               option: {
@@ -1067,7 +1067,7 @@ export type GumballGuard = {
           {
             name: 'allocation';
             docs: [
-              'Allocation guard (specify the maximum number of mints in a group).'
+              'Allocation guard (specify the maximum number of mints in a group).',
             ];
             type: {
               option: {
@@ -1078,14 +1078,14 @@ export type GumballGuard = {
           {
             name: 'token2022Payment';
             docs: [
-              'Token2022 payment guard (set the price for the mint in spl-token-2022 amount).'
+              'Token2022 payment guard (set the price for the mint in spl-token-2022 amount).',
             ];
             type: {
               option: {
                 defined: 'Token2022Payment';
               };
             };
-          }
+          },
         ];
       };
     },
@@ -1151,10 +1151,10 @@ export type GumballGuard = {
           },
           {
             name: 'Token2022Payment';
-          }
+          },
         ];
       };
-    }
+    },
   ];
   errors: [
     {
@@ -1431,7 +1431,7 @@ export type GumballGuard = {
       code: 6054;
       name: 'InvalidGumballMachineState';
       msg: 'Invalid gumball machine state';
-    }
+    },
   ];
 };
 

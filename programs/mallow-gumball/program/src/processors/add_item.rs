@@ -97,7 +97,7 @@ pub fn add_item(
         // Make sure item is claimed and settled, and reset to false
         if is_re_add {
             let (byte_position, _, mask) =
-                get_bit_byte_info(claimed_items_bit_mask_start, index as usize)?;
+                get_bit_byte_info(claimed_items_bit_mask_start, item_index as usize)?;
             let current_value = data[byte_position];
             let is_claimed = current_value & mask == mask;
             require!(is_claimed, GumballError::ItemNotClaimed);
@@ -105,7 +105,7 @@ pub fn add_item(
             data[byte_position] = current_value & !mask;
 
             let (byte_position, _, mask) =
-                get_bit_byte_info(settled_items_bit_mask_start, index as usize)?;
+                get_bit_byte_info(settled_items_bit_mask_start, item_index as usize)?;
             let current_value = data[byte_position];
             let is_settled = current_value & mask == mask;
             require!(is_settled, GumballError::ItemNotSettled);

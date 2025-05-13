@@ -25,7 +25,7 @@ export { RouteInstructionAccounts };
 
 export type RouteInstructionData<
   G extends keyof RA & string,
-  RA extends GuardSetRouteArgs
+  RA extends GuardSetRouteArgs,
 > = {
   discriminator: Array<number>;
   guard: G;
@@ -35,7 +35,7 @@ export type RouteInstructionData<
 
 export type RouteInstructionDataArgs<
   G extends keyof RA & string,
-  RA extends GuardSetRouteArgs
+  RA extends GuardSetRouteArgs,
 > = {
   guard: G;
   routeArgs: RA[G];
@@ -44,7 +44,7 @@ export type RouteInstructionDataArgs<
 
 export function route<
   G extends keyof RA & string,
-  RA extends GuardSetRouteArgs = DefaultGuardSetRouteArgs
+  RA extends GuardSetRouteArgs = DefaultGuardSetRouteArgs,
 >(
   context: Parameters<typeof baseRoute>[0] & {
     guards: GuardRepository;

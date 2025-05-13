@@ -31,7 +31,7 @@ export type CreateGumballGuardInstructionDataArgs<DA extends GuardSetArgs> =
   Partial<GumballGuardDataArgs<DA>>;
 
 export function createGumballGuard<
-  DA extends GuardSetArgs = DefaultGuardSetArgs
+  DA extends GuardSetArgs = DefaultGuardSetArgs,
 >(
   context: Parameters<typeof initializeGumballGuard>[0] & {
     guards: GuardRepository;

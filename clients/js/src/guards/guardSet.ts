@@ -44,7 +44,7 @@ export type GuardSetRouteArgs = {
 
 export function getGuardSetSerializer<
   DA extends GuardSetArgs,
-  D extends DA & GuardSet
+  D extends DA & GuardSet,
 >(
   context: { guards: GuardRepository },
   program: GumballGuardProgram
@@ -120,7 +120,7 @@ export function parseMintArgs<MA extends GuardSetMintArgs>(
 
 export function parseRouteArgs<
   G extends keyof RA & string,
-  RA extends GuardSetRouteArgs
+  RA extends GuardSetRouteArgs,
 >(
   context: Pick<Context, 'eddsa' | 'programs'> & {
     guards: GuardRepository;

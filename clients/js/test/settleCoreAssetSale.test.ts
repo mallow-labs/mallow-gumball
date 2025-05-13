@@ -497,9 +497,8 @@ test('it splits proceeds for a secondary asset sale with multiple creators after
     seller: umi.identity.publicKey,
   })[0];
 
-  const sellerHistoryAccountRent = await umi.rpc.getBalance(
-    sellerHistoryAccount
-  );
+  const sellerHistoryAccountRent =
+    await umi.rpc.getBalance(sellerHistoryAccount);
 
   // Then settle the sale
   await transactionBuilder()
@@ -640,9 +639,8 @@ test('it splits proceeds for a secondary asset sale with multiple creators befor
     seller: umi.identity.publicKey,
   })[0];
 
-  const sellerHistoryAccountRent = await umi.rpc.getBalance(
-    sellerHistoryAccount
-  );
+  const sellerHistoryAccountRent =
+    await umi.rpc.getBalance(sellerHistoryAccount);
 
   // Then settle the sale
   await transactionBuilder()
