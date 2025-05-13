@@ -26,7 +26,7 @@ export type GumballGuardDataArgs<DA extends GuardSetArgs> = {
 
 export function getGumballGuardDataSerializer<
   DA extends GuardSetArgs,
-  D extends DA & GuardSet
+  D extends DA & GuardSet,
 >(
   context: { guards: GuardRepository },
   program: GumballGuardProgram

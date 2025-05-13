@@ -26,7 +26,7 @@ export type UpdateGumballGuardInstructionDataArgs<DA extends GuardSetArgs> =
   GumballGuardDataArgs<DA>;
 
 export function updateGumballGuard<
-  DA extends GuardSetArgs = DefaultGuardSetArgs
+  DA extends GuardSetArgs = DefaultGuardSetArgs,
 >(
   context: Parameters<typeof baseUpdateGumballGuard>[0] & {
     guards: GuardRepository;
