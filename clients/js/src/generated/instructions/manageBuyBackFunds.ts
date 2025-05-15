@@ -13,45 +13,39 @@ import {
   PublicKey,
   Signer,
   TransactionBuilder,
-  none,
   publicKey,
   transactionBuilder,
 } from '@metaplex-foundation/umi';
 import {
   Serializer,
   array,
+  bool,
   mapSerializer,
   struct,
-  u16,
   u64,
   u8,
 } from '@metaplex-foundation/umi/serializers';
 import { findGumballMachineAuthorityPda } from '../../hooked';
-import { findSellerHistoryPda } from '../accounts';
 import {
   ResolvedAccount,
   ResolvedAccountsWithIndices,
   expectPublicKey,
   getAccountMetasAndSigners,
 } from '../shared';
-import {
-  AddItemArgs,
-  AddItemArgsArgs,
-  getAddItemArgsSerializer,
-} from '../types';
 
 // Accounts.
-export type AddTokensInstructionAccounts = {
-  /** Gumball Machine account. */
+export type ManageBuyBackFundsInstructionAccounts = {
+  /** Gumball Machine acccount. */
   gumballMachine: PublicKey | Pda;
-  /** Seller history account. */
-  sellerHistory?: PublicKey | Pda;
+  /** Authority of the gumball machine. */
+  authority?: Signer;
   authorityPda?: PublicKey | Pda;
-  /** Seller of the tokens */
-  seller?: Signer;
-  mint: PublicKey | Pda;
-  tokenAccount?: PublicKey | Pda;
-  authorityPdaTokenAccount?: PublicKey | Pda;
+  /** Authority's token account if using token payment */
+  authorityPaymentAccount?: PublicKey | Pda;
+  /** Payment account for authority pda if using token payment */
+  authorityPdaPaymentAccount?: PublicKey | Pda;
+  /** Payment mint if using non-native payment token */
+  paymentMint?: PublicKey | Pda;
   tokenProgram?: PublicKey | Pda;
   associatedTokenProgram?: PublicKey | Pda;
   systemProgram?: PublicKey | Pda;
@@ -59,52 +53,53 @@ export type AddTokensInstructionAccounts = {
 };
 
 // Data.
-export type AddTokensInstructionData = {
+export type ManageBuyBackFundsInstructionData = {
   discriminator: Array<number>;
   amount: bigint;
-  quantity: number;
-  args: AddItemArgs;
+  isWithdraw: boolean;
 };
 
-export type AddTokensInstructionDataArgs = {
+export type ManageBuyBackFundsInstructionDataArgs = {
   amount: number | bigint;
-  quantity: number;
-  args?: AddItemArgsArgs;
+  isWithdraw: boolean;
 };
 
-export function getAddTokensInstructionDataSerializer(): Serializer<
-  AddTokensInstructionDataArgs,
-  AddTokensInstructionData
+export function getManageBuyBackFundsInstructionDataSerializer(): Serializer<
+  ManageBuyBackFundsInstructionDataArgs,
+  ManageBuyBackFundsInstructionData
 > {
   return mapSerializer<
-    AddTokensInstructionDataArgs,
+    ManageBuyBackFundsInstructionDataArgs,
     any,
-    AddTokensInstructionData
+    ManageBuyBackFundsInstructionData
   >(
-    struct<AddTokensInstructionData>(
+    struct<ManageBuyBackFundsInstructionData>(
       [
         ['discriminator', array(u8(), { size: 8 })],
         ['amount', u64()],
-        ['quantity', u16()],
-        ['args', getAddItemArgsSerializer()],
+        ['isWithdraw', bool()],
       ],
-      { description: 'AddTokensInstructionData' }
+      { description: 'ManageBuyBackFundsInstructionData' }
     ),
     (value) => ({
       ...value,
-      discriminator: [28, 218, 30, 209, 175, 155, 153, 240],
-      args: value.args ?? { sellerProofPath: none(), index: none() },
+      discriminator: [178, 126, 37, 230, 255, 106, 125, 29],
     })
-  ) as Serializer<AddTokensInstructionDataArgs, AddTokensInstructionData>;
+  ) as Serializer<
+    ManageBuyBackFundsInstructionDataArgs,
+    ManageBuyBackFundsInstructionData
+  >;
 }
 
 // Args.
-export type AddTokensInstructionArgs = AddTokensInstructionDataArgs;
+export type ManageBuyBackFundsInstructionArgs =
+  ManageBuyBackFundsInstructionDataArgs;
 
 // Instruction.
-export function addTokens(
+export function manageBuyBackFunds(
   context: Pick<Context, 'eddsa' | 'identity' | 'programs'>,
-  input: AddTokensInstructionAccounts & AddTokensInstructionArgs
+  input: ManageBuyBackFundsInstructionAccounts &
+    ManageBuyBackFundsInstructionArgs
 ): TransactionBuilder {
   // Program ID.
   const programId = context.programs.getPublicKey(
@@ -119,58 +114,51 @@ export function addTokens(
       isWritable: true,
       value: input.gumballMachine ?? null,
     },
-    sellerHistory: {
-      index: 1,
-      isWritable: true,
-      value: input.sellerHistory ?? null,
-    },
+    authority: { index: 1, isWritable: true, value: input.authority ?? null },
     authorityPda: {
       index: 2,
       isWritable: true,
       value: input.authorityPda ?? null,
     },
-    seller: { index: 3, isWritable: true, value: input.seller ?? null },
-    mint: { index: 4, isWritable: false, value: input.mint ?? null },
-    tokenAccount: {
-      index: 5,
+    authorityPaymentAccount: {
+      index: 3,
       isWritable: true,
-      value: input.tokenAccount ?? null,
+      value: input.authorityPaymentAccount ?? null,
     },
-    authorityPdaTokenAccount: {
-      index: 6,
+    authorityPdaPaymentAccount: {
+      index: 4,
       isWritable: true,
-      value: input.authorityPdaTokenAccount ?? null,
+      value: input.authorityPdaPaymentAccount ?? null,
+    },
+    paymentMint: {
+      index: 5,
+      isWritable: false,
+      value: input.paymentMint ?? null,
     },
     tokenProgram: {
-      index: 7,
+      index: 6,
       isWritable: false,
       value: input.tokenProgram ?? null,
     },
     associatedTokenProgram: {
-      index: 8,
+      index: 7,
       isWritable: false,
       value: input.associatedTokenProgram ?? null,
     },
     systemProgram: {
-      index: 9,
+      index: 8,
       isWritable: false,
       value: input.systemProgram ?? null,
     },
-    rent: { index: 10, isWritable: false, value: input.rent ?? null },
+    rent: { index: 9, isWritable: false, value: input.rent ?? null },
   };
 
   // Arguments.
-  const resolvedArgs: AddTokensInstructionArgs = { ...input };
+  const resolvedArgs: ManageBuyBackFundsInstructionArgs = { ...input };
 
   // Default values.
-  if (!resolvedAccounts.seller.value) {
-    resolvedAccounts.seller.value = context.identity;
-  }
-  if (!resolvedAccounts.sellerHistory.value) {
-    resolvedAccounts.sellerHistory.value = findSellerHistoryPda(context, {
-      gumballMachine: expectPublicKey(resolvedAccounts.gumballMachine.value),
-      seller: expectPublicKey(resolvedAccounts.seller.value),
-    });
+  if (!resolvedAccounts.authority.value) {
+    resolvedAccounts.authority.value = context.identity;
   }
   if (!resolvedAccounts.authorityPda.value) {
     resolvedAccounts.authorityPda.value = findGumballMachineAuthorityPda(
@@ -178,20 +166,25 @@ export function addTokens(
       { gumballMachine: expectPublicKey(resolvedAccounts.gumballMachine.value) }
     );
   }
-  if (!resolvedAccounts.tokenAccount.value) {
-    resolvedAccounts.tokenAccount.value = findAssociatedTokenPda(context, {
-      mint: expectPublicKey(resolvedAccounts.mint.value),
-      owner: expectPublicKey(resolvedAccounts.seller.value),
-    });
+  if (!resolvedAccounts.authorityPaymentAccount.value) {
+    if (resolvedAccounts.paymentMint.value) {
+      resolvedAccounts.authorityPaymentAccount.value = findAssociatedTokenPda(
+        context,
+        {
+          mint: expectPublicKey(resolvedAccounts.paymentMint.value),
+          owner: expectPublicKey(resolvedAccounts.authority.value),
+        }
+      );
+    }
   }
-  if (!resolvedAccounts.authorityPdaTokenAccount.value) {
-    resolvedAccounts.authorityPdaTokenAccount.value = findAssociatedTokenPda(
-      context,
-      {
-        mint: expectPublicKey(resolvedAccounts.mint.value),
-        owner: expectPublicKey(resolvedAccounts.authorityPda.value),
-      }
-    );
+  if (!resolvedAccounts.authorityPdaPaymentAccount.value) {
+    if (resolvedAccounts.paymentMint.value) {
+      resolvedAccounts.authorityPdaPaymentAccount.value =
+        findAssociatedTokenPda(context, {
+          mint: expectPublicKey(resolvedAccounts.paymentMint.value),
+          owner: expectPublicKey(resolvedAccounts.authorityPda.value),
+        });
+    }
   }
   if (!resolvedAccounts.tokenProgram.value) {
     resolvedAccounts.tokenProgram.value = context.programs.getPublicKey(
@@ -234,8 +227,8 @@ export function addTokens(
   );
 
   // Data.
-  const data = getAddTokensInstructionDataSerializer().serialize(
-    resolvedArgs as AddTokensInstructionDataArgs
+  const data = getManageBuyBackFundsInstructionDataSerializer().serialize(
+    resolvedArgs as ManageBuyBackFundsInstructionDataArgs
   );
 
   // Bytes Created On Chain.

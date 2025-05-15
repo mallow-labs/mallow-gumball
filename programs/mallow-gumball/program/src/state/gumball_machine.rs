@@ -37,11 +37,19 @@ pub struct GumballMachine {
     // - (u32 * item_capacity) mint indices
     //
     // - version 3:
+    // - (u32) unused
     // - (boolean) disable_primary_split
+    //
+    // - version 4:
+    // - (BuyBackConfig) buy_back_config
+    // - (u64) buy_back_funds_available
+    //
+    // - version 5:
+    // - (u64) total_proceeds_settled
 }
 
 impl GumballMachine {
-    pub const CURRENT_VERSION: u8 = 3;
+    pub const CURRENT_VERSION: u8 = 5;
 
     /// Gets the size of the gumball machine given the number of items.
     pub fn get_size(item_count: u64, version: u8) -> usize {
@@ -52,6 +60,8 @@ impl GumballMachine {
             + (item_count as usize / 8) + 1 // bit mask tracking settled items
             + 4 + (4 * item_count as usize) // mint indices
             + if version >= 3 { 1 } else { 0 } // disable_primary_split
+            + if version >= 4 { BuyBackConfig::INIT_SPACE + 8 } else { 0 } // buy_back_config
+            + if version >= 5 { 8 } else { 0 } // total_proceeds_settled
     }
 
     pub fn get_config_line_size(&self) -> usize {
@@ -85,13 +95,72 @@ impl GumballMachine {
     }
 
     pub fn get_disable_primary_split_position(&self) -> Result<usize> {
+        // NOTE: this extra 4 bytes is and unused field and can be used for future purposes
         let position =
             self.get_mint_indices_position()? + 4 + (4 * self.settings.item_capacity as usize);
         Ok(position)
     }
 
+    pub fn get_buy_back_config_position(&self) -> Result<usize> {
+        let position = self.get_disable_primary_split_position()? + 1;
+        Ok(position)
+    }
+
+    pub fn get_buy_back_config(&self, data: &[u8]) -> Result<BuyBackConfig> {
+        if self.version < 4 {
+            return Ok(BuyBackConfig::default());
+        }
+        let position = self.get_buy_back_config_position()?;
+
+        let buy_back_config =
+            BuyBackConfig::try_from_slice(&data[position..position + BuyBackConfig::INIT_SPACE])?;
+        Ok(buy_back_config)
+    }
+
+    pub fn get_buy_back_funds_available_position(&self) -> Result<usize> {
+        let position = self.get_buy_back_config_position()? + BuyBackConfig::INIT_SPACE;
+        Ok(position)
+    }
+
+    pub fn get_buy_back_funds_available(&self, data: &[u8]) -> Result<u64> {
+        let position = self.get_buy_back_funds_available_position()?;
+        Ok(u64::from_le_bytes(
+            data[position..position + 8].try_into().unwrap(),
+        ))
+    }
+
+    pub fn get_total_proceeds_settled_position(&self) -> Result<usize> {
+        let position = self.get_buy_back_funds_available_position()? + 8;
+        Ok(position)
+    }
+
+    pub fn get_total_proceeds_settled(&self, data: &[u8]) -> Result<u64> {
+        if self.version < 5 {
+            return Ok(0);
+        }
+
+        let position = self.get_total_proceeds_settled_position()?;
+        Ok(u64::from_le_bytes(
+            data[position..position + 8].try_into().unwrap(),
+        ))
+    }
+
     pub fn can_edit_items(&self) -> bool {
         self.state == GumballState::None || self.state == GumballState::DetailsFinalized
+    }
+
+    pub fn can_add_items(&self) -> bool {
+        self.can_edit_items()
+            || (self.state == GumballState::SaleLive && !self.is_collab() && self.version >= 5)
+    }
+
+    pub fn is_collab(&self) -> bool {
+        self.settings.sellers_merkle_root.is_some()
+    }
+
+    pub fn can_settle_items(&self) -> bool {
+        self.state == GumballState::SaleEnded
+            || (self.state == GumballState::SaleLive && !self.is_collab() && self.version >= 5)
     }
 }
 
@@ -101,6 +170,24 @@ pub struct FeeConfig {
     pub fee_account: Pubkey,
     /// Sale basis points for fees
     pub fee_bps: u16,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, InitSpace, Default)]
+pub struct BuyBackConfig {
+    /// Whether buying back prizes is enabled
+    pub enabled: bool,
+    /// Whether buying back prizes should be added back to the gumball machine (not yet supported)
+    pub to_gumball_machine: bool,
+    /// Authority that must sign when buying back prizes, to ensure pricing is correct
+    pub oracle_signer: Pubkey,
+    /// Percentage of prize value the creator/gumball machine will pay for buying back prizes
+    pub value_pct: u8,
+    /// Fee in basis points paid to marketplace authority when buying back prizes (paid from funds_available)
+    pub marketplace_fee_bps: u16,
+    /// Buy backs are disabled when the percentage of items remaining is less than or equal to this value
+    /// 0 means there is no cutoff, 100 means buy back is always disabled, 50 means buy back is disabled when 50% of items are sold
+    /// If an item is sold back to the gumball machine to increase the remaining % above this cutoff, buy back is re-enabled
+    pub cutoff_pct: u8,
 }
 
 /// Config line struct for storing asset (NFT) data pre-mint.
@@ -137,7 +224,7 @@ pub struct ConfigLine {
 }
 
 /// Config line struct for storing asset data.
-#[derive(AnchorSerialize, AnchorDeserialize, Debug)]
+#[derive(AnchorSerialize, AnchorDeserialize, Debug, InitSpace)]
 pub struct ConfigLineV2 {
     /// Mint account of the asset.
     pub mint: Pubkey,
@@ -151,7 +238,7 @@ pub struct ConfigLineV2 {
     pub amount: u64,
 }
 
-#[derive(Copy, AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug, InitSpace)]
 pub enum TokenStandard {
     NonFungible,
     Core,

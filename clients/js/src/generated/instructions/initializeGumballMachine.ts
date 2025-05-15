@@ -34,10 +34,13 @@ import {
   getAccountMetasAndSigners,
 } from '../shared';
 import {
+  BuyBackConfig,
+  BuyBackConfigArgs,
   FeeConfig,
   FeeConfigArgs,
   GumballSettings,
   GumballSettingsArgs,
+  getBuyBackConfigSerializer,
   getFeeConfigSerializer,
   getGumballSettingsSerializer,
 } from '../types';
@@ -69,12 +72,14 @@ export type InitializeGumballMachineInstructionData = {
   settings: GumballSettings;
   feeConfig: Option<FeeConfig>;
   disablePrimarySplit: boolean;
+  buyBackConfig: Option<BuyBackConfig>;
 };
 
 export type InitializeGumballMachineInstructionDataArgs = {
   settings: GumballSettingsArgs;
   feeConfig?: OptionOrNullable<FeeConfigArgs>;
   disablePrimarySplit?: boolean;
+  buyBackConfig?: OptionOrNullable<BuyBackConfigArgs>;
 };
 
 export function getInitializeGumballMachineInstructionDataSerializer(): Serializer<
@@ -92,6 +97,7 @@ export function getInitializeGumballMachineInstructionDataSerializer(): Serializ
         ['settings', getGumballSettingsSerializer()],
         ['feeConfig', option(getFeeConfigSerializer())],
         ['disablePrimarySplit', bool()],
+        ['buyBackConfig', option(getBuyBackConfigSerializer())],
       ],
       { description: 'InitializeGumballMachineInstructionData' }
     ),
@@ -100,6 +106,7 @@ export function getInitializeGumballMachineInstructionDataSerializer(): Serializ
       discriminator: [175, 175, 109, 31, 13, 152, 155, 237],
       feeConfig: value.feeConfig ?? none(),
       disablePrimarySplit: value.disablePrimarySplit ?? false,
+      buyBackConfig: value.buyBackConfig ?? none(),
     })
   ) as Serializer<
     InitializeGumballMachineInstructionDataArgs,

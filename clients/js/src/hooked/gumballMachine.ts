@@ -1,4 +1,8 @@
-import { CONFIG_LINE_V2_SIZE, GUMBALL_MACHINE_SIZE } from '../constants';
+import {
+  BUY_BACK_CONFIG_SIZE,
+  CONFIG_LINE_V2_SIZE,
+  GUMBALL_MACHINE_SIZE,
+} from '../constants';
 
 export function getGumballMachineSizeForItemCount(
   itemCount: number | bigint
@@ -16,6 +20,11 @@ export function getGumballMachineSizeForItemCount(
       // Bit mask to keep track of which items have been settled.
       (4 + Math.floor(items / 8) + 1) +
       // Mint indices.
-      (4 + items * 4)
+      (4 + items * 4) +
+      4 + // Unused
+      1 + // disablePrimarySplit
+      BUY_BACK_CONFIG_SIZE +
+      8 + // buyBackFundsAvailable
+      8 // totalProceedsSettled
   );
 }

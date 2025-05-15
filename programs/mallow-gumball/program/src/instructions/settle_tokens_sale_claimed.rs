@@ -2,14 +2,15 @@ use crate::{
     constants::{AUTHORITY_SEED, GUMBALL_MACHINE_SIZE, SELLER_HISTORY_SEED},
     events::SettleItemSaleEvent,
     get_config_count,
+    processors::{get_total_proceeds, transfer_proceeds},
     state::GumballMachine,
-    transfer_and_close, try_from, AssociatedToken, GumballError, GumballState, SellerHistory,
-    Token, TokenStandard,
+    transfer_and_close_if_empty, try_from, AssociatedToken, GumballError, SellerHistory, Token,
+    TokenStandard,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, TokenAccount};
 use arrayref::array_ref;
-use utils::{get_bps_of, transfer_from_pda};
+use utils::RoyaltyInfo;
 
 /// Settles a span of token sales that have already been claimed
 #[event_cpi]
@@ -23,7 +24,7 @@ pub struct SettleTokensSaleClaimed<'info> {
     #[account(
         mut,
         has_one = authority @ GumballError::InvalidAuthority,
-        constraint = gumball_machine.state == GumballState::SaleEnded @ GumballError::InvalidState
+        constraint = gumball_machine.can_settle_items() @ GumballError::InvalidState
     )]
     gumball_machine: Box<Account<'info, GumballMachine>>,
 
@@ -163,8 +164,8 @@ pub fn settle_tokens_sale_claimed<'info>(
     let account_info = gumball_machine.to_account_info();
     let mut account_data = account_info.data.borrow_mut();
 
-    let count = get_config_count(&account_data)?;
-    if args.end_index >= count as u32 {
+    let config_count = get_config_count(&account_data)? as u64;
+    if args.end_index >= config_count as u32 {
         return err!(GumballError::IndexGreaterThanLength);
     }
 
@@ -243,8 +244,24 @@ pub fn settle_tokens_sale_claimed<'info>(
         account_data[settled_byte_position] |= settled_mask;
     }
 
-    // Update the items_settled counter once for all settled items
-    gumball_machine.items_settled += total_items_settled as u64;
+    let mut total_proceeds_settled = gumball_machine.get_total_proceeds_settled(&account_data)?;
+
+    let (mut total_proceeds, _) =
+        get_total_proceeds(gumball_machine, total_proceeds_settled, config_count)?;
+
+    total_proceeds = total_proceeds
+        .checked_mul(total_items_settled as u64)
+        .ok_or(GumballError::NumericalOverflowError)?;
+
+    if gumball_machine.version >= 5 {
+        total_proceeds_settled = total_proceeds_settled
+            .checked_add(total_proceeds)
+            .ok_or(GumballError::NumericalOverflowError)?;
+        // Update the total proceeds settled
+        let total_proceeds_settled_position = gumball_machine.get_total_proceeds_settled_position()?;
+        account_data[total_proceeds_settled_position..total_proceeds_settled_position + 8]
+            .copy_from_slice(&total_proceeds_settled.to_le_bytes());
+    }
 
     // Done with the data borrow
     drop(account_data);
@@ -257,7 +274,7 @@ pub fn settle_tokens_sale_claimed<'info>(
             ctx.accounts.authority_pda_token_account
         )?);
 
-        transfer_and_close(
+        transfer_and_close_if_empty(
             payer,
             authority_pda,
             authority_pda_token_account,
@@ -274,80 +291,37 @@ pub fn settle_tokens_sale_claimed<'info>(
         )?;
     }
 
-    let marketplace_fee_bps = if let Some(fee_confg) = gumball_machine.marketplace_fee_config {
-        fee_confg.fee_bps
-    } else {
-        0
-    };
-
-    let fees_taken = if marketplace_fee_bps > 0 {
-        get_bps_of(gumball_machine.total_revenue, marketplace_fee_bps)?
-    } else {
-        0
-    };
-
-    // Proceeds are calculated as the proportion of settled items to total items in the gumball machine
-    let total_proceeds = gumball_machine
-        .total_revenue
-        .checked_sub(fees_taken)
-        .ok_or(GumballError::NumericalOverflowError)?
-        .checked_mul(total_items_settled as u64)
-        .ok_or(GumballError::NumericalOverflowError)?
-        .checked_div(count as u64)
-        .ok_or(GumballError::NumericalOverflowError)?;
-    msg!("Proceeds: {}", total_proceeds);
-
-    if total_proceeds > 0 {
-        let curator_fee = get_bps_of(total_proceeds, gumball_machine.settings.curator_fee_bps)?;
-        msg!("Curator fee: {}", curator_fee);
-
-        if curator_fee > 0 {
-            transfer_from_pda(
-                authority_pda,
-                authority,
-                authority_pda_payment_account,
-                authority_payment_account,
-                payment_mint,
-                Some(payer),
-                associated_token_program,
-                token_program,
-                system_program,
-                rent,
-                &auth_seeds,
-                None,
-                curator_fee,
-            )?;
-        }
-
-        let seller_proceeds = total_proceeds
-            .checked_sub(curator_fee)
-            .ok_or(GumballError::NumericalOverflowError)?;
-
-        msg!("Seller proceeds: {}", seller_proceeds);
-
-        if seller_proceeds > 0 {
-            transfer_from_pda(
-                authority_pda,
-                seller,
-                authority_pda_payment_account,
-                seller_payment_account,
-                payment_mint,
-                Some(payer),
-                associated_token_program,
-                token_program,
-                system_program,
-                rent,
-                &auth_seeds,
-                None,
-                seller_proceeds,
-            )?;
-        }
-    }
+    transfer_proceeds(
+        gumball_machine,
+        total_proceeds,
+        0,
+        authority_pda,
+        authority,
+        authority_pda_payment_account,
+        authority_payment_account,
+        seller,
+        seller_payment_account,
+        None,
+        None,
+        payment_mint,
+        payer,
+        associated_token_program,
+        token_program,
+        system_program,
+        rent,
+        &auth_seeds,
+        &RoyaltyInfo::default(),
+        true,
+        ctx.remaining_accounts,
+    )?;
 
     seller_history.item_count -= total_items_settled as u64;
     if seller_history.item_count == 0 {
         seller_history.close(seller.to_account_info())?;
     }
+
+    // Update the items_settled counter once for all settled items
+    gumball_machine.items_settled += total_items_settled as u64;
 
     // Emit event for the settled items
     emit_cpi!(SettleItemSaleEvent {

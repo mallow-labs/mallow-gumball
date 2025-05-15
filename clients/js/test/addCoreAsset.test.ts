@@ -1,8 +1,21 @@
-import { AssetV1, fetchAssetV1 } from '@metaplex-foundation/mpl-core';
-import { transactionBuilder } from '@metaplex-foundation/umi';
+import {
+  AssetV1,
+  fetchAssetV1,
+  transferV1,
+} from '@metaplex-foundation/mpl-core';
+import { setComputeUnitLimit } from '@metaplex-foundation/mpl-toolbox';
+import {
+  generateSigner,
+  signerIdentity,
+  sol,
+  some,
+  transactionBuilder,
+} from '@metaplex-foundation/umi';
+import { generateSignerWithSol } from '@metaplex-foundation/umi-bundle-tests';
 import test from 'ava';
 import {
   addCoreAsset,
+  draw,
   fetchGumballMachine,
   fetchSellerHistory,
   findGumballMachineAuthorityPda,
@@ -11,6 +24,7 @@ import {
   getMerkleRoot,
   GumballMachine,
   SellerHistory,
+  settleCoreAssetSale,
   TokenStandard,
 } from '../src';
 import { create, createCoreAsset, createUmi } from './_setup';
@@ -108,10 +122,12 @@ test('it can add core asset to a gumball machine as allowlisted seller', async (
       addCoreAsset(otherSellerUmi, {
         gumballMachine: gumballMachine.publicKey,
         asset: coreAsset.publicKey,
-        sellerProofPath: getMerkleProof(
-          [otherSellerUmi.identity.publicKey],
-          otherSellerUmi.identity.publicKey
-        ),
+        args: {
+          sellerProofPath: getMerkleProof(
+            [otherSellerUmi.identity.publicKey],
+            otherSellerUmi.identity.publicKey
+          ),
+        },
       })
     )
     .sendAndConfirm(otherSellerUmi);
@@ -175,10 +191,12 @@ test('it cannot add core asset as non gumball authority when there is no seller 
       addCoreAsset(otherSellerUmi, {
         gumballMachine: gumballMachine.publicKey,
         asset: coreAsset.publicKey,
-        sellerProofPath: getMerkleProof(
-          [otherSellerUmi.identity.publicKey],
-          otherSellerUmi.identity.publicKey
-        ),
+        args: {
+          sellerProofPath: getMerkleProof(
+            [otherSellerUmi.identity.publicKey],
+            otherSellerUmi.identity.publicKey
+          ),
+        },
       })
     )
     .sendAndConfirm(otherSellerUmi);
@@ -204,10 +222,12 @@ test('it cannot add core asset as non-allowlisted seller when there is a seller 
       addCoreAsset(otherSellerUmi, {
         gumballMachine: gumballMachine.publicKey,
         asset: coreAsset.publicKey,
-        sellerProofPath: getMerkleProof(
-          [otherSellerUmi.identity.publicKey],
-          otherSellerUmi.identity.publicKey
-        ),
+        args: {
+          sellerProofPath: getMerkleProof(
+            [otherSellerUmi.identity.publicKey],
+            otherSellerUmi.identity.publicKey
+          ),
+        },
       })
     )
     .sendAndConfirm(otherSellerUmi);
@@ -358,10 +378,12 @@ test('it cannot add more core assets than allowed per seller', async (t) => {
       addCoreAsset(otherSellerUmi, {
         gumballMachine: gumballMachine.publicKey,
         asset: coreAssets[0].publicKey,
-        sellerProofPath: getMerkleProof(
-          [otherSellerUmi.identity.publicKey],
-          otherSellerUmi.identity.publicKey
-        ),
+        args: {
+          sellerProofPath: getMerkleProof(
+            [otherSellerUmi.identity.publicKey],
+            otherSellerUmi.identity.publicKey
+          ),
+        },
       })
     )
     .sendAndConfirm(otherSellerUmi);
@@ -371,13 +393,175 @@ test('it cannot add more core assets than allowed per seller', async (t) => {
       addCoreAsset(otherSellerUmi, {
         gumballMachine: gumballMachine.publicKey,
         asset: coreAssets[1].publicKey,
-        sellerProofPath: getMerkleProof(
-          [otherSellerUmi.identity.publicKey],
-          otherSellerUmi.identity.publicKey
-        ),
+        args: {
+          sellerProofPath: getMerkleProof(
+            [otherSellerUmi.identity.publicKey],
+            otherSellerUmi.identity.publicKey
+          ),
+        },
       })
     )
     .sendAndConfirm(otherSellerUmi);
 
   await t.throwsAsync(promise, { message: /SellerTooManyItems/ });
+});
+
+test('it can re-add core asset to a gumball machine as the authority', async (t) => {
+  // Given a Gumball Machine with 5 nfts.
+  const umi = await createUmi();
+  const nfts = await Promise.all([createCoreAsset(umi), createCoreAsset(umi)]);
+
+  const gumballMachineSigner = generateSigner(umi);
+  const gumballMachine = gumballMachineSigner.publicKey;
+
+  await create(umi, {
+    gumballMachine: gumballMachineSigner,
+    items: [
+      {
+        id: nfts[0].publicKey,
+        tokenStandard: TokenStandard.Core,
+      },
+      {
+        id: nfts[1].publicKey,
+        tokenStandard: TokenStandard.Core,
+      },
+    ],
+    startSale: true,
+    guards: {
+      solPayment: some({ lamports: sol(1) }),
+    },
+  });
+
+  const buyer = await generateSignerWithSol(umi, sol(10));
+  const buyerUmi = await createUmi();
+  buyerUmi.use(signerIdentity(buyer));
+
+  // When we draw the nft from the Gumball Machine.
+  await transactionBuilder()
+    .add(setComputeUnitLimit(umi, { units: 600_000 }))
+    .add(
+      draw(umi, {
+        gumballMachine,
+        buyer,
+        mintArgs: { solPayment: some(true) },
+      })
+    )
+    .sendAndConfirm(umi);
+
+  // Figure out which was drawn
+  let gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
+  const drawnIndex = gumballMachineAccount.items.findIndex(
+    (item) => item.isDrawn
+  );
+
+  // Then settle the sale
+  await transactionBuilder()
+    .add(setComputeUnitLimit(umi, { units: 600_000 }))
+    .add(
+      settleCoreAssetSale(umi, {
+        index: drawnIndex,
+        gumballMachine,
+        authority: umi.identity.publicKey,
+        buyer: buyer.publicKey,
+        seller: umi.identity.publicKey,
+        asset: nfts[drawnIndex].publicKey,
+        creators: [umi.identity.publicKey],
+      })
+    )
+    .sendAndConfirm(umi);
+
+  // Transfer back to the seller
+  await transactionBuilder()
+    .add(
+      transferV1(buyerUmi, {
+        asset: nfts[drawnIndex].publicKey,
+        newOwner: umi.identity.publicKey,
+      })
+    )
+    .sendAndConfirm(buyerUmi);
+
+  // When we re-add the nft to the Gumball Machine.
+  await transactionBuilder()
+    .add(
+      addCoreAsset(umi, {
+        gumballMachine,
+        asset: nfts[drawnIndex].publicKey,
+        args: {
+          index: drawnIndex,
+        },
+      })
+    )
+    .sendAndConfirm(umi);
+
+  // Then the Gumball Machine has been updated properly.
+  gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
+
+  t.like(gumballMachineAccount, <Pick<GumballMachine, 'itemsLoaded' | 'items'>>{
+    itemsLoaded: 2,
+    itemsRedeemed: 0n,
+    itemsSettled: 0n,
+    // Half of the proceeds were settled since we settled one item
+    totalProceedsSettled: sol(0.5).basisPoints,
+    items: [
+      {
+        index: 0,
+        isDrawn: false,
+        isClaimed: false,
+        isSettled: false,
+        mint: nfts[0].publicKey,
+        seller: umi.identity.publicKey,
+        buyer: undefined,
+        tokenStandard: TokenStandard.Core,
+        amount: 1,
+      },
+      {
+        index: 1,
+        isDrawn: false,
+        isClaimed: false,
+        isSettled: false,
+        mint: nfts[1].publicKey,
+        seller: umi.identity.publicKey,
+        buyer: undefined,
+        tokenStandard: TokenStandard.Core,
+        amount: 1,
+      },
+    ],
+  });
+
+  const asset = await fetchAssetV1(umi, nfts[drawnIndex].publicKey);
+  t.like(asset, <AssetV1>{
+    owner: umi.identity.publicKey,
+    transferDelegate: {
+      authority: {
+        type: 'Address',
+        address: findGumballMachineAuthorityPda(umi, {
+          gumballMachine,
+        })[0],
+      },
+    },
+    freezeDelegate: {
+      authority: {
+        type: 'Address',
+        address: findGumballMachineAuthorityPda(umi, {
+          gumballMachine,
+        })[0],
+      },
+      frozen: true,
+    },
+  });
+
+  // Seller history state is correct
+  const sellerHistoryAccount = await fetchSellerHistory(
+    umi,
+    findSellerHistoryPda(umi, {
+      gumballMachine,
+      seller: umi.identity.publicKey,
+    })[0]
+  );
+
+  t.like(sellerHistoryAccount, <SellerHistory>{
+    gumballMachine,
+    seller: umi.identity.publicKey,
+    itemCount: 2n,
+  });
 });

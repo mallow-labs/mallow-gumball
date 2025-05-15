@@ -6,13 +6,15 @@ use crate::{
 };
 use anchor_lang::prelude::*;
 
+use super::AddItemArgs;
+
 /// Add core asset to a gumball machine.
 #[derive(Accounts)]
 pub struct AddCoreAsset<'info> {
     /// Gumball Machine account.
     #[account(
         mut,
-        constraint = gumball_machine.can_edit_items() @ GumballError::InvalidState,
+        constraint = gumball_machine.can_add_items() @ GumballError::InvalidState,
     )]
     gumball_machine: Box<Account<'info, GumballMachine>>,
 
@@ -61,10 +63,7 @@ pub struct AddCoreAsset<'info> {
     system_program: Program<'info, System>,
 }
 
-pub fn add_core_asset(
-    ctx: Context<AddCoreAsset>,
-    seller_proof_path: Option<Vec<[u8; 32]>>,
-) -> Result<()> {
+pub fn add_core_asset(ctx: Context<AddCoreAsset>, args: AddItemArgs) -> Result<()> {
     let asset_info = &ctx.accounts.asset.to_account_info();
     let seller = &ctx.accounts.seller.to_account_info();
     let mpl_core_program = &ctx.accounts.mpl_core_program.to_account_info();
@@ -76,7 +75,7 @@ pub fn add_core_asset(
     seller_history.seller = seller.key();
 
     // Validate the seller
-    assert_can_add_item(gumball_machine, seller_history, 1, seller_proof_path)?;
+    assert_can_add_item(gumball_machine, seller_history, 1, &args)?;
 
     seller_history.item_count += 1;
 
@@ -96,6 +95,7 @@ pub fn add_core_asset(
         },
         TokenStandard::Core,
         1,
+        args.index,
     )?;
 
     let auth_seeds = [

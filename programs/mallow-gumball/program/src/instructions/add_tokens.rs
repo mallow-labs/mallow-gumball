@@ -11,13 +11,15 @@ use anchor_spl::{
 };
 use utils::transfer_spl;
 
+use super::AddItemArgs;
+
 /// Add nft to a gumball machine.
 #[derive(Accounts)]
 pub struct AddTokens<'info> {
     /// Gumball Machine account.
     #[account(
         mut,
-        constraint = gumball_machine.can_edit_items() @ GumballError::InvalidState,
+        constraint = gumball_machine.can_add_items() @ GumballError::InvalidState,
     )]
     gumball_machine: Box<Account<'info, GumballMachine>>,
 
@@ -73,7 +75,7 @@ pub fn add_tokens(
     ctx: Context<AddTokens>,
     amount: u64,
     quantity: u16,
-    seller_proof_path: Option<Vec<[u8; 32]>>,
+    args: AddItemArgs,
 ) -> Result<()> {
     let token_program = &ctx.accounts.token_program.to_account_info();
     let ata_program = &ctx.accounts.associated_token_program.to_account_info();
@@ -91,7 +93,7 @@ pub fn add_tokens(
     seller_history.seller = seller.key();
 
     // Validate the seller
-    assert_can_add_item(gumball_machine, seller_history, quantity, seller_proof_path)?;
+    assert_can_add_item(gumball_machine, seller_history, quantity, &args)?;
 
     seller_history.item_count = seller_history
         .item_count
@@ -107,6 +109,7 @@ pub fn add_tokens(
         },
         TokenStandard::Fungible,
         quantity,
+        args.index,
     )?;
 
     transfer_spl(

@@ -1,6 +1,6 @@
 use crate::{
-    constants::GUMBALL_MACHINE_SIZE, ConfigLine, GumballError, GumballMachine, SellerHistory,
-    TokenStandard,
+    constants::GUMBALL_MACHINE_SIZE, instructions::AddItemArgs, ConfigLine, ConfigLineV2,
+    GumballError, GumballMachine, GumballState, SellerHistory, TokenStandard,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token::TokenAccount;
@@ -62,8 +62,23 @@ pub fn assert_can_add_item(
     gumball_machine: &mut Box<Account<GumballMachine>>,
     seller_history: &mut Box<Account<SellerHistory>>,
     quantity: u16,
-    seller_proof_path: Option<Vec<[u8; 32]>>,
+    args: &AddItemArgs,
 ) -> Result<()> {
+    let AddItemArgs {
+        seller_proof_path,
+        index,
+    } = args;
+
+    // Having an index means we're re-adding an item
+    if index.is_some() {
+        // Can only add item back to a live solo gumball
+        require!(!gumball_machine.is_collab(), GumballError::NotASoloGumball);
+        require!(
+            gumball_machine.state == GumballState::SaleLive,
+            GumballError::InvalidState
+        );
+    }
+
     let seller = seller_history.seller;
 
     if seller == gumball_machine.authority {
@@ -83,7 +98,7 @@ pub fn assert_can_add_item(
     let leaf = solana_program::keccak::hashv(&[seller.to_string().as_bytes()]);
     require!(
         verify_proof(
-            &seller_proof_path.unwrap()[..],
+            &seller_proof_path.as_ref().unwrap()[..],
             &gumball_machine.settings.sellers_merkle_root.unwrap(),
             &leaf.0,
         ),
@@ -147,6 +162,32 @@ pub fn assert_config_line(
     drop(data);
 
     Ok(())
+}
+
+pub fn assert_config_line_values(
+    gumball_machine_data: &[u8],
+    config_line_position: usize,
+    index: u32,
+    mint: Pubkey,
+    seller: Pubkey,
+    buyer: Pubkey,
+) -> Result<ConfigLineV2> {
+    let count = get_config_count(gumball_machine_data)?;
+
+    if index >= count as u32 {
+        return err!(GumballError::IndexGreaterThanLength);
+    }
+
+    let config_line = ConfigLineV2::try_from_slice(
+        &gumball_machine_data
+            [config_line_position..config_line_position + ConfigLineV2::INIT_SPACE],
+    )?;
+
+    require!(mint == config_line.mint, GumballError::InvalidMint);
+    require!(seller == config_line.seller, GumballError::InvalidSeller);
+    require!(buyer == config_line.buyer, GumballError::InvalidBuyer);
+
+    Ok(config_line)
 }
 
 /// Return the current number of lines written to the account.
@@ -688,7 +729,7 @@ pub fn thaw_nft<'a>(
     Ok(())
 }
 
-pub fn transfer_and_close<'a>(
+pub fn transfer_and_close_if_empty<'a>(
     payer: &AccountInfo<'a>,
     authority: &AccountInfo<'a>,
     token_account: &mut Box<Account<'a, TokenAccount>>,

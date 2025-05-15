@@ -4,7 +4,7 @@ use crate::{
     events::SettleItemSaleEvent,
     processors::{self, claim_proceeds, is_item_claimed},
     state::GumballMachine,
-    AssociatedToken, ConfigLine, GumballError, GumballState, SellerHistory, Token, TokenStandard,
+    AssociatedToken, ConfigLine, GumballError, SellerHistory, Token, TokenStandard,
 };
 use anchor_lang::prelude::*;
 
@@ -19,7 +19,7 @@ pub struct SettleCoreAssetSale<'info> {
     #[account(
         mut,
         has_one = authority @ GumballError::InvalidAuthority,
-        constraint = gumball_machine.state == GumballState::SaleEnded @ GumballError::InvalidState
+        constraint = gumball_machine.can_settle_items() @ GumballError::InvalidState
     )]
     gumball_machine: Box<Account<'info, GumballMachine>>,
 

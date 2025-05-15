@@ -60,6 +60,7 @@ test('it can settle an nft sale', async (t) => {
       botTax: { lamports: sol(0.01), lastInstruction: true },
       solPayment: { lamports: sol(1) },
     },
+    disablePrimarySplit: true,
   });
 
   // When we mint from the gumball guard.

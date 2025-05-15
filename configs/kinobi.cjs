@@ -465,6 +465,48 @@ kinobi.update(
 				},
 			},
 		},
+		"mallowGumball.sellItem": {
+			name: "sellItemBack",
+			accounts: {
+				seller: { defaultsTo: k.identityDefault() },
+				sellerPaymentAccount: {
+					defaultsTo: k.conditionalDefault("account", "paymentMint", {
+						ifTrue: defaultsToAssociatedTokenPda("paymentMint", "seller"),
+					}),
+				},
+				authorityPdaPaymentAccount: {
+					defaultsTo: k.conditionalDefault("account", "paymentMint", {
+						ifTrue: defaultsToAssociatedTokenPda("paymentMint", "authorityPda"),
+					}),
+				},
+				metadata: {
+					defaultsTo: k.conditionalDefault("account", "tokenMetadataProgram", {
+						ifTrue: defaultsToMetadataPda(),
+					}),
+				},
+				edition: {
+					defaultsTo: k.conditionalDefault("account", "tokenMetadataProgram", {
+						ifTrue: defaultsToMasterEditionPda(),
+					}),
+				},
+				authorityPdaTokenAccount: {
+					defaultsTo: k.conditionalDefault("account", "tokenMetadataProgram", {
+						ifTrue: defaultsToAssociatedTokenPda("mint", "authorityPda"),
+					}),
+				},
+				sellerTokenAccount: {
+					defaultsTo: k.conditionalDefault("account", "tokenMetadataProgram", {
+						ifTrue: defaultsToAssociatedTokenPda("mint", "seller"),
+					}),
+				},
+				buyerTokenAccount: {
+					defaultsTo: k.conditionalDefault("account", "tokenMetadataProgram", {
+						ifTrue: defaultsToAssociatedTokenPda("mint", "buyer"),
+					}),
+				},
+				...claimPnftDefault(),
+			},
+		},
 		"gumballGuard.route": {
 			internal: true,
 			args: {
@@ -568,12 +610,31 @@ kinobi.update(
 		"gumballGuard.update": { name: "updateGumballGuard", internal: true },
 		"mallowGumball.withdraw": { name: "deleteGumballMachine" },
 		"gumballGuard.withdraw": { name: "deleteGumballGuard" },
+		"mallowGumball.manageBuyBackFunds": {
+			name: "manageBuyBackFunds",
+			accounts: {
+				authorityPdaPaymentAccount: {
+					defaultsTo: k.conditionalDefault("account", "paymentMint", {
+						ifTrue: defaultsToAssociatedTokenPda("paymentMint", "authorityPda"),
+					}),
+				},
+				authorityPaymentAccount: {
+					defaultsTo: k.conditionalDefault("account", "paymentMint", {
+						ifTrue: defaultsToAssociatedTokenPda("paymentMint", "authority"),
+					}),
+				},
+			},
+		},
 	})
 );
 
 kinobi.update(new k.FlattenInstructionArgsStructVisitor());
 
-const addItemDefaultArgs = { sellerProofPath: k.vNone() };
+const addItemDefaultArgs = k.vStruct({
+	sellerProofPath: k.vNone(),
+	index: k.vNone(),
+});
+
 const nftDefaultArgs = {
 	authRulesProgram: k.vNone(),
 	sellerTokenRecord: k.vNone(),
@@ -584,17 +645,30 @@ const nftDefaultArgs = {
 };
 kinobi.update(
 	new k.SetStructDefaultValuesVisitor({
-		addNftInstructionData: { ...addItemDefaultArgs, ...nftDefaultArgs },
+		addItemArgs: {
+			sellerProofPath: k.vNone(),
+			index: k.vNone(),
+		},
+		addNftInstructionData: { args: addItemDefaultArgs, ...nftDefaultArgs },
 		removeNftInstructionData: nftDefaultArgs,
 		claimNftInstructionData: nftDefaultArgs,
+		sellItemInstructionData: {
+			...nftDefaultArgs,
+			feeAccount: k.vNone(),
+			feePaymentAccount: k.vNone(),
+		},
 		settleNftSaleInstructionData: nftDefaultArgs,
-		requestAddNftInstructionData: addItemDefaultArgs,
-		cancelAddNftRequestInstructionData: addItemDefaultArgs,
-		addCoreAssetInstructionData: addItemDefaultArgs,
-		addTokensInstructionData: addItemDefaultArgs,
+		requestAddNftInstructionData: { sellerProofPath: k.vNone() },
+		cancelAddNftRequestInstructionData: { sellerProofPath: k.vNone() },
+		addCoreAssetInstructionData: { args: addItemDefaultArgs },
+		addTokensInstructionData: { args: addItemDefaultArgs },
 		initializeGumballMachineInstructionData: {
 			feeConfig: k.vNone(),
 			disablePrimarySplit: k.vScalar(false),
+			buyBackConfig: k.vNone(),
+		},
+		updateSettingsInstructionData: {
+			buyBackConfig: k.vNone(),
 		},
 	})
 );

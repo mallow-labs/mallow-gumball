@@ -28,8 +28,6 @@ pub fn claim_proceeds<'a, 'b>(
     rent: &AccountInfo<'a>,
     auth_seeds: &[&[u8]],
 ) -> Result<u64> {
-    gumball_machine.items_settled += 1;
-
     let is_native = is_native_mint(gumball_machine.settings.payment_mint);
 
     if !is_native {
@@ -72,10 +70,70 @@ pub fn claim_proceeds<'a, 'b>(
         disable_primary_split
     );
 
+    let (total_proceeds, marketplace_fee_bps) = if gumball_machine.version >= 5 {
+        let mut total_proceeds_settled =
+            gumball_machine.get_total_proceeds_settled(&account_data)?;
+
+        let (total_proceeds, marketplace_fee_bps) =
+            get_total_proceeds(gumball_machine, total_proceeds_settled, config_count)?;
+
+        total_proceeds_settled = total_proceeds_settled
+            .checked_add(total_proceeds)
+            .ok_or(GumballError::NumericalOverflowError)?;
+        // Update the total proceeds settled
+        let total_proceeds_settled_position =
+            gumball_machine.get_total_proceeds_settled_position()?;
+        account_data[total_proceeds_settled_position..total_proceeds_settled_position + 8]
+            .copy_from_slice(&total_proceeds_settled.to_le_bytes());
+
+        (total_proceeds, marketplace_fee_bps)
+    } else {
+        get_total_proceeds(gumball_machine, 0, config_count)?
+    };
+
     drop(account_data);
 
-    let marketplace_fee_bps = if let Some(fee_confg) = gumball_machine.marketplace_fee_config {
-        fee_confg.fee_bps
+    transfer_proceeds(
+        gumball_machine,
+        total_proceeds,
+        marketplace_fee_bps,
+        authority_pda,
+        authority,
+        authority_pda_payment_account,
+        authority_payment_account,
+        seller,
+        seller_payment_account,
+        fee_account,
+        fee_payment_account,
+        payment_mint,
+        fee_payer,
+        associated_token_program,
+        token_program,
+        system_program,
+        rent,
+        auth_seeds,
+        royalty_info,
+        disable_primary_split,
+        remaining_accounts,
+    )?;
+
+    seller_history.item_count -= 1;
+    if seller_history.item_count == 0 {
+        seller_history.close(seller.to_account_info())?;
+    }
+
+    gumball_machine.items_settled += 1;
+
+    Ok(total_proceeds)
+}
+
+pub fn get_total_proceeds<'a>(
+    gumball_machine: &Box<Account<'a, GumballMachine>>,
+    total_proceeds_settled: u64,
+    config_count: u64,
+) -> Result<(u64, u16)> {
+    let marketplace_fee_bps = if let Some(fee_config) = gumball_machine.marketplace_fee_config {
+        fee_config.fee_bps
     } else {
         0
     };
@@ -87,25 +145,62 @@ pub fn claim_proceeds<'a, 'b>(
         0
     };
 
-    // Proceeds are calculated as total amount paid by buyers divided by total number of items in the gumball machine
+    // Version 5+ can have re-added items so total proceeds settled and items settled should be removed
+    let count = if gumball_machine.version >= 5 {
+        config_count - gumball_machine.items_settled
+    } else {
+        config_count
+    };
+
+    // Proceeds are calculated as total revenue divided by total number of items in the gumball machine
+    // (This also accounts for items that have been settled)
     let total_proceeds = gumball_machine
         .total_revenue
         .checked_sub(fees_taken)
         .ok_or(GumballError::NumericalOverflowError)?
-        .checked_div(config_count)
+        .checked_sub(total_proceeds_settled)
+        .ok_or(GumballError::NumericalOverflowError)?
+        .checked_div(count)
         .ok_or(GumballError::NumericalOverflowError)?;
-    msg!("Proceeds: {}", total_proceeds);
 
+    Ok((total_proceeds, marketplace_fee_bps))
+}
+
+pub fn transfer_proceeds<'a, 'b>(
+    gumball_machine: &Box<Account<'a, GumballMachine>>,
+    total_proceeds: u64,
+    marketplace_fee_bps: u16,
+    authority_pda: &mut AccountInfo<'a>,
+    authority: &mut AccountInfo<'a>,
+    authority_pda_payment_account: Option<&AccountInfo<'a>>,
+    authority_payment_account: Option<&AccountInfo<'a>>,
+    seller: &mut AccountInfo<'a>,
+    seller_payment_account: Option<&AccountInfo<'a>>,
+    fee_account: Option<&mut AccountInfo<'a>>,
+    fee_payment_account: Option<&AccountInfo<'a>>,
+    payment_mint: Option<&AccountInfo<'a>>,
+    fee_payer: &AccountInfo<'a>,
+    associated_token_program: &AccountInfo<'a>,
+    token_program: &AccountInfo<'a>,
+    system_program: &AccountInfo<'a>,
+    rent: &AccountInfo<'a>,
+    auth_seeds: &[&[u8]],
+    royalty_info: &RoyaltyInfo,
+    disable_primary_split: bool,
+    remaining_accounts: &'b [AccountInfo<'a>],
+) -> Result<()> {
     if total_proceeds > 0 {
+        msg!("Total proceeds: {}", total_proceeds);
+
         // Version 1+ takes fee on draw, so no fee on claim
         let marketplace_fee = if gumball_machine.version > 0 {
             0
         } else {
             get_bps_of(total_proceeds, marketplace_fee_bps)?
         };
-        msg!("Marketplace fee: {}", marketplace_fee);
 
         if marketplace_fee > 0 {
+            msg!("Marketplace fee: {}", marketplace_fee);
             transfer_from_pda(
                 authority_pda,
                 fee_account.unwrap(),
@@ -124,9 +219,9 @@ pub fn claim_proceeds<'a, 'b>(
         }
 
         let curator_fee = get_bps_of(total_proceeds, gumball_machine.settings.curator_fee_bps)?;
-        msg!("Curator fee: {}", curator_fee);
 
         if curator_fee > 0 {
+            msg!("Curator fee: {}", curator_fee);
             transfer_from_pda(
                 authority_pda,
                 authority,
@@ -154,32 +249,38 @@ pub fn claim_proceeds<'a, 'b>(
         let total_royalty = if royalty_info.is_primary_sale && !disable_primary_split {
             price_less_fees
         } else {
-            get_bps_of(price_less_fees, royalty_info.seller_fee_basis_points)?
+            if royalty_info.seller_fee_basis_points == 0 {
+                0
+            } else {
+                get_bps_of(price_less_fees, royalty_info.seller_fee_basis_points)?
+            }
         };
 
-        msg!("Total royalty: {}", total_royalty);
-
-        let royalties_paid = pay_creator_royalties(
-            authority_pda,
-            payment_mint,
-            authority_pda_payment_account,
-            Some(fee_payer),
-            royalty_info,
-            remaining_accounts,
-            associated_token_program,
-            token_program,
-            system_program,
-            rent,
-            Some(&auth_seeds),
-            total_royalty,
-        )?;
+        let royalties_paid = if total_royalty > 0 {
+            msg!("Total royalty: {}", total_royalty);
+            pay_creator_royalties(
+                authority_pda,
+                payment_mint,
+                authority_pda_payment_account,
+                Some(fee_payer),
+                royalty_info,
+                remaining_accounts,
+                associated_token_program,
+                token_program,
+                system_program,
+                rent,
+                Some(&auth_seeds),
+                total_royalty,
+            )?
+        } else {
+            0
+        };
 
         let seller_proceeds = price_less_fees
             .checked_sub(royalties_paid)
             .ok_or(GumballError::NumericalOverflowError)?;
 
         msg!("Seller proceeds: {}", seller_proceeds);
-
         if seller_proceeds > 0 {
             transfer_from_pda(
                 authority_pda,
@@ -199,12 +300,7 @@ pub fn claim_proceeds<'a, 'b>(
         }
     }
 
-    seller_history.item_count -= 1;
-    if seller_history.item_count == 0 {
-        seller_history.close(seller.to_account_info())?;
-    }
-
-    Ok(total_proceeds)
+    Ok(())
 }
 
 /// Pays creator fees to the creators in the metadata and returns total paid

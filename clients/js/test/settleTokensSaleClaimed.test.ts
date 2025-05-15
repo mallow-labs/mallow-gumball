@@ -567,6 +567,7 @@ test('it can settle a tokens item that was not sold with proceeds from another s
   const authorityPdaPostBalance = await umi.rpc.getBalance(
     findGumballMachineAuthorityPda(umi, { gumballMachine: gumballMachine })[0]
   );
+
   t.true(
     isEqualToAmount(
       subtractAmounts(authorityPdaPreBalance, authorityPdaPostBalance),
@@ -1080,10 +1081,12 @@ test('it can settle with curator fees', async (t) => {
         mint: tokenMint.publicKey,
         amount: 100,
         quantity: 1,
-        sellerProofPath: getMerkleProof(
-          [otherSellerUmi.identity.publicKey],
-          otherSellerUmi.identity.publicKey
-        ),
+        args: {
+          sellerProofPath: getMerkleProof(
+            [otherSellerUmi.identity.publicKey],
+            otherSellerUmi.identity.publicKey
+          ),
+        },
       })
     )
     .sendAndConfirm(otherSellerUmi);

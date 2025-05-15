@@ -172,4 +172,40 @@ pub enum GumballError {
 
     #[msg("Invalid input length")]
     InvalidInputLength,
+
+    #[msg("Buy back not enabled")]
+    BuyBackNotEnabled,
+
+    #[msg("Buy back funds not zero")]
+    BuyBackFundsNotZero,
+
+    #[msg("Insufficient funds")]
+    InsufficientFunds,
+
+    #[msg("Invalid version")]
+    InvalidVersion,
+
+    #[msg("Invalid oracle signer")]
+    InvalidOracleSigner,
+
+    #[msg("Invalid payer")]
+    InvalidPayer,
+
+    #[msg("Not implemented")]
+    NotImplemented,
+
+    #[msg("Buy back cutoff reached")]
+    BuyBackCutoffReached,
+
+    #[msg("Not a solo gumball")]
+    NotASoloGumball,
+
+    #[msg("Item not claimed")]
+    ItemNotClaimed,
+
+    #[msg("Item not settled")]
+    ItemNotSettled,
+
+    #[msg("Missing item index")]
+    MissingItemIndex,
 }

@@ -831,6 +831,162 @@ export class InvalidInputLengthError extends ProgramError {
 codeToErrorMap.set(0x17a8, InvalidInputLengthError);
 nameToErrorMap.set('InvalidInputLength', InvalidInputLengthError);
 
+/** BuyBackNotEnabled: Buy back not enabled */
+export class BuyBackNotEnabledError extends ProgramError {
+  readonly name: string = 'BuyBackNotEnabled';
+
+  readonly code: number = 0x17a9; // 6057
+
+  constructor(program: Program, cause?: Error) {
+    super('Buy back not enabled', program, cause);
+  }
+}
+codeToErrorMap.set(0x17a9, BuyBackNotEnabledError);
+nameToErrorMap.set('BuyBackNotEnabled', BuyBackNotEnabledError);
+
+/** BuyBackFundsNotZero: Buy back funds not zero */
+export class BuyBackFundsNotZeroError extends ProgramError {
+  readonly name: string = 'BuyBackFundsNotZero';
+
+  readonly code: number = 0x17aa; // 6058
+
+  constructor(program: Program, cause?: Error) {
+    super('Buy back funds not zero', program, cause);
+  }
+}
+codeToErrorMap.set(0x17aa, BuyBackFundsNotZeroError);
+nameToErrorMap.set('BuyBackFundsNotZero', BuyBackFundsNotZeroError);
+
+/** InsufficientFunds: Insufficient funds */
+export class InsufficientFundsError extends ProgramError {
+  readonly name: string = 'InsufficientFunds';
+
+  readonly code: number = 0x17ab; // 6059
+
+  constructor(program: Program, cause?: Error) {
+    super('Insufficient funds', program, cause);
+  }
+}
+codeToErrorMap.set(0x17ab, InsufficientFundsError);
+nameToErrorMap.set('InsufficientFunds', InsufficientFundsError);
+
+/** InvalidVersion: Invalid version */
+export class InvalidVersionError extends ProgramError {
+  readonly name: string = 'InvalidVersion';
+
+  readonly code: number = 0x17ac; // 6060
+
+  constructor(program: Program, cause?: Error) {
+    super('Invalid version', program, cause);
+  }
+}
+codeToErrorMap.set(0x17ac, InvalidVersionError);
+nameToErrorMap.set('InvalidVersion', InvalidVersionError);
+
+/** InvalidOracleSigner: Invalid oracle signer */
+export class InvalidOracleSignerError extends ProgramError {
+  readonly name: string = 'InvalidOracleSigner';
+
+  readonly code: number = 0x17ad; // 6061
+
+  constructor(program: Program, cause?: Error) {
+    super('Invalid oracle signer', program, cause);
+  }
+}
+codeToErrorMap.set(0x17ad, InvalidOracleSignerError);
+nameToErrorMap.set('InvalidOracleSigner', InvalidOracleSignerError);
+
+/** InvalidPayer: Invalid payer */
+export class InvalidPayerError extends ProgramError {
+  readonly name: string = 'InvalidPayer';
+
+  readonly code: number = 0x17ae; // 6062
+
+  constructor(program: Program, cause?: Error) {
+    super('Invalid payer', program, cause);
+  }
+}
+codeToErrorMap.set(0x17ae, InvalidPayerError);
+nameToErrorMap.set('InvalidPayer', InvalidPayerError);
+
+/** NotImplemented: Not implemented */
+export class NotImplementedError extends ProgramError {
+  readonly name: string = 'NotImplemented';
+
+  readonly code: number = 0x17af; // 6063
+
+  constructor(program: Program, cause?: Error) {
+    super('Not implemented', program, cause);
+  }
+}
+codeToErrorMap.set(0x17af, NotImplementedError);
+nameToErrorMap.set('NotImplemented', NotImplementedError);
+
+/** BuyBackCutoffReached: Buy back cutoff reached */
+export class BuyBackCutoffReachedError extends ProgramError {
+  readonly name: string = 'BuyBackCutoffReached';
+
+  readonly code: number = 0x17b0; // 6064
+
+  constructor(program: Program, cause?: Error) {
+    super('Buy back cutoff reached', program, cause);
+  }
+}
+codeToErrorMap.set(0x17b0, BuyBackCutoffReachedError);
+nameToErrorMap.set('BuyBackCutoffReached', BuyBackCutoffReachedError);
+
+/** NotASoloGumball: Not a solo gumball */
+export class NotASoloGumballError extends ProgramError {
+  readonly name: string = 'NotASoloGumball';
+
+  readonly code: number = 0x17b1; // 6065
+
+  constructor(program: Program, cause?: Error) {
+    super('Not a solo gumball', program, cause);
+  }
+}
+codeToErrorMap.set(0x17b1, NotASoloGumballError);
+nameToErrorMap.set('NotASoloGumball', NotASoloGumballError);
+
+/** ItemNotClaimed: Item not claimed */
+export class ItemNotClaimedError extends ProgramError {
+  readonly name: string = 'ItemNotClaimed';
+
+  readonly code: number = 0x17b2; // 6066
+
+  constructor(program: Program, cause?: Error) {
+    super('Item not claimed', program, cause);
+  }
+}
+codeToErrorMap.set(0x17b2, ItemNotClaimedError);
+nameToErrorMap.set('ItemNotClaimed', ItemNotClaimedError);
+
+/** ItemNotSettled: Item not settled */
+export class ItemNotSettledError extends ProgramError {
+  readonly name: string = 'ItemNotSettled';
+
+  readonly code: number = 0x17b3; // 6067
+
+  constructor(program: Program, cause?: Error) {
+    super('Item not settled', program, cause);
+  }
+}
+codeToErrorMap.set(0x17b3, ItemNotSettledError);
+nameToErrorMap.set('ItemNotSettled', ItemNotSettledError);
+
+/** MissingItemIndex: Missing item index */
+export class MissingItemIndexError extends ProgramError {
+  readonly name: string = 'MissingItemIndex';
+
+  readonly code: number = 0x17b4; // 6068
+
+  constructor(program: Program, cause?: Error) {
+    super('Missing item index', program, cause);
+  }
+}
+codeToErrorMap.set(0x17b4, MissingItemIndexError);
+nameToErrorMap.set('MissingItemIndex', MissingItemIndexError);
+
 /**
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors

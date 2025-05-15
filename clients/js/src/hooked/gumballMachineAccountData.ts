@@ -2,6 +2,7 @@ import { defaultPublicKey, PublicKey } from '@metaplex-foundation/umi';
 import {
   array,
   bitArray,
+  bool,
   mapSerializer,
   publicKey,
   Serializer,
@@ -11,7 +12,11 @@ import {
   u8,
 } from '@metaplex-foundation/umi/serializers';
 import { GUMBALL_MACHINE_HIDDEN_SECTION } from '../constants';
-import { TokenStandard } from '../generated';
+import {
+  BuyBackConfig,
+  getBuyBackConfigSerializer,
+  TokenStandard,
+} from '../generated';
 import {
   getGumballMachineAccountDataSerializer as baseGetGumballMachineAccountDataSerializer,
   GumballMachineAccountData as BaseGumballMachineAccountData,
@@ -21,6 +26,10 @@ import {
 export type GumballMachineAccountData = BaseGumballMachineAccountData & {
   itemsLoaded: number;
   items: GumballMachineItem[];
+  disablePrimarySplit: boolean;
+  buyBackConfig: BuyBackConfig;
+  buyBackFundsAvailable: number | bigint;
+  totalProceedsSettled: number | bigint;
 };
 
 export type GumballMachineAccountDataArgs = BaseGumballMachineAccountDataArgs;
@@ -86,14 +95,39 @@ type GumballMachineHiddenSectionV2 = {
   itemsLeftToMint: number[];
 };
 
+type GumballMachineHiddenSectionV3 = GumballMachineHiddenSectionV2 & {
+  unused: number;
+  disablePrimarySplit: boolean;
+};
+
+type GumballMachineHiddenSectionV4 = GumballMachineHiddenSectionV3 & {
+  buyBackConfig: BuyBackConfig;
+  buyBackFundsAvailable: number | bigint;
+};
+
+type GumballMachineHiddenSectionV5 = GumballMachineHiddenSectionV4 & {
+  totalProceedsSettled: number | bigint;
+};
+
+export function getDefaultBuyBackConfig(): BuyBackConfig {
+  return {
+    enabled: false,
+    toGumballMachine: false,
+    oracleSigner: defaultPublicKey(),
+    valuePct: 0,
+    marketplaceFeeBps: 0,
+    cutoffPct: 0,
+  };
+}
+
 function getHiddenSection(
   version: number,
   itemCapacity: number,
   slice: Uint8Array
-): GumballMachineHiddenSectionV2 {
-  if (version >= 2) {
-    const hiddenSectionSerializer: Serializer<GumballMachineHiddenSectionV2> =
-      struct<GumballMachineHiddenSectionV2>([
+): GumballMachineHiddenSectionV5 {
+  if (version <= 1) {
+    const hiddenSectionSerializer: Serializer<GumballMachineHiddenSection> =
+      struct<GumballMachineHiddenSection>([
         ['itemsLoaded', u32()],
         [
           'rawConfigLines',
@@ -103,13 +137,11 @@ function getHiddenSection(
               seller: PublicKey;
               buyer: PublicKey;
               tokenStandard: TokenStandard;
-              amount: number | bigint;
             }>([
               ['mint', publicKey()],
               ['seller', publicKey()],
               ['buyer', publicKey()],
               ['tokenStandard', u8()],
-              ['amount', u64()],
             ]),
             { size: itemCapacity }
           ),
@@ -120,11 +152,60 @@ function getHiddenSection(
       ]);
 
     const [hiddenSection] = hiddenSectionSerializer.deserialize(slice);
-    return hiddenSection;
+    return {
+      ...hiddenSection,
+      rawConfigLines: hiddenSection.rawConfigLines.map((item) => ({
+        ...item,
+        amount: 1n,
+      })),
+      disablePrimarySplit: false,
+      buyBackConfig: getDefaultBuyBackConfig(),
+      buyBackFundsAvailable: 0n,
+      totalProceedsSettled: 0n,
+      unused: 0,
+    };
   }
 
-  const hiddenSectionSerializer: Serializer<GumballMachineHiddenSection> =
-    struct<GumballMachineHiddenSection>([
+  if (version === 2) {
+    const v2 = getHiddenSectionV2(itemCapacity, slice);
+    return {
+      ...v2,
+      unused: 0,
+      disablePrimarySplit: false,
+      buyBackConfig: getDefaultBuyBackConfig(),
+      buyBackFundsAvailable: 0n,
+      totalProceedsSettled: 0n,
+    };
+  }
+
+  if (version === 3) {
+    const v3 = getHiddenSectionV3(itemCapacity, slice);
+    return {
+      ...v3,
+      unused: 0,
+      buyBackConfig: getDefaultBuyBackConfig(),
+      buyBackFundsAvailable: 0n,
+      totalProceedsSettled: 0n,
+    };
+  }
+
+  if (version === 4) {
+    const v4 = getHiddenSectionV4(itemCapacity, slice);
+    return {
+      ...v4,
+      totalProceedsSettled: 0n,
+    };
+  }
+
+  return getHiddenSectionV5(itemCapacity, slice);
+}
+
+function getHiddenSectionV2(
+  itemCapacity: number,
+  slice: Uint8Array
+): GumballMachineHiddenSectionV2 {
+  const hiddenSectionSerializer: Serializer<GumballMachineHiddenSectionV2> =
+    struct<GumballMachineHiddenSectionV2>([
       ['itemsLoaded', u32()],
       [
         'rawConfigLines',
@@ -134,11 +215,13 @@ function getHiddenSection(
             seller: PublicKey;
             buyer: PublicKey;
             tokenStandard: TokenStandard;
+            amount: number | bigint;
           }>([
             ['mint', publicKey()],
             ['seller', publicKey()],
             ['buyer', publicKey()],
             ['tokenStandard', u8()],
+            ['amount', u64()],
           ]),
           { size: itemCapacity }
         ),
@@ -149,13 +232,123 @@ function getHiddenSection(
     ]);
 
   const [hiddenSection] = hiddenSectionSerializer.deserialize(slice);
-  return {
-    ...hiddenSection,
-    rawConfigLines: hiddenSection.rawConfigLines.map((item) => ({
-      ...item,
-      amount: 1n,
-    })),
-  };
+  return hiddenSection;
+}
+
+function getHiddenSectionV3(
+  itemCapacity: number,
+  slice: Uint8Array
+): GumballMachineHiddenSectionV3 {
+  const hiddenSectionSerializer: Serializer<GumballMachineHiddenSectionV3> =
+    struct<GumballMachineHiddenSectionV3>([
+      ['itemsLoaded', u32()],
+      [
+        'rawConfigLines',
+        array(
+          struct<{
+            mint: PublicKey;
+            seller: PublicKey;
+            buyer: PublicKey;
+            tokenStandard: TokenStandard;
+            amount: number | bigint;
+          }>([
+            ['mint', publicKey()],
+            ['seller', publicKey()],
+            ['buyer', publicKey()],
+            ['tokenStandard', u8()],
+            ['amount', u64()],
+          ]),
+          { size: itemCapacity }
+        ),
+      ],
+      ['itemsClaimedMap', bitArray(Math.floor(itemCapacity / 8) + 1)],
+      ['itemsSettledMap', bitArray(Math.floor(itemCapacity / 8) + 1)],
+      ['itemsLeftToMint', array(u32(), { size: itemCapacity })],
+      ['unused', u32()],
+      ['disablePrimarySplit', bool()],
+    ]);
+
+  const [hiddenSection] = hiddenSectionSerializer.deserialize(slice);
+  return hiddenSection;
+}
+
+function getHiddenSectionV4(
+  itemCapacity: number,
+  slice: Uint8Array
+): GumballMachineHiddenSectionV4 {
+  const hiddenSectionSerializer: Serializer<GumballMachineHiddenSectionV4> =
+    struct<GumballMachineHiddenSectionV4>([
+      ['itemsLoaded', u32()],
+      [
+        'rawConfigLines',
+        array(
+          struct<{
+            mint: PublicKey;
+            seller: PublicKey;
+            buyer: PublicKey;
+            tokenStandard: TokenStandard;
+            amount: number | bigint;
+          }>([
+            ['mint', publicKey()],
+            ['seller', publicKey()],
+            ['buyer', publicKey()],
+            ['tokenStandard', u8()],
+            ['amount', u64()],
+          ]),
+          { size: itemCapacity }
+        ),
+      ],
+      ['itemsClaimedMap', bitArray(Math.floor(itemCapacity / 8) + 1)],
+      ['itemsSettledMap', bitArray(Math.floor(itemCapacity / 8) + 1)],
+      ['itemsLeftToMint', array(u32(), { size: itemCapacity })],
+      ['unused', u32()],
+      ['disablePrimarySplit', bool()],
+      ['buyBackConfig', getBuyBackConfigSerializer()],
+      ['buyBackFundsAvailable', u64()],
+    ]);
+
+  const [hiddenSection] = hiddenSectionSerializer.deserialize(slice);
+  return hiddenSection;
+}
+
+function getHiddenSectionV5(
+  itemCapacity: number,
+  slice: Uint8Array
+): GumballMachineHiddenSectionV5 {
+  const hiddenSectionSerializer: Serializer<GumballMachineHiddenSectionV5> =
+    struct<GumballMachineHiddenSectionV5>([
+      ['itemsLoaded', u32()],
+      [
+        'rawConfigLines',
+        array(
+          struct<{
+            mint: PublicKey;
+            seller: PublicKey;
+            buyer: PublicKey;
+            tokenStandard: TokenStandard;
+            amount: number | bigint;
+          }>([
+            ['mint', publicKey()],
+            ['seller', publicKey()],
+            ['buyer', publicKey()],
+            ['tokenStandard', u8()],
+            ['amount', u64()],
+          ]),
+          { size: itemCapacity }
+        ),
+      ],
+      ['itemsClaimedMap', bitArray(Math.floor(itemCapacity / 8) + 1)],
+      ['itemsSettledMap', bitArray(Math.floor(itemCapacity / 8) + 1)],
+      ['itemsLeftToMint', array(u32(), { size: itemCapacity })],
+      ['unused', u32()],
+      ['disablePrimarySplit', bool()],
+      ['buyBackConfig', getBuyBackConfigSerializer()],
+      ['buyBackFundsAvailable', u64()],
+      ['totalProceedsSettled', u64()],
+    ]);
+
+  const [hiddenSection] = hiddenSectionSerializer.deserialize(slice);
+  return hiddenSection;
 }
 
 export function getGumballMachineAccountDataSerializer(): Serializer<
@@ -210,6 +403,10 @@ export function getGumballMachineAccountDataSerializer(): Serializer<
         ...base,
         items,
         itemsLoaded: hiddenSection.itemsLoaded,
+        disablePrimarySplit: hiddenSection.disablePrimarySplit,
+        buyBackConfig: hiddenSection.buyBackConfig,
+        buyBackFundsAvailable: hiddenSection.buyBackFundsAvailable,
+        totalProceedsSettled: hiddenSection.totalProceedsSettled,
       };
     }
   );

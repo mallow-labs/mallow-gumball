@@ -30,13 +30,8 @@ pub mod mallow_gumball {
     ///   2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine])
     ///   3. `[signer, writable]` Payer
     ///   4. `[]` System program
-    pub fn initialize(
-        ctx: Context<Initialize>,
-        settings: GumballSettings,
-        fee_config: Option<FeeConfig>,
-        disable_primary_split: bool,
-    ) -> Result<()> {
-        instructions::initialize(ctx, settings, fee_config, disable_primary_split)
+    pub fn initialize(ctx: Context<Initialize>, args: InitializeArgs) -> Result<()> {
+        instructions::initialize(ctx, args)
     }
 
     /// Updates gumball machine settings.
@@ -45,8 +40,8 @@ pub mod mallow_gumball {
     ///
     ///   0. `[writable]` Gumball Machine account
     ///   1. `[signer, writable]` Gumball Machine authority
-    pub fn update_settings(ctx: Context<UpdateSettings>, settings: GumballSettings) -> Result<()> {
-        instructions::update_settings(ctx, settings)
+    pub fn update_settings(ctx: Context<UpdateSettings>, args: UpdateArgs) -> Result<()> {
+        instructions::update_settings(ctx, args)
     }
 
     /// Add legacy NFTs to the gumball machine.
@@ -68,8 +63,8 @@ pub mod mallow_gumball {
     ///   12. `[optional]` Auth rules account (pNFT)
     ///   13. `[optional]` Instructions sysvar (pNFT)
     ///   14. `[optional]` Auth rules program (pNFT)
-    pub fn add_nft(ctx: Context<AddNft>, seller_proof_path: Option<Vec<[u8; 32]>>) -> Result<()> {
-        instructions::add_nft(ctx, seller_proof_path)
+    pub fn add_nft(ctx: Context<AddNft>, args: AddItemArgs) -> Result<()> {
+        instructions::add_nft(ctx, args)
     }
 
     /// Add Core assets to the gumball machine.
@@ -84,11 +79,8 @@ pub mod mallow_gumball {
     ///   5. `[writable, optional]` Collection account
     ///   6. `[]` MPL Core program
     ///   7. `[]` System program
-    pub fn add_core_asset(
-        ctx: Context<AddCoreAsset>,
-        seller_proof_path: Option<Vec<[u8; 32]>>,
-    ) -> Result<()> {
-        instructions::add_core_asset(ctx, seller_proof_path)
+    pub fn add_core_asset(ctx: Context<AddCoreAsset>, args: AddItemArgs) -> Result<()> {
+        instructions::add_core_asset(ctx, args)
     }
 
     /// Add fungible tokens to the gumball machine.
@@ -110,9 +102,9 @@ pub mod mallow_gumball {
         ctx: Context<AddTokens>,
         amount: u64,
         quantity: u16,
-        seller_proof_path: Option<Vec<[u8; 32]>>,
+        args: AddItemArgs,
     ) -> Result<()> {
-        instructions::add_tokens(ctx, amount, quantity, seller_proof_path)
+        instructions::add_tokens(ctx, amount, quantity, args)
     }
 
     /// Request to add a NFT to the gumball machine.
@@ -364,6 +356,51 @@ pub mod mallow_gumball {
         revenue: u64,
     ) -> Result<()> {
         instructions::increment_total_revenue(ctx, revenue)
+    }
+
+    /// Sell an item back to the gumball machine using buy back funds.
+    /// The payer must be the seller or the oracle_signer.
+    /// Buying back to the gumball machine is currently not supported, but will be in the future.
+    /// If buying back to the authority, the item is marked as claimed and transferred to the buyer (authority).
+    ///
+    /// # Accounts
+    ///
+    ///   0. `[signer, writable]` Payer (must be seller or oracle_signer)
+    ///   1. `[signer]` Oracle signer (must match buy_back_config)
+    ///   2. `[writable]` Gumball Machine account
+    ///   3. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine])
+    ///   4. `[writable]` Mint account of the item (or Asset account for Core)
+    ///   5. `[writable]` Seller account
+    ///   6. `[writable]` Buyer account (must be gumball machine or authority)
+    ///   7. `[]` System program
+    ///   8. `[]` Token program
+    ///   9. `[]` Associated Token program
+    ///   10. `[]` Rent sysvar
+    ///   11. `[writable, optional]` Fee account (if fee configured)
+    ///   12. `[writable, optional]` Fee payment account (if fee configured)
+    ///   13. `[writable, optional]` Payment mint (if not native SOL)
+    ///   14. `[writable, optional]` Seller payment account (if not native SOL)
+    ///   15. `[writable, optional]` Authority PDA payment account (if not native SOL)
+    ///   16. `[writable, optional]` Collection account (for Core asset)
+    ///   17. `[optional]` MPL Core program (for Core asset)
+    ///   18. `[writable, optional]` Authority PDA token account (for NFT/Fungible)
+    ///   19. `[writable, optional]` Seller token account (for NFT/Fungible)
+    ///   20. `[writable, optional]` Buyer token account (for NFT/Fungible)
+    ///   21. `[writable, optional]` Metadata account (for NFT/PNFT)
+    ///   22. `[writable, optional]` Edition account (for NFT/PNFT)
+    ///   23. `[optional]` Token Metadata program (for NFT/PNFT)
+    ///   24. `[writable, optional]` Authority PDA token record (for pNFT)
+    ///   25. `[writable, optional]` Buyer token record (for pNFT)
+    ///   26. `[optional]` Auth rules account (for pNFT)
+    ///   27. `[optional]` Instructions sysvar (for pNFT)
+    ///   28. `[optional]` Auth rules program (for pNFT)
+    pub fn sell_item<'info>(
+        ctx: Context<'_, '_, '_, 'info, SellItem<'info>>,
+        index: u32,
+        amount: u64,
+        buy_price: u64,
+    ) -> Result<()> {
+        instructions::sell_item(ctx, index, amount, buy_price)
     }
 
     /// Claims a Core asset from the gumball machine for a specific buyer.
@@ -629,5 +666,27 @@ pub mod mallow_gumball {
         ctx: Context<'_, '_, '_, 'info, CloseGumballMachine<'info>>,
     ) -> Result<()> {
         instructions::close_gumball_machine(ctx)
+    }
+
+    /// Manage the buy back funds of the gumball machine.
+    ///
+    /// # Accounts
+    ///
+    ///   0. `[writable]` Gumball Machine account
+    ///   1. `[signer, writable]` Gumball Machine authority
+    ///   2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine])
+    ///   3. `[writable, optional]` Authority's payment account
+    ///   4. `[writable, optional]` Authority PDA's payment account
+    ///   5. `[optional]` Payment mint
+    ///   6. `[]` Token program
+    ///   7. `[]` Associated Token program
+    ///   8. `[]` System program
+    ///   9. `[]` Rent sysvar
+    pub fn manage_buy_back_funds<'info>(
+        ctx: Context<'_, '_, '_, 'info, ManageBuyBackFunds<'info>>,
+        amount: u64,
+        is_withdraw: bool,
+    ) -> Result<()> {
+        instructions::manage_buy_back_funds(ctx, amount, is_withdraw)
     }
 }
