@@ -87,7 +87,8 @@ pub fn add_item(
 
         let index_position = if is_re_add {
             // Mint indices will be as long as config count - redeemed items and we need to add to the end
-            indices_start + ((config_count - gumball_machine.items_redeemed as usize) * 4) as usize
+            indices_start
+                + ((config_count - (gumball_machine.items_redeemed as usize) + (i as usize)) * 4)
         } else {
             indices_start + (item_index as usize) * 4
         };

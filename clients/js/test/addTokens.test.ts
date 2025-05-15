@@ -915,3 +915,143 @@ test('it can re-add tokens to a gumball machine as the authority', async (t) => 
     itemCount: 2n,
   });
 });
+
+test('it can re-add a span of tokens to a gumball machine', async (t) => {
+  // Given a Gumball Machine with 5 nfts.
+  const umi = await createUmi();
+  const [tokenMint] = await createMintWithHolders(umi, {
+    holders: [{ owner: umi.identity, amount: 100 }],
+  });
+
+  const gumballMachineSigner = generateSigner(umi);
+  const gumballMachine = gumballMachineSigner.publicKey;
+
+  await create(umi, {
+    gumballMachine: gumballMachineSigner,
+    items: [
+      {
+        id: tokenMint.publicKey,
+        tokenStandard: TokenStandard.Fungible,
+        quantity: 4,
+      },
+    ],
+    startSale: true,
+    guards: {},
+  });
+
+  const buyer = await generateSignerWithSol(umi, sol(10));
+  const buyerUmi = await createUmi();
+  buyerUmi.use(signerIdentity(buyer));
+
+  // When we draw 3 items
+  await transactionBuilder()
+    .add(setComputeUnitLimit(umi, { units: 1_400_000 }))
+    .add(
+      draw(umi, {
+        gumballMachine,
+        buyer,
+      })
+    )
+    .add(
+      draw(umi, {
+        gumballMachine,
+        buyer,
+      })
+    )
+    .add(
+      draw(umi, {
+        gumballMachine,
+        buyer,
+      })
+    )
+    .sendAndConfirm(umi);
+
+  // Figure out which was drawn
+  let gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
+  // Find a span of 2 consecutive items that are drawn
+  const drawnIndices = gumballMachineAccount.items
+    .filter((item) => item.isDrawn)
+    .map((item) => item.index);
+
+  const getConsecutiveStartIndex = (indices: number[]) => {
+    for (let i = 0; i < indices.length - 1; i++) {
+      if (indices[i] + 1 === indices[i + 1]) {
+        return indices[i];
+      }
+    }
+  };
+
+  const startIndex = getConsecutiveStartIndex(drawnIndices)!;
+
+  // Then settle the sale
+  await transactionBuilder()
+    .add(setComputeUnitLimit(umi, { units: 1_400_000 }))
+    .add(
+      settleTokensSale(umi, {
+        index: startIndex,
+        gumballMachine,
+        authority: umi.identity.publicKey,
+        buyer: buyerUmi.identity.publicKey,
+        seller: umi.identity.publicKey,
+        mint: tokenMint.publicKey,
+        receiverTokenAccount: findAssociatedTokenPda(umi, {
+          mint: tokenMint.publicKey,
+          owner: buyerUmi.identity.publicKey,
+        })[0],
+      })
+    )
+    .add(
+      settleTokensSale(umi, {
+        index: startIndex + 1,
+        gumballMachine,
+        authority: umi.identity.publicKey,
+        buyer: buyerUmi.identity.publicKey,
+        seller: umi.identity.publicKey,
+        mint: tokenMint.publicKey,
+        receiverTokenAccount: findAssociatedTokenPda(umi, {
+          mint: tokenMint.publicKey,
+          owner: buyerUmi.identity.publicKey,
+        })[0],
+      })
+    )
+    .sendAndConfirm(umi);
+
+  const tokenBalance = await fetchToken(
+    umi,
+    findAssociatedTokenPda(umi, {
+      mint: tokenMint.publicKey,
+      owner: umi.identity.publicKey,
+    })[0]
+  );
+
+  // When we re-add the tokens to the Gumball Machine.
+  await transactionBuilder()
+    .add(
+      addTokens(umi, {
+        gumballMachine,
+        mint: tokenMint.publicKey,
+        amount: 1,
+        quantity: 2,
+        args: {
+          index: startIndex,
+        },
+      })
+    )
+    .sendAndConfirm(umi);
+
+  const tokenBalanceAfter = await fetchToken(
+    umi,
+    findAssociatedTokenPda(umi, {
+      mint: tokenMint.publicKey,
+      owner: umi.identity.publicKey,
+    })[0]
+  );
+
+  t.is(tokenBalanceAfter.amount, tokenBalance.amount - 2n);
+
+  // Then the Gumball Machine has been updated properly.
+  gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
+
+  t.false(gumballMachineAccount.items[startIndex].isDrawn);
+  t.false(gumballMachineAccount.items[startIndex + 1].isDrawn);
+});
