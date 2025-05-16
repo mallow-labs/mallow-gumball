@@ -47,7 +47,7 @@ pub fn update_settings(ctx: Context<UpdateSettings>, args: UpdateArgs) -> Result
 
     if gumball_machine.items_redeemed > 0 {
         require!(buy_back_config.is_none(), GumballError::InvalidState);
-    } else {
+    } else if gumball_machine.version >= 5 {
         if let Some(buy_back_config) = buy_back_config {
             let buy_back_config_position = gumball_machine.get_buy_back_config_position()?;
             msg!("buy_back_config_position: {}", buy_back_config_position);
