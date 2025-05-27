@@ -37,7 +37,8 @@ pub struct GumballMachine {
     // - (u32 * item_capacity) mint indices
     //
     // - version 3:
-    // - (u32) unused
+    // - (boolean) disable_royalties
+    // - ([u8; 3]) unused
     // - (boolean) disable_primary_split
     //
     // - version 4:
@@ -94,10 +95,15 @@ impl GumballMachine {
         Ok(position)
     }
 
-    pub fn get_disable_primary_split_position(&self) -> Result<usize> {
-        // NOTE: this extra 4 bytes is and unused field and can be used for future purposes
+    pub fn get_disable_royalties_position(&self) -> Result<usize> {
         let position =
-            self.get_mint_indices_position()? + 4 + (4 * self.settings.item_capacity as usize);
+            self.get_mint_indices_position()? + (4 * self.settings.item_capacity as usize);
+        Ok(position)
+    }
+
+    pub fn get_disable_primary_split_position(&self) -> Result<usize> {
+        // NOTE: +1 for disable royalties bool, + 3 unused bytes and can be used for future purposes
+        let position = self.get_disable_royalties_position()? + 4;
         Ok(position)
     }
 

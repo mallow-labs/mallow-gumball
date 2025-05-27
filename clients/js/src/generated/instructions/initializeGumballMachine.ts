@@ -73,6 +73,7 @@ export type InitializeGumballMachineInstructionData = {
   feeConfig: Option<FeeConfig>;
   disablePrimarySplit: boolean;
   buyBackConfig: Option<BuyBackConfig>;
+  disableRoyalties: boolean;
 };
 
 export type InitializeGumballMachineInstructionDataArgs = {
@@ -80,6 +81,7 @@ export type InitializeGumballMachineInstructionDataArgs = {
   feeConfig?: OptionOrNullable<FeeConfigArgs>;
   disablePrimarySplit?: boolean;
   buyBackConfig?: OptionOrNullable<BuyBackConfigArgs>;
+  disableRoyalties?: boolean;
 };
 
 export function getInitializeGumballMachineInstructionDataSerializer(): Serializer<
@@ -98,6 +100,7 @@ export function getInitializeGumballMachineInstructionDataSerializer(): Serializ
         ['feeConfig', option(getFeeConfigSerializer())],
         ['disablePrimarySplit', bool()],
         ['buyBackConfig', option(getBuyBackConfigSerializer())],
+        ['disableRoyalties', bool()],
       ],
       { description: 'InitializeGumballMachineInstructionData' }
     ),
@@ -107,6 +110,7 @@ export function getInitializeGumballMachineInstructionDataSerializer(): Serializ
       feeConfig: value.feeConfig ?? none(),
       disablePrimarySplit: value.disablePrimarySplit ?? false,
       buyBackConfig: value.buyBackConfig ?? none(),
+      disableRoyalties: value.disableRoyalties ?? false,
     })
   ) as Serializer<
     InitializeGumballMachineInstructionDataArgs,

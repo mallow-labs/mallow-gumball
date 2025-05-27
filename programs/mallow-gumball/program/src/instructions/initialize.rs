@@ -52,6 +52,7 @@ pub struct InitializeArgs {
     fee_config: Option<FeeConfig>,
     disable_primary_split: bool,
     buy_back_config: Option<BuyBackConfig>,
+    disable_royalties: bool,
 }
 
 pub fn initialize(ctx: Context<Initialize>, args: InitializeArgs) -> Result<()> {
@@ -62,6 +63,7 @@ pub fn initialize(ctx: Context<Initialize>, args: InitializeArgs) -> Result<()> 
         fee_config,
         disable_primary_split,
         buy_back_config,
+        disable_royalties,
     } = args;
 
     if settings.uri.len() >= MAX_URI_LENGTH - 4 {
@@ -97,14 +99,12 @@ pub fn initialize(ctx: Context<Initialize>, args: InitializeArgs) -> Result<()> 
         .copy_from_slice(&u32::MIN.to_le_bytes());
 
     let disable_primary_split_position = gumball_machine.get_disable_primary_split_position()?;
-    msg!(
-        "disable_primary_split_position: {}",
-        disable_primary_split_position
-    );
     account_data[disable_primary_split_position] = if disable_primary_split { 1 } else { 0 };
 
+    let disable_royalties_position = gumball_machine.get_disable_royalties_position()?;
+    account_data[disable_royalties_position] = if disable_royalties { 1 } else { 0 };
+
     let buy_back_config_position = gumball_machine.get_buy_back_config_position()?;
-    msg!("buy_back_config_position: {}", buy_back_config_position);
     let final_buy_back_config = if let Some(buy_back_config) = buy_back_config {
         buy_back_config
     } else {
@@ -115,10 +115,6 @@ pub fn initialize(ctx: Context<Initialize>, args: InitializeArgs) -> Result<()> 
 
     let buy_back_funds_available_position =
         gumball_machine.get_buy_back_funds_available_position()?;
-    msg!(
-        "buy_back_funds_available_position: {}",
-        buy_back_funds_available_position
-    );
     account_data[buy_back_funds_available_position..buy_back_funds_available_position + 8]
         .copy_from_slice(&u64::MIN.to_le_bytes());
 

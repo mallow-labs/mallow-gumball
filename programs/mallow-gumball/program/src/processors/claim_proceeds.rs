@@ -52,22 +52,27 @@ pub fn claim_proceeds<'a, 'b>(
     account_data[byte_position] |= mask;
 
     let disable_primary_split_position = gumball_machine.get_disable_primary_split_position()?;
-    let disable_primary_split = if gumball_machine.version >= 3 {
+    let disable_royalties_position = gumball_machine.get_disable_royalties_position()?;
+    let (disable_primary_split, disable_royalties) = if gumball_machine.version >= 3 {
         // Read the boolean value from the data at the calculated position
-        account_data[disable_primary_split_position] == 1
+        (
+            account_data[disable_primary_split_position] == 1,
+            account_data[disable_royalties_position] == 1,
+        )
     } else {
-        // For versions < 3, this setting doesn't exist, so default to false
-        false
+        // For versions < 3, these settings don't exist, so default to false
+        (false, false)
     };
 
     msg!(
-        "Item processed: byte position={}, mask={}, current value={}, new value={}, bit position={}, disable primary split={}",
+        "Item processed: byte position={}, mask={}, current value={}, new value={}, bit position={}, disable primary split={}, disable royalties={}",
         byte_position - bit_mask_start,
         mask,
         current_value,
         account_data[byte_position],
         bit,
-        disable_primary_split
+        disable_primary_split,
+        disable_royalties
     );
 
     let (total_proceeds, marketplace_fee_bps) = if gumball_machine.version >= 5 {
@@ -114,6 +119,7 @@ pub fn claim_proceeds<'a, 'b>(
         auth_seeds,
         royalty_info,
         disable_primary_split,
+        disable_royalties,
         remaining_accounts,
     )?;
 
@@ -187,6 +193,7 @@ pub fn transfer_proceeds<'a, 'b>(
     auth_seeds: &[&[u8]],
     royalty_info: &RoyaltyInfo,
     disable_primary_split: bool,
+    disable_royalties: bool,
     remaining_accounts: &'b [AccountInfo<'a>],
 ) -> Result<()> {
     if total_proceeds > 0 {
@@ -256,7 +263,7 @@ pub fn transfer_proceeds<'a, 'b>(
             }
         };
 
-        let royalties_paid = if total_royalty > 0 {
+        let royalties_paid = if total_royalty > 0 && !disable_royalties {
             msg!("Total royalty: {}", total_royalty);
             pay_creator_royalties(
                 authority_pda,

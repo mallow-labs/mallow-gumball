@@ -1,6 +1,6 @@
 {
   "name": "@mallow-labs/mallow-gumball",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "description": "Client library for Gumball Machine related programs",
   "main": "dist/src/cjs/index.js",
   "module": "dist/src/esm/index.js",

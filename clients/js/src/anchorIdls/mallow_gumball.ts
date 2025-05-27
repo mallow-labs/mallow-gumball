@@ -1,5 +1,5 @@
 export type MallowGumball = {
-  version: '0.8.1';
+  version: '0.9.0';
   name: 'mallow_gumball';
   instructions: [
     {
@@ -3163,6 +3163,10 @@ export type MallowGumball = {
               };
             };
           },
+          {
+            name: 'disableRoyalties';
+            type: 'bool';
+          },
         ];
       };
     },
@@ -3971,7 +3975,7 @@ export type MallowGumball = {
 };
 
 export const IDL: MallowGumball = {
-  version: '0.8.1',
+  version: '0.9.0',
   name: 'mallow_gumball',
   instructions: [
     {
@@ -7134,6 +7138,10 @@ export const IDL: MallowGumball = {
                 defined: 'BuyBackConfig',
               },
             },
+          },
+          {
+            name: 'disableRoyalties',
+            type: 'bool',
           },
         ],
       },

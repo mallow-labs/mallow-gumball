@@ -312,6 +312,7 @@ pub fn settle_tokens_sale_claimed<'info>(
         &auth_seeds,
         &RoyaltyInfo::default(),
         true,
+        true,
         ctx.remaining_accounts,
     )?;
 

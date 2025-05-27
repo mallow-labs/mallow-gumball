@@ -37,6 +37,7 @@ test('it can create a gumball machine using config line settings', async (t) => 
           marketplaceFeeBps: 1000,
           cutoffPct: 0,
         },
+        disableRoyalties: true,
       })
     )
     .sendAndConfirm(umi);
@@ -66,6 +67,7 @@ test('it can create a gumball machine using config line settings', async (t) => 
       cutoffPct: 0,
     },
     buyBackFundsAvailable: 0n,
+    disableRoyalties: true,
   });
 });
 

@@ -16,7 +16,7 @@ kinobi.update(
 	new k.UpdateProgramsVisitor({
 		gumballGuard: { name: "gumballGuard", prefix: "Cg" },
 		gumballMachineCore: { name: "mallowGumball", prefix: "Cm" },
-	})
+	}),
 );
 
 // Transform some defined types into accounts.
@@ -25,17 +25,17 @@ kinobi.update(
 		"mintCounter",
 		"allowListProof",
 		"allocationTracker",
-	])
+	]),
 );
 
 // Reusable seeds.
 const gumballGuardSeed = k.publicKeySeed(
 	"gumballGuard",
-	"The address of the Gumball Guard account"
+	"The address of the Gumball Guard account",
 );
 const gumballMachineSeed = k.publicKeySeed(
 	"gumballMachine",
-	"The address of the Gumball Machine account"
+	"The address of the Gumball Machine account",
 );
 const userSeed = k.publicKeySeed("user", "The address of the wallet trying to mint");
 
@@ -70,7 +70,7 @@ kinobi.update(
 				k.variableSeed(
 					"id",
 					k.numberTypeNode("u8"),
-					"A unique identifier in the context of a Gumball Machine/Gumball Guard combo"
+					"A unique identifier in the context of a Gumball Machine/Gumball Guard combo",
 				),
 				userSeed,
 				gumballGuardSeed,
@@ -85,7 +85,7 @@ kinobi.update(
 				k.variableSeed(
 					"merkleRoot",
 					k.bytesTypeNode(k.fixedSize(32)),
-					"The Merkle Root used when verifying the user"
+					"The Merkle Root used when verifying the user",
 				),
 				userSeed,
 				gumballGuardSeed,
@@ -110,7 +110,7 @@ kinobi.update(
 				gumballMachineSeed,
 			],
 		},
-	})
+	}),
 );
 
 // Update defined types.
@@ -119,7 +119,7 @@ kinobi.update(
 		gumballGuardData: { delete: true },
 		guardSet: { delete: true },
 		group: { delete: true },
-	})
+	}),
 );
 
 // Update fields.
@@ -134,7 +134,7 @@ kinobi.update(
 				});
 			},
 		},
-	])
+	]),
 );
 
 const defaultsToAssociatedTokenPda = (mint = "mint", owner = "owner") =>
@@ -284,7 +284,7 @@ kinobi.update(
 			account: "associatedTokenProgram",
 			ignoreIfOptional: true,
 		},
-	])
+	]),
 );
 
 const sellerPnftDefault = () => {
@@ -625,7 +625,7 @@ kinobi.update(
 				},
 			},
 		},
-	})
+	}),
 );
 
 kinobi.update(new k.FlattenInstructionArgsStructVisitor());
@@ -666,11 +666,12 @@ kinobi.update(
 			feeConfig: k.vNone(),
 			disablePrimarySplit: k.vScalar(false),
 			buyBackConfig: k.vNone(),
+			disableRoyalties: k.vScalar(false),
 		},
 		updateSettingsInstructionData: {
 			buyBackConfig: k.vNone(),
 		},
-	})
+	}),
 );
 
 // Wrap numbers.
@@ -680,14 +681,14 @@ kinobi.update(
 		"endDate.date": { kind: "DateTime" },
 		"botTax.lamports": { kind: "SolAmount" },
 		"solPayment.lamports": { kind: "SolAmount" },
-	})
+	}),
 );
 
 // Custom serializers.
 kinobi.update(
 	new k.UseCustomAccountSerializerVisitor({
 		gumballMachine: { extract: true },
-	})
+	}),
 );
 
 // Render JavaScript.
@@ -698,5 +699,5 @@ kinobi.accept(
 		dependencyMap: {
 			mplTokenMetadata: "@metaplex-foundation/mpl-token-metadata",
 		},
-	})
+	}),
 );

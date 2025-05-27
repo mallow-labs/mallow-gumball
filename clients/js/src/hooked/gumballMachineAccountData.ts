@@ -27,6 +27,7 @@ export type GumballMachineAccountData = BaseGumballMachineAccountData & {
   itemsLoaded: number;
   items: GumballMachineItem[];
   disablePrimarySplit: boolean;
+  disableRoyalties: boolean;
   buyBackConfig: BuyBackConfig;
   buyBackFundsAvailable: number | bigint;
   totalProceedsSettled: number | bigint;
@@ -96,7 +97,8 @@ type GumballMachineHiddenSectionV2 = {
 };
 
 type GumballMachineHiddenSectionV3 = GumballMachineHiddenSectionV2 & {
-  unused: number;
+  disableRoyalties: boolean;
+  unused: number[];
   disablePrimarySplit: boolean;
 };
 
@@ -158,11 +160,12 @@ function getHiddenSection(
         ...item,
         amount: 1n,
       })),
+      disableRoyalties: false,
+      unused: [0, 0, 0],
       disablePrimarySplit: false,
       buyBackConfig: getDefaultBuyBackConfig(),
       buyBackFundsAvailable: 0n,
       totalProceedsSettled: 0n,
-      unused: 0,
     };
   }
 
@@ -170,7 +173,8 @@ function getHiddenSection(
     const v2 = getHiddenSectionV2(itemCapacity, slice);
     return {
       ...v2,
-      unused: 0,
+      disableRoyalties: false,
+      unused: [0, 0, 0],
       disablePrimarySplit: false,
       buyBackConfig: getDefaultBuyBackConfig(),
       buyBackFundsAvailable: 0n,
@@ -182,7 +186,6 @@ function getHiddenSection(
     const v3 = getHiddenSectionV3(itemCapacity, slice);
     return {
       ...v3,
-      unused: 0,
       buyBackConfig: getDefaultBuyBackConfig(),
       buyBackFundsAvailable: 0n,
       totalProceedsSettled: 0n,
@@ -264,7 +267,8 @@ function getHiddenSectionV3(
       ['itemsClaimedMap', bitArray(Math.floor(itemCapacity / 8) + 1)],
       ['itemsSettledMap', bitArray(Math.floor(itemCapacity / 8) + 1)],
       ['itemsLeftToMint', array(u32(), { size: itemCapacity })],
-      ['unused', u32()],
+      ['disableRoyalties', bool()],
+      ['unused', array(u8(), { size: 3 })],
       ['disablePrimarySplit', bool()],
     ]);
 
@@ -301,7 +305,8 @@ function getHiddenSectionV4(
       ['itemsClaimedMap', bitArray(Math.floor(itemCapacity / 8) + 1)],
       ['itemsSettledMap', bitArray(Math.floor(itemCapacity / 8) + 1)],
       ['itemsLeftToMint', array(u32(), { size: itemCapacity })],
-      ['unused', u32()],
+      ['disableRoyalties', bool()],
+      ['unused', array(u8(), { size: 3 })],
       ['disablePrimarySplit', bool()],
       ['buyBackConfig', getBuyBackConfigSerializer()],
       ['buyBackFundsAvailable', u64()],
@@ -340,7 +345,8 @@ function getHiddenSectionV5(
       ['itemsClaimedMap', bitArray(Math.floor(itemCapacity / 8) + 1)],
       ['itemsSettledMap', bitArray(Math.floor(itemCapacity / 8) + 1)],
       ['itemsLeftToMint', array(u32(), { size: itemCapacity })],
-      ['unused', u32()],
+      ['disableRoyalties', bool()],
+      ['unused', array(u8(), { size: 3 })],
       ['disablePrimarySplit', bool()],
       ['buyBackConfig', getBuyBackConfigSerializer()],
       ['buyBackFundsAvailable', u64()],
@@ -404,6 +410,7 @@ export function getGumballMachineAccountDataSerializer(): Serializer<
         items,
         itemsLoaded: hiddenSection.itemsLoaded,
         disablePrimarySplit: hiddenSection.disablePrimarySplit,
+        disableRoyalties: hiddenSection.disableRoyalties,
         buyBackConfig: hiddenSection.buyBackConfig,
         buyBackFundsAvailable: hiddenSection.buyBackFundsAvailable,
         totalProceedsSettled: hiddenSection.totalProceedsSettled,
