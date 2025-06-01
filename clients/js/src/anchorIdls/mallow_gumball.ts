@@ -1,5 +1,5 @@
 export type MallowGumball = {
-  version: '0.9.0';
+  version: '0.9.1';
   name: 'mallow_gumball';
   instructions: [
     {
@@ -3975,7 +3975,7 @@ export type MallowGumball = {
 };
 
 export const IDL: MallowGumball = {
-  version: '0.9.0',
+  version: '0.9.1',
   name: 'mallow_gumball',
   instructions: [
     {

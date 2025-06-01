@@ -81,6 +81,7 @@ pub fn claim_core_asset<'info>(
             buyer: buyer.key(),
             token_standard: TokenStandard::Core,
         },
+        false
     )?;
 
     let auth_seeds = [

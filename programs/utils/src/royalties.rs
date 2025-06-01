@@ -3,7 +3,7 @@ use mpl_token_metadata::{accounts::Metadata, types::Creator};
 
 use crate::assert_is_metadata_account;
 
-#[derive(Default)]
+#[derive(AnchorSerialize, AnchorDeserialize, Default)]
 pub struct RoyaltyInfo {
     /// True if this is the first time the asset is being sold
     pub is_primary_sale: bool,

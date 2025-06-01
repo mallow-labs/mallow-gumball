@@ -129,6 +129,7 @@ pub fn assert_config_line(
     gumball_machine: &Box<Account<GumballMachine>>,
     index: u32,
     config_line: ConfigLine,
+    is_burnt: bool,
 ) -> Result<()> {
     let account_info = gumball_machine.to_account_info();
     let data = account_info.data.borrow();
@@ -153,11 +154,14 @@ pub fn assert_config_line(
         Pubkey::try_from(&data[config_line_position + 64..config_line_position + 96]).unwrap();
     require!(config_line.buyer == buyer, GumballError::InvalidBuyer);
 
-    let token_standard = u8::from_le_bytes(*array_ref![data, config_line_position + 96, 1]);
-    require!(
-        config_line.token_standard as u8 == token_standard,
-        GumballError::InvalidTokenStandard
-    );
+    // No need to verify the token standard for burnt assets
+    if !is_burnt {
+        let token_standard = u8::from_le_bytes(*array_ref![data, config_line_position + 96, 1]);
+        require!(
+            config_line.token_standard as u8 == token_standard,
+            GumballError::InvalidTokenStandard
+        );
+    }
 
     drop(data);
 

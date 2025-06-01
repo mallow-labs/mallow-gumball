@@ -130,6 +130,7 @@ pub fn settle_tokens_sale<'info>(
             buyer: buyer.key(),
             token_standard: TokenStandard::Fungible,
         },
+        false,
     )?;
 
     let payment_mint_info = ctx

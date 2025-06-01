@@ -129,6 +129,7 @@ pub fn claim_nft<'info>(
             buyer: buyer.key(),
             token_standard: token_standard_from_mpl_token_standard(&metadata)?,
         },
+        false
     )?;
 
     let auth_seeds = [

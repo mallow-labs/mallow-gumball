@@ -9,7 +9,7 @@ use crate::{
 };
 use anchor_lang::prelude::*;
 use mpl_token_metadata::{accounts::Metadata, instructions::UpdateMetadataAccountV2CpiBuilder};
-use utils::get_verified_royalty_info;
+use utils::{assert_keys_equal, get_verified_royalty_info, RoyaltyInfo};
 
 /// Settles a legacy NFT sale
 #[event_cpi]
@@ -160,12 +160,26 @@ pub fn settle_nft_sale<'info>(
     let associated_token_program = &ctx.accounts.associated_token_program.to_account_info();
     let system_program = &ctx.accounts.system_program.to_account_info();
     let rent = &ctx.accounts.rent.to_account_info();
-    let metadata = &ctx.accounts.metadata.to_account_info();
     let edition = &ctx.accounts.edition.to_account_info();
     let mint = &ctx.accounts.mint.to_account_info();
     let metadata_info = &ctx.accounts.metadata.to_account_info();
-    let metadata = &Metadata::try_from(metadata)?;
-    let token_standard = token_standard_from_mpl_token_standard(&metadata)?;
+    let metadata = if metadata_info.data_len() <= 1 { 
+        None
+     } else { 
+        Some(Metadata::try_from(metadata_info)?)
+     };
+    let token_standard = if let Some(metadata) = &metadata {
+        Some(token_standard_from_mpl_token_standard(metadata)?)
+    } else {
+        None
+    };
+    let is_burnt = metadata.is_none();
+
+    if is_burnt {
+        // Verify the metadata_info key is the correct one
+        let (expected_pda, _) = Metadata::find_pda(mint.key);
+        assert_keys_equal(expected_pda, metadata_info.key(), "Invalid metadata PDA")?;
+    }
 
     assert_config_line(
         gumball_machine,
@@ -174,11 +188,16 @@ pub fn settle_nft_sale<'info>(
             mint: mint.key(),
             seller: seller.key(),
             buyer: buyer.key(),
-            token_standard,
+            token_standard: token_standard.unwrap_or(TokenStandard::NonFungible),
         },
+        is_burnt,
     )?;
 
-    let royalty_info = get_verified_royalty_info(metadata_info, mint)?;
+    let royalty_info = if is_burnt {
+        RoyaltyInfo::default()
+    } else {
+        get_verified_royalty_info(metadata_info, mint)?
+    };
 
     let payment_mint_info = ctx
         .accounts
@@ -229,8 +248,8 @@ pub fn settle_nft_sale<'info>(
     ];
 
     if royalty_info.is_primary_sale
-        && token_standard == TokenStandard::NonFungible
-        && metadata.update_authority == payer.key()
+        && token_standard == Some(TokenStandard::NonFungible)
+        && metadata.as_ref().unwrap().update_authority == payer.key()
     {
         let mut builder = UpdateMetadataAccountV2CpiBuilder::new(token_metadata_program);
         builder
@@ -264,7 +283,8 @@ pub fn settle_nft_sale<'info>(
             authority_pda_token_account,
             mint,
             edition,
-            metadata,
+            // Metadata must exist if not yet claimed
+            metadata.as_ref().unwrap(),
             metadata_info,
             token_program,
             associated_token_program,

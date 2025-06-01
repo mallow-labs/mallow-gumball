@@ -93,6 +93,7 @@ pub fn claim_tokens<'info>(
             buyer: buyer.key(),
             token_standard: TokenStandard::Fungible,
         },
+        false
     )?;
 
     let auth_seeds = [

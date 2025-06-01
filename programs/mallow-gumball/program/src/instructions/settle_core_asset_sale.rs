@@ -7,6 +7,7 @@ use crate::{
     AssociatedToken, ConfigLine, GumballError, SellerHistory, Token, TokenStandard,
 };
 use anchor_lang::prelude::*;
+use utils::RoyaltyInfo;
 
 #[event_cpi]
 #[derive(Accounts)]
@@ -124,6 +125,7 @@ pub fn settle_core_asset_sale<'info>(
         .as_ref()
         .map(|account| account.to_account_info());
     let collection = collection_info.as_ref();
+    let is_burnt = asset.data_len() <= 1; // burnt assets retain 1 byte or less
 
     assert_config_line(
         gumball_machine,
@@ -134,10 +136,14 @@ pub fn settle_core_asset_sale<'info>(
             buyer: buyer.key(),
             token_standard: TokenStandard::Core,
         },
+        is_burnt
     )?;
 
-    let royalty_info =
-        utils::core::royalties::get_verified_royalty_info(asset, collection, seller.key())?;
+    let royalty_info = if is_burnt {
+        RoyaltyInfo::default()
+    } else {
+        utils::core::royalties::get_verified_royalty_info(asset, collection, seller.key())?
+    };
 
     let payment_mint_info = ctx
         .accounts
