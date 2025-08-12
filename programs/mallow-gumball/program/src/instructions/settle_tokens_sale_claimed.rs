@@ -120,7 +120,6 @@ pub fn settle_tokens_sale_claimed<'info>(
     let token_program = &ctx.accounts.token_program.to_account_info();
     let associated_token_program = &ctx.accounts.associated_token_program.to_account_info();
     let system_program = &ctx.accounts.system_program.to_account_info();
-    let rent = &ctx.accounts.rent.to_account_info();
     let mint = &ctx.accounts.mint.to_account_info();
     let mint_key = mint.key();
     let seller_key = seller.key();
@@ -258,7 +257,8 @@ pub fn settle_tokens_sale_claimed<'info>(
             .checked_add(total_proceeds)
             .ok_or(GumballError::NumericalOverflowError)?;
         // Update the total proceeds settled
-        let total_proceeds_settled_position = gumball_machine.get_total_proceeds_settled_position()?;
+        let total_proceeds_settled_position =
+            gumball_machine.get_total_proceeds_settled_position()?;
         account_data[total_proceeds_settled_position..total_proceeds_settled_position + 8]
             .copy_from_slice(&total_proceeds_settled.to_le_bytes());
     }
@@ -284,7 +284,6 @@ pub fn settle_tokens_sale_claimed<'info>(
             token_program,
             associated_token_program,
             system_program,
-            rent,
             seller,
             &auth_seeds,
             total_unsold_tokens,
@@ -308,7 +307,6 @@ pub fn settle_tokens_sale_claimed<'info>(
         associated_token_program,
         token_program,
         system_program,
-        rent,
         &auth_seeds,
         &RoyaltyInfo::default(),
         true,

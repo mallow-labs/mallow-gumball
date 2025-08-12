@@ -35,7 +35,7 @@ test('it can call the route instruction of a specific guard', async (t) => {
   await transactionBuilder()
     .add(
       route(umi, {
-        gumballMachine,
+        machine: gumballMachine,
         guard: 'allowList',
         routeArgs: { path: 'proof', merkleRoot, merkleProof, buyer },
       })
@@ -46,7 +46,7 @@ test('it can call the route instruction of a specific guard', async (t) => {
   const [allowListProofPda] = findAllowListProofPda(umi, {
     merkleRoot,
     user: buyer,
-    gumballMachine,
+    machine: gumballMachine,
     gumballGuard: findGumballGuardPda(umi, { base: gumballMachine })[0],
   });
   t.true(await umi.rpc.accountExists(allowListProofPda));
@@ -83,7 +83,7 @@ test('it can call the route instruction of a specific guard on a group', async (
   await transactionBuilder()
     .add(
       route(umi, {
-        gumballMachine,
+        machine: gumballMachine,
         guard: 'allowList',
         group: some('GROUP1'),
         routeArgs: {
@@ -99,7 +99,7 @@ test('it can call the route instruction of a specific guard on a group', async (
   const [allowListProofPdaA] = findAllowListProofPda(umi, {
     merkleRoot: merkleRootA,
     user: umi.identity.publicKey,
-    gumballMachine,
+    machine: gumballMachine,
     gumballGuard: findGumballGuardPda(umi, { base: gumballMachine })[0],
   });
   t.true(await umi.rpc.accountExists(allowListProofPdaA));
@@ -108,7 +108,7 @@ test('it can call the route instruction of a specific guard on a group', async (
   const [allowListProofPdaB] = findAllowListProofPda(umi, {
     merkleRoot: merkleRootB,
     user: umi.identity.publicKey,
-    gumballMachine,
+    machine: gumballMachine,
     gumballGuard: findGumballGuardPda(umi, { base: gumballMachine })[0],
   });
   t.false(await umi.rpc.accountExists(allowListProofPdaB));
@@ -123,7 +123,9 @@ test('it cannot call the route instruction of a guard that does not support it',
 
   // When we try to call the route instruction of the bot tax guard.
   const promise = transactionBuilder()
-    .add(route(umi, { gumballMachine, guard: 'botTax', routeArgs: {} }))
+    .add(
+      route(umi, { machine: gumballMachine, guard: 'botTax', routeArgs: {} })
+    )
     .sendAndConfirm(umi);
 
   // Then we expect a program error.
@@ -144,7 +146,7 @@ test('it must provide a group label if the gumball guard has groups', async (t) 
   const promise = transactionBuilder()
     .add(
       route(umi, {
-        gumballMachine,
+        machine: gumballMachine,
         guard: 'allowList',
         group: none(),
         routeArgs: { path: 'proof', merkleRoot, merkleProof },
@@ -170,7 +172,7 @@ test('it must not provide a group label if the gumball guard does not have group
   const promise = transactionBuilder()
     .add(
       route(umi, {
-        gumballMachine,
+        machine: gumballMachine,
         guard: 'allowList',
         group: some('GROUPX'),
         routeArgs: { path: 'proof', merkleRoot, merkleProof },

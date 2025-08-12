@@ -80,7 +80,6 @@ pub fn claim_tokens<'info>(
     let token_program = &ctx.accounts.token_program.to_account_info();
     let associated_token_program = &ctx.accounts.associated_token_program.to_account_info();
     let system_program = &ctx.accounts.system_program.to_account_info();
-    let rent = &ctx.accounts.rent.to_account_info();
     let mint = &ctx.accounts.mint.to_account_info();
     let authority = &ctx.accounts.authority.to_account_info();
 
@@ -93,7 +92,7 @@ pub fn claim_tokens<'info>(
             buyer: buyer.key(),
             token_standard: TokenStandard::Fungible,
         },
-        false
+        false,
     )?;
 
     let auth_seeds = [
@@ -115,7 +114,6 @@ pub fn claim_tokens<'info>(
         token_program,
         associated_token_program,
         system_program,
-        rent,
         &auth_seeds,
     )?;
 

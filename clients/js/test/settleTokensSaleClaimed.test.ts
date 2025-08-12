@@ -380,7 +380,7 @@ test('it can settle a tokens item that was not sold', async (t) => {
   });
 
   const gumballMachineSigner = generateSigner(umi);
-  const gumballMachine = gumballMachineSigner.publicKey;
+  const machine = gumballMachineSigner.publicKey;
 
   await create(umi, {
     gumballMachine: gumballMachineSigner,
@@ -402,11 +402,11 @@ test('it can settle a tokens item that was not sold', async (t) => {
     },
   });
 
-  await endSale(umi, { gumballMachine }).sendAndConfirm(umi);
+  await endSale(umi, { gumballMachine: machine }).sendAndConfirm(umi);
 
   const sellerPreBalance = await umi.rpc.getBalance(umi.identity.publicKey);
   const authorityPdaPreBalance = await umi.rpc.getBalance(
-    findGumballMachineAuthorityPda(umi, { gumballMachine: gumballMachine })[0]
+    findGumballMachineAuthorityPda(umi, { gumballMachine: machine })[0]
   );
 
   // Then settle the sale
@@ -416,7 +416,7 @@ test('it can settle a tokens item that was not sold', async (t) => {
       settleTokensSaleClaimed(umi, {
         startIndex: 0,
         endIndex: 999,
-        gumballMachine,
+        gumballMachine: machine,
         authority: umi.identity.publicKey,
         seller: umi.identity.publicKey,
         mint: tokenMint.publicKey,
@@ -426,14 +426,14 @@ test('it can settle a tokens item that was not sold', async (t) => {
 
   const sellerPostBalance = await umi.rpc.getBalance(umi.identity.publicKey);
   const authorityPdaPostBalance = await umi.rpc.getBalance(
-    findGumballMachineAuthorityPda(umi, { gumballMachine: gumballMachine })[0]
+    findGumballMachineAuthorityPda(umi, { gumballMachine: machine })[0]
   );
 
   t.true(isEqualToAmount(sellerPostBalance, sellerPreBalance, sol(0.01)));
   t.true(isEqualToAmount(authorityPdaPostBalance, authorityPdaPreBalance));
 
   // And the gumball machine was updated.
-  const gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
+  const gumballMachineAccount = await fetchGumballMachine(umi, machine);
   t.like(gumballMachineAccount, <GumballMachine>{
     itemsRedeemed: 0n,
     itemsSettled: 1000n,
@@ -443,7 +443,7 @@ test('it can settle a tokens item that was not sold', async (t) => {
   const sellerHistoryAccount = await safeFetchSellerHistory(
     umi,
     findSellerHistoryPda(umi, {
-      gumballMachine,
+      gumballMachine: machine,
       seller: umi.identity.publicKey,
     })
   );
@@ -466,7 +466,7 @@ test('it can settle a tokens item that was not sold', async (t) => {
 
   // Should now be able to close the machine
   await closeGumballMachine(umi, {
-    gumballMachine,
+    machine,
     gumballGuard: findGumballGuardPda(umi, {
       base: gumballMachineSigner.publicKey,
     })[0],
@@ -520,7 +520,7 @@ test('it can settle a tokens item that was not sold with proceeds from another s
         payer,
         buyer,
         mintArgs: {
-          solPayment: some({ feeAccount }),
+          solPayment: some({ feeAccounts: [feeAccount] }),
         },
       })
     )
@@ -666,7 +666,7 @@ test('it can settle a claimed tokens item with a marketplace config', async (t) 
         payer,
         buyer,
         mintArgs: {
-          solPayment: some({ feeAccount }),
+          solPayment: some({ feeAccounts: [feeAccount] }),
         },
       })
     )

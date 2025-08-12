@@ -114,7 +114,6 @@ pub fn claim_nft<'info>(
     let token_program = &ctx.accounts.token_program.to_account_info();
     let associated_token_program = &ctx.accounts.associated_token_program.to_account_info();
     let system_program = &ctx.accounts.system_program.to_account_info();
-    let rent = &ctx.accounts.rent.to_account_info();
     let edition = &ctx.accounts.edition.to_account_info();
     let mint = &ctx.accounts.mint.to_account_info();
     let metadata_info = &ctx.accounts.metadata.to_account_info();
@@ -129,7 +128,7 @@ pub fn claim_nft<'info>(
             buyer: buyer.key(),
             token_standard: token_standard_from_mpl_token_standard(&metadata)?,
         },
-        false
+        false,
     )?;
 
     let auth_seeds = [
@@ -156,7 +155,6 @@ pub fn claim_nft<'info>(
         associated_token_program,
         token_metadata_program,
         system_program,
-        rent,
         &auth_seeds,
         ctx.accounts.seller_token_record.as_ref(),
         ctx.accounts.authority_pda_token_record.as_ref(),

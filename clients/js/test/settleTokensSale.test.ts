@@ -600,7 +600,7 @@ test('it can settle a tokens sale that was not sold with proceeds from another s
         payer,
         buyer,
         mintArgs: {
-          solPayment: some({ feeAccount }),
+          solPayment: some({ feeAccounts: [feeAccount] }),
         },
       })
     )
@@ -807,7 +807,7 @@ test('it can settle a tokens sale with a marketplace config', async (t) => {
         payer,
         buyer,
         mintArgs: {
-          solPayment: some({ feeAccount }),
+          solPayment: some({ feeAccounts: [feeAccount] }),
         },
       })
     )

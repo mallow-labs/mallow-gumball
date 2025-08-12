@@ -154,6 +154,13 @@ pub trait Guard: Condition + AnchorSerialize + AnchorDeserialize {
         Ok(())
     }
 }
+
+#[derive(PartialEq, Eq, Clone, Debug)]
+pub enum MachineType {
+    Gumball,
+    Jellybean,
+}
+
 pub struct EvaluationContext<'b, 'c: 'info, 'info> {
     /// Accounts required to mint an NFT.
     pub(crate) accounts: DrawAccounts<'b, 'c, 'info>,
@@ -168,6 +175,9 @@ pub struct EvaluationContext<'b, 'c: 'info, 'info> {
 
     /// Convenience mapping of remaining account indices.
     pub indices: BTreeMap<&'info str, usize>,
+
+    /// The type of machine that is being used to mint the NFT.
+    pub machine_type: MachineType,
 }
 
 /// Utility function to try to get the account from the remaining accounts
@@ -195,7 +205,7 @@ fn cpi_increment_total_revenue(ctx: &EvaluationContext, revenue: u64) -> Result<
 
     // gumball machine mint instruction accounts
     let accounts = Box::new(mallow_gumball::cpi::accounts::IncrementTotalRevenue {
-        gumball_machine: ctx.accounts.gumball_machine.to_account_info(),
+        gumball_machine: ctx.accounts.machine.to_account_info(),
         mint_authority: gumball_guard.to_account_info(),
     });
 
@@ -224,7 +234,7 @@ fn cpi_start_sale(ctx: &EvaluationContext) -> Result<()> {
 
     // gumball machine mint instruction accounts
     let accounts = Box::new(mallow_gumball::cpi::accounts::StartSale {
-        gumball_machine: ctx.accounts.gumball_machine.to_account_info(),
+        gumball_machine: ctx.accounts.machine.to_account_info(),
         authority: gumball_guard.to_account_info(),
     });
 

@@ -167,7 +167,6 @@ pub fn sell_item<'info>(
     let token_program = &ctx.accounts.token_program.to_account_info();
     let associated_token_program = &ctx.accounts.associated_token_program.to_account_info();
     let system_program = &ctx.accounts.system_program.to_account_info();
-    let rent = &ctx.accounts.rent.to_account_info();
     let mint = &ctx.accounts.mint.to_account_info();
 
     let account_info = gumball_machine.to_account_info();
@@ -264,7 +263,6 @@ pub fn sell_item<'info>(
                     token_program,
                     associated_token_program,
                     system_program,
-                    rent,
                     buyer,
                     &auth_seeds,
                     amount,
@@ -335,7 +333,6 @@ pub fn sell_item<'info>(
                         .unwrap()
                         .to_account_info(),
                     system_program,
-                    rent,
                     &auth_seeds,
                     ctx.accounts.buyer_token_record.as_ref(),
                     ctx.accounts.authority_pda_token_record.as_ref(),
@@ -389,10 +386,9 @@ pub fn sell_item<'info>(
         seller_payment_account_info,
         payment_mint_info,
         Some(payer),
-        associated_token_program,
-        token_program,
+        Some(associated_token_program),
+        Some(token_program),
         system_program,
-        rent,
         &auth_seeds,
         None,
         buy_price,
@@ -417,10 +413,9 @@ pub fn sell_item<'info>(
             fee_payment_account_info,
             payment_mint_info,
             Some(payer),
-            associated_token_program,
-            token_program,
+            Some(associated_token_program),
+            Some(token_program),
             system_program,
-            rent,
             &auth_seeds,
             None,
             marketplace_fee,

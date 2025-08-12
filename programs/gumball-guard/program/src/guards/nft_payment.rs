@@ -4,9 +4,10 @@ use mpl_token_metadata::{
     instructions::TransferV1CpiBuilder,
     types::{ProgrammableConfig, TokenStandard},
 };
+use utils::assert_keys_equal;
 
 use super::*;
-use crate::{state::GuardType, utils::assert_keys_equal};
+use crate::state::GuardType;
 
 /// Guard that charges another NFT (token) from a specific collection as payment
 /// for the mint.
@@ -65,28 +66,32 @@ impl Condition for NftPayment {
         )?;
 
         let metadata: Metadata = Metadata::try_from(nft_metadata)?;
-        assert_keys_equal(&metadata.mint, nft_mint.key)?;
+        assert_keys_equal(metadata.mint, nft_mint.key(), "Invalid metadata mint")?;
 
         let destination = try_get_account_info(ctx.accounts.remaining, index + 3)?;
         let destination_ata = try_get_account_info(ctx.accounts.remaining, index + 4)?;
 
         let spl_ata_program = try_get_account_info(ctx.accounts.remaining, index + 5)?;
-        assert_keys_equal(spl_ata_program.key, &spl_associated_token_account::ID)?;
+        assert_keys_equal(
+            spl_ata_program.key(),
+            anchor_spl::associated_token::ID,
+            "Invalid ATA program",
+        )?;
 
         ctx.account_cursor += 3;
 
-        assert_keys_equal(destination.key, &self.destination)?;
+        assert_keys_equal(destination.key(), self.destination, "Invalid destination")?;
 
         let (ata, _) = Pubkey::find_program_address(
             &[
                 destination.key.as_ref(),
-                spl_token::ID.as_ref(),
+                anchor_spl::token::ID.as_ref(),
                 nft_mint.key.as_ref(),
             ],
-            &spl_associated_token_account::ID,
+            &anchor_spl::associated_token::ID,
         );
 
-        assert_keys_equal(destination_ata.key, &ata)?;
+        assert_keys_equal(destination_ata.key(), ata, "Invalid destination ATA")?;
 
         if matches!(
             metadata.token_standard,
@@ -94,16 +99,28 @@ impl Condition for NftPayment {
         ) {
             let nft_master_edition = try_get_account_info(ctx.accounts.remaining, index + 6)?;
             let (nft_master_edition_key, _) = MasterEdition::find_pda(nft_mint.key);
-            assert_keys_equal(&nft_master_edition_key, nft_master_edition.key)?;
+            assert_keys_equal(
+                nft_master_edition_key,
+                nft_master_edition.key(),
+                "Invalid master edition",
+            )?;
 
             let owner_token_record = try_get_account_info(ctx.accounts.remaining, index + 7)?;
             let (owner_token_record_key, _) = TokenRecord::find_pda(nft_mint.key, nft_account.key);
-            assert_keys_equal(&owner_token_record_key, owner_token_record.key)?;
+            assert_keys_equal(
+                owner_token_record_key,
+                owner_token_record.key(),
+                "Invalid owner token record",
+            )?;
 
             let destination_token_record = try_get_account_info(ctx.accounts.remaining, index + 8)?;
             let (destination_token_record_key, _) =
                 TokenRecord::find_pda(nft_mint.key, destination_ata.key);
-            assert_keys_equal(&destination_token_record_key, destination_token_record.key)?;
+            assert_keys_equal(
+                destination_token_record_key,
+                destination_token_record.key(),
+                "Invalid destination token record",
+            )?;
 
             ctx.account_cursor += 3;
 
@@ -112,10 +129,14 @@ impl Condition for NftPayment {
             }) = metadata.programmable_config
             {
                 let auth_rules_program = try_get_account_info(ctx.accounts.remaining, index + 9)?;
-                assert_keys_equal(auth_rules_program.key, &MPL_TOKEN_AUTH_RULES_PROGRAM)?;
+                assert_keys_equal(
+                    auth_rules_program.key(),
+                    MPL_TOKEN_AUTH_RULES_PROGRAM,
+                    "Invalid auth rules program",
+                )?;
 
                 let auth_rules = try_get_account_info(ctx.accounts.remaining, index + 10)?;
-                assert_keys_equal(&rule_set, auth_rules.key)?;
+                assert_keys_equal(rule_set, auth_rules.key(), "Invalid auth rules")?;
 
                 ctx.account_cursor += 2;
             }
@@ -139,8 +160,9 @@ impl Condition for NftPayment {
         let destination = try_get_account_info(ctx.accounts.remaining, index + 3)?;
         let destination_ata = try_get_account_info(ctx.accounts.remaining, index + 4)?;
         let spl_ata_program = try_get_account_info(ctx.accounts.remaining, index + 5)?;
+        let token_metadata_program = ctx.accounts.token_metadata_program.as_ref().unwrap();
 
-        let mut transfer_cpi = TransferV1CpiBuilder::new(&ctx.accounts.token_metadata_program);
+        let mut transfer_cpi = TransferV1CpiBuilder::new(token_metadata_program);
         transfer_cpi
             .token(nft_account)
             .token_owner(&ctx.accounts.buyer)

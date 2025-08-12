@@ -137,8 +137,8 @@ export function findAllowListProofPda(
     user: PublicKey;
     /** The address of the Gumball Guard account */
     gumballGuard: PublicKey;
-    /** The address of the Gumball Machine account */
-    gumballMachine: PublicKey;
+    /** The address of the Machine account */
+    machine: PublicKey;
   }
 ): Pda {
   const programId = context.programs.getPublicKey(
@@ -150,7 +150,7 @@ export function findAllowListProofPda(
     bytes({ size: 32 }).serialize(seeds.merkleRoot),
     publicKeySerializer().serialize(seeds.user),
     publicKeySerializer().serialize(seeds.gumballGuard),
-    publicKeySerializer().serialize(seeds.gumballMachine),
+    publicKeySerializer().serialize(seeds.machine),
   ]);
 }
 

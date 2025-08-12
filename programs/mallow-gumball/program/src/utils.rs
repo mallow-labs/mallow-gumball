@@ -3,6 +3,10 @@ use crate::{
     GumballError, GumballMachine, GumballState, SellerHistory, TokenStandard,
 };
 use anchor_lang::prelude::*;
+use anchor_spl::token::approve;
+use anchor_spl::token::close_account;
+use anchor_spl::token::Approve;
+use anchor_spl::token::CloseAccount;
 use anchor_spl::token::TokenAccount;
 use arrayref::array_ref;
 use mpl_core::{
@@ -31,11 +35,9 @@ use mpl_token_metadata::{
 };
 use solana_program::{
     account_info::AccountInfo,
-    program::invoke,
     program_memory::sol_memcmp,
     pubkey::{Pubkey, PUBKEY_BYTES},
 };
-use spl_token::instruction::approve;
 use utils::{assert_keys_equal, get_auth_payload, transfer_spl, verify_proof};
 
 /// Anchor wrapper for Token program.
@@ -44,7 +46,7 @@ pub struct Token;
 
 impl anchor_lang::Id for Token {
     fn id() -> Pubkey {
-        spl_token::id()
+        anchor_spl::token::ID
     }
 }
 
@@ -54,7 +56,7 @@ pub struct AssociatedToken;
 
 impl anchor_lang::Id for AssociatedToken {
     fn id() -> Pubkey {
-        spl_associated_token_account::id()
+        anchor_spl::associated_token::ID
     }
 }
 
@@ -476,23 +478,16 @@ pub fn approve_and_freeze_nft_v2<'a>(
         });
         lock_builder.invoke_signed(&[new_authority_seeds])?;
     } else {
-        let approve_ix = approve(
-            token_program.key,
-            token_account.key,
-            new_authority_info.key,
-            payer.key,
-            &[payer.key],
-            1,
-        )?;
-
-        invoke(
-            &approve_ix,
-            &[
+        approve(
+            CpiContext::new(
                 token_program.to_account_info(),
-                token_account.to_account_info(),
-                new_authority_info.to_account_info(),
-                payer.to_account_info(),
-            ],
+                Approve {
+                    to: token_account.to_account_info(),
+                    delegate: new_authority_info.to_account_info(),
+                    authority: payer.to_account_info(),
+                },
+            ),
+            1,
         )?;
 
         FreezeDelegatedAccountCpi::new(
@@ -545,7 +540,6 @@ pub fn thaw_and_revoke_nft_v2<'a>(
     auth_rules_program: Option<&UncheckedAccount<'a>>,
     associated_token_program: &AccountInfo<'a>,
     authority_pda_token_account: &AccountInfo<'a>,
-    rent: &AccountInfo<'a>,
 ) -> Result<()> {
     let metadata = if let Some(metadata_info) = metadata_info {
         Some(Metadata::try_from(metadata_info)?)
@@ -629,7 +623,6 @@ pub fn thaw_and_revoke_nft_v2<'a>(
             associated_token_program,
             token_program,
             system_program,
-            rent,
             Some(authority),
             Some(authority_seeds),
             None,
@@ -646,7 +639,6 @@ pub fn thaw_and_revoke_nft_v2<'a>(
             associated_token_program,
             token_program,
             system_program,
-            rent,
             Some(authority),
             Some(authority_seeds),
             None,
@@ -743,7 +735,6 @@ pub fn transfer_and_close_if_empty<'a>(
     token_program: &AccountInfo<'a>,
     associated_token_program: &AccountInfo<'a>,
     system_program: &AccountInfo<'a>,
-    rent: &AccountInfo<'a>,
     rent_recipient: &AccountInfo<'a>,
     auth_seeds: &[&[u8]],
     amount: u64,
@@ -759,7 +750,6 @@ pub fn transfer_and_close_if_empty<'a>(
             associated_token_program,
             token_program,
             system_program,
-            rent,
             Some(authority),
             Some(&auth_seeds),
             None,
@@ -770,23 +760,15 @@ pub fn transfer_and_close_if_empty<'a>(
 
     // Close the token account back to authority if token account is empty
     if token_account.amount == 0 {
-        solana_program::program::invoke_signed(
-            &spl_token::instruction::close_account(
-                token_program.key,
-                token_account.to_account_info().key,
-                rent_recipient.key,
-                authority.key,
-                &[],
-            )?,
-            &[
-                token_program.to_account_info(),
-                token_account.to_account_info(),
-                rent_recipient.to_account_info(),
-                authority.to_account_info(),
-                system_program.to_account_info(),
-            ],
+        close_account(CpiContext::new_with_signer(
+            token_program.to_account_info(),
+            CloseAccount {
+                account: token_account.to_account_info(),
+                destination: rent_recipient.to_account_info(),
+                authority: authority.to_account_info(),
+            },
             &[auth_seeds],
-        )?;
+        ))?;
     }
 
     Ok(())

@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use crate::{assert_is_ata, error::Error, is_native_mint};
 use anchor_lang::prelude::*;
+use anchor_spl::associated_token::{create, Create};
 use anchor_spl::token;
 use anchor_spl::token::Transfer;
 use mpl_token_metadata::accounts::Metadata;
@@ -9,7 +10,6 @@ use mpl_token_metadata::instructions::TransferV1CpiBuilder;
 use mpl_token_metadata::types::{Payload, PayloadType, ProgrammableConfig, TokenStandard};
 use solana_program::program::{invoke, invoke_signed};
 use solana_program::{account_info::AccountInfo, system_instruction};
-use spl_associated_token_account::instruction::create_associated_token_account;
 
 /// Transfers SOL or SPL tokens from a program owned account to another account.
 pub fn transfer<'a>(
@@ -19,10 +19,9 @@ pub fn transfer<'a>(
     to_currency_account: Option<&AccountInfo<'a>>,
     currency_mint: Option<&AccountInfo<'a>>,
     fee_payer: Option<&AccountInfo<'a>>,
-    ata_program: &AccountInfo<'a>,
-    token_program: &AccountInfo<'a>,
+    associated_token_program: Option<&AccountInfo<'a>>,
+    token_program: Option<&AccountInfo<'a>>,
     system_program: &AccountInfo<'a>,
-    rent: Option<&AccountInfo<'a>>,
     signer_seeds: Option<&[&[u8]]>,
     fee_payer_seeds: Option<&[&[u8]]>,
     amount: u64,
@@ -41,10 +40,9 @@ pub fn transfer<'a>(
             } else {
                 from
             },
-            ata_program,
-            token_program,
+            associated_token_program.unwrap(),
+            token_program.unwrap(),
             system_program,
-            rent.unwrap(),
             None,
             signer_seeds,
             fee_payer_seeds,
@@ -63,10 +61,9 @@ pub fn transfer_from_pda<'a>(
     to_currency_account: Option<&AccountInfo<'a>>,
     currency_mint: Option<&AccountInfo<'a>>,
     fee_payer: Option<&AccountInfo<'a>>,
-    ata_program: &AccountInfo<'a>,
-    token_program: &AccountInfo<'a>,
+    associated_token_program: Option<&AccountInfo<'a>>,
+    token_program: Option<&AccountInfo<'a>>,
     system_program: &AccountInfo<'a>,
-    rent: &AccountInfo<'a>,
     signer_seeds: &[&[u8]],
     fee_payer_seeds: Option<&[&[u8]]>,
     amount: u64,
@@ -88,10 +85,9 @@ pub fn transfer_from_pda<'a>(
             } else {
                 from
             },
-            ata_program,
-            token_program,
+            associated_token_program.unwrap(),
+            token_program.unwrap(),
             system_program,
-            rent,
             None,
             Some(signer_seeds),
             fee_payer_seeds,
@@ -152,7 +148,6 @@ pub fn transfer_spl<'a>(
     ata_program: &AccountInfo<'a>,
     token_program: &AccountInfo<'a>,
     system_program: &AccountInfo<'a>,
-    rent: &AccountInfo<'a>,
     from_authority: Option<&AccountInfo<'a>>,
     signer_seeds: Option<&[&[u8]]>,
     fee_payer_seeds: Option<&[&[u8]]>,
@@ -170,7 +165,6 @@ pub fn transfer_spl<'a>(
         ata_program,
         token_program,
         system_program,
-        rent,
         fee_payer_seeds,
     )?;
 
@@ -204,7 +198,6 @@ pub fn ensure_ata<'b>(
     ata_program: &AccountInfo<'b>,
     token_program: &AccountInfo<'b>,
     system_program: &AccountInfo<'b>,
-    rent: &AccountInfo<'b>,
     fee_payer_seeds: Option<&[&[u8]]>,
 ) -> Result<()> {
     if to_token_account.data_is_empty() {
@@ -216,7 +209,6 @@ pub fn ensure_ata<'b>(
             ata_program.to_account_info(),
             token_program.to_account_info(),
             system_program.to_account_info(),
-            rent.to_account_info(),
             fee_payer_seeds,
         )?;
     } else {
@@ -234,28 +226,26 @@ pub fn make_ata<'a>(
     ata_program: AccountInfo<'a>,
     token_program: AccountInfo<'a>,
     system_program: AccountInfo<'a>,
-    rent: AccountInfo<'a>,
     fee_payer_seeds: Option<&[&[u8]]>,
 ) -> Result<()> {
-    let ix =
-        &create_associated_token_account(fee_payer.key, wallet.key, mint.key, token_program.key);
-
-    let accounts = &[
-        ata,
-        wallet,
-        mint,
-        fee_payer,
-        ata_program,
-        system_program,
-        rent,
-        token_program,
-    ];
+    let accounts = Create {
+        payer: fee_payer.to_account_info(),
+        associated_token: ata.to_account_info(),
+        authority: wallet.to_account_info(),
+        mint: mint.to_account_info(),
+        system_program: system_program.to_account_info(),
+        token_program: token_program.to_account_info(),
+    };
 
     if fee_payer_seeds.is_some() {
         let seeds = &[fee_payer_seeds.unwrap()];
-        invoke_signed(ix, accounts, seeds)?;
+        create(CpiContext::new_with_signer(
+            ata_program.to_account_info(),
+            accounts,
+            seeds,
+        ))?;
     } else {
-        invoke(ix, accounts)?;
+        create(CpiContext::new(ata_program.to_account_info(), accounts))?;
     }
 
     Ok(())
@@ -275,7 +265,6 @@ pub fn transfer_nft<'a>(
     token_program: &AccountInfo<'a>,
     token_metadata_program: &AccountInfo<'a>,
     system_program: &AccountInfo<'a>,
-    rent: &AccountInfo<'a>,
     authority: &AccountInfo<'a>,
     authority_seeds: Option<&[&[u8]]>,
     fee_payer_seeds: Option<&[&[u8]]>,
@@ -293,7 +282,6 @@ pub fn transfer_nft<'a>(
         ata_program,
         token_program,
         system_program,
-        rent,
         fee_payer_seeds,
     )?;
 
@@ -352,7 +340,6 @@ pub fn transfer_nft<'a>(
             ata_program,
             token_program,
             system_program,
-            rent,
             Some(authority),
             authority_seeds,
             None,

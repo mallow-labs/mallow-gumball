@@ -72,7 +72,6 @@ pub struct RemoveTokens<'info> {
 // DEPRECATED: Use remove_tokens_span instead
 pub fn remove_tokens(ctx: Context<RemoveTokens>, indices: Vec<u8>, amount: u64) -> Result<()> {
     let system_program = &ctx.accounts.system_program.to_account_info();
-    let rent = &ctx.accounts.rent.to_account_info();
     let token_program = &ctx.accounts.token_program.to_account_info();
     let associated_token_program = &ctx.accounts.associated_token_program.to_account_info();
     let authority_pda_token_account = &mut ctx.accounts.authority_pda_token_account;
@@ -109,7 +108,6 @@ pub fn remove_tokens(ctx: Context<RemoveTokens>, indices: Vec<u8>, amount: u64) 
         token_program,
         associated_token_program,
         system_program,
-        rent,
         authority,
         &auth_seeds,
         amount
@@ -136,7 +134,6 @@ pub fn remove_tokens_span(
     end_index: u32,
 ) -> Result<()> {
     let system_program = &ctx.accounts.system_program.to_account_info();
-    let rent = &ctx.accounts.rent.to_account_info();
     let token_program = &ctx.accounts.token_program.to_account_info();
     let associated_token_program = &ctx.accounts.associated_token_program.to_account_info();
     let authority_pda_token_account = &mut ctx.accounts.authority_pda_token_account;
@@ -176,7 +173,6 @@ pub fn remove_tokens_span(
         token_program,
         associated_token_program,
         system_program,
-        rent,
         authority,
         &auth_seeds,
         amount

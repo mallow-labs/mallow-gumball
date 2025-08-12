@@ -6,16 +6,16 @@ import { create, createGumballGuard, createUmi } from './_setup';
 test('it can wrap a gumball machine v2 in a gumball guard', async (t) => {
   // Given an existing gumball machine and gumball guard.
   const umi = await createUmi();
-  const gumballMachine = (await create(umi)).publicKey;
+  const machine = (await create(umi)).publicKey;
   const gumballGuard = await createGumballGuard(umi);
 
   // When we wrap the gumball machine in the gumball guard.
   await transactionBuilder()
-    .add(wrap(umi, { gumballMachine, gumballGuard }))
+    .add(wrap(umi, { machine, gumballGuard }))
     .sendAndConfirm(umi);
 
   // Then the mint authority of the gumball machine is the gumball guard.
-  const gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
+  const gumballMachineAccount = await fetchGumballMachine(umi, machine);
   t.like(gumballMachineAccount, <GumballMachine>{
     authority: publicKey(umi.identity),
     mintAuthority: publicKey(gumballGuard),
@@ -25,20 +25,20 @@ test('it can wrap a gumball machine v2 in a gumball guard', async (t) => {
 test('it can update the gumball guard associated with a gumball machine', async (t) => {
   // Given an existing gumball machine and a gumball guard associated with it.
   const umi = await createUmi();
-  const gumballMachine = (await create(umi)).publicKey;
+  const machine = (await create(umi)).publicKey;
   const gumballGuardA = await createGumballGuard(umi);
   await transactionBuilder()
-    .add(wrap(umi, { gumballMachine, gumballGuard: gumballGuardA }))
+    .add(wrap(umi, { machine, gumballGuard: gumballGuardA }))
     .sendAndConfirm(umi);
 
   // When we wrap the gumball machine in a different gumball guard.
   const gumballGuardB = await createGumballGuard(umi);
   await transactionBuilder()
-    .add(wrap(umi, { gumballMachine, gumballGuard: gumballGuardB }))
+    .add(wrap(umi, { machine, gumballGuard: gumballGuardB }))
     .sendAndConfirm(umi);
 
   // Then the mint authority of the gumball machine was updated accordingly.
-  const gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
+  const gumballMachineAccount = await fetchGumballMachine(umi, machine);
   t.like(gumballMachineAccount, <GumballMachine>{
     authority: publicKey(umi.identity),
     mintAuthority: publicKey(gumballGuardB),

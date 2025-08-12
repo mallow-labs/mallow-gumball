@@ -7,6 +7,7 @@ export * from './createGumballMachine';
 export * from './createLutForGumballMachine';
 export * from './defaultGuards';
 export * from './draw';
+export * from './drawJellybean';
 export * from './errors';
 export * from './generated';
 export * from './guards';

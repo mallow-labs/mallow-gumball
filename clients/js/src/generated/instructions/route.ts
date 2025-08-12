@@ -39,7 +39,7 @@ import { GuardType, GuardTypeArgs, getGuardTypeSerializer } from '../types';
 // Accounts.
 export type RouteInstructionAccounts = {
   gumballGuard?: PublicKey | Pda;
-  gumballMachine: PublicKey | Pda;
+  machine: PublicKey | Pda;
   payer?: Signer;
 };
 
@@ -103,11 +103,7 @@ export function route(
       isWritable: false,
       value: input.gumballGuard ?? null,
     },
-    gumballMachine: {
-      index: 1,
-      isWritable: true,
-      value: input.gumballMachine ?? null,
-    },
+    machine: { index: 1, isWritable: true, value: input.machine ?? null },
     payer: { index: 2, isWritable: true, value: input.payer ?? null },
   };
 
@@ -117,7 +113,7 @@ export function route(
   // Default values.
   if (!resolvedAccounts.gumballGuard.value) {
     resolvedAccounts.gumballGuard.value = findGumballGuardPda(context, {
-      base: expectPublicKey(resolvedAccounts.gumballMachine.value),
+      base: expectPublicKey(resolvedAccounts.machine.value),
     });
   }
   if (!resolvedAccounts.payer.value) {

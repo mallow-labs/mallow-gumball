@@ -757,21 +757,44 @@ export class CgInvalidPaymentMintError extends ProgramError {
 codeToErrorMap.set(0x17a5, CgInvalidPaymentMintError);
 nameToErrorMap.set('InvalidPaymentMint', CgInvalidPaymentMintError);
 
-/** InvalidGumballMachineState: Invalid gumball machine state */
-export class CgInvalidGumballMachineStateError extends ProgramError {
-  readonly name: string = 'InvalidGumballMachineState';
+/** InvalidMachineState: Invalid machine state */
+export class CgInvalidMachineStateError extends ProgramError {
+  readonly name: string = 'InvalidMachineState';
 
   readonly code: number = 0x17a6; // 6054
 
   constructor(program: Program, cause?: Error) {
-    super('Invalid gumball machine state', program, cause);
+    super('Invalid machine state', program, cause);
   }
 }
-codeToErrorMap.set(0x17a6, CgInvalidGumballMachineStateError);
-nameToErrorMap.set(
-  'InvalidGumballMachineState',
-  CgInvalidGumballMachineStateError
-);
+codeToErrorMap.set(0x17a6, CgInvalidMachineStateError);
+nameToErrorMap.set('InvalidMachineState', CgInvalidMachineStateError);
+
+/** GuardNotSupported: Guard not supported */
+export class CgGuardNotSupportedError extends ProgramError {
+  readonly name: string = 'GuardNotSupported';
+
+  readonly code: number = 0x17a7; // 6055
+
+  constructor(program: Program, cause?: Error) {
+    super('Guard not supported', program, cause);
+  }
+}
+codeToErrorMap.set(0x17a7, CgGuardNotSupportedError);
+nameToErrorMap.set('GuardNotSupported', CgGuardNotSupportedError);
+
+/** InvalidMachine: Invalid machine */
+export class CgInvalidMachineError extends ProgramError {
+  readonly name: string = 'InvalidMachine';
+
+  readonly code: number = 0x17a8; // 6056
+
+  constructor(program: Program, cause?: Error) {
+    super('Invalid machine', program, cause);
+  }
+}
+codeToErrorMap.set(0x17a8, CgInvalidMachineError);
+nameToErrorMap.set('InvalidMachine', CgInvalidMachineError);
 
 /**
  * Attempts to resolve a custom program error from the provided error code.

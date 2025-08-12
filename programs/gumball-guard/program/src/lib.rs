@@ -5,8 +5,10 @@ use anchor_lang::prelude::*;
 use instructions::*;
 
 pub mod errors;
+pub mod events;
 pub mod guards;
 pub mod instructions;
+pub mod processors;
 pub mod state;
 pub mod utils;
 
@@ -28,6 +30,15 @@ pub mod gumball_guard {
         label: Option<String>,
     ) -> Result<()> {
         instructions::draw(ctx, mint_args, label)
+    }
+
+    /// Draw a prize from a gumball machine wrapped in the gumball guard.
+    pub fn draw_jellybean<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, DrawJellybean<'info>>,
+        mint_args: Vec<u8>,
+        label: Option<String>,
+    ) -> Result<()> {
+        instructions::draw_jellybean(ctx, mint_args, label)
     }
 
     /// Route the transaction to a guard instruction.

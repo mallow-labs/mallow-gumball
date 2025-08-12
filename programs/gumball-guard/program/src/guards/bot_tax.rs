@@ -58,7 +58,7 @@ impl Condition for BotTax {
 impl BotTax {
     pub fn punish_bots(&self, ctx: &EvaluationContext, error: Error) -> Result<()> {
         let bot_account = ctx.accounts.payer.to_account_info();
-        let payment_account = ctx.accounts.gumball_machine.to_account_info();
+        let payment_account = ctx.accounts.machine.to_account_info();
         let system_program = ctx.accounts.system_program.to_account_info();
 
         msg!(

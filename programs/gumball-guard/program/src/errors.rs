@@ -164,6 +164,12 @@ pub enum GumballGuardError {
     #[msg("Invalid payment mint")]
     InvalidPaymentMint,
 
-    #[msg("Invalid gumball machine state")]
-    InvalidGumballMachineState,
+    #[msg("Invalid machine state")]
+    InvalidMachineState,
+
+    #[msg("Guard not supported")]
+    GuardNotSupported,
+
+    #[msg("Invalid machine")]
+    InvalidMachine,
 }

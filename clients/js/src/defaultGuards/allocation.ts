@@ -26,7 +26,7 @@ export const allocationGuardManifest: GuardManifest<
       {
         publicKey: findAllocationTrackerPda(context, {
           id: args.id,
-          gumballMachine: mintContext.gumballMachine,
+          machine: mintContext.machine,
           gumballGuard: mintContext.gumballGuard,
         })[0],
         isWritable: true,
@@ -40,7 +40,7 @@ export const allocationGuardManifest: GuardManifest<
         isWritable: true,
         publicKey: findAllocationTrackerPda(context, {
           id: args.id,
-          gumballMachine: routeContext.gumballMachine,
+          machine: routeContext.machine,
           gumballGuard: routeContext.gumballGuard,
         })[0],
       },

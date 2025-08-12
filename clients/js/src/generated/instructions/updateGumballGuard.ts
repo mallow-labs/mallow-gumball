@@ -32,8 +32,8 @@ import {
 // Accounts.
 export type UpdateGumballGuardInstructionAccounts = {
   gumballGuard: PublicKey | Pda;
-  /** Gumball machine account. */
-  gumballMachine: PublicKey | Pda;
+  /** Machine account. */
+  machine: PublicKey | Pda;
   authority?: Signer;
   payer?: Signer;
   systemProgram?: PublicKey | Pda;
@@ -96,11 +96,7 @@ export function updateGumballGuard(
       isWritable: true,
       value: input.gumballGuard ?? null,
     },
-    gumballMachine: {
-      index: 1,
-      isWritable: true,
-      value: input.gumballMachine ?? null,
-    },
+    machine: { index: 1, isWritable: true, value: input.machine ?? null },
     authority: { index: 2, isWritable: false, value: input.authority ?? null },
     payer: { index: 3, isWritable: false, value: input.payer ?? null },
     systemProgram: {

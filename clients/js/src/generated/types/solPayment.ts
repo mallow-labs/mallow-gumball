@@ -14,7 +14,7 @@ import { Serializer, struct, u64 } from '@metaplex-foundation/umi/serializers';
  *
  * List of accounts required:
  *
- * 0. `[]` Account to receive the funds.
+ * 0. `[writable]` Account to receive the funds.
  */
 
 export type SolPayment = { lamports: SolAmount };

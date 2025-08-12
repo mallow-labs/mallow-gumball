@@ -140,8 +140,8 @@ export function findAllocationTrackerPda(
     id: number;
     /** The address of the Gumball Guard account */
     gumballGuard: PublicKey;
-    /** The address of the Gumball Machine account */
-    gumballMachine: PublicKey;
+    /** The address of the Machine account */
+    machine: PublicKey;
   }
 ): Pda {
   const programId = context.programs.getPublicKey(
@@ -152,7 +152,7 @@ export function findAllocationTrackerPda(
     string({ size: 'variable' }).serialize('allocation'),
     u8().serialize(seeds.id),
     publicKeySerializer().serialize(seeds.gumballGuard),
-    publicKeySerializer().serialize(seeds.gumballMachine),
+    publicKeySerializer().serialize(seeds.machine),
   ]);
 }
 

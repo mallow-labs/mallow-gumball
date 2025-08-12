@@ -1569,7 +1569,7 @@ test('it can settle an nft that was not sold with proceeds from another sale wit
         payer,
         buyer,
         mintArgs: {
-          solPayment: some({ feeAccount }),
+          solPayment: some({ feeAccounts: [feeAccount] }),
         },
       })
     )
@@ -2018,7 +2018,7 @@ test('it can settle an nft sale with a marketplace config', async (t) => {
         payer,
         buyer,
         mintArgs: {
-          solPayment: some({ feeAccount }),
+          solPayment: some({ feeAccounts: [feeAccount] }),
         },
       })
     )

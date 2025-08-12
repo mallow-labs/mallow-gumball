@@ -118,7 +118,6 @@ pub fn settle_tokens_sale<'info>(
     let token_program = &ctx.accounts.token_program.to_account_info();
     let associated_token_program = &ctx.accounts.associated_token_program.to_account_info();
     let system_program = &ctx.accounts.system_program.to_account_info();
-    let rent = &ctx.accounts.rent.to_account_info();
     let mint = &ctx.accounts.mint.to_account_info();
 
     assert_config_line(
@@ -204,7 +203,6 @@ pub fn settle_tokens_sale<'info>(
             token_program,
             associated_token_program,
             system_program,
-            rent,
             &auth_seeds,
         )?;
     }
@@ -235,7 +233,6 @@ pub fn settle_tokens_sale<'info>(
         associated_token_program,
         token_program,
         system_program,
-        rent,
         &auth_seeds,
     )?;
 

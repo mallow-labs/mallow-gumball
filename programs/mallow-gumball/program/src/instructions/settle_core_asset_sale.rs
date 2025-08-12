@@ -117,7 +117,6 @@ pub fn settle_core_asset_sale<'info>(
     let token_program = &ctx.accounts.token_program.to_account_info();
     let associated_token_program = &ctx.accounts.associated_token_program.to_account_info();
     let system_program = &ctx.accounts.system_program.to_account_info();
-    let rent = &ctx.accounts.rent.to_account_info();
     let asset = &ctx.accounts.asset.to_account_info();
     let collection_info = ctx
         .accounts
@@ -136,7 +135,7 @@ pub fn settle_core_asset_sale<'info>(
             buyer: buyer.key(),
             token_standard: TokenStandard::Core,
         },
-        is_burnt
+        is_burnt,
     )?;
 
     let royalty_info = if is_burnt {
@@ -235,7 +234,6 @@ pub fn settle_core_asset_sale<'info>(
         associated_token_program,
         token_program,
         system_program,
-        rent,
         &auth_seeds,
     )?;
 

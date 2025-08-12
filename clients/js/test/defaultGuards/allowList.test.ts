@@ -56,7 +56,7 @@ test('it allows minting from wallets of a predefined list', async (t) => {
   await transactionBuilder()
     .add(
       route(umi, {
-        gumballMachine,
+        machine: gumballMachine,
         guard: 'allowList',
         routeArgs: {
           path: 'proof',
@@ -74,7 +74,6 @@ test('it allows minting from wallets of a predefined list', async (t) => {
     .add(
       draw(umi, {
         gumballMachine,
-
         mintArgs: { allowList: some({ merkleRoot }) },
       })
     )
@@ -118,7 +117,7 @@ test('it is possible to verify the proof and mint in the same transaction if the
     .add(setComputeUnitLimit(umi, { units: 600_000 }))
     .add(
       route(umi, {
-        gumballMachine,
+        machine: gumballMachine,
         guard: 'allowList',
         routeArgs: {
           path: 'proof',
@@ -174,7 +173,7 @@ test('it allows minting even when the payer is different from the buyer', async 
     .add(setComputeUnitLimit(umi, { units: 600_000 }))
     .add(
       route(umi, {
-        gumballMachine,
+        machine: gumballMachine,
         guard: 'allowList',
         routeArgs: {
           path: 'proof',
@@ -187,9 +186,7 @@ test('it allows minting even when the payer is different from the buyer', async 
     .add(
       draw(umi, {
         gumballMachine,
-
         buyer,
-
         mintArgs: { allowList: some({ merkleRoot }) },
       })
     )
@@ -230,7 +227,7 @@ test('it forbids minting from wallets that are not part of a predefined list', a
     .add(setComputeUnitLimit(umi, { units: 600_000 }))
     .add(
       route(umi, {
-        gumballMachine,
+        machine: gumballMachine,
         guard: 'allowList',
         routeArgs: {
           path: 'proof',
@@ -280,7 +277,7 @@ test('it forbids minting from wallets that are providing the wrong proof', async
   const promise = transactionBuilder()
     .add(
       route(umi, {
-        gumballMachine,
+        machine: gumballMachine,
         guard: 'allowList',
         routeArgs: {
           path: 'proof',
@@ -419,7 +416,7 @@ test('it creates a proof for a buyer even when the buyer is not a signer', async
     .add(setComputeUnitLimit(umi, { units: 600_000 }))
     .add(
       route(umi, {
-        gumballMachine,
+        machine: gumballMachine,
         guard: 'allowList',
         routeArgs: {
           path: 'proof',
@@ -437,7 +434,7 @@ test('it creates a proof for a buyer even when the buyer is not a signer', async
     await umi.rpc.accountExists(
       findAllowListProofPda(umi, {
         gumballGuard,
-        gumballMachine,
+        machine: gumballMachine,
         merkleRoot,
         user: buyer,
       })[0]
@@ -449,7 +446,7 @@ test('it creates a proof for a buyer even when the buyer is not a signer', async
     await umi.rpc.accountExists(
       findAllowListProofPda(umi, {
         gumballGuard,
-        gumballMachine,
+        machine: gumballMachine,
         merkleRoot,
         user: publicKey(umi.payer),
       })[0]
@@ -489,7 +486,7 @@ test('it creates a proof for the payer when the buyer is not present', async (t)
     .add(setComputeUnitLimit(umi, { units: 600_000 }))
     .add(
       route(umi, {
-        gumballMachine,
+        machine: gumballMachine,
         guard: 'allowList',
         routeArgs: {
           path: 'proof',
@@ -506,7 +503,7 @@ test('it creates a proof for the payer when the buyer is not present', async (t)
     await umi.rpc.accountExists(
       findAllowListProofPda(umi, {
         gumballGuard,
-        gumballMachine,
+        machine: gumballMachine,
         merkleRoot,
         user: publicKey(umi.payer),
       })[0]

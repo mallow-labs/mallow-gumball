@@ -1,5 +1,8 @@
 #!/bin/bash
 
+agave-install init 1.18.15
+rustup default 1.79.0
+
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 OUTPUT="./programs/.bin"
 # saves external programs binaries to the output directory

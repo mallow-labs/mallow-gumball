@@ -59,7 +59,6 @@ pub fn manage_buy_back_funds<'info>(
     let authority_pda = &mut ctx.accounts.authority_pda.to_account_info();
     let associated_token_program = &ctx.accounts.associated_token_program.to_account_info();
     let system_program = &ctx.accounts.system_program.to_account_info();
-    let rent = &ctx.accounts.rent.to_account_info();
 
     // Set up payment accounts
     let payment_mint_info = ctx
@@ -110,10 +109,9 @@ pub fn manage_buy_back_funds<'info>(
             authority_payment_account,
             payment_mint,
             None,
-            associated_token_program,
-            token_program,
+            Some(associated_token_program),
+            Some(token_program),
             system_program,
-            rent,
             &auth_seeds,
             None,
             amount,
@@ -128,10 +126,9 @@ pub fn manage_buy_back_funds<'info>(
             authority_pda_payment_account,
             payment_mint,
             None,
-            associated_token_program,
-            token_program,
+            Some(associated_token_program),
+            Some(token_program),
             system_program,
-            Some(rent),
             None,
             None,
             amount,

@@ -20,7 +20,8 @@ export type CloseGumballMachineInput = Parameters<
 };
 
 export const closeGumballMachine = (
-  context: Parameters<typeof deleteGumballGuard>[0] & Pick<Context, 'rpc'>,
+  context: Parameters<typeof deleteGumballGuard>[0] &
+    Pick<Context, 'rpc' | 'eddsa'>,
   input: CloseGumballMachineInput
 ): TransactionBuilder => {
   const builder = deleteGumballGuard(context, input);

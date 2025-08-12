@@ -22,6 +22,7 @@ export * from './gatekeeper';
 export * from './guardType';
 export * from './gumballSettings';
 export * from './gumballState';
+export * from './machineType';
 export * from './mintLimit';
 export * from './nftBurn';
 export * from './nftGate';

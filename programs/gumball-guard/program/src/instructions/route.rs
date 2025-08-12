@@ -4,6 +4,7 @@ use crate::{
 };
 use anchor_lang::prelude::*;
 use mallow_gumball::GumballMachine;
+use mallow_jellybean_sdk::accounts::JellybeanMachine;
 
 /// Route the transaction to the specified guard. This instruction allows the use of
 /// empty gumball guard and gumball machine accounts and it is up to individual guard
@@ -23,12 +24,18 @@ pub fn route<'c: 'info, 'info>(
 
     // checks if the gumball machine account is not empty
 
-    let gumball_machine = &ctx.accounts.gumball_machine;
-    let gumball_machine_account = if gumball_machine.to_account_info().data_is_empty() {
+    let machine = &ctx.accounts.machine;
+    let machine_mint_authority = if machine.to_account_info().data_is_empty() {
         None
     } else {
-        let account = try_from!(Account::<GumballMachine>, ctx.accounts.gumball_machine)?;
-        Some(Box::new(account))
+        // TODO: Make this less expensive
+        if let Ok(machine) = try_from!(Account::<GumballMachine>, machine) {
+            Some(machine.mint_authority)
+        } else if let Ok(machine) = try_from!(Account::<JellybeanMachine>, machine) {
+            Some(machine.mint_authority)
+        } else {
+            None
+        }
     };
 
     // retrieve the active guard set
@@ -46,7 +53,7 @@ pub fn route<'c: 'info, 'info>(
 
     let route_context = RouteContext {
         gumball_guard: gumball_guard_account,
-        gumball_machine: gumball_machine_account,
+        machine_mint_authority: machine_mint_authority,
         guard_set,
     };
 
@@ -61,7 +68,7 @@ pub struct Route<'info> {
     pub gumball_guard: UncheckedAccount<'info>,
     /// CHECK: account constraints checked in instruction
     #[account(mut)]
-    pub gumball_machine: UncheckedAccount<'info>,
+    pub machine: UncheckedAccount<'info>,
     #[account(mut)]
     pub payer: Signer<'info>,
 }
@@ -80,8 +87,8 @@ pub struct RouteArgs {
 pub struct RouteContext<'info> {
     /// The gumball guard account.
     pub gumball_guard: Option<Account<'info, GumballGuard>>,
-    /// The gumball machine account.
-    pub gumball_machine: Option<Box<Account<'info, GumballMachine>>>,
+    /// The machine mint authority key.
+    pub machine_mint_authority: Option<Pubkey>,
     // The active guard set.
     pub guard_set: Option<Box<GuardSet>>,
 }

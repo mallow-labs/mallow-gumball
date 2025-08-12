@@ -1,5 +1,6 @@
 import { Context, PublicKey, Signer } from '@metaplex-foundation/umi';
 import { Serializer } from '@metaplex-foundation/umi/serializers';
+import { MachineType } from 'generated';
 
 export type GuardManifest<
   DA extends object = {},
@@ -35,10 +36,12 @@ export type MintContext = {
   buyer: Signer;
   /** The wallet to use for SOL fees. */
   payer: Signer;
-  /** The address of the Gumball Machine we are using. */
-  gumballMachine: PublicKey;
+  /** The address of the Gumball/Jellybean Machine we are using. */
+  machine: PublicKey;
   /** The address of the Gumball Guard we are using. */
   gumballGuard: PublicKey;
+  /** The type of machine we are using. */
+  machineType: MachineType;
 };
 
 export type RouteContext = Omit<MintContext, 'buyer' | 'mint'>;

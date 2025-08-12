@@ -80,7 +80,6 @@ pub fn add_tokens(
     let token_program = &ctx.accounts.token_program.to_account_info();
     let ata_program = &ctx.accounts.associated_token_program.to_account_info();
     let system_program = &ctx.accounts.system_program.to_account_info();
-    let rent = &ctx.accounts.rent.to_account_info();
     let authority_pda = &ctx.accounts.authority_pda.to_account_info();
     let seller = &ctx.accounts.seller.to_account_info();
     let mint = &ctx.accounts.mint.to_account_info();
@@ -122,7 +121,6 @@ pub fn add_tokens(
         ata_program,
         token_program,
         system_program,
-        rent,
         None,
         None,
         None,

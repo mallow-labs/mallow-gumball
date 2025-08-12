@@ -2,6 +2,7 @@ import { findAssociatedTokenPda } from '@metaplex-foundation/mpl-toolbox';
 import { PublicKey } from '@metaplex-foundation/umi';
 import {
   getTokenPaymentSerializer,
+  MachineType,
   TokenPayment,
   TokenPaymentArgs,
 } from '../generated';
@@ -27,29 +28,33 @@ export const tokenPaymentGuardManifest: GuardManifest<
   mintParser: (context, mintContext, args) => {
     const [sourceAta] = findAssociatedTokenPda(context, {
       mint: args.mint,
-      owner: mintContext.buyer.publicKey,
+      owner: mintContext.payer.publicKey,
     });
-    const [destinationAta] = findAssociatedTokenPda(context, {
-      mint: args.mint,
-      owner: findGumballMachineAuthorityPda(context, {
-        gumballMachine: mintContext.gumballMachine,
-      })[0],
-    });
-    const [feeDestinationAta] = args.feeAccount
-      ? findAssociatedTokenPda(context, {
-          mint: args.mint,
-          owner: args.feeAccount,
-        })
-      : [];
+
+    const feeAccounts: PublicKey[] = [];
+    if (mintContext.machineType === MachineType.Gumball) {
+      feeAccounts.push(
+        findGumballMachineAuthorityPda(context, {
+          gumballMachine: mintContext.machine,
+        })[0]
+      );
+    }
+
+    if (args.feeAccounts) {
+      feeAccounts.push(...args.feeAccounts);
+    }
 
     return {
       data: new Uint8Array(),
       remainingAccounts: [
         { publicKey: sourceAta, isWritable: true },
-        { publicKey: destinationAta, isWritable: true },
-        ...(feeDestinationAta
-          ? [{ publicKey: feeDestinationAta, isWritable: true }]
-          : []),
+        ...feeAccounts.map((feeAccount) => ({
+          publicKey: findAssociatedTokenPda(context, {
+            mint: args.mint,
+            owner: feeAccount,
+          })[0],
+          isWritable: true,
+        })),
       ],
     };
   },
@@ -57,5 +62,5 @@ export const tokenPaymentGuardManifest: GuardManifest<
 };
 
 export type TokenPaymentMintArgs = Omit<TokenPaymentArgs, 'amount'> & {
-  feeAccount?: PublicKey;
+  feeAccounts?: PublicKey[];
 };

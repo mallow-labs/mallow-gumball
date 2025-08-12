@@ -128,8 +128,8 @@ export function findMintCounterPda(
     user: PublicKey;
     /** The address of the Gumball Guard account */
     gumballGuard: PublicKey;
-    /** The address of the Gumball Machine account */
-    gumballMachine: PublicKey;
+    /** The address of the Machine account */
+    machine: PublicKey;
   }
 ): Pda {
   const programId = context.programs.getPublicKey(
@@ -141,7 +141,7 @@ export function findMintCounterPda(
     u8().serialize(seeds.id),
     publicKeySerializer().serialize(seeds.user),
     publicKeySerializer().serialize(seeds.gumballGuard),
-    publicKeySerializer().serialize(seeds.gumballMachine),
+    publicKeySerializer().serialize(seeds.machine),
   ]);
 }
 

@@ -47,7 +47,7 @@ test('it allows minting when the allocation limit is not reached', async (t) => 
   await transactionBuilder()
     .add(
       route(umi, {
-        gumballMachine,
+        machine: gumballMachine,
         guard: 'allocation',
         routeArgs: {
           id: 1,
@@ -64,7 +64,6 @@ test('it allows minting when the allocation limit is not reached', async (t) => 
     .add(
       draw(umi, {
         gumballMachine,
-
         mintArgs: { allocation: some({ id: 1 }) },
       })
     )
@@ -76,7 +75,7 @@ test('it allows minting when the allocation limit is not reached', async (t) => 
   // And the mint tracker PDA was incremented.
   const trackerPda = findAllocationTrackerPda(umi, {
     id: 1,
-    gumballMachine,
+    machine: gumballMachine,
     gumballGuard: findGumballGuardPda(umi, { base: gumballMachine })[0],
   });
   const trackerPdaAccount = await fetchAllocationTracker(umi, trackerPda);
@@ -108,7 +107,7 @@ test('it forbids minting when the allocation limit is reached', async (t) => {
   await transactionBuilder()
     .add(
       route(umi, {
-        gumballMachine,
+        machine: gumballMachine,
         guard: 'allocation',
         routeArgs: {
           id: 1,
@@ -125,7 +124,6 @@ test('it forbids minting when the allocation limit is reached', async (t) => {
     .add(
       draw(umi, {
         gumballMachine,
-
         mintArgs: { allocation: some({ id: 1 }) },
       })
     )
@@ -137,7 +135,6 @@ test('it forbids minting when the allocation limit is reached', async (t) => {
     .add(
       draw(umi, {
         gumballMachine,
-
         mintArgs: { allocation: some({ id: 1 }) },
       })
     )
@@ -184,7 +181,7 @@ test('the allocation limit is local to each id', async (t) => {
   await transactionBuilder()
     .add(
       route(umi, {
-        gumballMachine,
+        machine: gumballMachine,
         guard: 'allocation',
         routeArgs: {
           id: 1,
@@ -195,7 +192,7 @@ test('the allocation limit is local to each id', async (t) => {
     )
     .add(
       route(umi, {
-        gumballMachine,
+        machine: gumballMachine,
         guard: 'allocation',
         routeArgs: {
           id: 2,
@@ -265,7 +262,7 @@ test('it charges a bot tax when trying to mint after the limit', async (t) => {
   await transactionBuilder()
     .add(
       route(umi, {
-        gumballMachine,
+        machine: gumballMachine,
         guard: 'allocation',
         routeArgs: {
           id: 1,

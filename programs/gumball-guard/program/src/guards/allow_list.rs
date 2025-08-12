@@ -1,11 +1,8 @@
 use super::*;
-use crate::{
-    instructions::Route,
-    state::GuardType,
-    utils::{assert_keys_equal, assert_owned_by, cmp_pubkeys},
-};
+use crate::{instructions::Route, state::GuardType, utils::cmp_pubkeys};
 use anchor_lang::system_program;
 use solana_program::{program::invoke_signed, system_instruction};
+use utils::{assert_keys_equal, assert_owned_by};
 
 /// Guard that uses a merkle tree to specify the addresses allowed to mint.
 ///
@@ -69,19 +66,23 @@ impl Guard for AllowList {
             .as_ref()
             .ok_or(GumballGuardError::Uninitialized)?;
 
-        let gumball_machine = route_context
-            .gumball_machine
+        let machine_mint_authority = route_context
+            .machine_mint_authority
             .as_ref()
             .ok_or(GumballGuardError::Uninitialized)?;
 
         // and the gumball guard and gumball machine must be linked
-        if !cmp_pubkeys(&gumball_machine.mint_authority, &gumball_guard.key()) {
+        if !cmp_pubkeys(machine_mint_authority, &gumball_guard.key()) {
             return err!(GumballGuardError::InvalidMintAuthority);
         }
 
         let proof_pda = try_get_account_info(ctx.remaining_accounts, 0)?;
         let system_program_info = try_get_account_info(ctx.remaining_accounts, 1)?;
-        assert_keys_equal(system_program_info.key, &system_program::ID)?;
+        assert_keys_equal(
+            system_program_info.key(),
+            system_program::ID,
+            "Invalid system program",
+        )?;
 
         let minter = if let Some(minter) = get_account_info(ctx.remaining_accounts, 2) {
             minter.key()
@@ -118,18 +119,18 @@ impl Guard for AllowList {
         // creates the proof PDA
 
         let gumball_guard_key = &ctx.accounts.gumball_guard.key();
-        let gumball_machine_key = &ctx.accounts.gumball_machine.key();
+        let machine_key = &ctx.accounts.machine.key();
 
         let seeds = [
             AllowListProof::PREFIX_SEED,
             &merkle_root[..],
             minter.as_ref(),
             gumball_guard_key.as_ref(),
-            gumball_machine_key.as_ref(),
+            machine_key.as_ref(),
         ];
         let (pda, bump) = Pubkey::find_program_address(&seeds, &crate::ID);
 
-        assert_keys_equal(proof_pda.key, &pda)?;
+        assert_keys_equal(proof_pda.key(), pda, "Invalid proof PDA")?;
 
         if proof_pda.data_is_empty() {
             let signer = [
@@ -137,7 +138,7 @@ impl Guard for AllowList {
                 &merkle_root[..],
                 minter.as_ref(),
                 gumball_guard_key.as_ref(),
-                gumball_machine_key.as_ref(),
+                machine_key.as_ref(),
                 &[bump],
             ];
             let rent = Rent::get()?;
@@ -186,18 +187,18 @@ impl Condition for AllowList {
         // validates the pda
 
         let gumball_guard_key = &ctx.accounts.gumball_guard.key();
-        let gumball_machine_key = &ctx.accounts.gumball_machine.key();
+        let machine_key = &ctx.accounts.machine.key();
 
         let seeds = [
             AllowListProof::PREFIX_SEED,
             &self.merkle_root[..],
             minter.as_ref(),
             gumball_guard_key.as_ref(),
-            gumball_machine_key.as_ref(),
+            machine_key.as_ref(),
         ];
         let (pda, _) = Pubkey::find_program_address(&seeds, &crate::ID);
 
-        assert_keys_equal(proof_pda.key, &pda)?;
+        assert_keys_equal(proof_pda.key(), pda, "Invalid proof PDA")?;
 
         if proof_pda.data_is_empty() {
             return err!(GumballGuardError::MissingAllowedListProof);

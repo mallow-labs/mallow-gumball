@@ -111,7 +111,6 @@ pub fn close_gumball_machine<'info>(
             let to_token_account = next_account_info(iter)?;
             let ata_program = next_account_info(iter)?;
             let system_program = next_account_info(iter)?;
-            let rent = next_account_info(iter)?;
 
             transfer_and_close_if_empty(
                 authority,
@@ -123,7 +122,6 @@ pub fn close_gumball_machine<'info>(
                 token_program,
                 ata_program,
                 system_program,
-                rent,
                 authority,
                 &auth_seeds,
                 token_account.amount,

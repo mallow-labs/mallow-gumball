@@ -15,7 +15,6 @@ pub fn claim_tokens<'a, 'b>(
     token_program: &AccountInfo<'a>,
     associated_token_program: &AccountInfo<'a>,
     system_program: &AccountInfo<'a>,
-    rent: &AccountInfo<'a>,
     auth_seeds: &[&[u8]],
 ) -> Result<u64> {
     let amount = claim_item(gumball_machine, index)?;
@@ -35,7 +34,6 @@ pub fn claim_tokens<'a, 'b>(
         token_program,
         associated_token_program,
         system_program,
-        rent,
         authority,
         auth_seeds,
         amount,

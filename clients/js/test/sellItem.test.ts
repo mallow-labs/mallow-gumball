@@ -734,7 +734,7 @@ test('it can sell using spl token buy back funds', async (t) => {
     .add(
       closeGumballMachine(umi, {
         gumballGuard,
-        gumballMachine: gumballMachineSigner.publicKey,
+        machine: gumballMachineSigner.publicKey,
         paymentMint: tokenMint.publicKey,
         authorityPdaPaymentAccount,
       })
@@ -858,7 +858,7 @@ test('it can settle and close a gumball after selling a token item back', async 
     .add(
       closeGumballMachine(umi, {
         gumballGuard,
-        gumballMachine: gumballMachineSigner.publicKey,
+        machine: gumballMachineSigner.publicKey,
       })
     )
     .sendAndConfirm(umi);
@@ -1067,7 +1067,7 @@ test('it can sell an item with a marketplace fee using a payment mint', async (t
         mintArgs: {
           tokenPayment: {
             mint: paymentMint.publicKey,
-            feeAccount: feeAccount.publicKey,
+            feeAccounts: [feeAccount.publicKey],
           },
         },
       })
@@ -1484,7 +1484,7 @@ test('it can sell an nft item, re-add it, and sell it again', async (t) => {
   const oracleSigner = generateSigner(umi);
 
   const gumballMachineSigner = generateSigner(umi);
-  const gumballMachine = gumballMachineSigner.publicKey;
+  const machine = gumballMachineSigner.publicKey;
 
   await create(umi, {
     gumballMachine: gumballMachineSigner,
@@ -1515,7 +1515,7 @@ test('it can sell an nft item, re-add it, and sell it again', async (t) => {
   await transactionBuilder()
     .add(
       manageBuyBackFunds(umi, {
-        gumballMachine,
+        gumballMachine: machine,
         amount: depositAmount,
         isWithdraw: false,
       })
@@ -1531,14 +1531,14 @@ test('it can sell an nft item, re-add it, and sell it again', async (t) => {
     .add(setComputeUnitLimit(umi, { units: 600_000 }))
     .add(
       draw(buyerUmi, {
-        gumballMachine,
+        gumballMachine: machine,
         mintArgs: { solPayment: some(true) },
       })
     )
     .sendAndConfirm(buyerUmi);
 
   // Figure out which was drawn
-  let gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
+  let gumballMachineAccount = await fetchGumballMachine(umi, machine);
   const drawnIndex = gumballMachineAccount.items.findIndex(
     (item) => item.isDrawn
   );
@@ -1548,7 +1548,7 @@ test('it can sell an nft item, re-add it, and sell it again', async (t) => {
     .add(setComputeUnitLimit(umi, { units: 600_000 }))
     .add(
       sellItem(buyerUmi, {
-        gumballMachine,
+        gumballMachine: machine,
         index: drawnIndex,
         amount: 1,
         buyPrice: LAMPORTS_PER_SOL / 2,
@@ -1566,7 +1566,7 @@ test('it can sell an nft item, re-add it, and sell it again', async (t) => {
     .add(
       settleNftSale(umi, {
         index: drawnIndex,
-        gumballMachine,
+        gumballMachine: machine,
         authority: umi.identity.publicKey,
         buyer: buyerUmi.identity.publicKey,
         seller: umi.identity.publicKey,
@@ -1580,7 +1580,7 @@ test('it can sell an nft item, re-add it, and sell it again', async (t) => {
   await transactionBuilder()
     .add(
       addNft(umi, {
-        gumballMachine,
+        gumballMachine: machine,
         mint: nfts[drawnIndex].publicKey,
         args: {
           index: drawnIndex,
@@ -1594,13 +1594,13 @@ test('it can sell an nft item, re-add it, and sell it again', async (t) => {
     .add(setComputeUnitLimit(umi, { units: 600_000 }))
     .add(
       draw(buyerUmi, {
-        gumballMachine,
+        gumballMachine: machine,
         mintArgs: { solPayment: some(true) },
       })
     )
     .add(
       draw(buyerUmi, {
-        gumballMachine,
+        gumballMachine: machine,
         mintArgs: { solPayment: some(true) },
       })
     )
@@ -1611,7 +1611,7 @@ test('it can sell an nft item, re-add it, and sell it again', async (t) => {
     .add(setComputeUnitLimit(umi, { units: 600_000 }))
     .add(
       sellItem(buyerUmi, {
-        gumballMachine,
+        gumballMachine: machine,
         index: 0,
         amount: 1,
         buyPrice: LAMPORTS_PER_SOL / 2,
@@ -1642,7 +1642,7 @@ test('it can sell an nft item, re-add it, and sell it again', async (t) => {
     .add(
       settleNftSale(umi, {
         index: 0,
-        gumballMachine,
+        gumballMachine: machine,
         authority: umi.identity.publicKey,
         buyer: buyerUmi.identity.publicKey,
         seller: umi.identity.publicKey,
@@ -1657,7 +1657,7 @@ test('it can sell an nft item, re-add it, and sell it again', async (t) => {
     .add(
       settleNftSale(umi, {
         index: 1,
-        gumballMachine,
+        gumballMachine: machine,
         authority: umi.identity.publicKey,
         buyer: buyerUmi.identity.publicKey,
         seller: umi.identity.publicKey,
@@ -1679,7 +1679,7 @@ test('it can sell an nft item, re-add it, and sell it again', async (t) => {
   );
 
   // Then the Gumball Machine has been updated properly.
-  gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
+  gumballMachineAccount = await fetchGumballMachine(umi, machine);
 
   t.like(gumballMachineAccount, <Pick<GumballMachine, 'itemsLoaded' | 'items'>>{
     itemsLoaded: 2,
@@ -1719,8 +1719,8 @@ test('it can sell an nft item, re-add it, and sell it again', async (t) => {
     .add(setComputeUnitLimit(umi, { units: 600_000 }))
     .add(
       closeGumballMachine(umi, {
-        gumballMachine,
-        gumballGuard: findGumballGuardPda(umi, { base: gumballMachine }),
+        machine,
+        gumballGuard: findGumballGuardPda(umi, { base: machine }),
       })
     )
     .sendAndConfirm(umi);

@@ -1,5 +1,5 @@
 export type GumballGuard = {
-  version: '0.3.0';
+  version: '1.0.0';
   name: 'gumball_guard';
   instructions: [
     {
@@ -125,6 +125,110 @@ export type GumballGuard = {
       ];
     },
     {
+      name: 'drawJellybean';
+      docs: [
+        'Draw a prize from a gumball machine wrapped in the gumball guard.',
+      ];
+      accounts: [
+        {
+          name: 'gumballGuard';
+          isMut: false;
+          isSigner: false;
+          docs: ['Gumball Guard account.'];
+        },
+        {
+          name: 'jellybeanMachineProgram';
+          isMut: false;
+          isSigner: false;
+          docs: ['Jellybean Machine program account.', ''];
+        },
+        {
+          name: 'jellybeanMachine';
+          isMut: true;
+          isSigner: false;
+          docs: ['Jellybean machine account.'];
+        },
+        {
+          name: 'jellybeanMachineAuthorityPda';
+          isMut: true;
+          isSigner: false;
+        },
+        {
+          name: 'payer';
+          isMut: true;
+          isSigner: true;
+          docs: ['Payer for the mint (SOL) fees.'];
+        },
+        {
+          name: 'buyer';
+          isMut: true;
+          isSigner: true;
+          docs: ['Minter account for validation and non-SOL fees.'];
+        },
+        {
+          name: 'unclaimedPrizes';
+          isMut: true;
+          isSigner: false;
+        },
+        {
+          name: 'printFeeAccount';
+          isMut: true;
+          isSigner: false;
+          isOptional: true;
+          docs: [
+            'Print fee account. Required if the jellybean machine has a print fee config.',
+          ];
+        },
+        {
+          name: 'splTokenProgram';
+          isMut: false;
+          isSigner: false;
+          docs: ['SPL Token program.'];
+        },
+        {
+          name: 'systemProgram';
+          isMut: false;
+          isSigner: false;
+          docs: ['System program.'];
+        },
+        {
+          name: 'rent';
+          isMut: false;
+          isSigner: false;
+          docs: ['Rent.'];
+        },
+        {
+          name: 'sysvarInstructions';
+          isMut: false;
+          isSigner: false;
+          docs: ['Instructions sysvar account.', ''];
+        },
+        {
+          name: 'recentSlothashes';
+          isMut: false;
+          isSigner: false;
+          docs: ['SlotHashes sysvar cluster data.', ''];
+        },
+        {
+          name: 'jellybeanEventAuthority';
+          isMut: false;
+          isSigner: false;
+        },
+      ];
+      args: [
+        {
+          name: 'mintArgs';
+          type: 'bytes';
+        },
+        {
+          name: 'label';
+          type: {
+            option: 'string';
+          };
+        },
+      ];
+    },
+    {
       name: 'route';
       docs: ['Route the transaction to a guard instruction.'];
       accounts: [
@@ -134,7 +238,7 @@ export type GumballGuard = {
           isSigner: false;
         },
         {
-          name: 'gumballMachine';
+          name: 'machine';
           isMut: true;
           isSigner: false;
         },
@@ -226,10 +330,10 @@ export type GumballGuard = {
           isSigner: false;
         },
         {
-          name: 'gumballMachine';
+          name: 'machine';
           isMut: true;
           isSigner: false;
-          docs: ['Gumball machine account.'];
+          docs: ['Machine account.'];
         },
         {
           name: 'authority';
@@ -269,7 +373,7 @@ export type GumballGuard = {
           isSigner: true;
         },
         {
-          name: 'gumballMachine';
+          name: 'machine';
           isMut: true;
           isSigner: false;
         },
@@ -286,7 +390,7 @@ export type GumballGuard = {
           docs: ['Payment account for authority pda if using token payment'];
         },
         {
-          name: 'gumballMachineProgram';
+          name: 'machineProgram';
           isMut: false;
           isSigner: false;
         },
@@ -316,17 +420,17 @@ export type GumballGuard = {
           isSigner: true;
         },
         {
-          name: 'gumballMachine';
+          name: 'machine';
           isMut: true;
           isSigner: false;
         },
         {
-          name: 'gumballMachineProgram';
+          name: 'machineProgram';
           isMut: false;
           isSigner: false;
         },
         {
-          name: 'gumballMachineAuthority';
+          name: 'machineAuthority';
           isMut: false;
           isSigner: true;
         },
@@ -674,7 +778,7 @@ export type GumballGuard = {
         '',
         'List of accounts required:',
         '',
-        '0. `[]` Account to receive the funds.',
+        '0. `[writable]` Account to receive the funds.',
       ];
       type: {
         kind: 'struct';
@@ -1090,6 +1194,20 @@ export type GumballGuard = {
       };
     },
     {
+      name: 'MachineType';
+      type: {
+        kind: 'enum';
+        variants: [
+          {
+            name: 'Gumball';
+          },
+          {
+            name: 'Jellybean';
+          },
+        ];
+      };
+    },
+    {
       name: 'GuardType';
       docs: ['Available guard types.'];
       type: {
@@ -1154,6 +1272,23 @@ export type GumballGuard = {
           },
         ];
       };
+    },
+  ];
+  events: [
+    {
+      name: 'PaymentEvent';
+      fields: [
+        {
+          name: 'amount';
+          type: 'u64';
+          index: false;
+        },
+        {
+          name: 'mint';
+          type: 'publicKey';
+          index: false;
+        },
+      ];
     },
   ];
   errors: [
@@ -1429,14 +1564,24 @@ export type GumballGuard = {
     },
     {
       code: 6054;
-      name: 'InvalidGumballMachineState';
-      msg: 'Invalid gumball machine state';
+      name: 'InvalidMachineState';
+      msg: 'Invalid machine state';
+    },
+    {
+      code: 6055;
+      name: 'GuardNotSupported';
+      msg: 'Guard not supported';
+    },
+    {
+      code: 6056;
+      name: 'InvalidMachine';
+      msg: 'Invalid machine';
     },
   ];
 };
 
 export const IDL: GumballGuard = {
-  version: '0.3.0',
+  version: '1.0.0',
   name: 'gumball_guard',
   instructions: [
     {
@@ -1562,6 +1707,110 @@ export const IDL: GumballGuard = {
       ],
     },
     {
+      name: 'drawJellybean',
+      docs: [
+        'Draw a prize from a gumball machine wrapped in the gumball guard.',
+      ],
+      accounts: [
+        {
+          name: 'gumballGuard',
+          isMut: false,
+          isSigner: false,
+          docs: ['Gumball Guard account.'],
+        },
+        {
+          name: 'jellybeanMachineProgram',
+          isMut: false,
+          isSigner: false,
+          docs: ['Jellybean Machine program account.', ''],
+        },
+        {
+          name: 'jellybeanMachine',
+          isMut: true,
+          isSigner: false,
+          docs: ['Jellybean machine account.'],
+        },
+        {
+          name: 'jellybeanMachineAuthorityPda',
+          isMut: true,
+          isSigner: false,
+        },
+        {
+          name: 'payer',
+          isMut: true,
+          isSigner: true,
+          docs: ['Payer for the mint (SOL) fees.'],
+        },
+        {
+          name: 'buyer',
+          isMut: true,
+          isSigner: true,
+          docs: ['Minter account for validation and non-SOL fees.'],
+        },
+        {
+          name: 'unclaimedPrizes',
+          isMut: true,
+          isSigner: false,
+        },
+        {
+          name: 'printFeeAccount',
+          isMut: true,
+          isSigner: false,
+          isOptional: true,
+          docs: [
+            'Print fee account. Required if the jellybean machine has a print fee config.',
+          ],
+        },
+        {
+          name: 'splTokenProgram',
+          isMut: false,
+          isSigner: false,
+          docs: ['SPL Token program.'],
+        },
+        {
+          name: 'systemProgram',
+          isMut: false,
+          isSigner: false,
+          docs: ['System program.'],
+        },
+        {
+          name: 'rent',
+          isMut: false,
+          isSigner: false,
+          docs: ['Rent.'],
+        },
+        {
+          name: 'sysvarInstructions',
+          isMut: false,
+          isSigner: false,
+          docs: ['Instructions sysvar account.', ''],
+        },
+        {
+          name: 'recentSlothashes',
+          isMut: false,
+          isSigner: false,
+          docs: ['SlotHashes sysvar cluster data.', ''],
+        },
+        {
+          name: 'jellybeanEventAuthority',
+          isMut: false,
+          isSigner: false,
+        },
+      ],
+      args: [
+        {
+          name: 'mintArgs',
+          type: 'bytes',
+        },
+        {
+          name: 'label',
+          type: {
+            option: 'string',
+          },
+        },
+      ],
+    },
+    {
       name: 'route',
       docs: ['Route the transaction to a guard instruction.'],
       accounts: [
@@ -1571,7 +1820,7 @@ export const IDL: GumballGuard = {
           isSigner: false,
         },
         {
-          name: 'gumballMachine',
+          name: 'machine',
           isMut: true,
           isSigner: false,
         },
@@ -1663,10 +1912,10 @@ export const IDL: GumballGuard = {
           isSigner: false,
         },
         {
-          name: 'gumballMachine',
+          name: 'machine',
           isMut: true,
           isSigner: false,
-          docs: ['Gumball machine account.'],
+          docs: ['Machine account.'],
         },
         {
           name: 'authority',
@@ -1706,7 +1955,7 @@ export const IDL: GumballGuard = {
           isSigner: true,
         },
         {
-          name: 'gumballMachine',
+          name: 'machine',
           isMut: true,
           isSigner: false,
         },
@@ -1723,7 +1972,7 @@ export const IDL: GumballGuard = {
           docs: ['Payment account for authority pda if using token payment'],
         },
         {
-          name: 'gumballMachineProgram',
+          name: 'machineProgram',
           isMut: false,
           isSigner: false,
         },
@@ -1753,17 +2002,17 @@ export const IDL: GumballGuard = {
           isSigner: true,
         },
         {
-          name: 'gumballMachine',
+          name: 'machine',
           isMut: true,
           isSigner: false,
         },
         {
-          name: 'gumballMachineProgram',
+          name: 'machineProgram',
           isMut: false,
           isSigner: false,
         },
         {
-          name: 'gumballMachineAuthority',
+          name: 'machineAuthority',
           isMut: false,
           isSigner: true,
         },
@@ -2111,7 +2360,7 @@ export const IDL: GumballGuard = {
         '',
         'List of accounts required:',
         '',
-        '0. `[]` Account to receive the funds.',
+        '0. `[writable]` Account to receive the funds.',
       ],
       type: {
         kind: 'struct',
@@ -2527,6 +2776,20 @@ export const IDL: GumballGuard = {
       },
     },
     {
+      name: 'MachineType',
+      type: {
+        kind: 'enum',
+        variants: [
+          {
+            name: 'Gumball',
+          },
+          {
+            name: 'Jellybean',
+          },
+        ],
+      },
+    },
+    {
       name: 'GuardType',
       docs: ['Available guard types.'],
       type: {
@@ -2591,6 +2854,23 @@ export const IDL: GumballGuard = {
           },
         ],
       },
+    },
+  ],
+  events: [
+    {
+      name: 'PaymentEvent',
+      fields: [
+        {
+          name: 'amount',
+          type: 'u64',
+          index: false,
+        },
+        {
+          name: 'mint',
+          type: 'publicKey',
+          index: false,
+        },
+      ],
     },
   ],
   errors: [
@@ -2866,8 +3146,18 @@ export const IDL: GumballGuard = {
     },
     {
       code: 6054,
-      name: 'InvalidGumballMachineState',
-      msg: 'Invalid gumball machine state',
+      name: 'InvalidMachineState',
+      msg: 'Invalid machine state',
+    },
+    {
+      code: 6055,
+      name: 'GuardNotSupported',
+      msg: 'Guard not supported',
+    },
+    {
+      code: 6056,
+      name: 'InvalidMachine',
+      msg: 'Invalid machine',
     },
   ],
 };

@@ -30,7 +30,7 @@ export const mintLimitGuardManifest: GuardManifest<
         publicKey: findMintCounterPda(context, {
           id: args.id,
           user: mintContext.buyer.publicKey,
-          gumballMachine: mintContext.gumballMachine,
+          machine: mintContext.machine,
           gumballGuard: mintContext.gumballGuard,
         })[0],
         isWritable: true,

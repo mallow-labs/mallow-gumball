@@ -5,8 +5,9 @@ use mpl_token_metadata::{
     instructions::BurnV1CpiBuilder,
     types::TokenStandard,
 };
+use utils::assert_keys_equal;
 
-use crate::{state::GuardType, utils::assert_keys_equal};
+use crate::state::GuardType;
 
 /// Guard that requires another NFT (token) from a specific collection to be burned.
 ///
@@ -61,8 +62,12 @@ impl Condition for NftBurn {
 
         let metadata: Metadata = Metadata::try_from(nft_metadata)?;
         // validates the account information
-        assert_keys_equal(nft_metadata.owner, &mpl_token_metadata::ID)?;
-        assert_keys_equal(&metadata.mint, nft_mint_account.key)?;
+        assert_keys_equal(
+            nft_metadata.owner.key(),
+            mpl_token_metadata::ID,
+            "Invalid metadata owner",
+        )?;
+        assert_keys_equal(metadata.mint, nft_mint_account.key(), "Invalid mint")?;
 
         if matches!(
             metadata.token_standard,
@@ -73,7 +78,11 @@ impl Condition for NftBurn {
 
             let (token_record_key, _) =
                 TokenRecord::find_pda(nft_mint_account.key, nft_account.key);
-            assert_keys_equal(&token_record_key, token_record_info.key)?;
+            assert_keys_equal(
+                token_record_key,
+                token_record_info.key(),
+                "Invalid token record",
+            )?;
         }
 
         ctx.indices.insert("nft_burn_index", index);
@@ -89,14 +98,14 @@ impl Condition for NftBurn {
     ) -> Result<()> {
         let index = ctx.indices["nft_burn_index"];
         let nft_account = try_get_account_info(ctx.accounts.remaining, index)?;
-
         let nft_metadata = try_get_account_info(ctx.accounts.remaining, index + 1)?;
         let nft_edition = try_get_account_info(ctx.accounts.remaining, index + 2)?;
         let nft_mint_account = try_get_account_info(ctx.accounts.remaining, index + 3)?;
         let nft_mint_collection_metadata = try_get_account_info(ctx.accounts.remaining, index + 4)?;
+        let token_metadata_program = ctx.accounts.token_metadata_program.as_ref().unwrap();
 
         let metadata: Metadata = Metadata::try_from(nft_metadata)?;
-        let mut burn_cpi = BurnV1CpiBuilder::new(&ctx.accounts.token_metadata_program);
+        let mut burn_cpi = BurnV1CpiBuilder::new(token_metadata_program);
         burn_cpi
             .authority(&ctx.accounts.buyer)
             .metadata(nft_metadata)

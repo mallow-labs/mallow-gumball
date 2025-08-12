@@ -1,14 +1,44 @@
 use crate::{
     errors::GumballGuardError,
     state::{GumballGuard, GumballGuardData, DATA_OFFSET, SEED},
+    try_from,
 };
 use anchor_lang::prelude::*;
 use mallow_gumball::{GumballMachine, GumballState};
+use mallow_jellybean_sdk::{accounts::JellybeanMachine, types::JellybeanState};
 use solana_program::{
     entrypoint::MAX_PERMITTED_DATA_INCREASE, program::invoke, system_instruction,
 };
+use utils::assert_keys_equal;
 
 pub fn update(ctx: Context<Update>, data: Vec<u8>) -> Result<()> {
+    let machine = &ctx.accounts.machine.to_account_info();
+
+    // TODO: Make this less expensive
+    if let Ok(machine) = try_from!(Account::<GumballMachine>, machine) {
+        assert_keys_equal(
+            ctx.accounts.gumball_guard.key(),
+            machine.mint_authority,
+            "Invalid machine mint authority",
+        )?;
+        require!(
+            machine.state == GumballState::None || machine.items_redeemed == 0,
+            GumballGuardError::InvalidMachineState
+        );
+    } else if let Ok(machine) = try_from!(Account::<JellybeanMachine>, machine) {
+        assert_keys_equal(
+            ctx.accounts.gumball_guard.key(),
+            machine.mint_authority,
+            "Invalid machine mint authority",
+        )?;
+        require!(
+            machine.state != JellybeanState::SaleEnded,
+            GumballGuardError::InvalidMachineState
+        );
+    } else {
+        return err!(GumballGuardError::InvalidMachine);
+    }
+
     // deserializes the gumball guard data
     let data = GumballGuardData::load(&data)?;
     // validates guard settings
@@ -89,13 +119,10 @@ pub struct Update<'info> {
         bump = gumball_guard.bump
     )]
     pub gumball_guard: Account<'info, GumballGuard>,
-    /// Gumball machine account.
-    #[account(
-        mut, 
-        constraint = gumball_guard.key() == gumball_machine.mint_authority,
-        constraint = gumball_machine.state == GumballState::None || gumball_machine.items_redeemed == 0 @ GumballGuardError::InvalidGumballMachineState
-    )]
-    pub gumball_machine: Box<Account<'info, GumballMachine>>,
+    /// Machine account.
+    /// CHECK: account constraints checked in instruction
+    #[account(mut)]
+    pub machine: UncheckedAccount<'info>,
     pub authority: Signer<'info>,
     // Payer for the account resizing.
     pub payer: Signer<'info>,

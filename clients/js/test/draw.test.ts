@@ -211,7 +211,7 @@ test('it can mint from a gumball guard with guards and fee account', async (t) =
         payer,
         buyer,
         mintArgs: {
-          solPayment: some({ feeAccount }),
+          solPayment: some({ feeAccounts: [feeAccount] }),
         },
       })
     )

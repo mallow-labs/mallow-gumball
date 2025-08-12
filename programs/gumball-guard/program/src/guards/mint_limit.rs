@@ -1,12 +1,10 @@
 use std::collections::HashSet;
 
 use solana_program::{program::invoke_signed, system_instruction};
+use utils::{assert_keys_equal, assert_owned_by};
 
 use super::*;
-use crate::{
-    state::GuardType,
-    utils::{assert_keys_equal, assert_owned_by},
-};
+use crate::state::GuardType;
 
 /// Gaurd to set a limit of mints per wallet.
 ///
@@ -69,18 +67,18 @@ impl Condition for MintLimit {
 
         let minter = ctx.accounts.buyer.key();
         let gumball_guard_key = &ctx.accounts.gumball_guard.key();
-        let gumball_machine_key = &ctx.accounts.gumball_machine.key();
+        let machine_key = &ctx.accounts.machine.key();
 
         let seeds = [
             MintCounter::PREFIX_SEED,
             &[self.id],
             minter.as_ref(),
             gumball_guard_key.as_ref(),
-            gumball_machine_key.as_ref(),
+            machine_key.as_ref(),
         ];
         let (pda, _) = Pubkey::find_program_address(&seeds, &crate::ID);
 
-        assert_keys_equal(counter.key, &pda)?;
+        assert_keys_equal(counter.key(), pda, "Invalid counter PDA")?;
 
         if !counter.data_is_empty() {
             // check the owner of the account
@@ -112,14 +110,14 @@ impl Condition for MintLimit {
         if counter.data_is_empty() {
             let minter = ctx.accounts.buyer.key();
             let gumball_guard_key = &ctx.accounts.gumball_guard.key();
-            let gumball_machine_key = &ctx.accounts.gumball_machine.key();
+            let machine_key = &ctx.accounts.machine.key();
 
             let seeds = [
                 MintCounter::PREFIX_SEED,
                 &[self.id],
                 minter.as_ref(),
                 gumball_guard_key.as_ref(),
-                gumball_machine_key.as_ref(),
+                machine_key.as_ref(),
             ];
             let (pda, bump) = Pubkey::find_program_address(&seeds, &crate::ID);
 
@@ -129,7 +127,7 @@ impl Condition for MintLimit {
                 &[self.id],
                 minter.as_ref(),
                 gumball_guard_key.as_ref(),
-                gumball_machine_key.as_ref(),
+                machine_key.as_ref(),
                 &[bump],
             ];
 

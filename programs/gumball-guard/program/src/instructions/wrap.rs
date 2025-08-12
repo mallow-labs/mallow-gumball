@@ -1,9 +1,15 @@
-use crate::state::{GumballGuard, SEED};
+use crate::{
+    errors::GumballGuardError,
+    state::{GumballGuard, SEED},
+    try_from,
+};
 use anchor_lang::prelude::*;
 use mallow_gumball::{
     cpi::{accounts::SetMintAuthority, set_mint_authority},
     GumballMachine,
 };
+use mallow_jellybean_sdk::{accounts::JellybeanMachine, instructions::SetMintAuthorityCpiBuilder};
+use utils::{assert_keys_equal, assert_owned_by};
 
 pub fn wrap(ctx: Context<Wrap>) -> Result<()> {
     let gumball_guard = &ctx.accounts.gumball_guard;
@@ -12,15 +18,45 @@ pub fn wrap(ctx: Context<Wrap>) -> Result<()> {
     let seeds = [SEED, &gumball_guard.base.to_bytes(), &[gumball_guard.bump]];
     let signer = [&seeds[..]];
 
-    let gumball_machine_program = ctx.accounts.gumball_machine_program.to_account_info();
-    let update_ix = SetMintAuthority {
-        gumball_machine: ctx.accounts.gumball_machine.to_account_info(),
-        authority: ctx.accounts.gumball_machine_authority.to_account_info(),
-        mint_authority: gumball_guard.to_account_info(),
-    };
-    let cpi_ctx = CpiContext::new_with_signer(gumball_machine_program, update_ix, &signer);
-    // gumball machine set_mint_authority CPI
-    set_mint_authority(cpi_ctx)?;
+    let machine_program = ctx.accounts.machine_program.to_account_info();
+    let authority = ctx.accounts.machine_authority.to_account_info();
+
+    let machine = &ctx.accounts.machine.to_account_info();
+    assert_owned_by(machine, ctx.accounts.machine_program.key)?;
+
+    // TODO: Make this less expensive
+    if let Ok(gumball_machine) = try_from!(Account::<GumballMachine>, machine) {
+        assert_keys_equal(
+            ctx.accounts.machine_authority.key(),
+            gumball_machine.authority,
+            "Invalid machine authority",
+        )?;
+
+        // gumball machine set_mint_authority CPI
+        set_mint_authority(CpiContext::new_with_signer(
+            machine_program,
+            SetMintAuthority {
+                gumball_machine: machine.to_account_info(),
+                authority,
+                mint_authority: gumball_guard.to_account_info(),
+            },
+            &signer,
+        ))?;
+    } else if let Ok(jellybean_machine) = try_from!(Account::<JellybeanMachine>, machine) {
+        assert_keys_equal(
+            ctx.accounts.machine_authority.key(),
+            jellybean_machine.authority,
+            "Invalid machine authority",
+        )?;
+
+        SetMintAuthorityCpiBuilder::new(&machine_program)
+            .jellybean_machine(machine)
+            .authority(&authority)
+            .mint_authority(&gumball_guard.to_account_info())
+            .invoke_signed(&signer)?;
+    } else {
+        return err!(GumballGuardError::InvalidMachine);
+    }
 
     Ok(())
 }
@@ -31,15 +67,11 @@ pub struct Wrap<'info> {
     pub gumball_guard: Account<'info, GumballGuard>,
     // gumball guard authority
     pub authority: Signer<'info>,
-    #[account(
-        mut,
-        constraint = gumball_machine.authority == gumball_machine_authority.key(),
-        owner = mallow_gumball::id()
-    )]
-    pub gumball_machine: Account<'info, GumballMachine>,
+    /// CHECK: account constraints checked in instruction
+    #[account(mut)]
+    pub machine: UncheckedAccount<'info>,
     /// CHECK: account constraints checked in account trait
-    #[account(address = mallow_gumball::id())]
-    pub gumball_machine_program: AccountInfo<'info>,
+    pub machine_program: AccountInfo<'info>,
     // gumball machine authority
-    pub gumball_machine_authority: Signer<'info>,
+    pub machine_authority: Signer<'info>,
 }

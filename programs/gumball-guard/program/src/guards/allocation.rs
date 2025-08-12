@@ -1,9 +1,7 @@
 use super::*;
-use crate::{
-    state::GuardType,
-    utils::{assert_keys_equal, assert_owned_by, cmp_pubkeys},
-};
+use crate::{state::GuardType, utils::cmp_pubkeys};
 use solana_program::{program::invoke_signed, system_instruction};
+use utils::{assert_keys_equal, assert_owned_by};
 
 /// Gaurd to specify the maximum number of mints in a guard set.
 ///
@@ -60,8 +58,8 @@ impl Guard for Allocation {
             .as_ref()
             .ok_or(GumballGuardError::Uninitialized)?;
 
-        let gumball_machine = route_context
-            .gumball_machine
+        let machine_mint_authority = route_context
+            .machine_mint_authority
             .as_ref()
             .ok_or(GumballGuardError::Uninitialized)?;
 
@@ -71,7 +69,7 @@ impl Guard for Allocation {
         }
 
         // and the gumball guard and gumball machine must be linked
-        if !cmp_pubkeys(&gumball_machine.mint_authority, &gumball_guard.key()) {
+        if !cmp_pubkeys(machine_mint_authority, &gumball_guard.key()) {
             return err!(GumballGuardError::InvalidMintAuthority);
         }
 
@@ -86,24 +84,24 @@ impl Guard for Allocation {
         };
 
         let gumball_guard_key = &ctx.accounts.gumball_guard.key();
-        let gumball_machine_key = &ctx.accounts.gumball_machine.key();
+        let machine_key = &ctx.accounts.machine.key();
 
         let seeds = [
             b"allocation".as_ref(),
             &[allocation_id],
             gumball_guard_key.as_ref(),
-            gumball_machine_key.as_ref(),
+            machine_key.as_ref(),
         ];
         let (pda, bump) = Pubkey::find_program_address(&seeds, &crate::ID);
 
-        assert_keys_equal(allocation.key, &pda)?;
+        assert_keys_equal(allocation.key(), pda, "Invalid allocation PDA")?;
 
         if allocation.data_is_empty() {
             let signer = [
                 b"allocation".as_ref(),
                 &[allocation_id],
                 gumball_guard_key.as_ref(),
-                gumball_machine_key.as_ref(),
+                machine_key.as_ref(),
                 &[bump],
             ];
             let rent = Rent::get()?;
@@ -151,17 +149,17 @@ impl Condition for Allocation {
         ctx.account_cursor += 1;
 
         let gumball_guard_key = &ctx.accounts.gumball_guard.key();
-        let gumball_machine_key = &ctx.accounts.gumball_machine.key();
+        let machine_key = &ctx.accounts.machine.key();
 
         let seeds = [
             b"allocation".as_ref(),
             &[self.id],
             gumball_guard_key.as_ref(),
-            gumball_machine_key.as_ref(),
+            machine_key.as_ref(),
         ];
         let (pda, _) = Pubkey::find_program_address(&seeds, &crate::ID);
 
-        assert_keys_equal(allocation.key, &pda)?;
+        assert_keys_equal(allocation.key(), pda, "Invalid allocation PDA")?;
 
         if allocation.data_is_empty() {
             // sanity check: if the limit is set to less than 1 we cannot proceed

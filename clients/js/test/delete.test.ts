@@ -61,7 +61,7 @@ test('it can delete an empty gumball machine with guard', async (t) => {
     .add(
       closeGumballMachine(umi, {
         gumballGuard,
-        gumballMachine: gumballMachine.publicKey,
+        machine: gumballMachine.publicKey,
       })
     )
     .sendAndConfirm(umi);
@@ -78,7 +78,7 @@ test('it can delete a settled gumball machine with native token', async (t) => {
   const buyerUmi = await createUmi();
   const buyer = buyerUmi.identity;
   const gumballMachineSigner = generateSigner(umi);
-  const gumballMachine = gumballMachineSigner.publicKey;
+  const machine = gumballMachineSigner.publicKey;
 
   const nft = await createNft(umi);
 
@@ -102,7 +102,7 @@ test('it can delete a settled gumball machine with native token', async (t) => {
     .add(setComputeUnitLimit(umi, { units: 600_000 }))
     .add(
       draw(buyerUmi, {
-        gumballMachine,
+        gumballMachine: machine,
         mintArgs: {
           solPayment: some(true),
         },
@@ -111,13 +111,16 @@ test('it can delete a settled gumball machine with native token', async (t) => {
     .sendAndConfirm(buyerUmi);
 
   // Then minting was successful.
-  await assertItemBought(t, umi, { gumballMachine, buyer: publicKey(buyer) });
+  await assertItemBought(t, umi, {
+    gumballMachine: machine,
+    buyer: publicKey(buyer),
+  });
 
   const payer = await generateSignerWithSol(umi, sol(10));
   await settleNftSale(umi, {
     payer,
     index: 0,
-    gumballMachine,
+    gumballMachine: machine,
     buyer: buyer.publicKey,
     seller: umi.identity.publicKey,
     mint: nft.publicKey,
@@ -126,14 +129,14 @@ test('it can delete a settled gumball machine with native token', async (t) => {
     .prepend(setComputeUnitLimit(umi, { units: 600_000 }))
     .sendAndConfirm(umi);
 
-  const gumballGuard = findGumballGuardPda(umi, { base: gumballMachine })[0];
+  const gumballGuard = findGumballGuardPda(umi, { base: machine })[0];
   // When we delete it.
   await transactionBuilder()
-    .add(closeGumballMachine(umi, { gumballMachine, gumballGuard }))
+    .add(closeGumballMachine(umi, { machine, gumballGuard }))
     .sendAndConfirm(umi);
 
   // Then the gumball machine account no longer exists.
-  t.false(await umi.rpc.accountExists(gumballMachine));
+  t.false(await umi.rpc.accountExists(machine));
 });
 
 test('it can delete a settled gumball machine with payment token', async (t) => {
@@ -142,9 +145,9 @@ test('it can delete a settled gumball machine with payment token', async (t) => 
   const buyerUmi = await createUmi();
   const buyer = buyerUmi.identity;
   const gumballMachineSigner = generateSigner(umi);
-  const gumballMachine = gumballMachineSigner.publicKey;
+  const machine = gumballMachineSigner.publicKey;
   const authorityPda = findGumballMachineAuthorityPda(umi, {
-    gumballMachine: gumballMachine,
+    gumballMachine: machine,
   })[0];
   const [tokenMint] = await createMintWithHolders(umi, {
     holders: [
@@ -180,7 +183,7 @@ test('it can delete a settled gumball machine with payment token', async (t) => 
     .add(setComputeUnitLimit(umi, { units: 600_000 }))
     .add(
       draw(buyerUmi, {
-        gumballMachine,
+        gumballMachine: machine,
         mintArgs: {
           tokenPayment: some({ mint: tokenMint.publicKey }),
         },
@@ -189,7 +192,10 @@ test('it can delete a settled gumball machine with payment token', async (t) => 
     .sendAndConfirm(buyerUmi);
 
   // Then minting was successful.
-  await assertItemBought(t, umi, { gumballMachine, buyer: publicKey(buyer) });
+  await assertItemBought(t, umi, {
+    gumballMachine: machine,
+    buyer: publicKey(buyer),
+  });
 
   // Then the payment token account account no longer exists.
   t.true(await umi.rpc.accountExists(authorityPdaPaymentAccount));
@@ -201,7 +207,7 @@ test('it can delete a settled gumball machine with payment token', async (t) => 
       settleNftSale(umi, {
         payer,
         index: 0,
-        gumballMachine,
+        gumballMachine: machine,
         buyer: buyer.publicKey,
         seller: umi.identity.publicKey,
         mint: nft.publicKey,
@@ -211,13 +217,13 @@ test('it can delete a settled gumball machine with payment token', async (t) => 
     )
     .sendAndConfirm(umi);
 
-  const gumballGuard = findGumballGuardPda(umi, { base: gumballMachine })[0];
+  const gumballGuard = findGumballGuardPda(umi, { base: machine })[0];
   // When we delete it.
   await transactionBuilder()
     .add(
       closeGumballMachine(umi, {
         gumballGuard,
-        gumballMachine,
+        machine,
         authorityPdaPaymentAccount,
         paymentMint: tokenMint.publicKey,
       })
@@ -225,7 +231,7 @@ test('it can delete a settled gumball machine with payment token', async (t) => 
     .sendAndConfirm(umi);
 
   // Then the gumball machine account no longer exists.
-  t.false(await umi.rpc.accountExists(gumballMachine));
+  t.false(await umi.rpc.accountExists(machine));
 
   // Then the payment token account account no longer exists.
   t.false(await umi.rpc.accountExists(authorityPdaPaymentAccount));

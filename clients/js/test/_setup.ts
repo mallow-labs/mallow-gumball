@@ -301,7 +301,7 @@ export const create = async <DA extends GuardSetArgs = DefaultGuardSetArgs>(
       .add(baseCreateGumballGuard<DA>(umi, { ...input, base: gumballMachine }))
       .add(
         wrap(umi, {
-          gumballMachine: gumballMachine.publicKey,
+          machine: gumballMachine.publicKey,
           gumballGuard,
         })
       );

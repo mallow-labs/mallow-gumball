@@ -1,4 +1,7 @@
-use crate::state::GuardType;
+use mallow_gumball::GumballMachine;
+use mallow_jellybean_sdk::accounts::JellybeanMachine;
+
+use crate::{state::GuardType, try_from};
 
 use super::*;
 
@@ -26,9 +29,19 @@ impl Condition for RedeemedAmount {
         _guard_set: &GuardSet,
         _mint_args: &[u8],
     ) -> Result<()> {
-        let gumball_machine = &ctx.accounts.gumball_machine;
+        let items_redeemed = match ctx.machine_type {
+            MachineType::Gumball => {
+                let gumball_machine = try_from!(Account::<GumballMachine>, ctx.accounts.machine)?;
+                gumball_machine.items_redeemed
+            }
+            MachineType::Jellybean => {
+                let jellybean_machine =
+                    try_from!(Account::<JellybeanMachine>, ctx.accounts.machine)?;
+                jellybean_machine.supply_redeemed
+            }
+        };
 
-        if gumball_machine.items_redeemed >= self.maximum {
+        if items_redeemed >= self.maximum {
             return err!(GumballGuardError::MaximumRedeemedAmount);
         }
 

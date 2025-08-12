@@ -1,3 +1,5 @@
+use utils::{assert_is_ata, assert_keys_equal};
+
 use super::*;
 
 use crate::{state::GuardType, utils::*};
@@ -48,7 +50,7 @@ impl Condition for TokenBurn {
             ctx.account_cursor += 1;
 
             // is the mint account the one expected?
-            assert_keys_equal(&token_gate_mint.key(), &self.mint)?;
+            assert_keys_equal(token_gate_mint.key(), self.mint, "Invalid mint account")?;
         } else {
             return err!(GumballGuardError::NotEnoughTokens);
         }

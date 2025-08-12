@@ -4,3 +4,6 @@ export * from './gumballGuardData';
 export * from './gumballMachine';
 export * from './gumballMachineAccountData';
 export * from './gumballMachineAuthority';
+export * from './jellybeanEventAuthority';
+export * from './jellybeanMachineAuthority';
+export * from './jellybeanUnclaimedPrizes';

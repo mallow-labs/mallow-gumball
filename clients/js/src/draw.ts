@@ -12,6 +12,7 @@ import {
   draw as baseDraw,
   DrawInstructionAccounts,
 } from './generated/instructions/draw';
+import { MachineType } from './generated/types';
 import {
   GuardRepository,
   GuardSetMintArgs,
@@ -52,12 +53,13 @@ export function draw<MA extends GuardSetMintArgs = DefaultGuardSetMintArgs>(
   const mintContext: MintContext = {
     buyer: input.buyer ?? context.identity,
     payer: input.payer ?? context.payer,
-    gumballMachine,
+    machine: gumballMachine,
     gumballGuard: publicKey(
       input.gumballGuard ??
         findGumballGuardPda(context, { base: gumballMachine }),
       false
     ),
+    machineType: MachineType.Gumball,
   };
   const { data, remainingAccounts } = parseMintArgs<
     MA extends undefined ? DefaultGuardSetMintArgs : MA

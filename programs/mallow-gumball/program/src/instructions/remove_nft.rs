@@ -89,7 +89,6 @@ pub struct RemoveNft<'info> {
 
 pub fn remove_nft(ctx: Context<RemoveNft>, index: u32) -> Result<()> {
     let system_program = &ctx.accounts.system_program.to_account_info();
-    let rent = &ctx.accounts.rent.to_account_info();
     let token_program = &ctx.accounts.token_program.to_account_info();
     let associated_token_program = &ctx.accounts.associated_token_program.to_account_info();
     let token_metadata_program = &ctx.accounts.token_metadata_program.to_account_info();
@@ -144,7 +143,6 @@ pub fn remove_nft(ctx: Context<RemoveNft>, index: u32) -> Result<()> {
         ctx.accounts.auth_rules_program.as_ref(),
         associated_token_program,
         authority_pda_token_account,
-        rent,
     )?;
 
     seller_history.item_count -= 1;

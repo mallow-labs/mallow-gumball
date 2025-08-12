@@ -33,11 +33,11 @@ import {
 export type DeleteGumballGuardInstructionAccounts = {
   gumballGuard: PublicKey | Pda;
   authority?: Signer;
-  gumballMachine: PublicKey | Pda;
+  machine: PublicKey | Pda;
   authorityPda?: PublicKey | Pda;
   /** Payment account for authority pda if using token payment */
   authorityPdaPaymentAccount?: PublicKey | Pda;
-  gumballMachineProgram?: PublicKey | Pda;
+  machineProgram?: PublicKey | Pda;
   tokenProgram?: PublicKey | Pda;
 };
 
@@ -90,11 +90,7 @@ export function deleteGumballGuard(
       value: input.gumballGuard ?? null,
     },
     authority: { index: 1, isWritable: true, value: input.authority ?? null },
-    gumballMachine: {
-      index: 2,
-      isWritable: true,
-      value: input.gumballMachine ?? null,
-    },
+    machine: { index: 2, isWritable: true, value: input.machine ?? null },
     authorityPda: {
       index: 3,
       isWritable: true,
@@ -105,10 +101,10 @@ export function deleteGumballGuard(
       isWritable: true,
       value: input.authorityPdaPaymentAccount ?? null,
     },
-    gumballMachineProgram: {
+    machineProgram: {
       index: 5,
       isWritable: false,
-      value: input.gumballMachineProgram ?? null,
+      value: input.machineProgram ?? null,
     },
     tokenProgram: {
       index: 6,
@@ -124,16 +120,15 @@ export function deleteGumballGuard(
   if (!resolvedAccounts.authorityPda.value) {
     resolvedAccounts.authorityPda.value = findGumballMachineAuthorityPda(
       context,
-      { gumballMachine: expectPublicKey(resolvedAccounts.gumballMachine.value) }
+      { gumballMachine: expectPublicKey(resolvedAccounts.machine.value) }
     );
   }
-  if (!resolvedAccounts.gumballMachineProgram.value) {
-    resolvedAccounts.gumballMachineProgram.value =
-      context.programs.getPublicKey(
-        'mallowGumball',
-        'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa'
-      );
-    resolvedAccounts.gumballMachineProgram.isWritable = false;
+  if (!resolvedAccounts.machineProgram.value) {
+    resolvedAccounts.machineProgram.value = context.programs.getPublicKey(
+      'mallowGumball',
+      'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa'
+    );
+    resolvedAccounts.machineProgram.isWritable = false;
   }
   if (!resolvedAccounts.tokenProgram.value) {
     resolvedAccounts.tokenProgram.value = context.programs.getPublicKey(

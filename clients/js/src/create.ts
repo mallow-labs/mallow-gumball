@@ -46,7 +46,7 @@ export const create = async <DA extends GuardSetArgs = DefaultGuardSetArgs>(
     .add(
       wrap(context, {
         gumballGuard,
-        gumballMachine: input.gumballMachine.publicKey,
+        machine: input.gumballMachine.publicKey,
       })
     );
 };

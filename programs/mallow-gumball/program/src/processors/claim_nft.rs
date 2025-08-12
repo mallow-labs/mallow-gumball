@@ -1,7 +1,7 @@
 use crate::{processors::claim_item, thaw_nft, GumballError, GumballMachine};
 use anchor_lang::prelude::*;
+use anchor_spl::token::{close_account, CloseAccount};
 use mpl_token_metadata::accounts::Metadata;
-use solana_program::program::invoke_signed;
 use utils::transfer_nft;
 
 pub fn claim_nft_v2<'a, 'b>(
@@ -22,7 +22,6 @@ pub fn claim_nft_v2<'a, 'b>(
     associated_token_program: &AccountInfo<'a>,
     token_metadata_program: &AccountInfo<'a>,
     system_program: &AccountInfo<'a>,
-    rent: &AccountInfo<'a>,
     auth_seeds: &[&[u8]],
     seller_token_record: Option<&UncheckedAccount<'a>>,
     authority_pda_token_record: Option<&UncheckedAccount<'a>>,
@@ -49,7 +48,6 @@ pub fn claim_nft_v2<'a, 'b>(
         associated_token_program,
         token_metadata_program,
         system_program,
-        rent,
         auth_seeds,
         seller_token_record,
         authority_pda_token_record,
@@ -79,7 +77,6 @@ pub fn transfer_nft_with_revoke<'a, 'b>(
     associated_token_program: &AccountInfo<'a>,
     token_metadata_program: &AccountInfo<'a>,
     system_program: &AccountInfo<'a>,
-    rent: &AccountInfo<'a>,
     auth_seeds: &[&[u8]],
     seller_token_record: Option<&UncheckedAccount<'a>>,
     authority_pda_token_record: Option<&UncheckedAccount<'a>>,
@@ -129,7 +126,6 @@ pub fn transfer_nft_with_revoke<'a, 'b>(
             token_program,
             token_metadata_program,
             system_program,
-            rent,
             authority_pda,
             Some(&auth_seeds),
             None,
@@ -157,7 +153,6 @@ pub fn transfer_nft_with_revoke<'a, 'b>(
         token_program,
         token_metadata_program,
         system_program,
-        rent,
         authority_pda,
         Some(&auth_seeds),
         None,
@@ -174,24 +169,15 @@ pub fn transfer_nft_with_revoke<'a, 'b>(
         payer
     };
 
-    // Close the tmp account back to payer
-    invoke_signed(
-        &spl_token::instruction::close_account(
-            token_program.key,
-            authority_pda_token_account.key,
-            rent_recipient.key,
-            authority_pda.key,
-            &[],
-        )?,
-        &[
-            token_program.to_account_info(),
-            authority_pda_token_account.to_account_info(),
-            rent_recipient.to_account_info(),
-            authority_pda.to_account_info(),
-            system_program.to_account_info(),
-        ],
-        &[&auth_seeds],
-    )?;
+    close_account(CpiContext::new_with_signer(
+        token_program.to_account_info(),
+        CloseAccount {
+            account: authority_pda_token_account.to_account_info(),
+            destination: rent_recipient.to_account_info(),
+            authority: authority_pda.to_account_info(),
+        },
+        &[auth_seeds],
+    ))?;
 
     Ok(())
 }

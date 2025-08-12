@@ -21,7 +21,7 @@ import { create, createUmi } from './_setup';
 test('it can update the guards of a gumball guard', async (t) => {
   // Given an existing gumball guard.
   const umi = await createUmi();
-  const gumballMachine = (
+  const machine = (
     await create(umi, {
       guards: {
         botTax: some({ lamports: sol(0.01), lastInstruction: true }),
@@ -45,13 +45,13 @@ test('it can update the guards of a gumball guard', async (t) => {
     })
   ).publicKey;
 
-  const gumballGuard = findGumballGuardPda(umi, { base: gumballMachine })[0];
+  const gumballGuard = findGumballGuardPda(umi, { base: machine })[0];
 
   // When we update all its guards — defaults and groups.
   await transactionBuilder()
     .add(
       updateGumballGuard(umi, {
-        gumballMachine,
+        machine,
         gumballGuard,
         guards: {
           botTax: some({ lamports: sol(0.02), lastInstruction: false }),
@@ -109,7 +109,7 @@ test('it can update the guards of a gumball guard', async (t) => {
 test('it can remove all guards from a gumball guard', async (t) => {
   // Given an existing gumball guard with defaults guards and groups.
   const umi = await createUmi();
-  const gumballMachine = (
+  const machine = (
     await create(umi, {
       guards: {
         botTax: some({ lamports: sol(0.01), lastInstruction: true }),
@@ -133,13 +133,13 @@ test('it can remove all guards from a gumball guard', async (t) => {
     })
   ).publicKey;
 
-  const gumballGuard = findGumballGuardPda(umi, { base: gumballMachine })[0];
+  const gumballGuard = findGumballGuardPda(umi, { base: machine })[0];
 
   // When we update it so that it has no guards.
   await transactionBuilder()
     .add(
       updateGumballGuard(umi, {
-        gumballMachine,
+        machine,
         gumballGuard,
         guards: {},
         groups: [],
@@ -158,7 +158,7 @@ test('it can remove all guards from a gumball guard', async (t) => {
 test('it can update a single guard by passing the current data', async (t) => {
   // Given an existing gumball guard with defaults guards and groups.
   const umi = await createUmi();
-  const gumballMachine = (
+  const machine = (
     await create(umi, {
       guards: {
         botTax: some({ lamports: sol(0.01), lastInstruction: true }),
@@ -182,7 +182,7 @@ test('it can update a single guard by passing the current data', async (t) => {
     })
   ).publicKey;
 
-  const gumballGuard = findGumballGuardPda(umi, { base: gumballMachine })[0];
+  const gumballGuard = findGumballGuardPda(umi, { base: machine })[0];
 
   // And we have access to the data of that gumball guard.
   const { guards, groups } = (await fetchGumballGuard(
@@ -193,9 +193,7 @@ test('it can update a single guard by passing the current data', async (t) => {
   // When we update one guard from one group and pass in the rest of the data.
   groups[1].guards.startDate = some({ date: '2022-09-13T14:00:00.000Z' });
   await transactionBuilder()
-    .add(
-      updateGumballGuard(umi, { gumballMachine, gumballGuard, guards, groups })
-    )
+    .add(updateGumballGuard(umi, { machine, gumballGuard, guards, groups }))
     .sendAndConfirm(umi);
 
   // Then only that guard was updated.

@@ -63,7 +63,7 @@ test('it allows minting when the mint limit is not reached', async (t) => {
   const counterPda = findMintCounterPda(umi, {
     id: 1,
     user: umi.identity.publicKey,
-    gumballMachine,
+    machine: gumballMachine,
     gumballGuard: findGumballGuardPda(umi, { base: gumballMachine })[0],
   });
   const counterAccount = await fetchMintCounter(umi, counterPda);
@@ -114,7 +114,7 @@ test('it allows minting even when the payer is different from the buyer', async 
   const counterPda = findMintCounterPda(umi, {
     id: 1,
     user: buyer.publicKey,
-    gumballMachine,
+    machine: gumballMachine,
     gumballGuard: findGumballGuardPda(umi, { base: gumballMachine })[0],
   });
   const counterAccount = await fetchMintCounter(umi, counterPda);
@@ -149,7 +149,6 @@ test('it forbids minting when the mint limit is reached', async (t) => {
     .add(
       draw(umi, {
         gumballMachine,
-
         mintArgs: { mintLimit: some({ id: 42 }) },
       })
     )

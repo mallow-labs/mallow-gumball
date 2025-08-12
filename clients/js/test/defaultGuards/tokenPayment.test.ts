@@ -151,7 +151,10 @@ test('it transfers tokens from the payer to the fee account', async (t) => {
       draw(umi, {
         gumballMachine,
         mintArgs: {
-          tokenPayment: some({ mint: tokenMint.publicKey, feeAccount }),
+          tokenPayment: some({
+            mint: tokenMint.publicKey,
+            feeAccounts: [feeAccount],
+          }),
         },
       })
     )
@@ -187,12 +190,12 @@ test('it allows minting even when the payer is different from the buyer', async 
   const destination = findGumballMachineAuthorityPda(umi, {
     gumballMachine: gumballMachine,
   })[0];
-  const [tokenMint, destinationAta, buyerAta] = await createMintWithHolders(
+  const [tokenMint, destinationAta, payerAta] = await createMintWithHolders(
     umi,
     {
       holders: [
         { owner: destination, amount: 100 },
-        { owner: buyer, amount: 12 },
+        { owner: umi.identity.publicKey, amount: 12 },
       ],
     }
   );
@@ -226,9 +229,7 @@ test('it allows minting even when the payer is different from the buyer', async 
     .add(
       draw(umi, {
         gumballMachine,
-
         buyer,
-
         mintArgs: {
           tokenPayment: some({ mint: tokenMint.publicKey }),
         },
@@ -244,8 +245,8 @@ test('it allows minting even when the payer is different from the buyer', async 
   t.is(destinationTokenAccount.amount, 105n);
 
   // And the buyer lost 5 tokens.
-  const buyerTokenAccount = await fetchToken(umi, buyerAta);
-  t.is(buyerTokenAccount.amount, 7n);
+  const payerTokenAccount = await fetchToken(umi, payerAta);
+  t.is(payerTokenAccount.amount, 7n);
 });
 
 test('it fails if the payer does not have enough tokens', async (t) => {
@@ -426,5 +427,5 @@ test('it fails if a different mint is provided in draw', async (t) => {
     .sendAndConfirm(umi);
 
   // Then we expect a program error.
-  await t.throwsAsync(promise, { message: /Public key mismatch/ });
+  await t.throwsAsync(promise, { message: /Invalid token account mint/ });
 });

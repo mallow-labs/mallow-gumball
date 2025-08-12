@@ -2,7 +2,13 @@
 overflow-checks = true
 
 [workspace]
+resolver = "2"
 members = [
     "program",
     "macro"
 ]
+
+[workspace.metadata.cli]
+anchor = "0.29.0"
+solana = "1.18.15"
+rustc = "1.79.0"

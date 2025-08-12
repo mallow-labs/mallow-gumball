@@ -57,30 +57,32 @@ export const allowListGuardManifest: GuardManifest<
         publicKey: findAllowListProofPda(context, {
           merkleRoot: args.merkleRoot,
           user: mintContext.buyer.publicKey,
-          gumballMachine: mintContext.gumballMachine,
+          machine: mintContext.machine,
           gumballGuard: mintContext.gumballGuard,
         })[0],
       },
     ],
   }),
-  routeParser: (context, routeContext, args) => ({
-    data: array(bytes({ size: 32 })).serialize(args.merkleProof),
-    remainingAccounts: [
-      {
-        isWritable: true,
-        publicKey: findAllowListProofPda(context, {
-          merkleRoot: args.merkleRoot,
-          user: publicKey(args.buyer ?? routeContext.payer),
-          gumballMachine: routeContext.gumballMachine,
-          gumballGuard: routeContext.gumballGuard,
-        })[0],
-      },
-      { isWritable: false, publicKey: getSplSystemProgramId(context) },
-      ...(args.buyer !== undefined
-        ? [{ isWritable: false, publicKey: publicKey(args.buyer) }]
-        : []),
-    ],
-  }),
+  routeParser: (context, routeContext, args) => {
+    return {
+      data: array(bytes({ size: 32 })).serialize(args.merkleProof),
+      remainingAccounts: [
+        {
+          isWritable: true,
+          publicKey: findAllowListProofPda(context, {
+            merkleRoot: args.merkleRoot,
+            user: publicKey(args.buyer ?? routeContext.payer),
+            machine: routeContext.machine,
+            gumballGuard: routeContext.gumballGuard,
+          })[0],
+        },
+        { isWritable: false, publicKey: getSplSystemProgramId(context) },
+        ...(args.buyer !== undefined
+          ? [{ isWritable: false, publicKey: publicKey(args.buyer) }]
+          : []),
+      ],
+    };
+  },
 };
 
 export type AllowListMintArgs = AllowListArgs;

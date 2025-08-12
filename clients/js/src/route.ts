@@ -11,6 +11,7 @@ import {
   route as baseRoute,
   RouteInstructionAccounts,
 } from './generated/instructions/route';
+import { MachineType } from './generated/types';
 import {
   GuardRepository,
   GuardSetRouteArgs,
@@ -53,19 +54,20 @@ export function route<
     RouteInstructionDataArgs<
       G,
       RA extends undefined ? DefaultGuardSetRouteArgs : RA
-    >
+    > & { machineType?: MachineType }
 ): TransactionBuilder {
   const { routeArgs = {}, group = none(), ...rest } = input;
   const program = context.programs.get<GumballGuardProgram>('gumballGuard');
-  const gumballMachine = publicKey(input.gumballMachine, false);
+  const machine = publicKey(input.machine, false);
+  const machineType = input.machineType ?? MachineType.Gumball;
   const routeContext: RouteContext = {
     payer: input.payer ?? context.payer,
-    gumballMachine,
+    machine,
     gumballGuard: publicKey(
-      input.gumballGuard ??
-        findGumballGuardPda(context, { base: gumballMachine }),
+      input.gumballGuard ?? findGumballGuardPda(context, { base: machine }),
       false
     ),
+    machineType,
   };
   const { data, remainingAccounts, guardIndex } = parseRouteArgs<
     G,

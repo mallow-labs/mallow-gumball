@@ -31,9 +31,9 @@ import {
 export type WrapInstructionAccounts = {
   gumballGuard: PublicKey | Pda;
   authority?: Signer;
-  gumballMachine: PublicKey | Pda;
-  gumballMachineProgram?: PublicKey | Pda;
-  gumballMachineAuthority?: Signer;
+  machine: PublicKey | Pda;
+  machineProgram?: PublicKey | Pda;
+  machineAuthority?: Signer;
 };
 
 // Data.
@@ -75,20 +75,16 @@ export function wrap(
       value: input.gumballGuard ?? null,
     },
     authority: { index: 1, isWritable: false, value: input.authority ?? null },
-    gumballMachine: {
-      index: 2,
-      isWritable: true,
-      value: input.gumballMachine ?? null,
-    },
-    gumballMachineProgram: {
+    machine: { index: 2, isWritable: true, value: input.machine ?? null },
+    machineProgram: {
       index: 3,
       isWritable: false,
-      value: input.gumballMachineProgram ?? null,
+      value: input.machineProgram ?? null,
     },
-    gumballMachineAuthority: {
+    machineAuthority: {
       index: 4,
       isWritable: false,
-      value: input.gumballMachineAuthority ?? null,
+      value: input.machineAuthority ?? null,
     },
   };
 
@@ -96,16 +92,15 @@ export function wrap(
   if (!resolvedAccounts.authority.value) {
     resolvedAccounts.authority.value = context.identity;
   }
-  if (!resolvedAccounts.gumballMachineProgram.value) {
-    resolvedAccounts.gumballMachineProgram.value =
-      context.programs.getPublicKey(
-        'mallowGumball',
-        'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa'
-      );
-    resolvedAccounts.gumballMachineProgram.isWritable = false;
+  if (!resolvedAccounts.machineProgram.value) {
+    resolvedAccounts.machineProgram.value = context.programs.getPublicKey(
+      'mallowGumball',
+      'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa'
+    );
+    resolvedAccounts.machineProgram.isWritable = false;
   }
-  if (!resolvedAccounts.gumballMachineAuthority.value) {
-    resolvedAccounts.gumballMachineAuthority.value = context.identity;
+  if (!resolvedAccounts.machineAuthority.value) {
+    resolvedAccounts.machineAuthority.value = context.identity;
   }
 
   // Accounts in order.

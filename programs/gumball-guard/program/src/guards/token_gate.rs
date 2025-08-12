@@ -1,6 +1,8 @@
+use utils::assert_is_ata;
+
 use super::*;
 
-use crate::{state::GuardType, utils::*};
+use crate::state::GuardType;
 
 /// Guard that restricts access to addresses that hold the specified spl-token.
 ///

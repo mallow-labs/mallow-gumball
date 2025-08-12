@@ -12,8 +12,8 @@ pub static DEFAULT_PROGRAMS: &[Pubkey] = &[
     crate::ID,
     mallow_gumball::ID,
     system_program::ID,
-    spl_token::ID,
-    spl_associated_token_account::ID,
+    anchor_spl::token::spl_token::ID,
+    anchor_spl::associated_token::ID,
     pubkey!("ComputeBudget111111111111111111111111111111"),
     pubkey!("SysExL2WDyJi9aRZrXorrjHJut3JwHQ7R9bTyctbNNG"),
 ];

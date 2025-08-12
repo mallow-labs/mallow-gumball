@@ -1,13 +1,13 @@
 use crate::error::Error;
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::get_associated_token_address;
+use anchor_spl::token::spl_token::state::Account as SplAccount;
 use mpl_token_metadata::accounts::Metadata;
 use solana_program::program_pack::{IsInitialized, Pack};
 use solana_program::{account_info::AccountInfo, pubkey::Pubkey};
-use spl_token::state::Account as SplAccount;
 
 pub fn is_native_mint(key: Pubkey) -> bool {
-    return key == spl_token::native_mint::ID;
+    return key == anchor_spl::token::spl_token::native_mint::ID;
 }
 
 pub fn assert_keys_equal(key1: Pubkey, key2: Pubkey, error_message: &str) -> Result<()> {
@@ -20,7 +20,7 @@ pub fn assert_keys_equal(key1: Pubkey, key2: Pubkey, error_message: &str) -> Res
 }
 
 pub fn assert_is_ata(ata: &AccountInfo, wallet: &Pubkey, mint: &Pubkey) -> Result<SplAccount> {
-    assert_owned_by(ata, &spl_token::id())?;
+    assert_owned_by(ata, &anchor_spl::token::spl_token::ID)?;
     let ata_account: SplAccount = assert_initialized(ata)?;
     assert_keys_equal(ata_account.owner, *wallet, "Invalid ATA owner")?;
     assert_keys_equal(ata_account.mint, *mint, "Invalid ATA mint")?;
