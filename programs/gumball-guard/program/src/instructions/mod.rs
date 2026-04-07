@@ -1,5 +1,9 @@
 use crate::state::GumballGuard;
 use anchor_lang::prelude::*;
+pub use close_allowlist_proof::*;
+pub use close_mint_limit::*;
+pub use create_global_config::*;
+pub use update_global_config::*;
 pub use draw::*;
 pub use draw_jellybean::*;
 pub use initialize::*;
@@ -10,6 +14,10 @@ pub use update::*;
 pub use withdraw::*;
 pub use wrap::*;
 
+pub mod close_allowlist_proof;
+pub mod close_mint_limit;
+pub mod create_global_config;
+pub mod update_global_config;
 pub mod draw;
 pub mod draw_jellybean;
 pub mod initialize;

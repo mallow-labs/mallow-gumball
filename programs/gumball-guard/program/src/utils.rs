@@ -1,9 +1,10 @@
 use anchor_lang::prelude::*;
-use mallow_jellybean_sdk::types::FeeAccount;
+use mallow_gumball::{GumballMachine, GumballState};
+use mallow_jellybean_sdk::{accounts::JellybeanMachine, types::FeeAccount, types::JellybeanState};
 use solana_program::{program::invoke_signed, program_memory::sol_memcmp, pubkey::PUBKEY_BYTES};
 use utils::{assert_initialized, assert_keys_equal, assert_owned_by, transfer_sol};
 
-use crate::errors::GumballGuardError;
+use crate::{errors::GumballGuardError, try_from};
 
 // Empty value used for string padding.
 const NULL_STRING: &str = "\0";
@@ -223,6 +224,47 @@ pub fn pay_fee_accounts<'a>(
     }
 
     Ok(total_paid)
+}
+
+/// Validates that a machine account is either closed (empty) or in `SaleEnded` state.
+/// Works for both GumballMachine and JellybeanMachine accounts.
+pub fn require_machine_sale_ended_or_closed(machine_info: &AccountInfo) -> Result<()> {
+    if !machine_info.data_is_empty() {
+        if let Ok(machine) = try_from!(Account::<GumballMachine>, machine_info) {
+            require!(
+                machine.state == GumballState::SaleEnded,
+                GumballGuardError::InvalidMachineState
+            );
+        } else if let Ok(machine) = try_from!(Account::<JellybeanMachine>, machine_info) {
+            require!(
+                machine.state == JellybeanState::SaleEnded,
+                GumballGuardError::InvalidMachineState
+            );
+        } else {
+            return err!(GumballGuardError::InvalidMachine);
+        }
+    }
+    Ok(())
+}
+
+/// Closes a PDA account by transferring all lamports to the recipient and zeroing the data.
+pub fn close_pda_account<'info>(
+    account: &AccountInfo<'info>,
+    recipient: &AccountInfo<'info>,
+) -> Result<()> {
+    let lamports = account.lamports();
+    **account.try_borrow_mut_lamports()? = 0;
+    **recipient.try_borrow_mut_lamports()? = recipient
+        .lamports()
+        .checked_add(lamports)
+        .ok_or(GumballGuardError::NumericalOverflowError)?;
+
+    let mut data = account.try_borrow_mut_data()?;
+    for byte in data.iter_mut() {
+        *byte = 0;
+    }
+
+    Ok(())
 }
 
 #[macro_export]

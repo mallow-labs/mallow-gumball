@@ -497,9 +497,195 @@
         }
       ],
       "args": []
+    },
+    {
+      "name": "closeMintLimit",
+      "docs": [
+        "Close a MintCounter PDA and send its rent to the account_fee_authority in GlobalConfig.",
+        "Only the account_fee_authority recorded in GlobalConfig may call this instruction.",
+        "The associated gumball guard must have already been closed (deleted)."
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "The protocol authority — must match global_config.account_fee_authority and receives rent."
+          ]
+        },
+        {
+          "name": "globalConfig",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The GlobalConfig PDA — used to validate the authority."
+          ]
+        },
+        {
+          "name": "gumballGuard",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The gumball guard that this counter was created under. Must be closed (empty)."
+          ]
+        },
+        {
+          "name": "mintCounter",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The MintCounter PDA to close."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "closeAllowlistProof",
+      "docs": [
+        "Close an AllowListProof PDA and send its rent to the account_fee_authority in GlobalConfig.",
+        "Only the account_fee_authority recorded in GlobalConfig may call this instruction.",
+        "The associated gumball guard must have already been closed (deleted)."
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "The protocol authority — must match global_config.account_fee_authority and receives rent."
+          ]
+        },
+        {
+          "name": "globalConfig",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The GlobalConfig PDA — used to validate the authority."
+          ]
+        },
+        {
+          "name": "gumballGuard",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The gumball guard that this proof was created under. Must be closed (empty)."
+          ]
+        },
+        {
+          "name": "allowListProof",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The AllowListProof PDA to close."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "createGlobalConfig",
+      "docs": [
+        "Create the GlobalConfig PDA. Can only be called once."
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "globalConfig",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "configAuthority",
+          "type": "publicKey"
+        },
+        {
+          "name": "accountFeeAuthority",
+          "type": "publicKey"
+        }
+      ]
+    },
+    {
+      "name": "updateGlobalConfig",
+      "docs": [
+        "Update the GlobalConfig account. Only the current config_authority may call this."
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "The current config authority — must match global_config.config_authority."
+          ]
+        },
+        {
+          "name": "globalConfig",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "newConfigAuthority",
+          "type": {
+            "option": "publicKey"
+          }
+        },
+        {
+          "name": "newAccountFeeAuthority",
+          "type": {
+            "option": "publicKey"
+          }
+        }
+      ]
     }
   ],
   "accounts": [
+    {
+      "name": "GlobalConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "configAuthority",
+            "docs": [
+              "The authority that can update this config via `update_global_config`."
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "accountFeeAuthority",
+            "docs": [
+              "The authority that can close guard PDAs and receives their rent."
+            ],
+            "type": "publicKey"
+          }
+        ]
+      }
+    },
     {
       "name": "GumballGuard",
       "type": {

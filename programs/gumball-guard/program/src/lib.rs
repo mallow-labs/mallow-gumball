@@ -76,4 +76,36 @@ pub mod gumball_guard {
     pub fn wrap(ctx: Context<Wrap>) -> Result<()> {
         instructions::wrap(ctx)
     }
+
+    /// Close a MintCounter PDA and send its rent to the account_fee_authority in GlobalConfig.
+    /// Only the account_fee_authority recorded in GlobalConfig may call this instruction.
+    /// The associated gumball guard must have already been closed (deleted).
+    pub fn close_mint_limit(ctx: Context<CloseMintLimit>) -> Result<()> {
+        instructions::close_mint_limit(ctx)
+    }
+
+    /// Close an AllowListProof PDA and send its rent to the account_fee_authority in GlobalConfig.
+    /// Only the account_fee_authority recorded in GlobalConfig may call this instruction.
+    /// The associated gumball guard must have already been closed (deleted).
+    pub fn close_allowlist_proof(ctx: Context<CloseAllowlistProof>) -> Result<()> {
+        instructions::close_allowlist_proof(ctx)
+    }
+
+    /// Create the GlobalConfig PDA. Can only be called once.
+    pub fn create_global_config(
+        ctx: Context<CreateGlobalConfig>,
+        config_authority: Pubkey,
+        account_fee_authority: Pubkey,
+    ) -> Result<()> {
+        instructions::create_global_config(ctx, config_authority, account_fee_authority)
+    }
+
+    /// Update the GlobalConfig account. Only the current config_authority may call this.
+    pub fn update_global_config(
+        ctx: Context<UpdateGlobalConfig>,
+        new_config_authority: Option<Pubkey>,
+        new_account_fee_authority: Option<Pubkey>,
+    ) -> Result<()> {
+        instructions::update_global_config(ctx, new_config_authority, new_account_fee_authority)
+    }
 }

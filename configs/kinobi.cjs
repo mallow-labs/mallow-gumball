@@ -75,6 +75,11 @@ kinobi.update(
         ),
       ],
     },
+    globalConfig: {
+      seeds: [
+        k.stringConstantSeed("global_config"),
+      ],
+    },
     mintCounter: {
       size: 2,
       discriminator: k.sizeAccountDiscriminator(),
@@ -186,6 +191,10 @@ const defaultsToGumballMachineAuthorityPda = (
   k.pdaDefault("gumballMachineAuthority", {
     importFrom: "hooked",
     seeds: { gumballMachine: k.accountDefault(gumballMachine) },
+  });
+const defaultsToGlobalConfigPda = () =>
+  k.pdaDefault("globalConfig", {
+    importFrom: "generated",
   });
 const defaultsToJellybeanMachineAuthorityPda = (
   jellybeanMachine = "jellybeanMachine"
@@ -430,6 +439,56 @@ const claimPnftDefault = () => {
 // Update instructions.
 kinobi.update(
   new k.UpdateInstructionsVisitor({
+    "gumballGuard.closeMintLimit": {
+      name: "closeMintLimit",
+      accounts: {
+        globalConfig: {
+          defaultsTo: defaultsToGlobalConfigPda(),
+        },
+        systemProgram: {
+          defaultsTo: k.programDefault(
+            "splSystem",
+            "11111111111111111111111111111111"
+          ),
+        },
+      },
+    },
+    "gumballGuard.closeAllowlistProof": {
+      name: "closeAllowlistProof",
+      accounts: {
+        globalConfig: {
+          defaultsTo: defaultsToGlobalConfigPda(),
+        },
+        systemProgram: {
+          defaultsTo: k.programDefault(
+            "splSystem",
+            "11111111111111111111111111111111"
+          ),
+        },
+      },
+    },
+    "gumballGuard.createGlobalConfig": {
+      name: "createGlobalConfig",
+      accounts: {
+        globalConfig: {
+          defaultsTo: defaultsToGlobalConfigPda(),
+        },
+        systemProgram: {
+          defaultsTo: k.programDefault(
+            "splSystem",
+            "11111111111111111111111111111111"
+          ),
+        },
+      },
+    },
+    "gumballGuard.updateGlobalConfig": {
+      name: "updateGlobalConfig",
+      accounts: {
+        globalConfig: {
+          defaultsTo: defaultsToGlobalConfigPda(),
+        },
+      },
+    },
     "gumballGuard.initialize": {
       name: "initializeGumballGuard",
       internal: true,

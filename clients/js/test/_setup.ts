@@ -23,6 +23,7 @@ import {
 } from '@metaplex-foundation/mpl-toolbox';
 import {
   assertAccountExists,
+  createSignerFromKeypair,
   DateTime,
   generateSigner,
   none,
@@ -32,6 +33,7 @@ import {
   publicKey,
   PublicKeyInput,
   Signer,
+  sol,
   some,
   transactionBuilder,
   TransactionSignature,
@@ -47,6 +49,7 @@ import {
   createGumballGuard as baseCreateGumballGuard,
   createGumballMachine as baseCreateGumballMachineV2,
   ConfigLineInput,
+  createGlobalConfig,
   CreateGumballGuardInstructionDataArgs,
   DefaultGuardSetArgs,
   draw,
@@ -59,8 +62,10 @@ import {
   InitializeGumballGuardInstructionAccounts,
   mallowGumball,
   MPL_TOKEN_AUTH_RULES_PROGRAM_ID,
+  safeFetchGlobalConfigFromSeeds,
   startSale,
   TokenStandard,
+  updateGlobalConfig,
   wrap,
 } from '../src';
 
@@ -516,6 +521,37 @@ export const getNewConfigLine = async (
   seller: publicKey(Keypair.generate().publicKey),
   ...overrides,
 });
+
+// Fixed-seed keypair used as the test authority for GlobalConfig.
+// GlobalConfig is a program-wide singleton, so all tests must share one authority.
+// Using a deterministic seed means the same keypair is produced in every test run.
+export const getTestAuthority = (umi: Umi) => {
+  const web3Keypair = Keypair.fromSeed(new Uint8Array(32).fill(42));
+  const keypair = umi.eddsa.createKeypairFromSecretKey(web3Keypair.secretKey);
+  return createSignerFromKeypair(umi, keypair);
+};
+
+// Create or idempotently re-use the GlobalConfig PDA with the test authority
+// as both config_authority and account_fee_authority.
+export const setupGlobalConfig = async (umi: Umi, authority: Signer) => {
+  await umi.rpc.airdrop(authority.publicKey, sol(1));
+
+  const existing = await safeFetchGlobalConfigFromSeeds(umi);
+  if (!existing) {
+    await createGlobalConfig(umi, {
+      authority,
+      configAuthority: authority.publicKey,
+      accountFeeAuthority: authority.publicKey,
+    }).sendAndConfirm(umi);
+  } else {
+    // Already exists — update if needed (signer must be current config_authority).
+    await updateGlobalConfig(umi, {
+      authority,
+      newAccountFeeAuthority: authority.publicKey,
+      newConfigAuthority: authority.publicKey,
+    }).sendAndConfirm(umi);
+  }
+};
 
 export const drawRemainingItems = async (
   umi: Umi,

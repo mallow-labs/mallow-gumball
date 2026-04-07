@@ -12,7 +12,7 @@ use crate::{
 
 pub use address_gate::AddressGate;
 pub use allocation::Allocation;
-pub use allow_list::AllowList;
+pub use allow_list::{AllowList, AllowListProof};
 pub use bot_tax::BotTax;
 pub use end_date::EndDate;
 pub use gatekeeper::Gatekeeper;

@@ -9,6 +9,7 @@
 export * from './addItemRequest';
 export * from './allocationTracker';
 export * from './allowListProof';
+export * from './globalConfig';
 export * from './gumballMachine';
 export * from './mintCounter';
 export * from './sellerHistory';
