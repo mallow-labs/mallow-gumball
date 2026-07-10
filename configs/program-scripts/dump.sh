@@ -1,7 +1,7 @@
 #!/bin/bash
 
-EXTERNAL_ID=("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s" "auth9SigNpDKz4sJJ1DfCTuZrZNSAgh9sFD3rboVmgg" "SysExL2WDyJi9aRZrXorrjHJut3JwHQ7R9bTyctbNNG" "TokExjvjJmhKaRBShsBAsbSvEWMA1AgUNK7ps4SAc2p" "gatem74V238djXdzWnJf94Wo1DcnuGkfijbf3AuBhfs" "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb" "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d")
-EXTERNAL_SO=("mpl_token_metadata.so" "mpl_token_auth_rules.so" "mpl_system_extras.so" "mpl_token_extras.so" "civic_gateway.so" "spl_token_2022.so" "mpl_core.so")
+EXTERNAL_ID=("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s" "auth9SigNpDKz4sJJ1DfCTuZrZNSAgh9sFD3rboVmgg" "SysExL2WDyJi9aRZrXorrjHJut3JwHQ7R9bTyctbNNG" "TokExjvjJmhKaRBShsBAsbSvEWMA1AgUNK7ps4SAc2p" "gatem74V238djXdzWnJf94Wo1DcnuGkfijbf3AuBhfs" "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb" "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d" "BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY" "cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK" "noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV")
+EXTERNAL_SO=("mpl_token_metadata.so" "mpl_token_auth_rules.so" "mpl_system_extras.so" "mpl_token_extras.so" "civic_gateway.so" "spl_token_2022.so" "mpl_core.so" "mpl_bubblegum.so" "spl_account_compression.so" "spl_noop.so")
 
 # output colours
 RED() { echo $'\e[1;31m'$1$'\e[0m'; }

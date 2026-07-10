@@ -250,6 +250,9 @@ pub enum TokenStandard {
     Core,
     Fungible,
     ProgrammableNonFungible,
+    // Append-only: compressed NFT (Bubblegum). New variants MUST be appended to
+    // preserve the 1-byte discriminator of existing config lines. Discriminator = 4.
+    Compressed,
 }
 
 #[derive(Copy, AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]

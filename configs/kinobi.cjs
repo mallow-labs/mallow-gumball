@@ -250,6 +250,18 @@ const defaultsToMplCoreProgram = () =>
     "mplCoreProgram",
     "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"
   );
+const defaultsToBubblegumProgram = () =>
+  k.programDefault(
+    "mplBubblegum",
+    "BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY"
+  );
+const defaultsToSplAccountCompressionProgram = () =>
+  k.programDefault(
+    "splAccountCompression",
+    "cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK"
+  );
+const defaultsToSplNoopProgram = () =>
+  k.programDefault("splNoop", "noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV");
 const defaultsToProgram = () =>
   k.programDefault(
     "mallowGumball",
@@ -389,6 +401,21 @@ kinobi.update(
     {
       ...defaultsToSplAssociatedTokenProgram(),
       account: "associatedTokenProgram",
+      ignoreIfOptional: true,
+    },
+    {
+      ...defaultsToBubblegumProgram(),
+      account: "bubblegumProgram",
+      ignoreIfOptional: true,
+    },
+    {
+      ...defaultsToSplAccountCompressionProgram(),
+      account: "compressionProgram",
+      ignoreIfOptional: true,
+    },
+    {
+      ...defaultsToSplNoopProgram(),
+      account: "logWrapper",
       ignoreIfOptional: true,
     },
   ])
@@ -803,6 +830,60 @@ kinobi.update(
         authorityPaymentAccount: {
           defaultsTo: k.conditionalDefault("account", "paymentMint", {
             ifTrue: defaultsToAssociatedTokenPda("paymentMint", "authority"),
+          }),
+        },
+      },
+    },
+    "mallowGumball.addCnft": {
+      name: "addCnft",
+      accounts: {
+        seller: { defaultsTo: k.identityDefault() },
+      },
+    },
+    "mallowGumball.requestAddCnft": {
+      name: "requestAddCnft",
+      accounts: {
+        seller: { defaultsTo: k.identityDefault() },
+        addItemRequest: { defaultsTo: defaultsToAddItemRequestPda("asset") },
+      },
+    },
+    "mallowGumball.cancelAddCnftRequest": {
+      name: "cancelAddCnftRequest",
+      accounts: {
+        seller: { defaultsTo: k.identityDefault() },
+        addItemRequest: { defaultsTo: defaultsToAddItemRequestPda("asset") },
+      },
+    },
+    "mallowGumball.removeCnft": {
+      name: "removeCnft",
+      accounts: {
+        authority: { defaultsTo: k.identityDefault() },
+        seller: { defaultsTo: k.identityDefault() },
+      },
+    },
+    "mallowGumball.claimCnft": {
+      name: "claimCnft",
+      accounts: {
+        buyer: { defaultsTo: k.identityDefault() },
+      },
+    },
+    "mallowGumball.settleCnftSale": {
+      name: "settleCnftSale",
+      accounts: {
+        buyer: { defaultsTo: k.identityDefault() },
+        authorityPdaPaymentAccount: {
+          defaultsTo: k.conditionalDefault("account", "paymentMint", {
+            ifTrue: defaultsToAssociatedTokenPda("paymentMint", "authorityPda"),
+          }),
+        },
+        authorityPaymentAccount: {
+          defaultsTo: k.conditionalDefault("account", "paymentMint", {
+            ifTrue: defaultsToAssociatedTokenPda("paymentMint", "authority"),
+          }),
+        },
+        sellerPaymentAccount: {
+          defaultsTo: k.conditionalDefault("account", "paymentMint", {
+            ifTrue: defaultsToAssociatedTokenPda("paymentMint", "seller"),
           }),
         },
       },

@@ -774,6 +774,146 @@ pub fn transfer_and_close_if_empty<'a>(
     Ok(())
 }
 
+/// Rejects any leaf that is not a Bubblegum V1 leaf.
+///
+/// On-chain trading is V1-only in this build (see §2 of the cNFT/pNFT spec). The
+/// V1 `Transfer` CPI would already fail on a V2 leaf, but we reject explicitly up
+/// front for a clear error and forward-compat: a future Solana 2.x upgrade will
+/// branch to `TransferV2` when `version >= 2`.
+pub fn assert_cnft_v1(version: u8) -> Result<()> {
+    require!(
+        version == crate::constants::BUBBLEGUM_V1_VERSION,
+        GumballError::UnsupportedCnftVersion
+    );
+    Ok(())
+}
+
+/// Recomputes the Bubblegum leaf `data_hash` from the DAS-supplied `meta_hash`.
+///
+/// Mirrors `mpl_bubblegum::hash::hash_metadata`'s trailing step:
+/// `data_hash = keccak(keccak(borsh(MetadataArgs)) ‖ sfbp_le)` where `meta_hash`
+/// is the inner `keccak(borsh(MetadataArgs))`. Because `seller_fee_basis_points`
+/// is folded in here, a lie about it changes `data_hash` and the proof fails.
+pub fn compute_cnft_data_hash(meta_hash: &[u8; 32], seller_fee_basis_points: u16) -> [u8; 32] {
+    solana_program::keccak::hashv(&[meta_hash, &seller_fee_basis_points.to_le_bytes()]).to_bytes()
+}
+
+/// Recomputes the Bubblegum leaf `creator_hash` from the supplied creators.
+///
+/// Byte-for-byte identical to `mpl_bubblegum::hash::hash_creators`: for each
+/// creator, `keccak` over `address ‖ [verified as u8] ‖ [share]`. Computed here
+/// (rather than calling the mpl helper) to avoid crossing the mpl borsh types
+/// into instruction args. A lie about creators changes `creator_hash` and the
+/// proof fails, so royalty payouts driven off these creators are trustless.
+pub fn compute_cnft_creator_hash(creators: &[crate::CnftCreator]) -> [u8; 32] {
+    let creator_data: Vec<Vec<u8>> = creators
+        .iter()
+        .map(|c| {
+            [c.address.as_ref(), &[c.verified as u8][..], &[c.share][..]].concat()
+        })
+        .collect();
+    solana_program::keccak::hashv(
+        creator_data
+            .iter()
+            .map(|c| c.as_slice())
+            .collect::<Vec<&[u8]>>()
+            .as_ref(),
+    )
+    .to_bytes()
+}
+
+/// Derives the Bubblegum asset id for a leaf: `PDA(["asset", tree, nonce_le])`.
+pub fn cnft_asset_id(merkle_tree: &Pubkey, nonce: u64) -> Pubkey {
+    mpl_bubblegum::utils::get_asset_id(merkle_tree, nonce)
+}
+
+/// MANDATORY anti-substitution binding for compressed NFTs.
+///
+/// In gumball the merkle tree arrives as an untrusted instruction account and
+/// there is no config-line room to store it — so the ONLY thing binding the
+/// passed tree to the item we stored is this derivation. We re-derive
+/// `asset_id = PDA(["asset", merkle_tree, nonce_le])` and require it equals the
+/// asset id recorded in the config line (`expected_asset_id`). Without this, a
+/// caller could supply a different (cheaper) leaf's tree/nonce/proof and settle
+/// or claim against the wrong asset. Returns the verified asset id.
+pub fn assert_cnft_asset_id(
+    merkle_tree: &Pubkey,
+    nonce: u64,
+    expected_asset_id: &Pubkey,
+) -> Result<Pubkey> {
+    let asset_id = cnft_asset_id(merkle_tree, nonce);
+    require!(asset_id == *expected_asset_id, GumballError::InvalidMerkleTree);
+    Ok(asset_id)
+}
+
+/// Verifies the passed `tree_config` account is the canonical Bubblegum tree
+/// authority PDA for `merkle_tree`. Defense-in-depth: the Bubblegum CPI also
+/// enforces this, but we bind it here so a wrong tree_config fails early.
+pub fn assert_cnft_tree_config(tree_config: &Pubkey, merkle_tree: &Pubkey) -> Result<()> {
+    let (expected, _) = mpl_bubblegum::accounts::TreeConfig::find_pda(merkle_tree);
+    assert_keys_equal(expected, *tree_config, "Invalid tree config PDA")?;
+    Ok(())
+}
+
+/// Executes a Bubblegum V1 `Transfer` CPI moving a leaf `leaf_owner -> new_leaf_owner`.
+///
+/// `leaf_owner`/`leaf_delegate` are the same account here (mallow never sets a
+/// separate leaf delegate): on escrow-in it is the seller (a tx signer); on
+/// escrow-out it is the gumball authority PDA (signed via `signer_seeds`). Proof
+/// nodes are passed as read-only, non-signer remaining accounts. The CPI verifies
+/// leaf ↔ root ↔ proof using `data_hash`/`creator_hash`, which binds sfbp and
+/// creators to the on-chain state.
+#[allow(clippy::too_many_arguments)]
+pub fn transfer_cnft<'a, 'b>(
+    bubblegum_program: &AccountInfo<'a>,
+    tree_config: &AccountInfo<'a>,
+    leaf_owner: &AccountInfo<'a>,
+    new_leaf_owner: &AccountInfo<'a>,
+    merkle_tree: &AccountInfo<'a>,
+    log_wrapper: &AccountInfo<'a>,
+    compression_program: &AccountInfo<'a>,
+    system_program: &AccountInfo<'a>,
+    proof: &'b [AccountInfo<'a>],
+    root: [u8; 32],
+    data_hash: [u8; 32],
+    creator_hash: [u8; 32],
+    nonce: u64,
+    index: u32,
+    signer_seeds: Option<&[&[u8]]>,
+) -> Result<()> {
+    let mut builder =
+        mpl_bubblegum::instructions::TransferCpiBuilder::new(bubblegum_program);
+    builder
+        .tree_config(tree_config)
+        // leaf_owner and leaf_delegate are the same account; it authorizes the
+        // transfer (seller signature on escrow-in, PDA seeds on escrow-out).
+        .leaf_owner(leaf_owner, true)
+        .leaf_delegate(leaf_owner, true)
+        .new_leaf_owner(new_leaf_owner)
+        .merkle_tree(merkle_tree)
+        .log_wrapper(log_wrapper)
+        .compression_program(compression_program)
+        .system_program(system_program)
+        .root(root)
+        .data_hash(data_hash)
+        .creator_hash(creator_hash)
+        .nonce(nonce)
+        .index(index);
+
+    // Proof nodes: untrusted, but only ever read-only non-signers. The CPI hashes
+    // them up to the root, so a bad proof simply fails verification.
+    for node in proof.iter() {
+        builder.add_remaining_account(node, false, false);
+    }
+
+    match signer_seeds {
+        Some(seeds) => builder.invoke_signed(&[seeds])?,
+        None => builder.invoke()?,
+    };
+
+    Ok(())
+}
+
 #[macro_export]
 macro_rules! try_from {
     ($ty: ty, $acc: expr) => {

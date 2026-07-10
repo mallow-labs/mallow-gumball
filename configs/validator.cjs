@@ -56,6 +56,21 @@ module.exports = {
 				programId: "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d",
 				deployPath: getProgram("mpl_core.so"),
 			},
+			{
+				label: "MPL Bubblegum",
+				programId: "BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY",
+				deployPath: getProgram("mpl_bubblegum.so"),
+			},
+			{
+				label: "SPL Account Compression",
+				programId: "cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK",
+				deployPath: getProgram("spl_account_compression.so"),
+			},
+			{
+				label: "SPL Noop",
+				programId: "noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV",
+				deployPath: getProgram("spl_noop.so"),
+			},
 		],
 		accounts: [
 			{

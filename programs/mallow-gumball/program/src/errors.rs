@@ -208,4 +208,10 @@ pub enum GumballError {
 
     #[msg("Missing item index")]
     MissingItemIndex,
+
+    #[msg("Unsupported Bubblegum version (only V1 compressed NFTs can be traded)")]
+    UnsupportedCnftVersion,
+
+    #[msg("Invalid merkle tree for the stored asset id")]
+    InvalidMerkleTree,
 }

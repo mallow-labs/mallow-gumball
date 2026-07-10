@@ -6,14 +6,17 @@
  * @see https://github.com/metaplex-foundation/kinobi
  */
 
+export * from './addCnft';
 export * from './addCoreAsset';
 export * from './addNft';
 export * from './addTokens';
 export * from './approveAddItem';
 export * from './baseSettleCoreAssetSale';
 export * from './baseSettleNftSale';
+export * from './cancelAddCnftRequest';
 export * from './cancelAddCoreAssetRequest';
 export * from './cancelAddNftRequest';
+export * from './claimCnft';
 export * from './claimCoreAsset';
 export * from './claimNft';
 export * from './claimTokens';
@@ -27,16 +30,19 @@ export * from './endSale';
 export * from './incrementTotalRevenue';
 export * from './initializeGumballMachine';
 export * from './manageBuyBackFunds';
+export * from './removeCnft';
 export * from './removeCoreAsset';
 export * from './removeNft';
 export * from './removeTokens';
 export * from './removeTokensSpan';
+export * from './requestAddCnft';
 export * from './requestAddCoreAsset';
 export * from './requestAddNft';
 export * from './sellItemBack';
 export * from './setGumballGuardAuthority';
 export * from './setGumballMachineAuthority';
 export * from './setMintAuthority';
+export * from './settleCnftSale';
 export * from './settleTokensSale';
 export * from './settleTokensSaleClaimed';
 export * from './startSale';

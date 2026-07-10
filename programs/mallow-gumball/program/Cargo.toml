@@ -23,4 +23,9 @@ arrayref = ">=0.3.6"
 solana-program = "=1.18.15"
 mpl-token-metadata = ">=5.1.0"
 mpl-core = { version= ">=0.9.1"}
+# Pinned to 2.0.1: V1 Bubblegum CPI only. This version still targets Solana 1.x
+# (solana-program ^1.16), so it is compatible with the program's `solana =1.18.15`
+# pin. V2 CPI (mpl-account-compression) requires Solana 2.x and is intentionally
+# out of scope — V2 leaves are rejected at trade entry (see add_cnft).
+mpl-bubblegum = "=2.0.1"
 utils = { path="../../utils" }

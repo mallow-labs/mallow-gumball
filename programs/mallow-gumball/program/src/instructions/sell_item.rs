@@ -343,6 +343,11 @@ pub fn sell_item<'info>(
                     Some(seller),
                 )?;
             }
+            // Buy-back is out of scope for compressed NFTs (would need a fresh
+            // merkle proof and Bubblegum CPI). Reject explicitly.
+            TokenStandard::Compressed => {
+                return err!(GumballError::NotImplemented);
+            }
         }
     }
 

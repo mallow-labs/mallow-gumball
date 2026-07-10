@@ -13,6 +13,7 @@ export enum TokenStandard {
   Core,
   Fungible,
   ProgrammableNonFungible,
+  Compressed,
 }
 
 export type TokenStandardArgs = TokenStandard;

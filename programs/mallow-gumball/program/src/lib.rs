@@ -689,4 +689,168 @@ pub mod mallow_gumball {
     ) -> Result<()> {
         instructions::manage_buy_back_funds(ctx, amount, is_withdraw)
     }
+
+    /// Add a compressed NFT (Bubblegum V1) to the gumball machine.
+    /// Escrows the leaf `seller -> authority PDA` (cNFTs cannot be frozen in
+    /// place) and stores the asset id in the config line's mint field.
+    /// Only V1 leaves are accepted; V2 leaves are rejected.
+    ///
+    /// # Accounts
+    ///
+    ///   0. `[writable]` Gumball Machine account
+    ///   1. `[writable]` Seller history account (PDA, seeds: ["seller_history", gumball_machine, seller])
+    ///   2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine])
+    ///   3. `[signer, writable]` Seller (leaf owner)
+    ///   4. `[]` Bubblegum tree config PDA
+    ///   5. `[writable]` Merkle tree
+    ///   6. `[]` SPL No-op (log wrapper) program
+    ///   7. `[]` SPL Account Compression program
+    ///   8. `[]` Bubblegum program
+    ///   9. `[]` System program
+    ///   Remaining accounts: merkle proof nodes
+    pub fn add_cnft<'info>(
+        ctx: Context<'_, '_, '_, 'info, AddCnft<'info>>,
+        args: CnftArgs,
+        add_item_args: AddItemArgs,
+    ) -> Result<()> {
+        instructions::add_cnft(ctx, args, add_item_args)
+    }
+
+    /// Request to add a compressed NFT to the gumball machine (collab flow).
+    /// Escrows the leaf and creates a request account keyed by the asset id.
+    ///
+    /// # Accounts
+    ///
+    ///   0. `[writable]` Gumball Machine account
+    ///   1. `[writable]` Seller history account (PDA, seeds: ["seller_history", gumball_machine, seller])
+    ///   2. `[writable]` Add item request account (PDA, seeds: ["add_item_request", asset_id])
+    ///   3. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine])
+    ///   4. `[signer, writable]` Seller (leaf owner)
+    ///   5. `[]` Asset id (Bubblegum PDA; not a real account)
+    ///   6. `[]` Bubblegum tree config PDA
+    ///   7. `[writable]` Merkle tree
+    ///   8. `[]` SPL No-op (log wrapper) program
+    ///   9. `[]` SPL Account Compression program
+    ///   10. `[]` Bubblegum program
+    ///   11. `[]` System program
+    ///   Remaining accounts: merkle proof nodes
+    pub fn request_add_cnft<'info>(
+        ctx: Context<'_, '_, '_, 'info, RequestAddCnft<'info>>,
+        args: CnftArgs,
+    ) -> Result<()> {
+        instructions::request_add_cnft(ctx, args)
+    }
+
+    /// Cancel a request to add a compressed NFT.
+    /// Transfers the escrowed leaf back to the seller and closes the request.
+    ///
+    /// # Accounts
+    ///
+    ///   0. `[writable]` Seller history account (PDA, seeds: ["seller_history", add_item_request.gumball_machine, seller])
+    ///   1. `[writable]` Add item request account (PDA, seeds: ["add_item_request", asset_id]). Will be closed.
+    ///   2. `[writable]` Authority PDA (PDA, seeds: ["authority", add_item_request.gumball_machine])
+    ///   3. `[signer, writable]` Seller
+    ///   4. `[]` Asset id (Bubblegum PDA; not a real account)
+    ///   5. `[]` Bubblegum tree config PDA
+    ///   6. `[writable]` Merkle tree
+    ///   7. `[]` SPL No-op (log wrapper) program
+    ///   8. `[]` SPL Account Compression program
+    ///   9. `[]` Bubblegum program
+    ///   10. `[]` System program
+    ///   Remaining accounts: merkle proof nodes
+    pub fn cancel_add_cnft_request<'info>(
+        ctx: Context<'_, '_, '_, 'info, CancelAddCnftRequest<'info>>,
+        args: CnftArgs,
+    ) -> Result<()> {
+        instructions::cancel_add_cnft_request(ctx, args)
+    }
+
+    /// Remove a compressed NFT from the gumball machine.
+    /// Transfers the escrowed leaf back to the seller. The signer can be the
+    /// gumball machine authority or the item's seller.
+    ///
+    /// # Accounts
+    ///
+    ///   0. `[writable]` Gumball Machine account
+    ///   1. `[writable]` Seller history account (PDA, seeds: ["seller_history", gumball_machine, seller])
+    ///   2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine])
+    ///   3. `[signer]` Authority allowed to remove (gumball machine authority or item seller)
+    ///   4. `[writable]` Seller (receiver of the leaf)
+    ///   5. `[]` Bubblegum tree config PDA
+    ///   6. `[writable]` Merkle tree
+    ///   7. `[]` SPL No-op (log wrapper) program
+    ///   8. `[]` SPL Account Compression program
+    ///   9. `[]` Bubblegum program
+    ///   10. `[]` System program
+    ///   Remaining accounts: merkle proof nodes
+    pub fn remove_cnft<'info>(
+        ctx: Context<'_, '_, '_, 'info, RemoveCnft<'info>>,
+        index: u32,
+        args: CnftArgs,
+    ) -> Result<()> {
+        instructions::remove_cnft(ctx, index, args)
+    }
+
+    /// Claims a compressed NFT from the gumball machine for the recorded buyer.
+    /// Transfers the leaf from the authority PDA to the buyer.
+    ///
+    /// # Accounts
+    ///
+    ///   0. `[signer, writable]` Payer (anyone can claim)
+    ///   1. `[writable]` Gumball Machine account (must be in SaleLive or SaleEnded state)
+    ///   2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine])
+    ///   3. `[]` Seller
+    ///   4. `[writable]` Buyer (receiver of the leaf)
+    ///   5. `[]` Bubblegum tree config PDA
+    ///   6. `[writable]` Merkle tree
+    ///   7. `[]` SPL No-op (log wrapper) program
+    ///   8. `[]` SPL Account Compression program
+    ///   9. `[]` Bubblegum program
+    ///   10. `[]` System program
+    ///   Remaining accounts: merkle proof nodes
+    pub fn claim_cnft<'info>(
+        ctx: Context<'_, '_, '_, 'info, ClaimCnft<'info>>,
+        index: u32,
+        args: CnftArgs,
+    ) -> Result<()> {
+        instructions::claim_cnft(ctx, index, args)
+    }
+
+    /// Settles a compressed NFT sale.
+    /// If unclaimed, transfers the leaf out of escrow (verifying creator/data
+    /// hash), then distributes proceeds. Royalties are paid from the proof-bound
+    /// creators arg.
+    ///
+    /// # Accounts
+    ///
+    ///   0. `[signer, writable]` Payer (anyone can settle)
+    ///   1. `[writable]` Gumball Machine account (must be settleable)
+    ///   2. `[writable]` Authority PDA (PDA, seeds: ["authority", gumball_machine])
+    ///   3. `[writable, optional]` Authority PDA payment account
+    ///   4. `[writable]` Authority account
+    ///   5. `[writable, optional]` Authority payment account
+    ///   6. `[writable]` Seller account
+    ///   7. `[writable, optional]` Seller payment account
+    ///   8. `[writable]` Seller history account (PDA, seeds: ["seller_history", gumball_machine, seller])
+    ///   9. `[writable]` Buyer account
+    ///   10. `[writable, optional]` Fee account
+    ///   11. `[writable, optional]` Fee payment account
+    ///   12. `[optional]` Payment mint
+    ///   13. `[]` Token program
+    ///   14. `[]` Associated Token program
+    ///   15. `[]` System program
+    ///   16. `[]` Rent sysvar
+    ///   17. `[]` Bubblegum tree config PDA
+    ///   18. `[writable]` Merkle tree
+    ///   19. `[]` SPL No-op (log wrapper) program
+    ///   20. `[]` SPL Account Compression program
+    ///   21. `[]` Bubblegum program
+    ///   Remaining accounts: creator payout accounts, then merkle proof nodes
+    pub fn settle_cnft_sale<'info>(
+        ctx: Context<'_, '_, '_, 'info, SettleCnftSale<'info>>,
+        index: u32,
+        args: CnftArgs,
+    ) -> Result<()> {
+        instructions::settle_cnft_sale(ctx, index, args)
+    }
 }

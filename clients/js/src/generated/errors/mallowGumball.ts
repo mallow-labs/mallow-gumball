@@ -987,6 +987,36 @@ export class MissingItemIndexError extends ProgramError {
 codeToErrorMap.set(0x17b4, MissingItemIndexError);
 nameToErrorMap.set('MissingItemIndex', MissingItemIndexError);
 
+/** UnsupportedCnftVersion: Unsupported Bubblegum version (only V1 compressed NFTs can be traded) */
+export class UnsupportedCnftVersionError extends ProgramError {
+  readonly name: string = 'UnsupportedCnftVersion';
+
+  readonly code: number = 0x17b5; // 6069
+
+  constructor(program: Program, cause?: Error) {
+    super(
+      'Unsupported Bubblegum version (only V1 compressed NFTs can be traded)',
+      program,
+      cause
+    );
+  }
+}
+codeToErrorMap.set(0x17b5, UnsupportedCnftVersionError);
+nameToErrorMap.set('UnsupportedCnftVersion', UnsupportedCnftVersionError);
+
+/** InvalidMerkleTree: Invalid merkle tree for the stored asset id */
+export class InvalidMerkleTreeError extends ProgramError {
+  readonly name: string = 'InvalidMerkleTree';
+
+  readonly code: number = 0x17b6; // 6070
+
+  constructor(program: Program, cause?: Error) {
+    super('Invalid merkle tree for the stored asset id', program, cause);
+  }
+}
+codeToErrorMap.set(0x17b6, InvalidMerkleTreeError);
+nameToErrorMap.set('InvalidMerkleTree', InvalidMerkleTreeError);
+
 /**
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors

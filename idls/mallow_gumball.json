@@ -3258,6 +3258,748 @@
           "type": "bool"
         }
       ]
+    },
+    {
+      "name": "addCnft",
+      "docs": [
+        "Add a compressed NFT (Bubblegum V1) to the gumball machine.",
+        "Escrows the leaf `seller -> authority PDA` (cNFTs cannot be frozen in",
+        "place) and stores the asset id in the config line's mint field.",
+        "Only V1 leaves are accepted; V2 leaves are rejected.",
+        "",
+        "# Accounts",
+        "",
+        "0. `[writable]` Gumball Machine account",
+        "1. `[writable]` Seller history account (PDA, seeds: [\"seller_history\", gumball_machine, seller])",
+        "2. `[writable]` Authority PDA (PDA, seeds: [\"authority\", gumball_machine])",
+        "3. `[signer, writable]` Seller (leaf owner)",
+        "4. `[]` Bubblegum tree config PDA",
+        "5. `[writable]` Merkle tree",
+        "6. `[]` SPL No-op (log wrapper) program",
+        "7. `[]` SPL Account Compression program",
+        "8. `[]` Bubblegum program",
+        "9. `[]` System program",
+        "Remaining accounts: merkle proof nodes"
+      ],
+      "accounts": [
+        {
+          "name": "gumballMachine",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "Gumball Machine account."
+          ]
+        },
+        {
+          "name": "sellerHistory",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "Seller history account."
+          ]
+        },
+        {
+          "name": "authorityPda",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "seller",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "Seller of the cNFT (current leaf owner)."
+          ]
+        },
+        {
+          "name": "treeConfig",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "merkleTree",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "id via `assert_cnft_asset_id` (the ONLY binding between this account and",
+            "the item we store)."
+          ]
+        },
+        {
+          "name": "logWrapper",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "compressionProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "bubblegumProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "CnftArgs"
+          }
+        },
+        {
+          "name": "addItemArgs",
+          "type": {
+            "defined": "AddItemArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "requestAddCnft",
+      "docs": [
+        "Request to add a compressed NFT to the gumball machine (collab flow).",
+        "Escrows the leaf and creates a request account keyed by the asset id.",
+        "",
+        "# Accounts",
+        "",
+        "0. `[writable]` Gumball Machine account",
+        "1. `[writable]` Seller history account (PDA, seeds: [\"seller_history\", gumball_machine, seller])",
+        "2. `[writable]` Add item request account (PDA, seeds: [\"add_item_request\", asset_id])",
+        "3. `[writable]` Authority PDA (PDA, seeds: [\"authority\", gumball_machine])",
+        "4. `[signer, writable]` Seller (leaf owner)",
+        "5. `[]` Asset id (Bubblegum PDA; not a real account)",
+        "6. `[]` Bubblegum tree config PDA",
+        "7. `[writable]` Merkle tree",
+        "8. `[]` SPL No-op (log wrapper) program",
+        "9. `[]` SPL Account Compression program",
+        "10. `[]` Bubblegum program",
+        "11. `[]` System program",
+        "Remaining accounts: merkle proof nodes"
+      ],
+      "accounts": [
+        {
+          "name": "gumballMachine",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "Gumball Machine account."
+          ]
+        },
+        {
+          "name": "sellerHistory",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "Seller history account."
+          ]
+        },
+        {
+          "name": "addItemRequest",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "Add item request account, keyed by the asset id."
+          ]
+        },
+        {
+          "name": "authorityPda",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "seller",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "Seller of the cNFT (current leaf owner)."
+          ]
+        },
+        {
+          "name": "asset",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The cNFT asset id (a Bubblegum PDA; not a real account). Used only as the",
+            "request PDA seed and bound to (merkle_tree, nonce) in the handler."
+          ]
+        },
+        {
+          "name": "treeConfig",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "merkleTree",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "logWrapper",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "compressionProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "bubblegumProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "CnftArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "cancelAddCnftRequest",
+      "docs": [
+        "Cancel a request to add a compressed NFT.",
+        "Transfers the escrowed leaf back to the seller and closes the request.",
+        "",
+        "# Accounts",
+        "",
+        "0. `[writable]` Seller history account (PDA, seeds: [\"seller_history\", add_item_request.gumball_machine, seller])",
+        "1. `[writable]` Add item request account (PDA, seeds: [\"add_item_request\", asset_id]). Will be closed.",
+        "2. `[writable]` Authority PDA (PDA, seeds: [\"authority\", add_item_request.gumball_machine])",
+        "3. `[signer, writable]` Seller",
+        "4. `[]` Asset id (Bubblegum PDA; not a real account)",
+        "5. `[]` Bubblegum tree config PDA",
+        "6. `[writable]` Merkle tree",
+        "7. `[]` SPL No-op (log wrapper) program",
+        "8. `[]` SPL Account Compression program",
+        "9. `[]` Bubblegum program",
+        "10. `[]` System program",
+        "Remaining accounts: merkle proof nodes"
+      ],
+      "accounts": [
+        {
+          "name": "sellerHistory",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "Seller history account."
+          ]
+        },
+        {
+          "name": "addItemRequest",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "Add item request account (keyed by asset id). Will be closed."
+          ]
+        },
+        {
+          "name": "authorityPda",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "seller",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "Seller of the cNFT."
+          ]
+        },
+        {
+          "name": "asset",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The cNFT asset id (a Bubblegum PDA; not a real account)."
+          ]
+        },
+        {
+          "name": "treeConfig",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "merkleTree",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "logWrapper",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "compressionProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "bubblegumProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "CnftArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "removeCnft",
+      "docs": [
+        "Remove a compressed NFT from the gumball machine.",
+        "Transfers the escrowed leaf back to the seller. The signer can be the",
+        "gumball machine authority or the item's seller.",
+        "",
+        "# Accounts",
+        "",
+        "0. `[writable]` Gumball Machine account",
+        "1. `[writable]` Seller history account (PDA, seeds: [\"seller_history\", gumball_machine, seller])",
+        "2. `[writable]` Authority PDA (PDA, seeds: [\"authority\", gumball_machine])",
+        "3. `[signer]` Authority allowed to remove (gumball machine authority or item seller)",
+        "4. `[writable]` Seller (receiver of the leaf)",
+        "5. `[]` Bubblegum tree config PDA",
+        "6. `[writable]` Merkle tree",
+        "7. `[]` SPL No-op (log wrapper) program",
+        "8. `[]` SPL Account Compression program",
+        "9. `[]` Bubblegum program",
+        "10. `[]` System program",
+        "Remaining accounts: merkle proof nodes"
+      ],
+      "accounts": [
+        {
+          "name": "gumballMachine",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "Gumball Machine account."
+          ]
+        },
+        {
+          "name": "sellerHistory",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "Seller history account."
+          ]
+        },
+        {
+          "name": "authorityPda",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "Authority allowed to remove (gumball machine authority or item seller)."
+          ]
+        },
+        {
+          "name": "seller",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "treeConfig",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "merkleTree",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "derived asset id passed into `remove_multiple_items_span`."
+          ]
+        },
+        {
+          "name": "logWrapper",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "compressionProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "bubblegumProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "index",
+          "type": "u32"
+        },
+        {
+          "name": "args",
+          "type": {
+            "defined": "CnftArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "claimCnft",
+      "docs": [
+        "Claims a compressed NFT from the gumball machine for the recorded buyer.",
+        "Transfers the leaf from the authority PDA to the buyer.",
+        "",
+        "# Accounts",
+        "",
+        "0. `[signer, writable]` Payer (anyone can claim)",
+        "1. `[writable]` Gumball Machine account (must be in SaleLive or SaleEnded state)",
+        "2. `[writable]` Authority PDA (PDA, seeds: [\"authority\", gumball_machine])",
+        "3. `[]` Seller",
+        "4. `[writable]` Buyer (receiver of the leaf)",
+        "5. `[]` Bubblegum tree config PDA",
+        "6. `[writable]` Merkle tree",
+        "7. `[]` SPL No-op (log wrapper) program",
+        "8. `[]` SPL Account Compression program",
+        "9. `[]` Bubblegum program",
+        "10. `[]` System program",
+        "Remaining accounts: merkle proof nodes"
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "Anyone can claim the item for the recorded buyer."
+          ]
+        },
+        {
+          "name": "gumballMachine",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "Gumball machine account."
+          ]
+        },
+        {
+          "name": "authorityPda",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "seller",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "Seller of the cNFT."
+          ]
+        },
+        {
+          "name": "buyer",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "Buyer of the cNFT (recorded at draw). Receives the leaf."
+          ]
+        },
+        {
+          "name": "treeConfig",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "merkleTree",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "`assert_config_line` (which compares the derived asset id to the stored",
+            "config-line mint)."
+          ]
+        },
+        {
+          "name": "logWrapper",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "compressionProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "bubblegumProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "eventAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "index",
+          "type": "u32"
+        },
+        {
+          "name": "args",
+          "type": {
+            "defined": "CnftArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "settleCnftSale",
+      "docs": [
+        "Settles a compressed NFT sale.",
+        "If unclaimed, transfers the leaf out of escrow (verifying creator/data",
+        "hash), then distributes proceeds. Royalties are paid from the proof-bound",
+        "creators arg.",
+        "",
+        "# Accounts",
+        "",
+        "0. `[signer, writable]` Payer (anyone can settle)",
+        "1. `[writable]` Gumball Machine account (must be settleable)",
+        "2. `[writable]` Authority PDA (PDA, seeds: [\"authority\", gumball_machine])",
+        "3. `[writable, optional]` Authority PDA payment account",
+        "4. `[writable]` Authority account",
+        "5. `[writable, optional]` Authority payment account",
+        "6. `[writable]` Seller account",
+        "7. `[writable, optional]` Seller payment account",
+        "8. `[writable]` Seller history account (PDA, seeds: [\"seller_history\", gumball_machine, seller])",
+        "9. `[writable]` Buyer account",
+        "10. `[writable, optional]` Fee account",
+        "11. `[writable, optional]` Fee payment account",
+        "12. `[optional]` Payment mint",
+        "13. `[]` Token program",
+        "14. `[]` Associated Token program",
+        "15. `[]` System program",
+        "16. `[]` Rent sysvar",
+        "17. `[]` Bubblegum tree config PDA",
+        "18. `[writable]` Merkle tree",
+        "19. `[]` SPL No-op (log wrapper) program",
+        "20. `[]` SPL Account Compression program",
+        "21. `[]` Bubblegum program",
+        "Remaining accounts: creator payout accounts, then merkle proof nodes"
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "Anyone can settle the sale."
+          ]
+        },
+        {
+          "name": "gumballMachine",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "Gumball machine account."
+          ]
+        },
+        {
+          "name": "authorityPda",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authorityPdaPaymentAccount",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": true,
+          "docs": [
+            "Payment account for authority pda if using token payment."
+          ]
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authorityPaymentAccount",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": true,
+          "docs": [
+            "Payment account for authority if using token payment."
+          ]
+        },
+        {
+          "name": "seller",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "Seller of the cNFT."
+          ]
+        },
+        {
+          "name": "sellerPaymentAccount",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": true,
+          "docs": [
+            "Payment account for seller if using token payment."
+          ]
+        },
+        {
+          "name": "sellerHistory",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "Seller history account."
+          ]
+        },
+        {
+          "name": "buyer",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "Buyer of the cNFT."
+          ]
+        },
+        {
+          "name": "feeAccount",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": true,
+          "docs": [
+            "Fee account for marketplace fee if using fee config."
+          ]
+        },
+        {
+          "name": "feePaymentAccount",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": true,
+          "docs": [
+            "Payment account for marketplace fee if using token payment."
+          ]
+        },
+        {
+          "name": "paymentMint",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": true,
+          "docs": [
+            "Payment mint if using non-native payment token."
+          ]
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "treeConfig",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "merkleTree",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "`assert_config_line`."
+          ]
+        },
+        {
+          "name": "logWrapper",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "compressionProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "bubblegumProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "eventAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "index",
+          "type": "u32"
+        },
+        {
+          "name": "args",
+          "type": {
+            "defined": "CnftArgs"
+          }
+        }
+      ]
     }
   ],
   "accounts": [
@@ -3517,6 +4259,126 @@
                 "defined": "BuyBackConfig"
               }
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CnftCreator",
+      "docs": [
+        "Creator entry for a compressed NFT leaf.",
+        "",
+        "Mirrors the field layout of `mpl_bubblegum::types::Creator` /",
+        "`mpl_token_metadata::types::Creator`, but is defined locally so it can be used",
+        "directly as an Anchor instruction argument (the mpl types only derive borsh,",
+        "not `AnchorSerialize`/`AnchorDeserialize`). The `(address, verified, share)`",
+        "tuple is folded into `creator_hash` exactly as Bubblegum does on-chain, so",
+        "these values are proof-bound by the Transfer CPI."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "address",
+            "docs": [
+              "Creator wallet."
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "verified",
+            "docs": [
+              "Whether the creator is verified on the leaf."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "share",
+            "docs": [
+              "Royalty share (0-100). Sum across creators must be 100."
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CnftArgs",
+      "docs": [
+        "Leaf parameters shared by all compressed-NFT instructions.",
+        "",
+        "Everything here is verified against the on-chain merkle root by the Bubblegum",
+        "V1 `Transfer` CPI: a lie about `seller_fee_basis_points` changes `data_hash`",
+        "and a lie about `creators` changes `creator_hash`, either of which makes the",
+        "proof fail. This is what makes royalties trustless without server trust."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "root",
+            "docs": [
+              "Current merkle root (fetched fresh from DAS at build time)."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "metaHash",
+            "docs": [
+              "Inner `keccak(borsh(MetadataArgs))` supplied from DAS. `data_hash` is",
+              "recomputed on-chain as `keccak(meta_hash \u2016 sfbp_le)`."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "sellerFeeBasisPoints",
+            "docs": [
+              "Seller fee basis points, folded into `data_hash`."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "creators",
+            "docs": [
+              "Creators, folded into `creator_hash` and used for royalty payouts."
+            ],
+            "type": {
+              "vec": {
+                "defined": "CnftCreator"
+              }
+            }
+          },
+          {
+            "name": "nonce",
+            "docs": [
+              "Leaf nonce. Binds the asset id: `asset_id = PDA([\"asset\", tree, nonce_le])`."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "index",
+            "docs": [
+              "Leaf index within the merkle tree."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "version",
+            "docs": [
+              "Bubblegum leaf version. Only V1 (`1`) is supported for on-chain trading;",
+              "V2 leaves are rejected (see `assert_cnft_v1`)."
+            ],
+            "type": "u8"
           }
         ]
       }
@@ -3821,6 +4683,9 @@
           },
           {
             "name": "ProgrammableNonFungible"
+          },
+          {
+            "name": "Compressed"
           }
         ]
       }
@@ -4334,6 +5199,16 @@
       "code": 6068,
       "name": "MissingItemIndex",
       "msg": "Missing item index"
+    },
+    {
+      "code": 6069,
+      "name": "UnsupportedCnftVersion",
+      "msg": "Unsupported Bubblegum version (only V1 compressed NFTs can be traded)"
+    },
+    {
+      "code": 6070,
+      "name": "InvalidMerkleTree",
+      "msg": "Invalid merkle tree for the stored asset id"
     }
   ],
   "metadata": {
