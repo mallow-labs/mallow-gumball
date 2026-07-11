@@ -3575,10 +3575,10 @@ export type MallowGumball = {
           isMut: false;
           isSigner: false;
           docs: [
-            'Buyer of the cNFT.',
-            '(`.key()` / leaf-transfer target), never written. Marking it `mut` would',
-            'break unsold settle, where `buyer == Pubkey::default()` (the System',
-            'Program) and cannot be a writable account. Mirrors `settle_nft_sale`.',
+            'Buyer of the cNFT. Not `mut`: the account is only read (`.key()` /',
+            'leaf-transfer target), never written. Marking it `mut` would break unsold',
+            'settle, where `buyer == Pubkey::default()` (the System Program) cannot be',
+            'a writable account. Mirrors `settle_nft_sale`.',
           ];
         },
         {
@@ -8367,10 +8367,10 @@ export const IDL: MallowGumball = {
           isMut: false,
           isSigner: false,
           docs: [
-            'Buyer of the cNFT.',
-            '(`.key()` / leaf-transfer target), never written. Marking it `mut` would',
-            'break unsold settle, where `buyer == Pubkey::default()` (the System',
-            'Program) and cannot be a writable account. Mirrors `settle_nft_sale`.',
+            'Buyer of the cNFT. Not `mut`: the account is only read (`.key()` /',
+            'leaf-transfer target), never written. Marking it `mut` would break unsold',
+            'settle, where `buyer == Pubkey::default()` (the System Program) cannot be',
+            'a writable account. Mirrors `settle_nft_sale`.',
           ],
         },
         {
