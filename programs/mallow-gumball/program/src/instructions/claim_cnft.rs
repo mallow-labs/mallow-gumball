@@ -106,6 +106,13 @@ pub fn claim_cnft<'info>(
         false,
     )?;
 
+    // Reject unsold items: their recorded buyer is the default pubkey, and
+    // transferring the escrowed leaf there would burn it irrecoverably.
+    require!(
+        buyer.key() != Pubkey::default(),
+        GumballError::IncorrectOwner
+    );
+
     // Mark claimed (guards double-claim).
     claim_item(gumball_machine, index)?;
 

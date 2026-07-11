@@ -3796,7 +3796,9 @@
         "Settles a compressed NFT sale.",
         "If unclaimed, transfers the leaf out of escrow (verifying creator/data",
         "hash), then distributes proceeds. Royalties are paid from the proof-bound",
-        "creators arg.",
+        "creators arg. If already claimed, the creators/sfbp args are instead bound",
+        "to the asset via a `VerifyLeaf` CPI on the current leaf",
+        "(`current_leaf_owner`/`current_leaf_delegate` from DAS, current root/proof).",
         "",
         "# Accounts",
         "",
@@ -3998,6 +4000,14 @@
           "type": {
             "defined": "CnftArgs"
           }
+        },
+        {
+          "name": "currentLeafOwner",
+          "type": "publicKey"
+        },
+        {
+          "name": "currentLeafDelegate",
+          "type": "publicKey"
         }
       ]
     }
@@ -4331,7 +4341,7 @@
             "name": "metaHash",
             "docs": [
               "Inner `keccak(borsh(MetadataArgs))` supplied from DAS. `data_hash` is",
-              "recomputed on-chain as `keccak(meta_hash \u2016 sfbp_le)`."
+              "recomputed on-chain as `keccak(meta_hash ‖ sfbp_le)`."
             ],
             "type": {
               "array": [

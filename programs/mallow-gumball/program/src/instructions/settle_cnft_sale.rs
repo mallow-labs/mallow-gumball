@@ -7,10 +7,11 @@ use crate::{
     events::SettleItemSaleEvent,
     processors::{claim_item, claim_proceeds, is_item_claimed},
     state::GumballMachine,
-    transfer_cnft, AssociatedToken, CnftArgs, ConfigLine, GumballError, SellerHistory, Token,
-    TokenStandard,
+    transfer_cnft, verify_cnft_leaf, AssociatedToken, CnftArgs, ConfigLine, GumballError,
+    SellerHistory, Token, TokenStandard,
 };
 use anchor_lang::prelude::*;
+use mpl_bubblegum::types::LeafSchema;
 use mpl_token_metadata::types::Creator as MetadataCreator;
 use utils::{is_native_mint, RoyaltyInfo};
 
@@ -20,7 +21,9 @@ use utils::{is_native_mint, RoyaltyInfo};
 /// transferred out of escrow (`PDA -> buyer`, or `PDA -> seller` if unsold), then
 /// proceeds are distributed. Royalties are paid from the `creators` arg, which is
 /// proof-bound by the Transfer CPI (`creator_hash`) and `seller_fee_basis_points`
-/// (folded into `data_hash`).
+/// (folded into `data_hash`). If the item WAS already claimed, the same binding
+/// is enforced with a `VerifyLeaf` CPI against the current leaf instead
+/// (`current_leaf_owner`/`current_leaf_delegate` supplied from DAS).
 ///
 /// Remaining accounts layout: `[creator payout accounts..., proof nodes...]`.
 /// The creator payout accounts (one per creator for native payment, two per
@@ -132,6 +135,8 @@ pub fn settle_cnft_sale<'info>(
     ctx: Context<'_, '_, '_, 'info, SettleCnftSale<'info>>,
     index: u32,
     args: CnftArgs,
+    current_leaf_owner: Pubkey,
+    current_leaf_delegate: Pubkey,
 ) -> Result<()> {
     assert_cnft_v1(args.version)?;
 
@@ -244,6 +249,9 @@ pub fn settle_cnft_sale<'info>(
         &[ctx.bumps.authority_pda],
     ];
 
+    let data_hash = compute_cnft_data_hash(&args.meta_hash, args.seller_fee_basis_points);
+    let creator_hash = compute_cnft_creator_hash(&args.creators);
+
     let mut amount = 0;
     if !is_item_claimed(gumball_machine, index)? {
         amount = 1;
@@ -251,9 +259,6 @@ pub fn settle_cnft_sale<'info>(
         // Mark claimed then move the leaf out of escrow. The Transfer CPI verifies
         // creator_hash/data_hash here, making the royalty payout below trustless.
         claim_item(gumball_machine, index)?;
-
-        let data_hash = compute_cnft_data_hash(&args.meta_hash, args.seller_fee_basis_points);
-        let creator_hash = compute_cnft_creator_hash(&args.creators);
 
         // Unsold items (buyer == default) return to the seller.
         let new_leaf_owner = if buyer.key() == Pubkey::default() {
@@ -278,6 +283,32 @@ pub fn settle_cnft_sale<'info>(
             args.nonce,
             args.index,
             Some(&auth_seeds),
+        )?;
+    } else {
+        // The leaf already left escrow via `claim_cnft`, so no Transfer CPI runs
+        // here — and that CPI was the only thing binding `args.creators` /
+        // `args.seller_fee_basis_points` to the real asset. Unverified, they'd
+        // let anyone settle with fake creators/sfbp and redirect the seller's
+        // proceeds. Restore the binding by verifying the CURRENT leaf (owner and
+        // delegate as of now, supplied by the caller from DAS — the buyer right
+        // after claim, or a later holder if the buyer has moved it) against the
+        // tree. `args.root` and the proof must likewise be current.
+        let leaf = LeafSchema::V1 {
+            id: asset_id,
+            owner: current_leaf_owner,
+            delegate: current_leaf_delegate,
+            nonce: args.nonce,
+            data_hash,
+            creator_hash,
+        }
+        .hash();
+        verify_cnft_leaf(
+            compression_program,
+            merkle_tree,
+            proof,
+            args.root,
+            leaf,
+            args.index,
         )?;
     }
 

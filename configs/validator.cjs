@@ -17,11 +17,6 @@ module.exports = {
 				deployPath: getProgram("mallow_gumball.so"),
 			},
 			{
-				label: "Gumball Guard",
-				programId: "GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF",
-				deployPath: getProgram("gumball_guard.so"),
-			},
-			{
 				label: "Token Metadata",
 				programId: "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s",
 				deployPath: getProgram("mpl_token_metadata.so"),
@@ -77,6 +72,16 @@ module.exports = {
 				label: "Metaplex Default RuleSet",
 				accountId: "eBJLFYPxJmMGKuFwpDWkzxZeUrad92kZRC5BJLpzyT9",
 				executable: false,
+			},
+			// Gumball Guard is loaded as an upgradeable program (not via
+			// `--bpf-program`) so that `create_global_config`'s upgrade-authority
+			// gate can be exercised. The `executable` entry auto-loads the derived
+			// ProgramData account from `.amman/accounts/`. Regenerate both fixtures
+			// with `pnpm generate:guard-fixtures` after rebuilding the program.
+			{
+				label: "Gumball Guard",
+				accountId: "GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF",
+				executable: true,
 			},
 		],
 	},

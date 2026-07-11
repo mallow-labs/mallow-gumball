@@ -173,8 +173,10 @@ pub fn pay_fee_accounts<'a>(
     let is_native = payment_mint.is_none();
 
     let mut total_paid = 0;
-    let mut index = 0;
-    for fee_account in fee_accounts {
+    // One remaining account is provided per fee account (validated positionally by
+    // the caller), so the cursor must advance for every entry — including zero-bps
+    // ones — to stay aligned with `fee_accounts`.
+    for (index, fee_account) in fee_accounts.iter().enumerate() {
         if fee_account.basis_points == 0 {
             continue;
         }
@@ -186,8 +188,6 @@ pub fn pay_fee_accounts<'a>(
             .ok_or(GumballGuardError::NumericalOverflowError)? as u64;
 
         let current_fee_account = &remaining_accounts[index];
-
-        index += 1;
 
         if is_native {
             assert_keys_equal(

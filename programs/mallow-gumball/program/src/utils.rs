@@ -914,6 +914,63 @@ pub fn transfer_cnft<'a, 'b>(
     Ok(())
 }
 
+/// Verifies a Bubblegum leaf against the tree's CURRENT state via the
+/// spl-account-compression `VerifyLeaf` CPI.
+///
+/// Used by `settle_cnft_sale` on the already-claimed path: the leaf left escrow
+/// in a prior `claim_cnft`, so no Transfer CPI runs at settle time to bind
+/// `creators`/`seller_fee_basis_points` to the real asset. Verifying a leaf
+/// reconstructed from those args (plus the caller-supplied current owner and
+/// delegate) restores that binding — a lie about creators or sfbp changes the
+/// leaf hash and the proof fails.
+///
+/// The instruction is hand-encoded because the program doesn't depend on the
+/// spl-account-compression crate (Bubblegum CPIs go through mpl-bubblegum).
+pub fn verify_cnft_leaf<'a, 'b>(
+    compression_program: &AccountInfo<'a>,
+    merkle_tree: &AccountInfo<'a>,
+    proof: &'b [AccountInfo<'a>],
+    root: [u8; 32],
+    leaf: [u8; 32],
+    index: u32,
+) -> Result<()> {
+    // Anchor discriminator: sha256("global:verify_leaf")[..8]. Pinned as a
+    // constant and checked against a runtime hash in `tests::verify_leaf_discriminator`.
+    const VERIFY_LEAF_DISCRIMINATOR: [u8; 8] = [124, 220, 22, 223, 104, 10, 250, 224];
+
+    let mut data = Vec::with_capacity(8 + 32 + 32 + 4);
+    data.extend_from_slice(&VERIFY_LEAF_DISCRIMINATOR);
+    data.extend_from_slice(&root);
+    data.extend_from_slice(&leaf);
+    data.extend_from_slice(&index.to_le_bytes());
+
+    let mut account_metas = Vec::with_capacity(1 + proof.len());
+    let mut account_infos = Vec::with_capacity(1 + proof.len());
+    account_metas.push(solana_program::instruction::AccountMeta::new_readonly(
+        merkle_tree.key(),
+        false,
+    ));
+    account_infos.push(merkle_tree.clone());
+    for node in proof.iter() {
+        account_metas.push(solana_program::instruction::AccountMeta::new_readonly(
+            node.key(),
+            false,
+        ));
+        account_infos.push(node.clone());
+    }
+
+    solana_program::program::invoke(
+        &solana_program::instruction::Instruction {
+            program_id: compression_program.key(),
+            accounts: account_metas,
+            data,
+        },
+        &account_infos,
+    )?;
+
+    Ok(())
+}
+
 #[macro_export]
 macro_rules! try_from {
     ($ty: ty, $acc: expr) => {
@@ -924,6 +981,16 @@ macro_rules! try_from {
 #[cfg(test)]
 pub mod tests {
     use super::*;
+
+    #[test]
+    fn verify_leaf_discriminator() {
+        // The pinned constant in `verify_cnft_leaf` must be the Anchor
+        // discriminator of spl-account-compression's `verify_leaf` — if it
+        // drifts, the CPI silently targets a nonexistent instruction and the
+        // already-claimed settle guard stops working.
+        let hash = solana_program::hash::hash(b"global:verify_leaf");
+        assert_eq!(hash.to_bytes()[..8], [124, 220, 22, 223, 104, 10, 250, 224]);
+    }
 
     #[test]
     fn check_keys_equal() {

@@ -3484,7 +3484,9 @@ export type MallowGumball = {
         'Settles a compressed NFT sale.',
         'If unclaimed, transfers the leaf out of escrow (verifying creator/data',
         'hash), then distributes proceeds. Royalties are paid from the proof-bound',
-        'creators arg.',
+        'creators arg. If already claimed, the creators/sfbp args are instead bound',
+        'to the asset via a `VerifyLeaf` CPI on the current leaf',
+        '(`current_leaf_owner`/`current_leaf_delegate` from DAS, current root/proof).',
         '',
         '# Accounts',
         '',
@@ -3662,6 +3664,14 @@ export type MallowGumball = {
           type: {
             defined: 'CnftArgs';
           };
+        },
+        {
+          name: 'currentLeafOwner';
+          type: 'publicKey';
+        },
+        {
+          name: 'currentLeafDelegate';
+          type: 'publicKey';
         },
       ];
     },
@@ -8261,7 +8271,9 @@ export const IDL: MallowGumball = {
         'Settles a compressed NFT sale.',
         'If unclaimed, transfers the leaf out of escrow (verifying creator/data',
         'hash), then distributes proceeds. Royalties are paid from the proof-bound',
-        'creators arg.',
+        'creators arg. If already claimed, the creators/sfbp args are instead bound',
+        'to the asset via a `VerifyLeaf` CPI on the current leaf',
+        '(`current_leaf_owner`/`current_leaf_delegate` from DAS, current root/proof).',
         '',
         '# Accounts',
         '',
@@ -8439,6 +8451,14 @@ export const IDL: MallowGumball = {
           type: {
             defined: 'CnftArgs',
           },
+        },
+        {
+          name: 'currentLeafOwner',
+          type: 'publicKey',
+        },
+        {
+          name: 'currentLeafDelegate',
+          type: 'publicKey',
         },
       ],
     },

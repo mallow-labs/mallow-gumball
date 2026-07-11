@@ -819,7 +819,9 @@ pub mod mallow_gumball {
     /// Settles a compressed NFT sale.
     /// If unclaimed, transfers the leaf out of escrow (verifying creator/data
     /// hash), then distributes proceeds. Royalties are paid from the proof-bound
-    /// creators arg.
+    /// creators arg. If already claimed, the creators/sfbp args are instead bound
+    /// to the asset via a `VerifyLeaf` CPI on the current leaf
+    /// (`current_leaf_owner`/`current_leaf_delegate` from DAS, current root/proof).
     ///
     /// # Accounts
     ///
@@ -850,7 +852,9 @@ pub mod mallow_gumball {
         ctx: Context<'_, '_, '_, 'info, SettleCnftSale<'info>>,
         index: u32,
         args: CnftArgs,
+        current_leaf_owner: Pubkey,
+        current_leaf_delegate: Pubkey,
     ) -> Result<()> {
-        instructions::settle_cnft_sale(ctx, index, args)
+        instructions::settle_cnft_sale(ctx, index, args, current_leaf_owner, current_leaf_delegate)
     }
 }

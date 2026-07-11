@@ -31,14 +31,17 @@ import {
 } from '../src';
 import {
   cnftArgs,
-  createBubblegumTree,
   createCnftUmi,
   getCnftProof,
   mintCnft,
   proofAccounts,
   settleRemainingAccounts,
 } from './_cnftSetup';
-import { assertItemBought as assertItemDrawn, create, createUmi } from './_setup';
+import {
+  assertItemBought as assertItemDrawn,
+  create,
+  createUmi,
+} from './_setup';
 
 // Both fields default to `none` via the generated struct defaults.
 const addItemArgs = {};
@@ -171,6 +174,9 @@ test('it can claim a compressed nft for the buyer after a draw', async (t) => {
   });
 
   // Settling a claimed item just distributes proceeds (no second transfer).
+  // Creators/sfbp args are bound to the asset via a VerifyLeaf CPI on the
+  // CURRENT leaf, so root/proof must be post-claim and the buyer is the owner.
+  const { proof: settleProof } = getCnftProof(umi, item);
   await transactionBuilder()
     .add(setComputeUnitLimit(umi, { units: 800_000 }))
     .add(
@@ -183,7 +189,11 @@ test('it can claim a compressed nft for the buyer after a draw', async (t) => {
         treeConfig: item.treeConfig,
         merkleTree: item.merkleTree,
         args: cnftArgs(umi, item),
-      }).addRemainingAccounts(settleRemainingAccounts(item.creators, proof))
+        currentLeafOwner: buyerUmi.identity.publicKey,
+        currentLeafDelegate: buyerUmi.identity.publicKey,
+      }).addRemainingAccounts(
+        settleRemainingAccounts(item.creators, settleProof)
+      )
     )
     .sendAndConfirm(umi);
 
@@ -191,6 +201,95 @@ test('it can claim a compressed nft for the buyer after a draw', async (t) => {
   t.like(settled, <Partial<GumballMachine>>{
     itemsSettled: 1n,
     items: [{ index: 0, isClaimed: true, isSettled: true }],
+  });
+});
+
+// SECURITY: once a leaf is claimed, settle no longer runs the Transfer CPI that
+// proves creators/sfbp are honest. Without the VerifyLeaf guard a settler could
+// pass forged creators (themselves at sfbp 10000) and skim the seller's
+// proceeds. The guard must reject args that don't hash to the real leaf.
+test('it cannot settle an already-claimed cnft sale with forged creators', async (t) => {
+  const umi = await createCnftUmi(createUmi);
+  const creator = generateSigner(umi);
+  const item = await mintCnft(umi, {
+    sellerFeeBasisPoints: 500,
+    creators: [{ address: creator.publicKey, verified: false, share: 100 }],
+  });
+  const gumballMachineSigner = await create(umi, {
+    settings: { itemCapacity: 5 },
+    guards: { solPayment: { lamports: sol(1) } },
+    disablePrimarySplit: true,
+  });
+  const gumballMachine = gumballMachineSigner.publicKey;
+
+  await addCnftItem(umi, gumballMachine, item);
+  await transactionBuilder()
+    .add(startSale(umi, { gumballMachine }))
+    .sendAndConfirm(umi);
+
+  const buyerUmi = await createCnftUmi(createUmi);
+  const payer = await generateSignerWithSol(umi, sol(10));
+  await transactionBuilder()
+    .add(setComputeUnitLimit(umi, { units: 600_000 }))
+    .add(
+      draw(umi, {
+        gumballMachine,
+        payer,
+        buyer: buyerUmi.identity,
+        mintArgs: { solPayment: some(true) },
+      })
+    )
+    .sendAndConfirm(umi);
+
+  // Honest claim moves the leaf to the buyer (proof-verified).
+  const { proof } = getCnftProof(umi, item);
+  await transactionBuilder()
+    .add(setComputeUnitLimit(umi, { units: 800_000 }))
+    .add(
+      claimCnft(buyerUmi, {
+        gumballMachine,
+        index: 0,
+        seller: umi.identity.publicKey,
+        buyer: buyerUmi.identity.publicKey,
+        treeConfig: item.treeConfig,
+        merkleTree: item.merkleTree,
+        args: cnftArgs(umi, item),
+      }).addRemainingAccounts(proofAccounts(proof))
+    )
+    .sendAndConfirm(buyerUmi);
+  item.owner = buyerUmi.identity.publicKey;
+
+  // Forged settle: attacker as sole creator. Root/proof/owner are all CURRENT
+  // and honest — only creators (folded into creator_hash) lie, so the
+  // reconstructed leaf doesn't match the tree and VerifyLeaf fails.
+  const attacker = generateSigner(umi);
+  const forged = [{ address: attacker.publicKey, verified: false, share: 100 }];
+  const { proof: settleProof } = getCnftProof(umi, item);
+  const promise = transactionBuilder()
+    .add(setComputeUnitLimit(umi, { units: 800_000 }))
+    .add(
+      settleCnftSale(umi, {
+        index: 0,
+        gumballMachine,
+        authority: umi.identity.publicKey,
+        seller: umi.identity.publicKey,
+        buyer: buyerUmi.identity.publicKey,
+        treeConfig: item.treeConfig,
+        merkleTree: item.merkleTree,
+        args: cnftArgs(umi, item, { creators: forged }),
+        currentLeafOwner: buyerUmi.identity.publicKey,
+        currentLeafDelegate: buyerUmi.identity.publicKey,
+      }).addRemainingAccounts(settleRemainingAccounts(forged, settleProof))
+    )
+    .sendAndConfirm(umi);
+
+  // spl-account-compression rejects the leaf verification.
+  await t.throwsAsync(promise);
+
+  // The sale stayed unsettled — the attacker took nothing.
+  const account = await fetchGumballMachine(umi, gumballMachine);
+  t.like(account, <Partial<GumballMachine>>{
+    items: [{ index: 0, isClaimed: true, isSettled: false }],
   });
 });
 
@@ -249,6 +348,10 @@ test('it settles an unclaimed compressed nft sale, transferring the leaf and pay
         treeConfig: item.treeConfig,
         merkleTree: item.merkleTree,
         args: cnftArgs(umi, item),
+        // Unclaimed path: the Transfer CPI does the binding, so these are unused
+        // — pass the current DAS owner/delegate (the escrow PDA) for parity.
+        currentLeafOwner: item.owner,
+        currentLeafDelegate: item.owner,
       }).addRemainingAccounts(settleRemainingAccounts(item.creators, proof))
     )
     .sendAndConfirm(umi);
@@ -258,11 +361,7 @@ test('it settles an unclaimed compressed nft sale, transferring the leaf and pay
   // sfbp/creators would have failed the Bubblegum proof on the leaf transfer.
   const creatorPost = await umi.rpc.getBalance(creator.publicKey);
   t.true(
-    isEqualToAmount(
-      creatorPost,
-      addAmounts(creatorPre, sol(0.05)),
-      sol(0.005)
-    ),
+    isEqualToAmount(creatorPost, addAmounts(creatorPre, sol(0.05)), sol(0.005)),
     `creator royalty: ${creatorPost.basisPoints} vs pre ${creatorPre.basisPoints}`
   );
 
@@ -369,7 +468,9 @@ test('it can request, then cancel, adding a compressed nft (collab flow)', async
   item.owner = findGumballMachineAuthorityPda(umi, { gumballMachine })[0];
 
   // The request account exists, keyed by the asset id.
-  const request = await fetchAddItemRequestFromSeeds(umi, { asset: item.assetId });
+  const request = await fetchAddItemRequestFromSeeds(umi, {
+    asset: item.assetId,
+  });
   t.like(request, {
     asset: item.assetId,
     seller: sellerUmi.identity.publicKey,
@@ -388,7 +489,9 @@ test('it can request, then cancel, adding a compressed nft (collab flow)', async
           gumballMachine,
           seller: sellerUmi.identity.publicKey,
         })[0],
-        authorityPda: findGumballMachineAuthorityPda(umi, { gumballMachine })[0],
+        authorityPda: findGumballMachineAuthorityPda(umi, {
+          gumballMachine,
+        })[0],
         treeConfig: item.treeConfig,
         merkleTree: item.merkleTree,
         args: cnftArgs(umi, item),

@@ -6,6 +6,7 @@
 		"programs:build": "./configs/program-scripts/build.sh",
 		"programs:test": "./configs/program-scripts/test.sh",
 		"programs:clean": "rm -rf ./programs/.bin",
+		"generate:guard-fixtures": "./configs/program-scripts/gen-guard-fixtures.sh",
 		"generate": "pnpm generate:idls && pnpm generate:clients",
 		"generate:idls": "node ./configs/shank.cjs",
 		"generate:clients": "node ./configs/kinobi.cjs && pnpm --filter @mallow-labs/mallow-gumball format:fix",

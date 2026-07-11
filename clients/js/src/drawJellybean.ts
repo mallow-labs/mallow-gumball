@@ -1,7 +1,5 @@
-import { TokenStandard } from '@metaplex-foundation/mpl-token-metadata';
 import {
   none,
-  Option,
   OptionOrNullable,
   publicKey,
   TransactionBuilder,
@@ -25,17 +23,9 @@ import { findGumballGuardPda } from './hooked';
 
 export { DrawJellybeanInstructionAccounts };
 
-export type DrawJellybeanInstructionData<MA extends GuardSetMintArgs> = {
-  discriminator: Array<number>;
-  mintArgs: MA;
-  group: Option<string>;
-};
-
 export type DrawJellybeanInstructionDataArgs<MA extends GuardSetMintArgs> = {
   mintArgs?: Partial<MA>;
   group?: OptionOrNullable<string>;
-  /** @defaultValue `TokenStandard.NonFungible`. */
-  tokenStandard?: TokenStandard;
 };
 
 export function drawJellybean<

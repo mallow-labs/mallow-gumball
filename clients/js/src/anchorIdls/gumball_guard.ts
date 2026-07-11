@@ -1753,6 +1753,11 @@ export type GumballGuard = {
       name: 'InvalidMachine';
       msg: 'Invalid machine';
     },
+    {
+      code: 6057;
+      name: 'MissingFeeAccounts';
+      msg: 'Machine has no fee accounts to receive the payment';
+    },
   ];
 };
 
@@ -3510,6 +3515,11 @@ export const IDL: GumballGuard = {
       code: 6056,
       name: 'InvalidMachine',
       msg: 'Invalid machine',
+    },
+    {
+      code: 6057,
+      name: 'MissingFeeAccounts',
+      msg: 'Machine has no fee accounts to receive the payment',
     },
   ],
 };

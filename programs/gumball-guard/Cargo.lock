@@ -1276,6 +1276,7 @@ dependencies = [
  "anchor-lang",
  "anchor-spl",
  "arrayref",
+ "mpl-bubblegum",
  "mpl-core",
  "mpl-token-metadata",
  "solana-program",
@@ -1351,6 +1352,21 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "mpl-bubblegum"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8bcb4756a9aecfc47449ecf4301c07c6fb4e31f67b01fe8f6ec801b66cfd5294"
+dependencies = [
+ "borsh 0.10.4",
+ "kaigan",
+ "modular-bitfield",
+ "num-derive 0.3.3",
+ "num-traits",
+ "solana-program",
+ "thiserror",
 ]
 
 [[package]]

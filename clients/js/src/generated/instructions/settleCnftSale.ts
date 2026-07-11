@@ -20,6 +20,7 @@ import {
   Serializer,
   array,
   mapSerializer,
+  publicKey as publicKeySerializer,
   struct,
   u32,
   u8,
@@ -82,11 +83,15 @@ export type SettleCnftSaleInstructionData = {
   discriminator: Array<number>;
   index: number;
   args: CnftArgs;
+  currentLeafOwner: PublicKey;
+  currentLeafDelegate: PublicKey;
 };
 
 export type SettleCnftSaleInstructionDataArgs = {
   index: number;
   args: CnftArgsArgs;
+  currentLeafOwner: PublicKey;
+  currentLeafDelegate: PublicKey;
 };
 
 export function getSettleCnftSaleInstructionDataSerializer(): Serializer<
@@ -103,6 +108,8 @@ export function getSettleCnftSaleInstructionDataSerializer(): Serializer<
         ['discriminator', array(u8(), { size: 8 })],
         ['index', u32()],
         ['args', getCnftArgsSerializer()],
+        ['currentLeafOwner', publicKeySerializer()],
+        ['currentLeafDelegate', publicKeySerializer()],
       ],
       { description: 'SettleCnftSaleInstructionData' }
     ),

@@ -196,6 +196,12 @@ impl SolPayment {
         ctx.indices.insert("fee_accounts", ctx.account_cursor);
 
         let jellybean_machine = try_from!(Account::<JellybeanMachine>, ctx.accounts.machine)?;
+        // The payment (including any rounding dust) is distributed to the fee
+        // accounts; with none configured there is no valid destination.
+        require!(
+            !jellybean_machine.fee_accounts.is_empty(),
+            GumballGuardError::MissingFeeAccounts
+        );
         for fee_account in &jellybean_machine.fee_accounts {
             let fee_destination = try_get_account_info(ctx.accounts.remaining, ctx.account_cursor)?;
             assert_keys_equal(

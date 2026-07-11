@@ -796,6 +796,19 @@ export class CgInvalidMachineError extends ProgramError {
 codeToErrorMap.set(0x17a8, CgInvalidMachineError);
 nameToErrorMap.set('InvalidMachine', CgInvalidMachineError);
 
+/** MissingFeeAccounts: Machine has no fee accounts to receive the payment */
+export class CgMissingFeeAccountsError extends ProgramError {
+  readonly name: string = 'MissingFeeAccounts';
+
+  readonly code: number = 0x17a9; // 6057
+
+  constructor(program: Program, cause?: Error) {
+    super('Machine has no fee accounts to receive the payment', program, cause);
+  }
+}
+codeToErrorMap.set(0x17a9, CgMissingFeeAccountsError);
+nameToErrorMap.set('MissingFeeAccounts', CgMissingFeeAccountsError);
+
 /**
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors

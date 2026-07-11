@@ -207,6 +207,12 @@ impl TokenPayment {
         ctx.indices.insert("fee_accounts", ctx.account_cursor);
 
         let jellybean_machine = try_from!(Account::<JellybeanMachine>, ctx.accounts.machine)?;
+        // The payment (including any rounding dust) is distributed to the fee
+        // accounts; with none configured there is no valid destination.
+        require!(
+            !jellybean_machine.fee_accounts.is_empty(),
+            GumballGuardError::MissingFeeAccounts
+        );
         for fee_account in &jellybean_machine.fee_accounts {
             let fee_account_ata = try_get_account_info(ctx.accounts.remaining, ctx.account_cursor)?;
             assert_is_token_account(fee_account_ata, fee_account.address, self.mint)?;

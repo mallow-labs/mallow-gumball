@@ -16,8 +16,8 @@ import {
   generateSigner,
   none,
   publicKey,
-  publicKeyBytes,
   PublicKey,
+  publicKeyBytes,
   Signer,
   Umi,
 } from '@metaplex-foundation/umi';
@@ -51,8 +51,9 @@ export type CnftItem = {
 };
 
 // A umi already wired with both the gumball and bubblegum programs.
-export const createCnftUmi = async (createUmi: () => Promise<Umi>): Promise<Umi> =>
-  (await createUmi()).use(mplBubblegum());
+export const createCnftUmi = async (
+  createUmi: () => Promise<Umi>
+): Promise<Umi> => (await createUmi()).use(mplBubblegum());
 
 export const createBubblegumTree = async (umi: Umi): Promise<Signer> => {
   const merkleTree = generateSigner(umi);
