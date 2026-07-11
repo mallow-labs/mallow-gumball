@@ -89,9 +89,11 @@ pub struct SettleCnftSale<'info> {
     )]
     seller_history: Box<Account<'info, SellerHistory>>,
 
-    /// Buyer of the cNFT.
+    /// Buyer of the cNFT. Not `mut`: the account is only read (`.key()` /
+    /// leaf-transfer target), never written. Marking it `mut` would break unsold
+    /// settle, where `buyer == Pubkey::default()` (the System Program) cannot be
+    /// a writable account. Mirrors `settle_nft_sale`.
     /// CHECK: Safe due to item check.
-    #[account(mut)]
     buyer: UncheckedAccount<'info>,
 
     /// Fee account for marketplace fee if using fee config.

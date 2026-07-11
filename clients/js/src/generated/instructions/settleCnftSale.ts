@@ -56,7 +56,13 @@ export type SettleCnftSaleInstructionAccounts = {
   sellerPaymentAccount?: PublicKey | Pda;
   /** Seller history account. */
   sellerHistory?: PublicKey | Pda;
-  /** Buyer of the cNFT. */
+  /**
+   * Buyer of the cNFT. Not `mut`: the account is only read (`.key()` /
+   * leaf-transfer target), never written. Marking it `mut` would break unsold
+   * settle, where `buyer == Pubkey::default()` (the System Program) cannot be
+   * a writable account. Mirrors `settle_nft_sale`.
+   */
+
   buyer?: PublicKey | Pda;
   /** Fee account for marketplace fee if using fee config. */
   feeAccount?: PublicKey | Pda;
@@ -172,7 +178,7 @@ export function settleCnftSale(
       isWritable: true,
       value: input.sellerHistory ?? null,
     },
-    buyer: { index: 9, isWritable: true, value: input.buyer ?? null },
+    buyer: { index: 9, isWritable: false, value: input.buyer ?? null },
     feeAccount: {
       index: 10,
       isWritable: true,

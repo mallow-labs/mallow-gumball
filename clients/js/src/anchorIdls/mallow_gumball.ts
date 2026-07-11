@@ -3572,9 +3572,14 @@ export type MallowGumball = {
         },
         {
           name: 'buyer';
-          isMut: true;
+          isMut: false;
           isSigner: false;
-          docs: ['Buyer of the cNFT.'];
+          docs: [
+            'Buyer of the cNFT.',
+            '(`.key()` / leaf-transfer target), never written. Marking it `mut` would',
+            'break unsold settle, where `buyer == Pubkey::default()` (the System',
+            'Program) and cannot be a writable account. Mirrors `settle_nft_sale`.',
+          ];
         },
         {
           name: 'feeAccount';
@@ -8359,9 +8364,14 @@ export const IDL: MallowGumball = {
         },
         {
           name: 'buyer',
-          isMut: true,
+          isMut: false,
           isSigner: false,
-          docs: ['Buyer of the cNFT.'],
+          docs: [
+            'Buyer of the cNFT.',
+            '(`.key()` / leaf-transfer target), never written. Marking it `mut` would',
+            'break unsold settle, where `buyer == Pubkey::default()` (the System',
+            'Program) and cannot be a writable account. Mirrors `settle_nft_sale`.',
+          ],
         },
         {
           name: 'feeAccount',
