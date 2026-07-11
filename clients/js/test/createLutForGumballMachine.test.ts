@@ -81,7 +81,7 @@ test('it can create a LUT for a gumball machine v2', async (t) => {
   await new Promise((resolve) => setTimeout(resolve, 1000));
   await builderWithLut.sendAndConfirm(umi);
 
-  assertItemBought(t, umi, { gumballMachine });
+  await assertItemBought(t, umi, { gumballMachine });
 });
 
 test('it can create a LUT for a gumball machine with no gumball guard', async (t) => {

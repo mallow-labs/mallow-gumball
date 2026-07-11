@@ -12,7 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: ["16.x", "18.x"]
+        # LiteSVM's native binding requires Node >= 20.
+        node: ["20.x", "22.x"]
     steps:
       - name: Git checkout
         uses: actions/checkout@v3
@@ -20,12 +21,21 @@ jobs:
       - name: Load environment variables
         run: cat .github/.env >> $GITHUB_ENV
 
-      - name: Start validator
-        uses: metaplex-foundation/actions/start-validator@v1
+      - name: Install Node.js
+        uses: metaplex-foundation/actions/install-node-with-pnpm@v1
         with:
-          node: ${{ matrix.node }}
-          solana: ${{ env.SOLANA_VERSION }}
+          version: ${{ matrix.node }}
           cache: ${{ env.CACHE }}
+
+      # The JS tests run against an in-process LiteSVM (no validator). LiteSVM
+      # loads the program `.so` artifacts built by the `build_programs` job — both
+      # the mallow programs and the dumped metaplex/system programs land in
+      # `programs/.bin` — so download that artifact into place before testing.
+      - name: Download program builds
+        uses: actions/download-artifact@v3
+        with:
+          name: program-builds
+          path: ./programs/.bin
 
       - name: Install dependencies
         uses: metaplex-foundation/actions/install-node-dependencies@v1

@@ -38,8 +38,9 @@ import {
   transactionBuilder,
   TransactionSignature,
   Umi,
+  createUmi as umiCreate,
 } from '@metaplex-foundation/umi';
-import { createUmi as basecreateUmi } from '@metaplex-foundation/umi-bundle-tests';
+import { testPlugins } from '@metaplex-foundation/umi-bundle-tests';
 import { Keypair } from '@solana/web3.js';
 import { Assertions } from 'ava';
 import {
@@ -68,13 +69,26 @@ import {
   updateGlobalConfig,
   wrap,
 } from '../src';
+import { LiteSVMConnection } from './litesvm/connection';
+import { getSvm } from './litesvm/svm';
 
 export const METAPLEX_DEFAULT_RULESET = publicKey(
   'eBJLFYPxJmMGKuFwpDWkzxZeUrad92kZRC5BJLpzyT9'
 );
 
-export const createUmi = async () =>
-  (await basecreateUmi()).use(mallowGumball());
+// Each ava test file runs in its own worker process, so the per-process LiteSVM
+// singleton (getSvm) gives every file an isolated in-memory ledger. `testPlugins`
+// wires umi to it through the web3.js Connection shim (umi-rpc-web3js accepts a
+// Connection directly); `mallowGumball()` registers the program clients. We fund a
+// fresh generated identity per call, mirroring umi-bundle-tests' createUmi.
+export const createUmi = async () => {
+  const connection = new LiteSVMConnection(getSvm());
+  const umi = umiCreate()
+    .use(testPlugins(connection as any))
+    .use(mallowGumball());
+  await umi.rpc.airdrop(umi.identity.publicKey, sol(100));
+  return umi;
+};
 
 export const createNft = async (
   umi: Umi,

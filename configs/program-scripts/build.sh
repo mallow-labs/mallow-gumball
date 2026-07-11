@@ -40,13 +40,3 @@ for p in ${PROGRAMS[@]}; do
     anchor build # generate types
     cp ${WORKING_DIR}/programs/${p}/target/types/*.ts ${WORKING_DIR}/clients/js/src/anchorIdls/
 done
-
-# Gumball Guard must be loaded as an upgradeable program in the test validator so
-# that `create_global_config`'s upgrade-authority gate can be exercised. amman
-# can only deploy non-upgradeable programs, so we regenerate the upgradeable
-# `Program` + `ProgramData` account fixtures (into `.amman/accounts/`) from the
-# freshly built binary. `.amman` is git-ignored, so this must run before every
-# `amman start`.
-if [ -f "${WORKING_DIR}/${OUTPUT}/gumball_guard.so" ]; then
-    ${SCRIPT_DIR}/gen-guard-fixtures.sh
-fi
