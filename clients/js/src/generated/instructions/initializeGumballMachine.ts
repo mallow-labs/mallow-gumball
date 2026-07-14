@@ -6,97 +6,207 @@
  * @see https://github.com/codama-idl/codama
  */
 
-import { Context, Option, OptionOrNullable, Pda, PublicKey, Signer, TransactionBuilder, none, transactionBuilder } from '@metaplex-foundation/umi';
-import { Serializer, bool, bytes, mapSerializer, option, struct } from '@metaplex-foundation/umi/serializers';
+import {
+  Context,
+  Option,
+  OptionOrNullable,
+  Pda,
+  PublicKey,
+  Signer,
+  TransactionBuilder,
+  none,
+  transactionBuilder,
+} from '@metaplex-foundation/umi';
+import {
+  Serializer,
+  bool,
+  bytes,
+  mapSerializer,
+  option,
+  struct,
+} from '@metaplex-foundation/umi/serializers';
 import { findGumballMachineAuthorityPda } from '../../hooked';
-import { ResolvedAccount, ResolvedAccountsWithIndices, expectPublicKey, getAccountMetasAndSigners } from '../shared';
-import { BuyBackConfig, BuyBackConfigArgs, FeeConfig, FeeConfigArgs, GumballSettings, GumballSettingsArgs, getBuyBackConfigSerializer, getFeeConfigSerializer, getGumballSettingsSerializer } from '../types';
+import {
+  ResolvedAccount,
+  ResolvedAccountsWithIndices,
+  expectPublicKey,
+  getAccountMetasAndSigners,
+} from '../shared';
+import {
+  BuyBackConfig,
+  BuyBackConfigArgs,
+  FeeConfig,
+  FeeConfigArgs,
+  GumballSettings,
+  GumballSettingsArgs,
+  getBuyBackConfigSerializer,
+  getFeeConfigSerializer,
+  getGumballSettingsSerializer,
+} from '../types';
 
 // Accounts.
 export type InitializeGumballMachineInstructionAccounts = {
-      /**
- * Gumball Machine account. The account space must be allocated to allow accounts larger
- * than 10kb.
- * 
- */
+  /**
+   * Gumball Machine account. The account space must be allocated to allow accounts larger
+   * than 10kb.
+   *
+   */
 
-    gumballMachine: PublicKey | Pda;
-      /**
- * Gumball Machine authority. This is the address that controls the upate of the gumball machine.
- * 
- */
+  gumballMachine: PublicKey | Pda;
+  /**
+   * Gumball Machine authority. This is the address that controls the upate of the gumball machine.
+   *
+   */
 
-    authority?: PublicKey | Pda;
-    authorityPda?: PublicKey | Pda;
-      /** Payer of the transaction. */
-    payer?: Signer;
-    systemProgram?: PublicKey | Pda;
+  authority?: PublicKey | Pda;
+  authorityPda?: PublicKey | Pda;
+  /** Payer of the transaction. */
+  payer?: Signer;
+  systemProgram?: PublicKey | Pda;
 };
 
-  // Data.
-  export type InitializeGumballMachineInstructionData = { discriminator: Uint8Array; settings: GumballSettings; feeConfig: Option<FeeConfig>; disablePrimarySplit: boolean; buyBackConfig: Option<BuyBackConfig>; disableRoyalties: boolean;  };
+// Data.
+export type InitializeGumballMachineInstructionData = {
+  discriminator: Uint8Array;
+  settings: GumballSettings;
+  feeConfig: Option<FeeConfig>;
+  disablePrimarySplit: boolean;
+  buyBackConfig: Option<BuyBackConfig>;
+  disableRoyalties: boolean;
+};
 
-export type InitializeGumballMachineInstructionDataArgs = { settings: GumballSettingsArgs; feeConfig?: OptionOrNullable<FeeConfigArgs>; disablePrimarySplit?: boolean; buyBackConfig?: OptionOrNullable<BuyBackConfigArgs>; disableRoyalties?: boolean;  };
+export type InitializeGumballMachineInstructionDataArgs = {
+  settings: GumballSettingsArgs;
+  feeConfig?: OptionOrNullable<FeeConfigArgs>;
+  disablePrimarySplit?: boolean;
+  buyBackConfig?: OptionOrNullable<BuyBackConfigArgs>;
+  disableRoyalties?: boolean;
+};
 
-
-  export function getInitializeGumballMachineInstructionDataSerializer(): Serializer<InitializeGumballMachineInstructionDataArgs, InitializeGumballMachineInstructionData> {
-  return mapSerializer<InitializeGumballMachineInstructionDataArgs, any, InitializeGumballMachineInstructionData>(struct<InitializeGumballMachineInstructionData>([['discriminator', bytes({ size: 8 })], ['settings', getGumballSettingsSerializer()], ['feeConfig', option(getFeeConfigSerializer())], ['disablePrimarySplit', bool()], ['buyBackConfig', option(getBuyBackConfigSerializer())], ['disableRoyalties', bool()]], { description: 'InitializeGumballMachineInstructionData' }), (value) => ({ ...value, discriminator: new Uint8Array([175, 175, 109, 31, 13, 152, 155, 237]), feeConfig: value.feeConfig ?? none(), disablePrimarySplit: value.disablePrimarySplit ?? false, buyBackConfig: value.buyBackConfig ?? none(), disableRoyalties: value.disableRoyalties ?? false }) ) as Serializer<InitializeGumballMachineInstructionDataArgs, InitializeGumballMachineInstructionData>;
+export function getInitializeGumballMachineInstructionDataSerializer(): Serializer<
+  InitializeGumballMachineInstructionDataArgs,
+  InitializeGumballMachineInstructionData
+> {
+  return mapSerializer<
+    InitializeGumballMachineInstructionDataArgs,
+    any,
+    InitializeGumballMachineInstructionData
+  >(
+    struct<InitializeGumballMachineInstructionData>(
+      [
+        ['discriminator', bytes({ size: 8 })],
+        ['settings', getGumballSettingsSerializer()],
+        ['feeConfig', option(getFeeConfigSerializer())],
+        ['disablePrimarySplit', bool()],
+        ['buyBackConfig', option(getBuyBackConfigSerializer())],
+        ['disableRoyalties', bool()],
+      ],
+      { description: 'InitializeGumballMachineInstructionData' }
+    ),
+    (value) => ({
+      ...value,
+      discriminator: new Uint8Array([175, 175, 109, 31, 13, 152, 155, 237]),
+      feeConfig: value.feeConfig ?? none(),
+      disablePrimarySplit: value.disablePrimarySplit ?? false,
+      buyBackConfig: value.buyBackConfig ?? none(),
+      disableRoyalties: value.disableRoyalties ?? false,
+    })
+  ) as Serializer<
+    InitializeGumballMachineInstructionDataArgs,
+    InitializeGumballMachineInstructionData
+  >;
 }
 
+// Args.
+export type InitializeGumballMachineInstructionArgs =
+  InitializeGumballMachineInstructionDataArgs;
 
-
-  
-  // Args.
-      export type InitializeGumballMachineInstructionArgs =           InitializeGumballMachineInstructionDataArgs
-      ;
-  
 // Instruction.
 export function initializeGumballMachine(
-  context: Pick<Context, "eddsa" | "identity" | "payer" | "programs">,
-                        input: InitializeGumballMachineInstructionAccounts & InitializeGumballMachineInstructionArgs,
-      ): TransactionBuilder {
+  context: Pick<Context, 'eddsa' | 'identity' | 'payer' | 'programs'>,
+  input: InitializeGumballMachineInstructionAccounts &
+    InitializeGumballMachineInstructionArgs
+): TransactionBuilder {
   // Program ID.
-  const programId = context.programs.getPublicKey('mallowGumball', 'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa');
+  const programId = context.programs.getPublicKey(
+    'mallowGumball',
+    'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa'
+  );
 
   // Accounts.
   const resolvedAccounts = {
-          gumballMachine: { index: 0, isWritable: true as boolean, value: input.gumballMachine ?? null },
-          authority: { index: 1, isWritable: false as boolean, value: input.authority ?? null },
-          authorityPda: { index: 2, isWritable: true as boolean, value: input.authorityPda ?? null },
-          payer: { index: 3, isWritable: true as boolean, value: input.payer ?? null },
-          systemProgram: { index: 4, isWritable: false as boolean, value: input.systemProgram ?? null },
-      } satisfies ResolvedAccountsWithIndices;
+    gumballMachine: {
+      index: 0,
+      isWritable: true as boolean,
+      value: input.gumballMachine ?? null,
+    },
+    authority: {
+      index: 1,
+      isWritable: false as boolean,
+      value: input.authority ?? null,
+    },
+    authorityPda: {
+      index: 2,
+      isWritable: true as boolean,
+      value: input.authorityPda ?? null,
+    },
+    payer: {
+      index: 3,
+      isWritable: true as boolean,
+      value: input.payer ?? null,
+    },
+    systemProgram: {
+      index: 4,
+      isWritable: false as boolean,
+      value: input.systemProgram ?? null,
+    },
+  } satisfies ResolvedAccountsWithIndices;
 
-      // Arguments.
-    const resolvedArgs: InitializeGumballMachineInstructionArgs = { ...input };
-  
-    // Default values.
+  // Arguments.
+  const resolvedArgs: InitializeGumballMachineInstructionArgs = { ...input };
+
+  // Default values.
   if (!resolvedAccounts.authority.value) {
-        resolvedAccounts.authority.value = context.identity.publicKey;
-      }
-      if (!resolvedAccounts.authorityPda.value) {
-        resolvedAccounts.authorityPda.value = findGumballMachineAuthorityPda(context, { gumballMachine: expectPublicKey(resolvedAccounts.gumballMachine.value) });
-      }
-      if (!resolvedAccounts.payer.value) {
-        resolvedAccounts.payer.value = context.payer;
-      }
-      if (!resolvedAccounts.systemProgram.value) {
-        resolvedAccounts.systemProgram.value = context.programs.getPublicKey('systemProgram', '11111111111111111111111111111111');
-resolvedAccounts.systemProgram.isWritable = false
-      }
-      
+    resolvedAccounts.authority.value = context.identity.publicKey;
+  }
+  if (!resolvedAccounts.authorityPda.value) {
+    resolvedAccounts.authorityPda.value = findGumballMachineAuthorityPda(
+      context,
+      { gumballMachine: expectPublicKey(resolvedAccounts.gumballMachine.value) }
+    );
+  }
+  if (!resolvedAccounts.payer.value) {
+    resolvedAccounts.payer.value = context.payer;
+  }
+  if (!resolvedAccounts.systemProgram.value) {
+    resolvedAccounts.systemProgram.value = context.programs.getPublicKey(
+      'systemProgram',
+      '11111111111111111111111111111111'
+    );
+    resolvedAccounts.systemProgram.isWritable = false;
+  }
+
   // Accounts in order.
-      const orderedAccounts: ResolvedAccount[] = Object.values(resolvedAccounts).sort((a,b) => a.index - b.index);
-  
-  
+  const orderedAccounts: ResolvedAccount[] = Object.values(
+    resolvedAccounts
+  ).sort((a, b) => a.index - b.index);
+
   // Keys and Signers.
-  const [keys, signers] = getAccountMetasAndSigners(orderedAccounts, "programId", programId);
+  const [keys, signers] = getAccountMetasAndSigners(
+    orderedAccounts,
+    'programId',
+    programId
+  );
 
   // Data.
-      const data = getInitializeGumballMachineInstructionDataSerializer().serialize(resolvedArgs as InitializeGumballMachineInstructionDataArgs);
-  
+  const data = getInitializeGumballMachineInstructionDataSerializer().serialize(
+    resolvedArgs as InitializeGumballMachineInstructionDataArgs
+  );
+
   // Bytes Created On Chain.
-      const bytesCreatedOnChain = 0;
-  
-  return transactionBuilder([{ instruction: { keys, programId, data }, signers, bytesCreatedOnChain }]);
+  const bytesCreatedOnChain = 0;
+
+  return transactionBuilder([
+    { instruction: { keys, programId, data }, signers, bytesCreatedOnChain },
+  ]);
 }

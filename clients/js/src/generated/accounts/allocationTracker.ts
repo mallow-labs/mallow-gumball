@@ -6,32 +6,65 @@
  * @see https://github.com/codama-idl/codama
  */
 
-import { Account, Context, Pda, PublicKey, RpcAccount, RpcGetAccountOptions, RpcGetAccountsOptions, assertAccountExists, deserializeAccount, gpaBuilder, publicKey as toPublicKey } from '@metaplex-foundation/umi';
-import { Serializer, publicKey as publicKeySerializer, string, struct, u32, u8 } from '@metaplex-foundation/umi/serializers';
+import {
+  Account,
+  Context,
+  Pda,
+  PublicKey,
+  RpcAccount,
+  RpcGetAccountOptions,
+  RpcGetAccountsOptions,
+  assertAccountExists,
+  deserializeAccount,
+  gpaBuilder,
+  publicKey as toPublicKey,
+} from '@metaplex-foundation/umi';
+import {
+  Serializer,
+  publicKey as publicKeySerializer,
+  string,
+  struct,
+  u32,
+  u8,
+} from '@metaplex-foundation/umi/serializers';
 
-  /** PDA to track the number of mints. */
-  export type AllocationTracker = Account<AllocationTrackerAccountData>;
+/** PDA to track the number of mints. */
+export type AllocationTracker = Account<AllocationTrackerAccountData>;
 
-  export type AllocationTrackerAccountData = { count: number;  };
+export type AllocationTrackerAccountData = { count: number };
 
 export type AllocationTrackerAccountDataArgs = AllocationTrackerAccountData;
 
-
-  export function getAllocationTrackerAccountDataSerializer(): Serializer<AllocationTrackerAccountDataArgs, AllocationTrackerAccountData> {
-  return struct<AllocationTrackerAccountData>([['count', u32()]], { description: 'AllocationTrackerAccountData' }) as Serializer<AllocationTrackerAccountDataArgs, AllocationTrackerAccountData>;
+export function getAllocationTrackerAccountDataSerializer(): Serializer<
+  AllocationTrackerAccountDataArgs,
+  AllocationTrackerAccountData
+> {
+  return struct<AllocationTrackerAccountData>([['count', u32()]], {
+    description: 'AllocationTrackerAccountData',
+  }) as Serializer<
+    AllocationTrackerAccountDataArgs,
+    AllocationTrackerAccountData
+  >;
 }
 
-
-export function deserializeAllocationTracker(rawAccount: RpcAccount): AllocationTracker {
-  return deserializeAccount(rawAccount, getAllocationTrackerAccountDataSerializer());
+export function deserializeAllocationTracker(
+  rawAccount: RpcAccount
+): AllocationTracker {
+  return deserializeAccount(
+    rawAccount,
+    getAllocationTrackerAccountDataSerializer()
+  );
 }
 
 export async function fetchAllocationTracker(
   context: Pick<Context, 'rpc'>,
   publicKey: PublicKey | Pda,
-  options?: RpcGetAccountOptions,
+  options?: RpcGetAccountOptions
 ): Promise<AllocationTracker> {
-  const maybeAccount = await context.rpc.getAccount(toPublicKey(publicKey, false), options);
+  const maybeAccount = await context.rpc.getAccount(
+    toPublicKey(publicKey, false),
+    options
+  );
   assertAccountExists(maybeAccount, 'AllocationTracker');
   return deserializeAllocationTracker(maybeAccount);
 }
@@ -39,9 +72,12 @@ export async function fetchAllocationTracker(
 export async function safeFetchAllocationTracker(
   context: Pick<Context, 'rpc'>,
   publicKey: PublicKey | Pda,
-  options?: RpcGetAccountOptions,
+  options?: RpcGetAccountOptions
 ): Promise<AllocationTracker | null> {
-  const maybeAccount = await context.rpc.getAccount(toPublicKey(publicKey, false), options);
+  const maybeAccount = await context.rpc.getAccount(
+    toPublicKey(publicKey, false),
+    options
+  );
   return maybeAccount.exists
     ? deserializeAllocationTracker(maybeAccount)
     : null;
@@ -50,9 +86,12 @@ export async function safeFetchAllocationTracker(
 export async function fetchAllAllocationTracker(
   context: Pick<Context, 'rpc'>,
   publicKeys: Array<PublicKey | Pda>,
-  options?: RpcGetAccountsOptions,
+  options?: RpcGetAccountsOptions
 ): Promise<AllocationTracker[]> {
-  const maybeAccounts = await context.rpc.getAccounts(publicKeys.map(key => toPublicKey(key, false)), options);
+  const maybeAccounts = await context.rpc.getAccounts(
+    publicKeys.map((key) => toPublicKey(key, false)),
+    options
+  );
   return maybeAccounts.map((maybeAccount) => {
     assertAccountExists(maybeAccount, 'AllocationTracker');
     return deserializeAllocationTracker(maybeAccount);
@@ -62,20 +101,32 @@ export async function fetchAllAllocationTracker(
 export async function safeFetchAllAllocationTracker(
   context: Pick<Context, 'rpc'>,
   publicKeys: Array<PublicKey | Pda>,
-  options?: RpcGetAccountsOptions,
+  options?: RpcGetAccountsOptions
 ): Promise<AllocationTracker[]> {
-  const maybeAccounts = await context.rpc.getAccounts(publicKeys.map(key => toPublicKey(key, false)), options);
+  const maybeAccounts = await context.rpc.getAccounts(
+    publicKeys.map((key) => toPublicKey(key, false)),
+    options
+  );
   return maybeAccounts
     .filter((maybeAccount) => maybeAccount.exists)
-    .map((maybeAccount) => deserializeAllocationTracker(maybeAccount as RpcAccount));
+    .map((maybeAccount) =>
+      deserializeAllocationTracker(maybeAccount as RpcAccount)
+    );
 }
 
-export function getAllocationTrackerGpaBuilder(context: Pick<Context, 'rpc' | 'programs'>) {
-  const programId = context.programs.getPublicKey('gumballGuard', 'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF');
+export function getAllocationTrackerGpaBuilder(
+  context: Pick<Context, 'rpc' | 'programs'>
+) {
+  const programId = context.programs.getPublicKey(
+    'gumballGuard',
+    'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF'
+  );
   return gpaBuilder(context, programId)
-    .registerFields<{ 'count': number }>({ 'count': [0, u32()] })
-    .deserializeUsing<AllocationTracker>((account) => deserializeAllocationTracker(account))      .whereSize(4)
-    ;
+    .registerFields<{ count: number }>({ count: [0, u32()] })
+    .deserializeUsing<AllocationTracker>((account) =>
+      deserializeAllocationTracker(account)
+    )
+    .whereSize(4);
 }
 
 export function getAllocationTrackerSize(): number {
@@ -84,36 +135,47 @@ export function getAllocationTrackerSize(): number {
 
 export function findAllocationTrackerPda(
   context: Pick<Context, 'eddsa' | 'programs'>,
-      seeds: {
-                                      /** Unique identifier of the allocation */
-          id: number;
-                                /** The address of the Gumball Guard account */
-          gumballGuard: PublicKey;
-                                /** The address of the Machine account */
-          machine: PublicKey;
-                  }
-  ): Pda {
-  const programId = context.programs.getPublicKey('gumballGuard', 'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF');
+  seeds: {
+    /** Unique identifier of the allocation */
+    id: number;
+    /** The address of the Gumball Guard account */
+    gumballGuard: PublicKey;
+    /** The address of the Machine account */
+    machine: PublicKey;
+  }
+): Pda {
+  const programId = context.programs.getPublicKey(
+    'gumballGuard',
+    'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF'
+  );
   return context.eddsa.findPda(programId, [
-                  string({ size: 'variable' }).serialize("allocation"),
-                        u8().serialize(seeds.id),
-                        publicKeySerializer().serialize(seeds.gumballGuard),
-                        publicKeySerializer().serialize(seeds.machine),
-            ]);
+    string({ size: 'variable' }).serialize('allocation'),
+    u8().serialize(seeds.id),
+    publicKeySerializer().serialize(seeds.gumballGuard),
+    publicKeySerializer().serialize(seeds.machine),
+  ]);
 }
 
 export async function fetchAllocationTrackerFromSeeds(
   context: Pick<Context, 'eddsa' | 'programs' | 'rpc'>,
-      seeds: Parameters<typeof findAllocationTrackerPda>[1],
-    options?: RpcGetAccountOptions,
+  seeds: Parameters<typeof findAllocationTrackerPda>[1],
+  options?: RpcGetAccountOptions
 ): Promise<AllocationTracker> {
-  return fetchAllocationTracker(context, findAllocationTrackerPda(context, seeds), options);
+  return fetchAllocationTracker(
+    context,
+    findAllocationTrackerPda(context, seeds),
+    options
+  );
 }
 
 export async function safeFetchAllocationTrackerFromSeeds(
   context: Pick<Context, 'eddsa' | 'programs' | 'rpc'>,
-      seeds: Parameters<typeof findAllocationTrackerPda>[1],
-    options?: RpcGetAccountOptions,
+  seeds: Parameters<typeof findAllocationTrackerPda>[1],
+  options?: RpcGetAccountOptions
 ): Promise<AllocationTracker | null> {
-  return safeFetchAllocationTracker(context, findAllocationTrackerPda(context, seeds), options);
+  return safeFetchAllocationTracker(
+    context,
+    findAllocationTrackerPda(context, seeds),
+    options
+  );
 }

@@ -6,17 +6,20 @@
  * @see https://github.com/codama-idl/codama
  */
 
-import { DateTime, DateTimeInput, mapDateTimeSerializer } from '@metaplex-foundation/umi';
+import {
+  DateTime,
+  DateTimeInput,
+  mapDateTimeSerializer,
+} from '@metaplex-foundation/umi';
 import { Serializer, i64, struct } from '@metaplex-foundation/umi/serializers';
 
 /** Guard that sets a specific date for the mint to stop. */
-export type EndDate = { date: DateTime;  };
+export type EndDate = { date: DateTime };
 
-export type EndDateArgs = { date: DateTimeInput;  };
-
+export type EndDateArgs = { date: DateTimeInput };
 
 export function getEndDateSerializer(): Serializer<EndDateArgs, EndDate> {
-  return struct<EndDate>([['date', mapDateTimeSerializer(i64())]], { description: 'EndDate' }) as Serializer<EndDateArgs, EndDate>;
+  return struct<EndDate>([['date', mapDateTimeSerializer(i64())]], {
+    description: 'EndDate',
+  }) as Serializer<EndDateArgs, EndDate>;
 }
-
-

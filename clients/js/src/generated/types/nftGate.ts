@@ -7,24 +7,27 @@
  */
 
 import { PublicKey } from '@metaplex-foundation/umi';
-import { Serializer, publicKey as publicKeySerializer, struct } from '@metaplex-foundation/umi/serializers';
+import {
+  Serializer,
+  publicKey as publicKeySerializer,
+  struct,
+} from '@metaplex-foundation/umi/serializers';
 
 /**
  * Guard that restricts the transaction to holders of a specified collection.
- * 
+ *
  * List of accounts required:
- * 
+ *
  * 0. `[]` Token account of the NFT.
  * 1. `[]` Metadata account of the NFT.
  */
 
-export type NftGate = { requiredCollection: PublicKey;  };
+export type NftGate = { requiredCollection: PublicKey };
 
 export type NftGateArgs = NftGate;
 
-
 export function getNftGateSerializer(): Serializer<NftGateArgs, NftGate> {
-  return struct<NftGate>([['requiredCollection', publicKeySerializer()]], { description: 'NftGate' }) as Serializer<NftGateArgs, NftGate>;
+  return struct<NftGate>([['requiredCollection', publicKeySerializer()]], {
+    description: 'NftGate',
+  }) as Serializer<NftGateArgs, NftGate>;
 }
-
-

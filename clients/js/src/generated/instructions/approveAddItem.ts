@@ -6,86 +6,163 @@
  * @see https://github.com/codama-idl/codama
  */
 
-import { Context, Pda, PublicKey, Signer, TransactionBuilder, transactionBuilder } from '@metaplex-foundation/umi';
-import { Serializer, bytes, mapSerializer, struct } from '@metaplex-foundation/umi/serializers';
+import {
+  Context,
+  Pda,
+  PublicKey,
+  Signer,
+  TransactionBuilder,
+  transactionBuilder,
+} from '@metaplex-foundation/umi';
+import {
+  Serializer,
+  bytes,
+  mapSerializer,
+  struct,
+} from '@metaplex-foundation/umi/serializers';
 import { findGumballMachineAuthorityPda } from '../../hooked';
 import { findAddItemRequestPda } from '../accounts';
-import { ResolvedAccount, ResolvedAccountsWithIndices, expectPublicKey, getAccountMetasAndSigners } from '../shared';
+import {
+  ResolvedAccount,
+  ResolvedAccountsWithIndices,
+  expectPublicKey,
+  getAccountMetasAndSigners,
+} from '../shared';
 
 // Accounts.
 export type ApproveAddItemInstructionAccounts = {
-      /** Gumball Machine account. */
-    gumballMachine: PublicKey | Pda;
-      /** Add item request account. */
-    addItemRequest?: PublicKey | Pda;
-    authorityPda?: PublicKey | Pda;
-      /** Authority of the gumball machine. */
-    authority?: Signer;
-    seller: PublicKey | Pda;
-    asset: PublicKey | Pda;
-    systemProgram?: PublicKey | Pda;
+  /** Gumball Machine account. */
+  gumballMachine: PublicKey | Pda;
+  /** Add item request account. */
+  addItemRequest?: PublicKey | Pda;
+  authorityPda?: PublicKey | Pda;
+  /** Authority of the gumball machine. */
+  authority?: Signer;
+  seller: PublicKey | Pda;
+  asset: PublicKey | Pda;
+  systemProgram?: PublicKey | Pda;
 };
 
-  // Data.
-  export type ApproveAddItemInstructionData = { discriminator: Uint8Array;  };
+// Data.
+export type ApproveAddItemInstructionData = { discriminator: Uint8Array };
 
-export type ApproveAddItemInstructionDataArgs = {  };
+export type ApproveAddItemInstructionDataArgs = {};
 
-
-  export function getApproveAddItemInstructionDataSerializer(): Serializer<ApproveAddItemInstructionDataArgs, ApproveAddItemInstructionData> {
-  return mapSerializer<ApproveAddItemInstructionDataArgs, any, ApproveAddItemInstructionData>(struct<ApproveAddItemInstructionData>([['discriminator', bytes({ size: 8 })]], { description: 'ApproveAddItemInstructionData' }), (value) => ({ ...value, discriminator: new Uint8Array([135, 250, 51, 252, 70, 171, 19, 48]) }) ) as Serializer<ApproveAddItemInstructionDataArgs, ApproveAddItemInstructionData>;
+export function getApproveAddItemInstructionDataSerializer(): Serializer<
+  ApproveAddItemInstructionDataArgs,
+  ApproveAddItemInstructionData
+> {
+  return mapSerializer<
+    ApproveAddItemInstructionDataArgs,
+    any,
+    ApproveAddItemInstructionData
+  >(
+    struct<ApproveAddItemInstructionData>(
+      [['discriminator', bytes({ size: 8 })]],
+      { description: 'ApproveAddItemInstructionData' }
+    ),
+    (value) => ({
+      ...value,
+      discriminator: new Uint8Array([135, 250, 51, 252, 70, 171, 19, 48]),
+    })
+  ) as Serializer<
+    ApproveAddItemInstructionDataArgs,
+    ApproveAddItemInstructionData
+  >;
 }
-
-
-
 
 // Instruction.
 export function approveAddItem(
-  context: Pick<Context, "eddsa" | "identity" | "programs">,
-                        input: ApproveAddItemInstructionAccounts,
-      ): TransactionBuilder {
+  context: Pick<Context, 'eddsa' | 'identity' | 'programs'>,
+  input: ApproveAddItemInstructionAccounts
+): TransactionBuilder {
   // Program ID.
-  const programId = context.programs.getPublicKey('mallowGumball', 'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa');
+  const programId = context.programs.getPublicKey(
+    'mallowGumball',
+    'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa'
+  );
 
   // Accounts.
   const resolvedAccounts = {
-          gumballMachine: { index: 0, isWritable: true as boolean, value: input.gumballMachine ?? null },
-          addItemRequest: { index: 1, isWritable: true as boolean, value: input.addItemRequest ?? null },
-          authorityPda: { index: 2, isWritable: true as boolean, value: input.authorityPda ?? null },
-          authority: { index: 3, isWritable: true as boolean, value: input.authority ?? null },
-          seller: { index: 4, isWritable: true as boolean, value: input.seller ?? null },
-          asset: { index: 5, isWritable: false as boolean, value: input.asset ?? null },
-          systemProgram: { index: 6, isWritable: false as boolean, value: input.systemProgram ?? null },
-      } satisfies ResolvedAccountsWithIndices;
+    gumballMachine: {
+      index: 0,
+      isWritable: true as boolean,
+      value: input.gumballMachine ?? null,
+    },
+    addItemRequest: {
+      index: 1,
+      isWritable: true as boolean,
+      value: input.addItemRequest ?? null,
+    },
+    authorityPda: {
+      index: 2,
+      isWritable: true as boolean,
+      value: input.authorityPda ?? null,
+    },
+    authority: {
+      index: 3,
+      isWritable: true as boolean,
+      value: input.authority ?? null,
+    },
+    seller: {
+      index: 4,
+      isWritable: true as boolean,
+      value: input.seller ?? null,
+    },
+    asset: {
+      index: 5,
+      isWritable: false as boolean,
+      value: input.asset ?? null,
+    },
+    systemProgram: {
+      index: 6,
+      isWritable: false as boolean,
+      value: input.systemProgram ?? null,
+    },
+  } satisfies ResolvedAccountsWithIndices;
 
-  
-    // Default values.
+  // Default values.
   if (!resolvedAccounts.addItemRequest.value) {
-        resolvedAccounts.addItemRequest.value = findAddItemRequestPda(context, { asset: expectPublicKey(resolvedAccounts.asset.value) });
-      }
-      if (!resolvedAccounts.authorityPda.value) {
-        resolvedAccounts.authorityPda.value = findGumballMachineAuthorityPda(context, { gumballMachine: expectPublicKey(resolvedAccounts.gumballMachine.value) });
-      }
-      if (!resolvedAccounts.authority.value) {
-        resolvedAccounts.authority.value = context.identity;
-      }
-      if (!resolvedAccounts.systemProgram.value) {
-        resolvedAccounts.systemProgram.value = context.programs.getPublicKey('systemProgram', '11111111111111111111111111111111');
-resolvedAccounts.systemProgram.isWritable = false
-      }
-      
+    resolvedAccounts.addItemRequest.value = findAddItemRequestPda(context, {
+      asset: expectPublicKey(resolvedAccounts.asset.value),
+    });
+  }
+  if (!resolvedAccounts.authorityPda.value) {
+    resolvedAccounts.authorityPda.value = findGumballMachineAuthorityPda(
+      context,
+      { gumballMachine: expectPublicKey(resolvedAccounts.gumballMachine.value) }
+    );
+  }
+  if (!resolvedAccounts.authority.value) {
+    resolvedAccounts.authority.value = context.identity;
+  }
+  if (!resolvedAccounts.systemProgram.value) {
+    resolvedAccounts.systemProgram.value = context.programs.getPublicKey(
+      'systemProgram',
+      '11111111111111111111111111111111'
+    );
+    resolvedAccounts.systemProgram.isWritable = false;
+  }
+
   // Accounts in order.
-      const orderedAccounts: ResolvedAccount[] = Object.values(resolvedAccounts).sort((a,b) => a.index - b.index);
-  
-  
+  const orderedAccounts: ResolvedAccount[] = Object.values(
+    resolvedAccounts
+  ).sort((a, b) => a.index - b.index);
+
   // Keys and Signers.
-  const [keys, signers] = getAccountMetasAndSigners(orderedAccounts, "programId", programId);
+  const [keys, signers] = getAccountMetasAndSigners(
+    orderedAccounts,
+    'programId',
+    programId
+  );
 
   // Data.
-      const data = getApproveAddItemInstructionDataSerializer().serialize({});
-  
+  const data = getApproveAddItemInstructionDataSerializer().serialize({});
+
   // Bytes Created On Chain.
-      const bytesCreatedOnChain = 0;
-  
-  return transactionBuilder([{ instruction: { keys, programId, data }, signers, bytesCreatedOnChain }]);
+  const bytesCreatedOnChain = 0;
+
+  return transactionBuilder([
+    { instruction: { keys, programId, data }, signers, bytesCreatedOnChain },
+  ]);
 }

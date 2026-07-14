@@ -6,81 +6,155 @@
  * @see https://github.com/codama-idl/codama
  */
 
-import { Context, Pda, PublicKey, Signer, TransactionBuilder, transactionBuilder } from '@metaplex-foundation/umi';
-import { Serializer, bytes, mapSerializer, struct, u32 } from '@metaplex-foundation/umi/serializers';
-import { ResolvedAccount, ResolvedAccountsWithIndices, getAccountMetasAndSigners } from '../shared';
+import {
+  Context,
+  Pda,
+  PublicKey,
+  Signer,
+  TransactionBuilder,
+  transactionBuilder,
+} from '@metaplex-foundation/umi';
+import {
+  Serializer,
+  bytes,
+  mapSerializer,
+  struct,
+  u32,
+} from '@metaplex-foundation/umi/serializers';
+import {
+  ResolvedAccount,
+  ResolvedAccountsWithIndices,
+  getAccountMetasAndSigners,
+} from '../shared';
 
 // Accounts.
 export type UpdateGumballGuardInstructionAccounts = {
-    gumballGuard: PublicKey | Pda;
-      /** Machine account. */
-    machine: PublicKey | Pda;
-    authority?: Signer;
-    payer?: Signer;
-    systemProgram?: PublicKey | Pda;
+  gumballGuard: PublicKey | Pda;
+  /** Machine account. */
+  machine: PublicKey | Pda;
+  authority?: Signer;
+  payer?: Signer;
+  systemProgram?: PublicKey | Pda;
 };
 
-  // Data.
-  export type UpdateGumballGuardInstructionData = { discriminator: Uint8Array; data: Uint8Array;  };
+// Data.
+export type UpdateGumballGuardInstructionData = {
+  discriminator: Uint8Array;
+  data: Uint8Array;
+};
 
-export type UpdateGumballGuardInstructionDataArgs = { data: Uint8Array;  };
+export type UpdateGumballGuardInstructionDataArgs = { data: Uint8Array };
 
-
-  export function getUpdateGumballGuardInstructionDataSerializer(): Serializer<UpdateGumballGuardInstructionDataArgs, UpdateGumballGuardInstructionData> {
-  return mapSerializer<UpdateGumballGuardInstructionDataArgs, any, UpdateGumballGuardInstructionData>(struct<UpdateGumballGuardInstructionData>([['discriminator', bytes({ size: 8 })], ['data', bytes({ size: u32() })]], { description: 'UpdateGumballGuardInstructionData' }), (value) => ({ ...value, discriminator: new Uint8Array([219, 200, 88, 176, 158, 63, 253, 127]) }) ) as Serializer<UpdateGumballGuardInstructionDataArgs, UpdateGumballGuardInstructionData>;
+export function getUpdateGumballGuardInstructionDataSerializer(): Serializer<
+  UpdateGumballGuardInstructionDataArgs,
+  UpdateGumballGuardInstructionData
+> {
+  return mapSerializer<
+    UpdateGumballGuardInstructionDataArgs,
+    any,
+    UpdateGumballGuardInstructionData
+  >(
+    struct<UpdateGumballGuardInstructionData>(
+      [
+        ['discriminator', bytes({ size: 8 })],
+        ['data', bytes({ size: u32() })],
+      ],
+      { description: 'UpdateGumballGuardInstructionData' }
+    ),
+    (value) => ({
+      ...value,
+      discriminator: new Uint8Array([219, 200, 88, 176, 158, 63, 253, 127]),
+    })
+  ) as Serializer<
+    UpdateGumballGuardInstructionDataArgs,
+    UpdateGumballGuardInstructionData
+  >;
 }
 
+// Args.
+export type UpdateGumballGuardInstructionArgs =
+  UpdateGumballGuardInstructionDataArgs;
 
-
-  
-  // Args.
-      export type UpdateGumballGuardInstructionArgs =           UpdateGumballGuardInstructionDataArgs
-      ;
-  
 // Instruction.
 export function updateGumballGuard(
-  context: Pick<Context, "identity" | "payer" | "programs">,
-                        input: UpdateGumballGuardInstructionAccounts & UpdateGumballGuardInstructionArgs,
-      ): TransactionBuilder {
+  context: Pick<Context, 'identity' | 'payer' | 'programs'>,
+  input: UpdateGumballGuardInstructionAccounts &
+    UpdateGumballGuardInstructionArgs
+): TransactionBuilder {
   // Program ID.
-  const programId = context.programs.getPublicKey('gumballGuard', 'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF');
+  const programId = context.programs.getPublicKey(
+    'gumballGuard',
+    'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF'
+  );
 
   // Accounts.
   const resolvedAccounts = {
-          gumballGuard: { index: 0, isWritable: true as boolean, value: input.gumballGuard ?? null },
-          machine: { index: 1, isWritable: true as boolean, value: input.machine ?? null },
-          authority: { index: 2, isWritable: false as boolean, value: input.authority ?? null },
-          payer: { index: 3, isWritable: false as boolean, value: input.payer ?? null },
-          systemProgram: { index: 4, isWritable: false as boolean, value: input.systemProgram ?? null },
-      } satisfies ResolvedAccountsWithIndices;
+    gumballGuard: {
+      index: 0,
+      isWritable: true as boolean,
+      value: input.gumballGuard ?? null,
+    },
+    machine: {
+      index: 1,
+      isWritable: true as boolean,
+      value: input.machine ?? null,
+    },
+    authority: {
+      index: 2,
+      isWritable: false as boolean,
+      value: input.authority ?? null,
+    },
+    payer: {
+      index: 3,
+      isWritable: false as boolean,
+      value: input.payer ?? null,
+    },
+    systemProgram: {
+      index: 4,
+      isWritable: false as boolean,
+      value: input.systemProgram ?? null,
+    },
+  } satisfies ResolvedAccountsWithIndices;
 
-      // Arguments.
-    const resolvedArgs: UpdateGumballGuardInstructionArgs = { ...input };
-  
-    // Default values.
+  // Arguments.
+  const resolvedArgs: UpdateGumballGuardInstructionArgs = { ...input };
+
+  // Default values.
   if (!resolvedAccounts.authority.value) {
-        resolvedAccounts.authority.value = context.identity;
-      }
-      if (!resolvedAccounts.payer.value) {
-        resolvedAccounts.payer.value = context.payer;
-      }
-      if (!resolvedAccounts.systemProgram.value) {
-        resolvedAccounts.systemProgram.value = context.programs.getPublicKey('splSystem', '11111111111111111111111111111111');
-resolvedAccounts.systemProgram.isWritable = false
-      }
-      
+    resolvedAccounts.authority.value = context.identity;
+  }
+  if (!resolvedAccounts.payer.value) {
+    resolvedAccounts.payer.value = context.payer;
+  }
+  if (!resolvedAccounts.systemProgram.value) {
+    resolvedAccounts.systemProgram.value = context.programs.getPublicKey(
+      'splSystem',
+      '11111111111111111111111111111111'
+    );
+    resolvedAccounts.systemProgram.isWritable = false;
+  }
+
   // Accounts in order.
-      const orderedAccounts: ResolvedAccount[] = Object.values(resolvedAccounts).sort((a,b) => a.index - b.index);
-  
-  
+  const orderedAccounts: ResolvedAccount[] = Object.values(
+    resolvedAccounts
+  ).sort((a, b) => a.index - b.index);
+
   // Keys and Signers.
-  const [keys, signers] = getAccountMetasAndSigners(orderedAccounts, "programId", programId);
+  const [keys, signers] = getAccountMetasAndSigners(
+    orderedAccounts,
+    'programId',
+    programId
+  );
 
   // Data.
-      const data = getUpdateGumballGuardInstructionDataSerializer().serialize(resolvedArgs as UpdateGumballGuardInstructionDataArgs);
-  
+  const data = getUpdateGumballGuardInstructionDataSerializer().serialize(
+    resolvedArgs as UpdateGumballGuardInstructionDataArgs
+  );
+
   // Bytes Created On Chain.
-      const bytesCreatedOnChain = 0;
-  
-  return transactionBuilder([{ instruction: { keys, programId, data }, signers, bytesCreatedOnChain }]);
+  const bytesCreatedOnChain = 0;
+
+  return transactionBuilder([
+    { instruction: { keys, programId, data }, signers, bytesCreatedOnChain },
+  ]);
 }

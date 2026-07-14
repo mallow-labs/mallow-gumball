@@ -8,13 +8,20 @@
 
 import { Serializer, scalarEnum } from '@metaplex-foundation/umi/serializers';
 
-
-export enum GumballState { None, DetailsFinalized, SaleLive, SaleEnded };
+export enum GumballState {
+  None,
+  DetailsFinalized,
+  SaleLive,
+  SaleEnded,
+}
 
 export type GumballStateArgs = GumballState;
 
-export function getGumballStateSerializer(): Serializer<GumballStateArgs, GumballState> {
-  return scalarEnum<GumballState>(GumballState, { description: 'GumballState' }) as Serializer<GumballStateArgs, GumballState>;
+export function getGumballStateSerializer(): Serializer<
+  GumballStateArgs,
+  GumballState
+> {
+  return scalarEnum<GumballState>(GumballState, {
+    description: 'GumballState',
+  }) as Serializer<GumballStateArgs, GumballState>;
 }
-
-

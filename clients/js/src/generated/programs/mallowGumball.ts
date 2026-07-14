@@ -6,11 +6,19 @@
  * @see https://github.com/codama-idl/codama
  */
 
-import { ClusterFilter, Context, Program, PublicKey } from '@metaplex-foundation/umi';
-import { getMallowGumballErrorFromCode, getMallowGumballErrorFromName } from '../errors';
+import {
+  ClusterFilter,
+  Context,
+  Program,
+  PublicKey,
+} from '@metaplex-foundation/umi';
+import {
+  getMallowGumballErrorFromCode,
+  getMallowGumballErrorFromName,
+} from '../errors';
 
-export const MALLOW_GUMBALL_PROGRAM_ID = 'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa' as PublicKey<'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa'>;
-
+export const MALLOW_GUMBALL_PROGRAM_ID =
+  'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa' as PublicKey<'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa'>;
 
 export function createMallowGumballProgram(): Program {
   return {
@@ -28,10 +36,20 @@ export function createMallowGumballProgram(): Program {
   };
 }
 
-export function getMallowGumballProgram<T extends Program = Program>(context: Pick<Context, 'programs'>, clusterFilter?: ClusterFilter): T {
-  return context.programs.get<T>("mallowGumball", clusterFilter);
+export function getMallowGumballProgram<T extends Program = Program>(
+  context: Pick<Context, 'programs'>,
+  clusterFilter?: ClusterFilter
+): T {
+  return context.programs.get<T>('mallowGumball', clusterFilter);
 }
 
-export function getMallowGumballProgramId(context: Pick<Context, 'programs'>, clusterFilter?: ClusterFilter): PublicKey {
-  return context.programs.getPublicKey("mallowGumball", MALLOW_GUMBALL_PROGRAM_ID, clusterFilter);
+export function getMallowGumballProgramId(
+  context: Pick<Context, 'programs'>,
+  clusterFilter?: ClusterFilter
+): PublicKey {
+  return context.programs.getPublicKey(
+    'mallowGumball',
+    MALLOW_GUMBALL_PROGRAM_ID,
+    clusterFilter
+  );
 }

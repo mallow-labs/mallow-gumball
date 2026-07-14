@@ -7,11 +7,17 @@
  */
 
 import { PublicKey } from '@metaplex-foundation/umi';
-import { Serializer, bool, publicKey as publicKeySerializer, struct, u8 } from '@metaplex-foundation/umi/serializers';
+import {
+  Serializer,
+  bool,
+  publicKey as publicKeySerializer,
+  struct,
+  u8,
+} from '@metaplex-foundation/umi/serializers';
 
 /**
  * Creator entry for a compressed NFT leaf.
- * 
+ *
  * Mirrors the field layout of `mpl_bubblegum::types::Creator` /
  * `mpl_token_metadata::types::Creator`, but is defined locally so it can be used
  * directly as an Anchor instruction argument (the mpl types only derive borsh,
@@ -20,19 +26,27 @@ import { Serializer, bool, publicKey as publicKeySerializer, struct, u8 } from '
  * these values are proof-bound by the Transfer CPI.
  */
 
-export type CnftCreator = { 
-/** Creator wallet. */
-address: PublicKey; 
-/** Whether the creator is verified on the leaf. */
-verified: boolean; 
-/** Royalty share (0-100). Sum across creators must be 100. */
-share: number;  };
+export type CnftCreator = {
+  /** Creator wallet. */
+  address: PublicKey;
+  /** Whether the creator is verified on the leaf. */
+  verified: boolean;
+  /** Royalty share (0-100). Sum across creators must be 100. */
+  share: number;
+};
 
 export type CnftCreatorArgs = CnftCreator;
 
-
-export function getCnftCreatorSerializer(): Serializer<CnftCreatorArgs, CnftCreator> {
-  return struct<CnftCreator>([['address', publicKeySerializer()], ['verified', bool()], ['share', u8()]], { description: 'CnftCreator' }) as Serializer<CnftCreatorArgs, CnftCreator>;
+export function getCnftCreatorSerializer(): Serializer<
+  CnftCreatorArgs,
+  CnftCreator
+> {
+  return struct<CnftCreator>(
+    [
+      ['address', publicKeySerializer()],
+      ['verified', bool()],
+      ['share', u8()],
+    ],
+    { description: 'CnftCreator' }
+  ) as Serializer<CnftCreatorArgs, CnftCreator>;
 }
-
-

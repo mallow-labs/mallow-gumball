@@ -7,13 +7,17 @@
  */
 
 import { PublicKey } from '@metaplex-foundation/umi';
-import { Serializer, publicKey as publicKeySerializer, struct } from '@metaplex-foundation/umi/serializers';
+import {
+  Serializer,
+  publicKey as publicKeySerializer,
+  struct,
+} from '@metaplex-foundation/umi/serializers';
 
 /**
  * Guard that requires another NFT (token) from a specific collection to be burned.
- * 
+ *
  * List of accounts required:
- * 
+ *
  * 0. `[writeable]` Token account of the NFT.
  * 1. `[writeable]` Metadata account of the NFT.
  * 2. `[writeable]` Master Edition account of the NFT.
@@ -22,13 +26,12 @@ import { Serializer, publicKey as publicKeySerializer, struct } from '@metaplex-
  * 5. `[writeable]` Token Record of the NFT (pNFT).
  */
 
-export type NftBurn = { requiredCollection: PublicKey;  };
+export type NftBurn = { requiredCollection: PublicKey };
 
 export type NftBurnArgs = NftBurn;
 
-
 export function getNftBurnSerializer(): Serializer<NftBurnArgs, NftBurn> {
-  return struct<NftBurn>([['requiredCollection', publicKeySerializer()]], { description: 'NftBurn' }) as Serializer<NftBurnArgs, NftBurn>;
+  return struct<NftBurn>([['requiredCollection', publicKeySerializer()]], {
+    description: 'NftBurn',
+  }) as Serializer<NftBurnArgs, NftBurn>;
 }
-
-

@@ -6,63 +6,103 @@
  * @see https://github.com/codama-idl/codama
  */
 
-import { Context, Pda, PublicKey, Signer, TransactionBuilder, transactionBuilder } from '@metaplex-foundation/umi';
-import { Serializer, bytes, mapSerializer, struct } from '@metaplex-foundation/umi/serializers';
-import { ResolvedAccount, ResolvedAccountsWithIndices, getAccountMetasAndSigners } from '../shared';
+import {
+  Context,
+  Pda,
+  PublicKey,
+  Signer,
+  TransactionBuilder,
+  transactionBuilder,
+} from '@metaplex-foundation/umi';
+import {
+  Serializer,
+  bytes,
+  mapSerializer,
+  struct,
+} from '@metaplex-foundation/umi/serializers';
+import {
+  ResolvedAccount,
+  ResolvedAccountsWithIndices,
+  getAccountMetasAndSigners,
+} from '../shared';
 
 // Accounts.
 export type EndSaleInstructionAccounts = {
-      /** Gumball machine account. */
-    gumballMachine: PublicKey | Pda;
-      /** Gumball Machine authority. This is the address that controls the upate of the gumball machine. */
-    authority?: Signer;
+  /** Gumball machine account. */
+  gumballMachine: PublicKey | Pda;
+  /** Gumball Machine authority. This is the address that controls the upate of the gumball machine. */
+  authority?: Signer;
 };
 
-  // Data.
-  export type EndSaleInstructionData = { discriminator: Uint8Array;  };
+// Data.
+export type EndSaleInstructionData = { discriminator: Uint8Array };
 
-export type EndSaleInstructionDataArgs = {  };
+export type EndSaleInstructionDataArgs = {};
 
-
-  export function getEndSaleInstructionDataSerializer(): Serializer<EndSaleInstructionDataArgs, EndSaleInstructionData> {
-  return mapSerializer<EndSaleInstructionDataArgs, any, EndSaleInstructionData>(struct<EndSaleInstructionData>([['discriminator', bytes({ size: 8 })]], { description: 'EndSaleInstructionData' }), (value) => ({ ...value, discriminator: new Uint8Array([37, 239, 52, 17, 120, 44, 213, 125]) }) ) as Serializer<EndSaleInstructionDataArgs, EndSaleInstructionData>;
+export function getEndSaleInstructionDataSerializer(): Serializer<
+  EndSaleInstructionDataArgs,
+  EndSaleInstructionData
+> {
+  return mapSerializer<EndSaleInstructionDataArgs, any, EndSaleInstructionData>(
+    struct<EndSaleInstructionData>([['discriminator', bytes({ size: 8 })]], {
+      description: 'EndSaleInstructionData',
+    }),
+    (value) => ({
+      ...value,
+      discriminator: new Uint8Array([37, 239, 52, 17, 120, 44, 213, 125]),
+    })
+  ) as Serializer<EndSaleInstructionDataArgs, EndSaleInstructionData>;
 }
-
-
-
 
 // Instruction.
 export function endSale(
-  context: Pick<Context, "identity" | "programs">,
-                        input: EndSaleInstructionAccounts,
-      ): TransactionBuilder {
+  context: Pick<Context, 'identity' | 'programs'>,
+  input: EndSaleInstructionAccounts
+): TransactionBuilder {
   // Program ID.
-  const programId = context.programs.getPublicKey('mallowGumball', 'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa');
+  const programId = context.programs.getPublicKey(
+    'mallowGumball',
+    'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa'
+  );
 
   // Accounts.
   const resolvedAccounts = {
-          gumballMachine: { index: 0, isWritable: true as boolean, value: input.gumballMachine ?? null },
-          authority: { index: 1, isWritable: true as boolean, value: input.authority ?? null },
-      } satisfies ResolvedAccountsWithIndices;
+    gumballMachine: {
+      index: 0,
+      isWritable: true as boolean,
+      value: input.gumballMachine ?? null,
+    },
+    authority: {
+      index: 1,
+      isWritable: true as boolean,
+      value: input.authority ?? null,
+    },
+  } satisfies ResolvedAccountsWithIndices;
 
-  
-    // Default values.
+  // Default values.
   if (!resolvedAccounts.authority.value) {
-        resolvedAccounts.authority.value = context.identity;
-      }
-      
+    resolvedAccounts.authority.value = context.identity;
+  }
+
   // Accounts in order.
-      const orderedAccounts: ResolvedAccount[] = Object.values(resolvedAccounts).sort((a,b) => a.index - b.index);
-  
-  
+  const orderedAccounts: ResolvedAccount[] = Object.values(
+    resolvedAccounts
+  ).sort((a, b) => a.index - b.index);
+
   // Keys and Signers.
-  const [keys, signers] = getAccountMetasAndSigners(orderedAccounts, "programId", programId);
+  const [keys, signers] = getAccountMetasAndSigners(
+    orderedAccounts,
+    'programId',
+    programId
+  );
 
   // Data.
-      const data = getEndSaleInstructionDataSerializer().serialize({});
-  
+  const data = getEndSaleInstructionDataSerializer().serialize({});
+
   // Bytes Created On Chain.
-      const bytesCreatedOnChain = 0;
-  
-  return transactionBuilder([{ instruction: { keys, programId, data }, signers, bytesCreatedOnChain }]);
+  const bytesCreatedOnChain = 0;
+
+  return transactionBuilder([
+    { instruction: { keys, programId, data }, signers, bytesCreatedOnChain },
+  ]);
 }

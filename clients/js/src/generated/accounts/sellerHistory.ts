@@ -6,44 +6,93 @@
  * @see https://github.com/codama-idl/codama
  */
 
-import { Account, Context, Pda, PublicKey, RpcAccount, RpcGetAccountOptions, RpcGetAccountsOptions, assertAccountExists, deserializeAccount, gpaBuilder, publicKey as toPublicKey } from '@metaplex-foundation/umi';
-import { Serializer, bytes, mapSerializer, publicKey as publicKeySerializer, string, struct, u64 } from '@metaplex-foundation/umi/serializers';
+import {
+  Account,
+  Context,
+  Pda,
+  PublicKey,
+  RpcAccount,
+  RpcGetAccountOptions,
+  RpcGetAccountsOptions,
+  assertAccountExists,
+  deserializeAccount,
+  gpaBuilder,
+  publicKey as toPublicKey,
+} from '@metaplex-foundation/umi';
+import {
+  Serializer,
+  bytes,
+  mapSerializer,
+  publicKey as publicKeySerializer,
+  string,
+  struct,
+  u64,
+} from '@metaplex-foundation/umi/serializers';
 
-  
-  export type SellerHistory = Account<SellerHistoryAccountData>;
+export type SellerHistory = Account<SellerHistoryAccountData>;
 
-  export type SellerHistoryAccountData = { discriminator: Uint8Array; 
-/** Gumball machine we're tracking for */
-gumballMachine: PublicKey; 
-/** Seller address */
-seller: PublicKey; 
-/** Item count submitted by this seller */
-itemCount: bigint;  };
+export type SellerHistoryAccountData = {
+  discriminator: Uint8Array;
+  /** Gumball machine we're tracking for */
+  gumballMachine: PublicKey;
+  /** Seller address */
+  seller: PublicKey;
+  /** Item count submitted by this seller */
+  itemCount: bigint;
+};
 
-export type SellerHistoryAccountDataArgs = { 
-/** Gumball machine we're tracking for */
-gumballMachine: PublicKey; 
-/** Seller address */
-seller: PublicKey; 
-/** Item count submitted by this seller */
-itemCount: number | bigint;  };
+export type SellerHistoryAccountDataArgs = {
+  /** Gumball machine we're tracking for */
+  gumballMachine: PublicKey;
+  /** Seller address */
+  seller: PublicKey;
+  /** Item count submitted by this seller */
+  itemCount: number | bigint;
+};
 
-
-  export function getSellerHistoryAccountDataSerializer(): Serializer<SellerHistoryAccountDataArgs, SellerHistoryAccountData> {
-  return mapSerializer<SellerHistoryAccountDataArgs, any, SellerHistoryAccountData>(struct<SellerHistoryAccountData>([['discriminator', bytes({ size: 8 })], ['gumballMachine', publicKeySerializer()], ['seller', publicKeySerializer()], ['itemCount', u64()]], { description: 'SellerHistoryAccountData' }), (value) => ({ ...value, discriminator: new Uint8Array([88, 76, 98, 176, 228, 154, 34, 164]) }) ) as Serializer<SellerHistoryAccountDataArgs, SellerHistoryAccountData>;
+export function getSellerHistoryAccountDataSerializer(): Serializer<
+  SellerHistoryAccountDataArgs,
+  SellerHistoryAccountData
+> {
+  return mapSerializer<
+    SellerHistoryAccountDataArgs,
+    any,
+    SellerHistoryAccountData
+  >(
+    struct<SellerHistoryAccountData>(
+      [
+        ['discriminator', bytes({ size: 8 })],
+        ['gumballMachine', publicKeySerializer()],
+        ['seller', publicKeySerializer()],
+        ['itemCount', u64()],
+      ],
+      { description: 'SellerHistoryAccountData' }
+    ),
+    (value) => ({
+      ...value,
+      discriminator: new Uint8Array([88, 76, 98, 176, 228, 154, 34, 164]),
+    })
+  ) as Serializer<SellerHistoryAccountDataArgs, SellerHistoryAccountData>;
 }
 
-
-export function deserializeSellerHistory(rawAccount: RpcAccount): SellerHistory {
-  return deserializeAccount(rawAccount, getSellerHistoryAccountDataSerializer());
+export function deserializeSellerHistory(
+  rawAccount: RpcAccount
+): SellerHistory {
+  return deserializeAccount(
+    rawAccount,
+    getSellerHistoryAccountDataSerializer()
+  );
 }
 
 export async function fetchSellerHistory(
   context: Pick<Context, 'rpc'>,
   publicKey: PublicKey | Pda,
-  options?: RpcGetAccountOptions,
+  options?: RpcGetAccountOptions
 ): Promise<SellerHistory> {
-  const maybeAccount = await context.rpc.getAccount(toPublicKey(publicKey, false), options);
+  const maybeAccount = await context.rpc.getAccount(
+    toPublicKey(publicKey, false),
+    options
+  );
   assertAccountExists(maybeAccount, 'SellerHistory');
   return deserializeSellerHistory(maybeAccount);
 }
@@ -51,20 +100,24 @@ export async function fetchSellerHistory(
 export async function safeFetchSellerHistory(
   context: Pick<Context, 'rpc'>,
   publicKey: PublicKey | Pda,
-  options?: RpcGetAccountOptions,
+  options?: RpcGetAccountOptions
 ): Promise<SellerHistory | null> {
-  const maybeAccount = await context.rpc.getAccount(toPublicKey(publicKey, false), options);
-  return maybeAccount.exists
-    ? deserializeSellerHistory(maybeAccount)
-    : null;
+  const maybeAccount = await context.rpc.getAccount(
+    toPublicKey(publicKey, false),
+    options
+  );
+  return maybeAccount.exists ? deserializeSellerHistory(maybeAccount) : null;
 }
 
 export async function fetchAllSellerHistory(
   context: Pick<Context, 'rpc'>,
   publicKeys: Array<PublicKey | Pda>,
-  options?: RpcGetAccountsOptions,
+  options?: RpcGetAccountsOptions
 ): Promise<SellerHistory[]> {
-  const maybeAccounts = await context.rpc.getAccounts(publicKeys.map(key => toPublicKey(key, false)), options);
+  const maybeAccounts = await context.rpc.getAccounts(
+    publicKeys.map((key) => toPublicKey(key, false)),
+    options
+  );
   return maybeAccounts.map((maybeAccount) => {
     assertAccountExists(maybeAccount, 'SellerHistory');
     return deserializeSellerHistory(maybeAccount);
@@ -74,20 +127,45 @@ export async function fetchAllSellerHistory(
 export async function safeFetchAllSellerHistory(
   context: Pick<Context, 'rpc'>,
   publicKeys: Array<PublicKey | Pda>,
-  options?: RpcGetAccountsOptions,
+  options?: RpcGetAccountsOptions
 ): Promise<SellerHistory[]> {
-  const maybeAccounts = await context.rpc.getAccounts(publicKeys.map(key => toPublicKey(key, false)), options);
+  const maybeAccounts = await context.rpc.getAccounts(
+    publicKeys.map((key) => toPublicKey(key, false)),
+    options
+  );
   return maybeAccounts
     .filter((maybeAccount) => maybeAccount.exists)
-    .map((maybeAccount) => deserializeSellerHistory(maybeAccount as RpcAccount));
+    .map((maybeAccount) =>
+      deserializeSellerHistory(maybeAccount as RpcAccount)
+    );
 }
 
-export function getSellerHistoryGpaBuilder(context: Pick<Context, 'rpc' | 'programs'>) {
-  const programId = context.programs.getPublicKey('mallowGumball', 'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa');
+export function getSellerHistoryGpaBuilder(
+  context: Pick<Context, 'rpc' | 'programs'>
+) {
+  const programId = context.programs.getPublicKey(
+    'mallowGumball',
+    'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa'
+  );
   return gpaBuilder(context, programId)
-    .registerFields<{ 'discriminator': Uint8Array, 'gumballMachine': PublicKey, 'seller': PublicKey, 'itemCount': number | bigint }>({ 'discriminator': [0, bytes({ size: 8 })], 'gumballMachine': [8, publicKeySerializer()], 'seller': [40, publicKeySerializer()], 'itemCount': [72, u64()] })
-    .deserializeUsing<SellerHistory>((account) => deserializeSellerHistory(account))      .whereField('discriminator', new Uint8Array([88, 76, 98, 176, 228, 154, 34, 164]))
-    ;
+    .registerFields<{
+      discriminator: Uint8Array;
+      gumballMachine: PublicKey;
+      seller: PublicKey;
+      itemCount: number | bigint;
+    }>({
+      discriminator: [0, bytes({ size: 8 })],
+      gumballMachine: [8, publicKeySerializer()],
+      seller: [40, publicKeySerializer()],
+      itemCount: [72, u64()],
+    })
+    .deserializeUsing<SellerHistory>((account) =>
+      deserializeSellerHistory(account)
+    )
+    .whereField(
+      'discriminator',
+      new Uint8Array([88, 76, 98, 176, 228, 154, 34, 164])
+    );
 }
 
 export function getSellerHistorySize(): number {
@@ -96,33 +174,44 @@ export function getSellerHistorySize(): number {
 
 export function findSellerHistoryPda(
   context: Pick<Context, 'eddsa' | 'programs'>,
-      seeds: {
-                                      /** The address of the Gumball Machine account */
-          gumballMachine: PublicKey;
-                                /** The seller this history is tracking */
-          seller: PublicKey;
-                  }
-  ): Pda {
-  const programId = context.programs.getPublicKey('mallowGumball', 'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa');
+  seeds: {
+    /** The address of the Gumball Machine account */
+    gumballMachine: PublicKey;
+    /** The seller this history is tracking */
+    seller: PublicKey;
+  }
+): Pda {
+  const programId = context.programs.getPublicKey(
+    'mallowGumball',
+    'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa'
+  );
   return context.eddsa.findPda(programId, [
-                  string({ size: 'variable' }).serialize("seller_history"),
-                        publicKeySerializer().serialize(seeds.gumballMachine),
-                        publicKeySerializer().serialize(seeds.seller),
-            ]);
+    string({ size: 'variable' }).serialize('seller_history'),
+    publicKeySerializer().serialize(seeds.gumballMachine),
+    publicKeySerializer().serialize(seeds.seller),
+  ]);
 }
 
 export async function fetchSellerHistoryFromSeeds(
   context: Pick<Context, 'eddsa' | 'programs' | 'rpc'>,
-      seeds: Parameters<typeof findSellerHistoryPda>[1],
-    options?: RpcGetAccountOptions,
+  seeds: Parameters<typeof findSellerHistoryPda>[1],
+  options?: RpcGetAccountOptions
 ): Promise<SellerHistory> {
-  return fetchSellerHistory(context, findSellerHistoryPda(context, seeds), options);
+  return fetchSellerHistory(
+    context,
+    findSellerHistoryPda(context, seeds),
+    options
+  );
 }
 
 export async function safeFetchSellerHistoryFromSeeds(
   context: Pick<Context, 'eddsa' | 'programs' | 'rpc'>,
-      seeds: Parameters<typeof findSellerHistoryPda>[1],
-    options?: RpcGetAccountOptions,
+  seeds: Parameters<typeof findSellerHistoryPda>[1],
+  options?: RpcGetAccountOptions
 ): Promise<SellerHistory | null> {
-  return safeFetchSellerHistory(context, findSellerHistoryPda(context, seeds), options);
+  return safeFetchSellerHistory(
+    context,
+    findSellerHistoryPda(context, seeds),
+    options
+  );
 }

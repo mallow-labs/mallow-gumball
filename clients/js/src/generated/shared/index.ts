@@ -6,19 +6,28 @@
  * @see https://github.com/codama-idl/codama
  */
 
-import { AccountMeta, isSigner, Pda, publicKey, PublicKey, Signer, isPda } from '@metaplex-foundation/umi';
+import {
+  AccountMeta,
+  isPda,
+  isSigner,
+  Pda,
+  publicKey,
+  PublicKey,
+  Signer,
+} from '@metaplex-foundation/umi';
 
 /**
  * Transforms the given object such that the given keys are optional.
  * @internal
  */
-export type PickPartial<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
+export type PickPartial<T, K extends keyof T> = Omit<T, K> &
+  Partial<Pick<T, K>>;
 
 /**
  * Asserts that the given value is not null or undefined.
  * @internal
  */
-export function expectSome<T> (value: T | null | undefined): T {
+export function expectSome<T>(value: T | null | undefined): T {
   if (value == null) {
     throw new Error('Expected a value but received null or undefined.');
   }
@@ -55,7 +64,10 @@ export function expectPda(
  * Defines an instruction account to resolve.
  * @internal
  */
-export type ResolvedAccount<T = PublicKey | Pda | Signer | null> = { isWritable: boolean; value: T; }
+export type ResolvedAccount<T = PublicKey | Pda | Signer | null> = {
+  isWritable: boolean;
+  value: T;
+};
 
 /**
  * Defines a set of instruction account to resolve.
@@ -67,7 +79,10 @@ export type ResolvedAccounts = Record<string, ResolvedAccount>;
  * Defines a set of instruction account to resolve with their indices.
  * @internal
  */
-export type ResolvedAccountsWithIndices = Record<string, ResolvedAccount & { index: number }>;
+export type ResolvedAccountsWithIndices = Record<
+  string,
+  ResolvedAccount & { index: number }
+>;
 
 /**
  * Get account metas and signers from resolved accounts.
@@ -76,12 +91,12 @@ export type ResolvedAccountsWithIndices = Record<string, ResolvedAccount & { ind
 export function getAccountMetasAndSigners(
   accounts: ResolvedAccount[],
   optionalAccountStrategy: 'omitted' | 'programId',
-  programId: PublicKey,
+  programId: PublicKey
 ): [AccountMeta[], Signer[]] {
   const keys: AccountMeta[] = [];
   const signers: Signer[] = [];
 
-  accounts.forEach(account => {
+  accounts.forEach((account) => {
     if (!account.value) {
       if (optionalAccountStrategy === 'omitted') return;
       keys.push({ pubkey: programId, isSigner: false, isWritable: false });
@@ -99,4 +114,4 @@ export function getAccountMetasAndSigners(
   });
 
   return [keys, signers];
-};
+}

@@ -6,73 +6,128 @@
  * @see https://github.com/codama-idl/codama
  */
 
-import { Context, Pda, PublicKey, Signer, TransactionBuilder, publicKey, transactionBuilder } from '@metaplex-foundation/umi';
-import { Serializer, bytes, mapSerializer, struct } from '@metaplex-foundation/umi/serializers';
-import { ResolvedAccount, ResolvedAccountsWithIndices, getAccountMetasAndSigners } from '../shared';
+import {
+  Context,
+  Pda,
+  PublicKey,
+  Signer,
+  TransactionBuilder,
+  publicKey,
+  transactionBuilder,
+} from '@metaplex-foundation/umi';
+import {
+  Serializer,
+  bytes,
+  mapSerializer,
+  struct,
+} from '@metaplex-foundation/umi/serializers';
+import {
+  ResolvedAccount,
+  ResolvedAccountsWithIndices,
+  getAccountMetasAndSigners,
+} from '../shared';
 
 // Accounts.
 export type UnwrapInstructionAccounts = {
-    gumballGuard: PublicKey | Pda;
-    authority?: Signer;
-    gumballMachine: PublicKey | Pda;
-    gumballMachineAuthority?: Signer;
-    gumballMachineProgram?: PublicKey | Pda;
+  gumballGuard: PublicKey | Pda;
+  authority?: Signer;
+  gumballMachine: PublicKey | Pda;
+  gumballMachineAuthority?: Signer;
+  gumballMachineProgram?: PublicKey | Pda;
 };
 
-  // Data.
-  export type UnwrapInstructionData = { discriminator: Uint8Array;  };
+// Data.
+export type UnwrapInstructionData = { discriminator: Uint8Array };
 
-export type UnwrapInstructionDataArgs = {  };
+export type UnwrapInstructionDataArgs = {};
 
-
-  export function getUnwrapInstructionDataSerializer(): Serializer<UnwrapInstructionDataArgs, UnwrapInstructionData> {
-  return mapSerializer<UnwrapInstructionDataArgs, any, UnwrapInstructionData>(struct<UnwrapInstructionData>([['discriminator', bytes({ size: 8 })]], { description: 'UnwrapInstructionData' }), (value) => ({ ...value, discriminator: new Uint8Array([126, 175, 198, 14, 212, 69, 50, 44]) }) ) as Serializer<UnwrapInstructionDataArgs, UnwrapInstructionData>;
+export function getUnwrapInstructionDataSerializer(): Serializer<
+  UnwrapInstructionDataArgs,
+  UnwrapInstructionData
+> {
+  return mapSerializer<UnwrapInstructionDataArgs, any, UnwrapInstructionData>(
+    struct<UnwrapInstructionData>([['discriminator', bytes({ size: 8 })]], {
+      description: 'UnwrapInstructionData',
+    }),
+    (value) => ({
+      ...value,
+      discriminator: new Uint8Array([126, 175, 198, 14, 212, 69, 50, 44]),
+    })
+  ) as Serializer<UnwrapInstructionDataArgs, UnwrapInstructionData>;
 }
-
-
-
 
 // Instruction.
 export function unwrap(
-  context: Pick<Context, "identity" | "programs">,
-                        input: UnwrapInstructionAccounts,
-      ): TransactionBuilder {
+  context: Pick<Context, 'identity' | 'programs'>,
+  input: UnwrapInstructionAccounts
+): TransactionBuilder {
   // Program ID.
-  const programId = context.programs.getPublicKey('gumballGuard', 'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF');
+  const programId = context.programs.getPublicKey(
+    'gumballGuard',
+    'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF'
+  );
 
   // Accounts.
   const resolvedAccounts = {
-          gumballGuard: { index: 0, isWritable: false as boolean, value: input.gumballGuard ?? null },
-          authority: { index: 1, isWritable: false as boolean, value: input.authority ?? null },
-          gumballMachine: { index: 2, isWritable: true as boolean, value: input.gumballMachine ?? null },
-          gumballMachineAuthority: { index: 3, isWritable: false as boolean, value: input.gumballMachineAuthority ?? null },
-          gumballMachineProgram: { index: 4, isWritable: false as boolean, value: input.gumballMachineProgram ?? null },
-      } satisfies ResolvedAccountsWithIndices;
+    gumballGuard: {
+      index: 0,
+      isWritable: false as boolean,
+      value: input.gumballGuard ?? null,
+    },
+    authority: {
+      index: 1,
+      isWritable: false as boolean,
+      value: input.authority ?? null,
+    },
+    gumballMachine: {
+      index: 2,
+      isWritable: true as boolean,
+      value: input.gumballMachine ?? null,
+    },
+    gumballMachineAuthority: {
+      index: 3,
+      isWritable: false as boolean,
+      value: input.gumballMachineAuthority ?? null,
+    },
+    gumballMachineProgram: {
+      index: 4,
+      isWritable: false as boolean,
+      value: input.gumballMachineProgram ?? null,
+    },
+  } satisfies ResolvedAccountsWithIndices;
 
-  
-    // Default values.
+  // Default values.
   if (!resolvedAccounts.authority.value) {
-        resolvedAccounts.authority.value = context.identity;
-      }
-      if (!resolvedAccounts.gumballMachineAuthority.value) {
-        resolvedAccounts.gumballMachineAuthority.value = context.identity;
-      }
-      if (!resolvedAccounts.gumballMachineProgram.value) {
-        resolvedAccounts.gumballMachineProgram.value = publicKey('MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa');
-      }
-      
+    resolvedAccounts.authority.value = context.identity;
+  }
+  if (!resolvedAccounts.gumballMachineAuthority.value) {
+    resolvedAccounts.gumballMachineAuthority.value = context.identity;
+  }
+  if (!resolvedAccounts.gumballMachineProgram.value) {
+    resolvedAccounts.gumballMachineProgram.value = publicKey(
+      'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa'
+    );
+  }
+
   // Accounts in order.
-      const orderedAccounts: ResolvedAccount[] = Object.values(resolvedAccounts).sort((a,b) => a.index - b.index);
-  
-  
+  const orderedAccounts: ResolvedAccount[] = Object.values(
+    resolvedAccounts
+  ).sort((a, b) => a.index - b.index);
+
   // Keys and Signers.
-  const [keys, signers] = getAccountMetasAndSigners(orderedAccounts, "programId", programId);
+  const [keys, signers] = getAccountMetasAndSigners(
+    orderedAccounts,
+    'programId',
+    programId
+  );
 
   // Data.
-      const data = getUnwrapInstructionDataSerializer().serialize({});
-  
+  const data = getUnwrapInstructionDataSerializer().serialize({});
+
   // Bytes Created On Chain.
-      const bytesCreatedOnChain = 0;
-  
-  return transactionBuilder([{ instruction: { keys, programId, data }, signers, bytesCreatedOnChain }]);
+  const bytesCreatedOnChain = 0;
+
+  return transactionBuilder([
+    { instruction: { keys, programId, data }, signers, bytesCreatedOnChain },
+  ]);
 }

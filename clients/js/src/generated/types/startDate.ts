@@ -6,17 +6,20 @@
  * @see https://github.com/codama-idl/codama
  */
 
-import { DateTime, DateTimeInput, mapDateTimeSerializer } from '@metaplex-foundation/umi';
+import {
+  DateTime,
+  DateTimeInput,
+  mapDateTimeSerializer,
+} from '@metaplex-foundation/umi';
 import { Serializer, i64, struct } from '@metaplex-foundation/umi/serializers';
 
 /** Guard that sets a specific start date for the mint. */
-export type StartDate = { date: DateTime;  };
+export type StartDate = { date: DateTime };
 
-export type StartDateArgs = { date: DateTimeInput;  };
-
+export type StartDateArgs = { date: DateTimeInput };
 
 export function getStartDateSerializer(): Serializer<StartDateArgs, StartDate> {
-  return struct<StartDate>([['date', mapDateTimeSerializer(i64())]], { description: 'StartDate' }) as Serializer<StartDateArgs, StartDate>;
+  return struct<StartDate>([['date', mapDateTimeSerializer(i64())]], {
+    description: 'StartDate',
+  }) as Serializer<StartDateArgs, StartDate>;
 }
-
-

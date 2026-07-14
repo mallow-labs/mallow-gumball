@@ -6,69 +6,130 @@
  * @see https://github.com/codama-idl/codama
  */
 
-import { Context, Pda, PublicKey, Signer, TransactionBuilder, transactionBuilder } from '@metaplex-foundation/umi';
-import { Serializer, bytes, mapSerializer, struct, u64 } from '@metaplex-foundation/umi/serializers';
-import { ResolvedAccount, ResolvedAccountsWithIndices, getAccountMetasAndSigners } from '../shared';
+import {
+  Context,
+  Pda,
+  PublicKey,
+  Signer,
+  TransactionBuilder,
+  transactionBuilder,
+} from '@metaplex-foundation/umi';
+import {
+  Serializer,
+  bytes,
+  mapSerializer,
+  struct,
+  u64,
+} from '@metaplex-foundation/umi/serializers';
+import {
+  ResolvedAccount,
+  ResolvedAccountsWithIndices,
+  getAccountMetasAndSigners,
+} from '../shared';
 
 // Accounts.
 export type IncrementTotalRevenueInstructionAccounts = {
-      /** Gumball machine account. */
-    gumballMachine: PublicKey | Pda;
-      /** Gumball machine mint authority (mint only allowed for the mint_authority). */
-    mintAuthority?: Signer;
+  /** Gumball machine account. */
+  gumballMachine: PublicKey | Pda;
+  /** Gumball machine mint authority (mint only allowed for the mint_authority). */
+  mintAuthority?: Signer;
 };
 
-  // Data.
-  export type IncrementTotalRevenueInstructionData = { discriminator: Uint8Array; revenue: bigint;  };
+// Data.
+export type IncrementTotalRevenueInstructionData = {
+  discriminator: Uint8Array;
+  revenue: bigint;
+};
 
-export type IncrementTotalRevenueInstructionDataArgs = { revenue: number | bigint;  };
+export type IncrementTotalRevenueInstructionDataArgs = {
+  revenue: number | bigint;
+};
 
-
-  export function getIncrementTotalRevenueInstructionDataSerializer(): Serializer<IncrementTotalRevenueInstructionDataArgs, IncrementTotalRevenueInstructionData> {
-  return mapSerializer<IncrementTotalRevenueInstructionDataArgs, any, IncrementTotalRevenueInstructionData>(struct<IncrementTotalRevenueInstructionData>([['discriminator', bytes({ size: 8 })], ['revenue', u64()]], { description: 'IncrementTotalRevenueInstructionData' }), (value) => ({ ...value, discriminator: new Uint8Array([197, 168, 14, 157, 91, 203, 104, 102]) }) ) as Serializer<IncrementTotalRevenueInstructionDataArgs, IncrementTotalRevenueInstructionData>;
+export function getIncrementTotalRevenueInstructionDataSerializer(): Serializer<
+  IncrementTotalRevenueInstructionDataArgs,
+  IncrementTotalRevenueInstructionData
+> {
+  return mapSerializer<
+    IncrementTotalRevenueInstructionDataArgs,
+    any,
+    IncrementTotalRevenueInstructionData
+  >(
+    struct<IncrementTotalRevenueInstructionData>(
+      [
+        ['discriminator', bytes({ size: 8 })],
+        ['revenue', u64()],
+      ],
+      { description: 'IncrementTotalRevenueInstructionData' }
+    ),
+    (value) => ({
+      ...value,
+      discriminator: new Uint8Array([197, 168, 14, 157, 91, 203, 104, 102]),
+    })
+  ) as Serializer<
+    IncrementTotalRevenueInstructionDataArgs,
+    IncrementTotalRevenueInstructionData
+  >;
 }
 
+// Args.
+export type IncrementTotalRevenueInstructionArgs =
+  IncrementTotalRevenueInstructionDataArgs;
 
-
-  
-  // Args.
-      export type IncrementTotalRevenueInstructionArgs =           IncrementTotalRevenueInstructionDataArgs
-      ;
-  
 // Instruction.
 export function incrementTotalRevenue(
-  context: Pick<Context, "identity" | "programs">,
-                        input: IncrementTotalRevenueInstructionAccounts & IncrementTotalRevenueInstructionArgs,
-      ): TransactionBuilder {
+  context: Pick<Context, 'identity' | 'programs'>,
+  input: IncrementTotalRevenueInstructionAccounts &
+    IncrementTotalRevenueInstructionArgs
+): TransactionBuilder {
   // Program ID.
-  const programId = context.programs.getPublicKey('mallowGumball', 'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa');
+  const programId = context.programs.getPublicKey(
+    'mallowGumball',
+    'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa'
+  );
 
   // Accounts.
   const resolvedAccounts = {
-          gumballMachine: { index: 0, isWritable: true as boolean, value: input.gumballMachine ?? null },
-          mintAuthority: { index: 1, isWritable: false as boolean, value: input.mintAuthority ?? null },
-      } satisfies ResolvedAccountsWithIndices;
+    gumballMachine: {
+      index: 0,
+      isWritable: true as boolean,
+      value: input.gumballMachine ?? null,
+    },
+    mintAuthority: {
+      index: 1,
+      isWritable: false as boolean,
+      value: input.mintAuthority ?? null,
+    },
+  } satisfies ResolvedAccountsWithIndices;
 
-      // Arguments.
-    const resolvedArgs: IncrementTotalRevenueInstructionArgs = { ...input };
-  
-    // Default values.
+  // Arguments.
+  const resolvedArgs: IncrementTotalRevenueInstructionArgs = { ...input };
+
+  // Default values.
   if (!resolvedAccounts.mintAuthority.value) {
-        resolvedAccounts.mintAuthority.value = context.identity;
-      }
-      
+    resolvedAccounts.mintAuthority.value = context.identity;
+  }
+
   // Accounts in order.
-      const orderedAccounts: ResolvedAccount[] = Object.values(resolvedAccounts).sort((a,b) => a.index - b.index);
-  
-  
+  const orderedAccounts: ResolvedAccount[] = Object.values(
+    resolvedAccounts
+  ).sort((a, b) => a.index - b.index);
+
   // Keys and Signers.
-  const [keys, signers] = getAccountMetasAndSigners(orderedAccounts, "programId", programId);
+  const [keys, signers] = getAccountMetasAndSigners(
+    orderedAccounts,
+    'programId',
+    programId
+  );
 
   // Data.
-      const data = getIncrementTotalRevenueInstructionDataSerializer().serialize(resolvedArgs as IncrementTotalRevenueInstructionDataArgs);
-  
+  const data = getIncrementTotalRevenueInstructionDataSerializer().serialize(
+    resolvedArgs as IncrementTotalRevenueInstructionDataArgs
+  );
+
   // Bytes Created On Chain.
-      const bytesCreatedOnChain = 0;
-  
-  return transactionBuilder([{ instruction: { keys, programId, data }, signers, bytesCreatedOnChain }]);
+  const bytesCreatedOnChain = 0;
+
+  return transactionBuilder([
+    { instruction: { keys, programId, data }, signers, bytesCreatedOnChain },
+  ]);
 }

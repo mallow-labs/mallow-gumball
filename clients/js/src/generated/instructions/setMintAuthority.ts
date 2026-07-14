@@ -6,69 +6,121 @@
  * @see https://github.com/codama-idl/codama
  */
 
-import { Context, Pda, PublicKey, Signer, TransactionBuilder, transactionBuilder } from '@metaplex-foundation/umi';
-import { Serializer, bytes, mapSerializer, struct } from '@metaplex-foundation/umi/serializers';
-import { ResolvedAccount, ResolvedAccountsWithIndices, getAccountMetasAndSigners } from '../shared';
+import {
+  Context,
+  Pda,
+  PublicKey,
+  Signer,
+  TransactionBuilder,
+  transactionBuilder,
+} from '@metaplex-foundation/umi';
+import {
+  Serializer,
+  bytes,
+  mapSerializer,
+  struct,
+} from '@metaplex-foundation/umi/serializers';
+import {
+  ResolvedAccount,
+  ResolvedAccountsWithIndices,
+  getAccountMetasAndSigners,
+} from '../shared';
 
 // Accounts.
 export type SetMintAuthorityInstructionAccounts = {
-      /** Gumball Machine account. */
-    gumballMachine: PublicKey | Pda;
-      /** Gumball Machine authority */
-    authority?: Signer;
-      /** New gumball machine authority */
-    mintAuthority?: Signer;
+  /** Gumball Machine account. */
+  gumballMachine: PublicKey | Pda;
+  /** Gumball Machine authority */
+  authority?: Signer;
+  /** New gumball machine authority */
+  mintAuthority?: Signer;
 };
 
-  // Data.
-  export type SetMintAuthorityInstructionData = { discriminator: Uint8Array;  };
+// Data.
+export type SetMintAuthorityInstructionData = { discriminator: Uint8Array };
 
-export type SetMintAuthorityInstructionDataArgs = {  };
+export type SetMintAuthorityInstructionDataArgs = {};
 
-
-  export function getSetMintAuthorityInstructionDataSerializer(): Serializer<SetMintAuthorityInstructionDataArgs, SetMintAuthorityInstructionData> {
-  return mapSerializer<SetMintAuthorityInstructionDataArgs, any, SetMintAuthorityInstructionData>(struct<SetMintAuthorityInstructionData>([['discriminator', bytes({ size: 8 })]], { description: 'SetMintAuthorityInstructionData' }), (value) => ({ ...value, discriminator: new Uint8Array([67, 127, 155, 187, 100, 174, 103, 121]) }) ) as Serializer<SetMintAuthorityInstructionDataArgs, SetMintAuthorityInstructionData>;
+export function getSetMintAuthorityInstructionDataSerializer(): Serializer<
+  SetMintAuthorityInstructionDataArgs,
+  SetMintAuthorityInstructionData
+> {
+  return mapSerializer<
+    SetMintAuthorityInstructionDataArgs,
+    any,
+    SetMintAuthorityInstructionData
+  >(
+    struct<SetMintAuthorityInstructionData>(
+      [['discriminator', bytes({ size: 8 })]],
+      { description: 'SetMintAuthorityInstructionData' }
+    ),
+    (value) => ({
+      ...value,
+      discriminator: new Uint8Array([67, 127, 155, 187, 100, 174, 103, 121]),
+    })
+  ) as Serializer<
+    SetMintAuthorityInstructionDataArgs,
+    SetMintAuthorityInstructionData
+  >;
 }
-
-
-
 
 // Instruction.
 export function setMintAuthority(
-  context: Pick<Context, "identity" | "programs">,
-                        input: SetMintAuthorityInstructionAccounts,
-      ): TransactionBuilder {
+  context: Pick<Context, 'identity' | 'programs'>,
+  input: SetMintAuthorityInstructionAccounts
+): TransactionBuilder {
   // Program ID.
-  const programId = context.programs.getPublicKey('mallowGumball', 'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa');
+  const programId = context.programs.getPublicKey(
+    'mallowGumball',
+    'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa'
+  );
 
   // Accounts.
   const resolvedAccounts = {
-          gumballMachine: { index: 0, isWritable: true as boolean, value: input.gumballMachine ?? null },
-          authority: { index: 1, isWritable: false as boolean, value: input.authority ?? null },
-          mintAuthority: { index: 2, isWritable: false as boolean, value: input.mintAuthority ?? null },
-      } satisfies ResolvedAccountsWithIndices;
+    gumballMachine: {
+      index: 0,
+      isWritable: true as boolean,
+      value: input.gumballMachine ?? null,
+    },
+    authority: {
+      index: 1,
+      isWritable: false as boolean,
+      value: input.authority ?? null,
+    },
+    mintAuthority: {
+      index: 2,
+      isWritable: false as boolean,
+      value: input.mintAuthority ?? null,
+    },
+  } satisfies ResolvedAccountsWithIndices;
 
-  
-    // Default values.
+  // Default values.
   if (!resolvedAccounts.authority.value) {
-        resolvedAccounts.authority.value = context.identity;
-      }
-      if (!resolvedAccounts.mintAuthority.value) {
-        resolvedAccounts.mintAuthority.value = context.identity;
-      }
-      
+    resolvedAccounts.authority.value = context.identity;
+  }
+  if (!resolvedAccounts.mintAuthority.value) {
+    resolvedAccounts.mintAuthority.value = context.identity;
+  }
+
   // Accounts in order.
-      const orderedAccounts: ResolvedAccount[] = Object.values(resolvedAccounts).sort((a,b) => a.index - b.index);
-  
-  
+  const orderedAccounts: ResolvedAccount[] = Object.values(
+    resolvedAccounts
+  ).sort((a, b) => a.index - b.index);
+
   // Keys and Signers.
-  const [keys, signers] = getAccountMetasAndSigners(orderedAccounts, "programId", programId);
+  const [keys, signers] = getAccountMetasAndSigners(
+    orderedAccounts,
+    'programId',
+    programId
+  );
 
   // Data.
-      const data = getSetMintAuthorityInstructionDataSerializer().serialize({});
-  
+  const data = getSetMintAuthorityInstructionDataSerializer().serialize({});
+
   // Bytes Created On Chain.
-      const bytesCreatedOnChain = 0;
-  
-  return transactionBuilder([{ instruction: { keys, programId, data }, signers, bytesCreatedOnChain }]);
+  const bytesCreatedOnChain = 0;
+
+  return transactionBuilder([
+    { instruction: { keys, programId, data }, signers, bytesCreatedOnChain },
+  ]);
 }

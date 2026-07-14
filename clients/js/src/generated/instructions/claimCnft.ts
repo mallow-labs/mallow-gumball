@@ -6,128 +6,253 @@
  * @see https://github.com/codama-idl/codama
  */
 
-import { Context, Pda, PublicKey, Signer, TransactionBuilder, publicKey, transactionBuilder } from '@metaplex-foundation/umi';
-import { Serializer, bytes, mapSerializer, struct, u32 } from '@metaplex-foundation/umi/serializers';
-import { findEventAuthorityPda, findGumballMachineAuthorityPda } from '../../hooked';
-import { ResolvedAccount, ResolvedAccountsWithIndices, expectPublicKey, getAccountMetasAndSigners } from '../shared';
+import {
+  Context,
+  Pda,
+  PublicKey,
+  Signer,
+  TransactionBuilder,
+  publicKey,
+  transactionBuilder,
+} from '@metaplex-foundation/umi';
+import {
+  Serializer,
+  bytes,
+  mapSerializer,
+  struct,
+  u32,
+} from '@metaplex-foundation/umi/serializers';
+import {
+  findEventAuthorityPda,
+  findGumballMachineAuthorityPda,
+} from '../../hooked';
+import {
+  ResolvedAccount,
+  ResolvedAccountsWithIndices,
+  expectPublicKey,
+  getAccountMetasAndSigners,
+} from '../shared';
 import { CnftArgs, CnftArgsArgs, getCnftArgsSerializer } from '../types';
 
 // Accounts.
 export type ClaimCnftInstructionAccounts = {
-      /** Anyone can claim the item for the recorded buyer. */
-    payer?: Signer;
-      /** Gumball machine account. */
-    gumballMachine: PublicKey | Pda;
-    authorityPda?: PublicKey | Pda;
-      /** Seller of the cNFT. */
-    seller: PublicKey | Pda;
-      /** Buyer of the cNFT (recorded at draw). Receives the leaf. */
-    buyer?: PublicKey | Pda;
-    treeConfig: PublicKey | Pda;
-      /**
- * `assert_config_line` (which compares the derived asset id to the stored
- * config-line mint).
- */
+  /** Anyone can claim the item for the recorded buyer. */
+  payer?: Signer;
+  /** Gumball machine account. */
+  gumballMachine: PublicKey | Pda;
+  authorityPda?: PublicKey | Pda;
+  /** Seller of the cNFT. */
+  seller: PublicKey | Pda;
+  /** Buyer of the cNFT (recorded at draw). Receives the leaf. */
+  buyer?: PublicKey | Pda;
+  treeConfig: PublicKey | Pda;
+  /**
+   * `assert_config_line` (which compares the derived asset id to the stored
+   * config-line mint).
+   */
 
-    merkleTree: PublicKey | Pda;
-    logWrapper?: PublicKey | Pda;
-    compressionProgram?: PublicKey | Pda;
-    bubblegumProgram?: PublicKey | Pda;
-    systemProgram?: PublicKey | Pda;
-    eventAuthority?: PublicKey | Pda;
-    program?: PublicKey | Pda;
+  merkleTree: PublicKey | Pda;
+  logWrapper?: PublicKey | Pda;
+  compressionProgram?: PublicKey | Pda;
+  bubblegumProgram?: PublicKey | Pda;
+  systemProgram?: PublicKey | Pda;
+  eventAuthority?: PublicKey | Pda;
+  program?: PublicKey | Pda;
 };
 
-  // Data.
-  export type ClaimCnftInstructionData = { discriminator: Uint8Array; index: number; args: CnftArgs;  };
+// Data.
+export type ClaimCnftInstructionData = {
+  discriminator: Uint8Array;
+  index: number;
+  args: CnftArgs;
+};
 
-export type ClaimCnftInstructionDataArgs = { index: number; args: CnftArgsArgs;  };
+export type ClaimCnftInstructionDataArgs = {
+  index: number;
+  args: CnftArgsArgs;
+};
 
-
-  export function getClaimCnftInstructionDataSerializer(): Serializer<ClaimCnftInstructionDataArgs, ClaimCnftInstructionData> {
-  return mapSerializer<ClaimCnftInstructionDataArgs, any, ClaimCnftInstructionData>(struct<ClaimCnftInstructionData>([['discriminator', bytes({ size: 8 })], ['index', u32()], ['args', getCnftArgsSerializer()]], { description: 'ClaimCnftInstructionData' }), (value) => ({ ...value, discriminator: new Uint8Array([30, 220, 189, 5, 230, 95, 4, 131]) }) ) as Serializer<ClaimCnftInstructionDataArgs, ClaimCnftInstructionData>;
+export function getClaimCnftInstructionDataSerializer(): Serializer<
+  ClaimCnftInstructionDataArgs,
+  ClaimCnftInstructionData
+> {
+  return mapSerializer<
+    ClaimCnftInstructionDataArgs,
+    any,
+    ClaimCnftInstructionData
+  >(
+    struct<ClaimCnftInstructionData>(
+      [
+        ['discriminator', bytes({ size: 8 })],
+        ['index', u32()],
+        ['args', getCnftArgsSerializer()],
+      ],
+      { description: 'ClaimCnftInstructionData' }
+    ),
+    (value) => ({
+      ...value,
+      discriminator: new Uint8Array([30, 220, 189, 5, 230, 95, 4, 131]),
+    })
+  ) as Serializer<ClaimCnftInstructionDataArgs, ClaimCnftInstructionData>;
 }
 
+// Args.
+export type ClaimCnftInstructionArgs = ClaimCnftInstructionDataArgs;
 
-
-  
-  // Args.
-      export type ClaimCnftInstructionArgs =           ClaimCnftInstructionDataArgs
-      ;
-  
 // Instruction.
 export function claimCnft(
-  context: Pick<Context, "eddsa" | "identity" | "payer" | "programs">,
-                        input: ClaimCnftInstructionAccounts & ClaimCnftInstructionArgs,
-      ): TransactionBuilder {
+  context: Pick<Context, 'eddsa' | 'identity' | 'payer' | 'programs'>,
+  input: ClaimCnftInstructionAccounts & ClaimCnftInstructionArgs
+): TransactionBuilder {
   // Program ID.
-  const programId = context.programs.getPublicKey('mallowGumball', 'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa');
+  const programId = context.programs.getPublicKey(
+    'mallowGumball',
+    'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa'
+  );
 
   // Accounts.
   const resolvedAccounts = {
-          payer: { index: 0, isWritable: true as boolean, value: input.payer ?? null },
-          gumballMachine: { index: 1, isWritable: true as boolean, value: input.gumballMachine ?? null },
-          authorityPda: { index: 2, isWritable: true as boolean, value: input.authorityPda ?? null },
-          seller: { index: 3, isWritable: false as boolean, value: input.seller ?? null },
-          buyer: { index: 4, isWritable: true as boolean, value: input.buyer ?? null },
-          treeConfig: { index: 5, isWritable: false as boolean, value: input.treeConfig ?? null },
-          merkleTree: { index: 6, isWritable: true as boolean, value: input.merkleTree ?? null },
-          logWrapper: { index: 7, isWritable: false as boolean, value: input.logWrapper ?? null },
-          compressionProgram: { index: 8, isWritable: false as boolean, value: input.compressionProgram ?? null },
-          bubblegumProgram: { index: 9, isWritable: false as boolean, value: input.bubblegumProgram ?? null },
-          systemProgram: { index: 10, isWritable: false as boolean, value: input.systemProgram ?? null },
-          eventAuthority: { index: 11, isWritable: false as boolean, value: input.eventAuthority ?? null },
-          program: { index: 12, isWritable: false as boolean, value: input.program ?? null },
-      } satisfies ResolvedAccountsWithIndices;
+    payer: {
+      index: 0,
+      isWritable: true as boolean,
+      value: input.payer ?? null,
+    },
+    gumballMachine: {
+      index: 1,
+      isWritable: true as boolean,
+      value: input.gumballMachine ?? null,
+    },
+    authorityPda: {
+      index: 2,
+      isWritable: true as boolean,
+      value: input.authorityPda ?? null,
+    },
+    seller: {
+      index: 3,
+      isWritable: false as boolean,
+      value: input.seller ?? null,
+    },
+    buyer: {
+      index: 4,
+      isWritable: true as boolean,
+      value: input.buyer ?? null,
+    },
+    treeConfig: {
+      index: 5,
+      isWritable: false as boolean,
+      value: input.treeConfig ?? null,
+    },
+    merkleTree: {
+      index: 6,
+      isWritable: true as boolean,
+      value: input.merkleTree ?? null,
+    },
+    logWrapper: {
+      index: 7,
+      isWritable: false as boolean,
+      value: input.logWrapper ?? null,
+    },
+    compressionProgram: {
+      index: 8,
+      isWritable: false as boolean,
+      value: input.compressionProgram ?? null,
+    },
+    bubblegumProgram: {
+      index: 9,
+      isWritable: false as boolean,
+      value: input.bubblegumProgram ?? null,
+    },
+    systemProgram: {
+      index: 10,
+      isWritable: false as boolean,
+      value: input.systemProgram ?? null,
+    },
+    eventAuthority: {
+      index: 11,
+      isWritable: false as boolean,
+      value: input.eventAuthority ?? null,
+    },
+    program: {
+      index: 12,
+      isWritable: false as boolean,
+      value: input.program ?? null,
+    },
+  } satisfies ResolvedAccountsWithIndices;
 
-      // Arguments.
-    const resolvedArgs: ClaimCnftInstructionArgs = { ...input };
-  
-    // Default values.
+  // Arguments.
+  const resolvedArgs: ClaimCnftInstructionArgs = { ...input };
+
+  // Default values.
   if (!resolvedAccounts.payer.value) {
-        resolvedAccounts.payer.value = context.payer;
-      }
-      if (!resolvedAccounts.authorityPda.value) {
-        resolvedAccounts.authorityPda.value = findGumballMachineAuthorityPda(context, { gumballMachine: expectPublicKey(resolvedAccounts.gumballMachine.value) });
-      }
-      if (!resolvedAccounts.buyer.value) {
-        resolvedAccounts.buyer.value = context.identity.publicKey;
-      }
-      if (!resolvedAccounts.logWrapper.value) {
-        resolvedAccounts.logWrapper.value = context.programs.getPublicKey('logWrapper', 'noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV');
-resolvedAccounts.logWrapper.isWritable = false
-      }
-      if (!resolvedAccounts.compressionProgram.value) {
-        resolvedAccounts.compressionProgram.value = context.programs.getPublicKey('compressionProgram', 'cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK');
-resolvedAccounts.compressionProgram.isWritable = false
-      }
-      if (!resolvedAccounts.bubblegumProgram.value) {
-        resolvedAccounts.bubblegumProgram.value = context.programs.getPublicKey('bubblegumProgram', 'BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY');
-resolvedAccounts.bubblegumProgram.isWritable = false
-      }
-      if (!resolvedAccounts.systemProgram.value) {
-        resolvedAccounts.systemProgram.value = context.programs.getPublicKey('systemProgram', '11111111111111111111111111111111');
-resolvedAccounts.systemProgram.isWritable = false
-      }
-      if (!resolvedAccounts.eventAuthority.value) {
-        resolvedAccounts.eventAuthority.value = findEventAuthorityPda(context);
-      }
-      if (!resolvedAccounts.program.value) {
-        resolvedAccounts.program.value = publicKey('MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa');
-      }
-      
+    resolvedAccounts.payer.value = context.payer;
+  }
+  if (!resolvedAccounts.authorityPda.value) {
+    resolvedAccounts.authorityPda.value = findGumballMachineAuthorityPda(
+      context,
+      { gumballMachine: expectPublicKey(resolvedAccounts.gumballMachine.value) }
+    );
+  }
+  if (!resolvedAccounts.buyer.value) {
+    resolvedAccounts.buyer.value = context.identity.publicKey;
+  }
+  if (!resolvedAccounts.logWrapper.value) {
+    resolvedAccounts.logWrapper.value = context.programs.getPublicKey(
+      'logWrapper',
+      'noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV'
+    );
+    resolvedAccounts.logWrapper.isWritable = false;
+  }
+  if (!resolvedAccounts.compressionProgram.value) {
+    resolvedAccounts.compressionProgram.value = context.programs.getPublicKey(
+      'compressionProgram',
+      'cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK'
+    );
+    resolvedAccounts.compressionProgram.isWritable = false;
+  }
+  if (!resolvedAccounts.bubblegumProgram.value) {
+    resolvedAccounts.bubblegumProgram.value = context.programs.getPublicKey(
+      'bubblegumProgram',
+      'BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY'
+    );
+    resolvedAccounts.bubblegumProgram.isWritable = false;
+  }
+  if (!resolvedAccounts.systemProgram.value) {
+    resolvedAccounts.systemProgram.value = context.programs.getPublicKey(
+      'systemProgram',
+      '11111111111111111111111111111111'
+    );
+    resolvedAccounts.systemProgram.isWritable = false;
+  }
+  if (!resolvedAccounts.eventAuthority.value) {
+    resolvedAccounts.eventAuthority.value = findEventAuthorityPda(context);
+  }
+  if (!resolvedAccounts.program.value) {
+    resolvedAccounts.program.value = publicKey(
+      'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa'
+    );
+  }
+
   // Accounts in order.
-      const orderedAccounts: ResolvedAccount[] = Object.values(resolvedAccounts).sort((a,b) => a.index - b.index);
-  
-  
+  const orderedAccounts: ResolvedAccount[] = Object.values(
+    resolvedAccounts
+  ).sort((a, b) => a.index - b.index);
+
   // Keys and Signers.
-  const [keys, signers] = getAccountMetasAndSigners(orderedAccounts, "programId", programId);
+  const [keys, signers] = getAccountMetasAndSigners(
+    orderedAccounts,
+    'programId',
+    programId
+  );
 
   // Data.
-      const data = getClaimCnftInstructionDataSerializer().serialize(resolvedArgs as ClaimCnftInstructionDataArgs);
-  
+  const data = getClaimCnftInstructionDataSerializer().serialize(
+    resolvedArgs as ClaimCnftInstructionDataArgs
+  );
+
   // Bytes Created On Chain.
-      const bytesCreatedOnChain = 0;
-  
-  return transactionBuilder([{ instruction: { keys, programId, data }, signers, bytesCreatedOnChain }]);
+  const bytesCreatedOnChain = 0;
+
+  return transactionBuilder([
+    { instruction: { keys, programId, data }, signers, bytesCreatedOnChain },
+  ]);
 }

@@ -6,78 +6,141 @@
  * @see https://github.com/codama-idl/codama
  */
 
-import { Context, Pda, PublicKey, Signer, TransactionBuilder, publicKey, transactionBuilder } from '@metaplex-foundation/umi';
-import { Serializer, bytes, mapSerializer, struct } from '@metaplex-foundation/umi/serializers';
+import {
+  Context,
+  Pda,
+  PublicKey,
+  Signer,
+  TransactionBuilder,
+  publicKey,
+  transactionBuilder,
+} from '@metaplex-foundation/umi';
+import {
+  Serializer,
+  bytes,
+  mapSerializer,
+  struct,
+} from '@metaplex-foundation/umi/serializers';
 import { findGlobalConfigPda } from '../accounts';
-import { ResolvedAccount, ResolvedAccountsWithIndices, getAccountMetasAndSigners } from '../shared';
+import {
+  ResolvedAccount,
+  ResolvedAccountsWithIndices,
+  getAccountMetasAndSigners,
+} from '../shared';
 
 // Accounts.
 export type CloseAllowlistProofInstructionAccounts = {
-      /** The protocol authority — must match global_config.account_fee_authority and receives rent. */
-    authority?: Signer;
-      /** The GlobalConfig PDA — used to validate the authority. */
-    globalConfig?: PublicKey | Pda;
-      /** The gumball guard that this proof was created under. Must be closed (empty). */
-    gumballGuard: PublicKey | Pda;
-      /** The AllowListProof PDA to close. */
-    allowListProof: PublicKey | Pda;
-    systemProgram?: PublicKey | Pda;
+  /** The protocol authority — must match global_config.account_fee_authority and receives rent. */
+  authority?: Signer;
+  /** The GlobalConfig PDA — used to validate the authority. */
+  globalConfig?: PublicKey | Pda;
+  /** The gumball guard that this proof was created under. Must be closed (empty). */
+  gumballGuard: PublicKey | Pda;
+  /** The AllowListProof PDA to close. */
+  allowListProof: PublicKey | Pda;
+  systemProgram?: PublicKey | Pda;
 };
 
-  // Data.
-  export type CloseAllowlistProofInstructionData = { discriminator: Uint8Array;  };
+// Data.
+export type CloseAllowlistProofInstructionData = { discriminator: Uint8Array };
 
-export type CloseAllowlistProofInstructionDataArgs = {  };
+export type CloseAllowlistProofInstructionDataArgs = {};
 
-
-  export function getCloseAllowlistProofInstructionDataSerializer(): Serializer<CloseAllowlistProofInstructionDataArgs, CloseAllowlistProofInstructionData> {
-  return mapSerializer<CloseAllowlistProofInstructionDataArgs, any, CloseAllowlistProofInstructionData>(struct<CloseAllowlistProofInstructionData>([['discriminator', bytes({ size: 8 })]], { description: 'CloseAllowlistProofInstructionData' }), (value) => ({ ...value, discriminator: new Uint8Array([190, 213, 48, 188, 252, 208, 190, 242]) }) ) as Serializer<CloseAllowlistProofInstructionDataArgs, CloseAllowlistProofInstructionData>;
+export function getCloseAllowlistProofInstructionDataSerializer(): Serializer<
+  CloseAllowlistProofInstructionDataArgs,
+  CloseAllowlistProofInstructionData
+> {
+  return mapSerializer<
+    CloseAllowlistProofInstructionDataArgs,
+    any,
+    CloseAllowlistProofInstructionData
+  >(
+    struct<CloseAllowlistProofInstructionData>(
+      [['discriminator', bytes({ size: 8 })]],
+      { description: 'CloseAllowlistProofInstructionData' }
+    ),
+    (value) => ({
+      ...value,
+      discriminator: new Uint8Array([190, 213, 48, 188, 252, 208, 190, 242]),
+    })
+  ) as Serializer<
+    CloseAllowlistProofInstructionDataArgs,
+    CloseAllowlistProofInstructionData
+  >;
 }
-
-
-
 
 // Instruction.
 export function closeAllowlistProof(
-  context: Pick<Context, "eddsa" | "identity" | "programs">,
-                        input: CloseAllowlistProofInstructionAccounts,
-      ): TransactionBuilder {
+  context: Pick<Context, 'eddsa' | 'identity' | 'programs'>,
+  input: CloseAllowlistProofInstructionAccounts
+): TransactionBuilder {
   // Program ID.
-  const programId = context.programs.getPublicKey('gumballGuard', 'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF');
+  const programId = context.programs.getPublicKey(
+    'gumballGuard',
+    'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF'
+  );
 
   // Accounts.
   const resolvedAccounts = {
-          authority: { index: 0, isWritable: true as boolean, value: input.authority ?? null },
-          globalConfig: { index: 1, isWritable: false as boolean, value: input.globalConfig ?? null },
-          gumballGuard: { index: 2, isWritable: false as boolean, value: input.gumballGuard ?? null },
-          allowListProof: { index: 3, isWritable: true as boolean, value: input.allowListProof ?? null },
-          systemProgram: { index: 4, isWritable: false as boolean, value: input.systemProgram ?? null },
-      } satisfies ResolvedAccountsWithIndices;
+    authority: {
+      index: 0,
+      isWritable: true as boolean,
+      value: input.authority ?? null,
+    },
+    globalConfig: {
+      index: 1,
+      isWritable: false as boolean,
+      value: input.globalConfig ?? null,
+    },
+    gumballGuard: {
+      index: 2,
+      isWritable: false as boolean,
+      value: input.gumballGuard ?? null,
+    },
+    allowListProof: {
+      index: 3,
+      isWritable: true as boolean,
+      value: input.allowListProof ?? null,
+    },
+    systemProgram: {
+      index: 4,
+      isWritable: false as boolean,
+      value: input.systemProgram ?? null,
+    },
+  } satisfies ResolvedAccountsWithIndices;
 
-  
-    // Default values.
+  // Default values.
   if (!resolvedAccounts.authority.value) {
-        resolvedAccounts.authority.value = context.identity;
-      }
-      if (!resolvedAccounts.globalConfig.value) {
-        resolvedAccounts.globalConfig.value = findGlobalConfigPda(context);
-      }
-      if (!resolvedAccounts.systemProgram.value) {
-        resolvedAccounts.systemProgram.value = publicKey('11111111111111111111111111111111');
-      }
-      
+    resolvedAccounts.authority.value = context.identity;
+  }
+  if (!resolvedAccounts.globalConfig.value) {
+    resolvedAccounts.globalConfig.value = findGlobalConfigPda(context);
+  }
+  if (!resolvedAccounts.systemProgram.value) {
+    resolvedAccounts.systemProgram.value = publicKey(
+      '11111111111111111111111111111111'
+    );
+  }
+
   // Accounts in order.
-      const orderedAccounts: ResolvedAccount[] = Object.values(resolvedAccounts).sort((a,b) => a.index - b.index);
-  
-  
+  const orderedAccounts: ResolvedAccount[] = Object.values(
+    resolvedAccounts
+  ).sort((a, b) => a.index - b.index);
+
   // Keys and Signers.
-  const [keys, signers] = getAccountMetasAndSigners(orderedAccounts, "programId", programId);
+  const [keys, signers] = getAccountMetasAndSigners(
+    orderedAccounts,
+    'programId',
+    programId
+  );
 
   // Data.
-      const data = getCloseAllowlistProofInstructionDataSerializer().serialize({});
-  
+  const data = getCloseAllowlistProofInstructionDataSerializer().serialize({});
+
   // Bytes Created On Chain.
-      const bytesCreatedOnChain = 0;
-  
-  return transactionBuilder([{ instruction: { keys, programId, data }, signers, bytesCreatedOnChain }]);
+  const bytesCreatedOnChain = 0;
+
+  return transactionBuilder([
+    { instruction: { keys, programId, data }, signers, bytesCreatedOnChain },
+  ]);
 }

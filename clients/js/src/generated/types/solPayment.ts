@@ -11,19 +11,22 @@ import { Serializer, struct, u64 } from '@metaplex-foundation/umi/serializers';
 
 /**
  * Guard that charges an amount in SOL (lamports) for the mint.
- * 
+ *
  * List of accounts required:
- * 
+ *
  * 0. `[writable]` Account to receive the funds.
  */
 
-export type SolPayment = { lamports: SolAmount;  };
+export type SolPayment = { lamports: SolAmount };
 
 export type SolPaymentArgs = SolPayment;
 
-
-export function getSolPaymentSerializer(): Serializer<SolPaymentArgs, SolPayment> {
-  return struct<SolPayment>([['lamports', mapAmountSerializer(u64(), 'SOL', 9)]], { description: 'SolPayment' }) as Serializer<SolPaymentArgs, SolPayment>;
+export function getSolPaymentSerializer(): Serializer<
+  SolPaymentArgs,
+  SolPayment
+> {
+  return struct<SolPayment>(
+    [['lamports', mapAmountSerializer(u64(), 'SOL', 9)]],
+    { description: 'SolPayment' }
+  ) as Serializer<SolPaymentArgs, SolPayment>;
 }
-
-

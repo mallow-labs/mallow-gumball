@@ -6,67 +6,128 @@
  * @see https://github.com/codama-idl/codama
  */
 
-import { Context, Pda, PublicKey, Signer, TransactionBuilder, transactionBuilder } from '@metaplex-foundation/umi';
-import { Serializer, bytes, mapSerializer, publicKey as publicKeySerializer, struct } from '@metaplex-foundation/umi/serializers';
-import { ResolvedAccount, ResolvedAccountsWithIndices, getAccountMetasAndSigners } from '../shared';
+import {
+  Context,
+  Pda,
+  PublicKey,
+  Signer,
+  TransactionBuilder,
+  transactionBuilder,
+} from '@metaplex-foundation/umi';
+import {
+  Serializer,
+  bytes,
+  mapSerializer,
+  publicKey as publicKeySerializer,
+  struct,
+} from '@metaplex-foundation/umi/serializers';
+import {
+  ResolvedAccount,
+  ResolvedAccountsWithIndices,
+  getAccountMetasAndSigners,
+} from '../shared';
 
 // Accounts.
 export type SetGumballGuardAuthorityInstructionAccounts = {
-    gumballGuard: PublicKey | Pda;
-    authority?: Signer;
+  gumballGuard: PublicKey | Pda;
+  authority?: Signer;
 };
 
-  // Data.
-  export type SetGumballGuardAuthorityInstructionData = { discriminator: Uint8Array; newAuthority: PublicKey;  };
+// Data.
+export type SetGumballGuardAuthorityInstructionData = {
+  discriminator: Uint8Array;
+  newAuthority: PublicKey;
+};
 
-export type SetGumballGuardAuthorityInstructionDataArgs = { newAuthority: PublicKey;  };
+export type SetGumballGuardAuthorityInstructionDataArgs = {
+  newAuthority: PublicKey;
+};
 
-
-  export function getSetGumballGuardAuthorityInstructionDataSerializer(): Serializer<SetGumballGuardAuthorityInstructionDataArgs, SetGumballGuardAuthorityInstructionData> {
-  return mapSerializer<SetGumballGuardAuthorityInstructionDataArgs, any, SetGumballGuardAuthorityInstructionData>(struct<SetGumballGuardAuthorityInstructionData>([['discriminator', bytes({ size: 8 })], ['newAuthority', publicKeySerializer()]], { description: 'SetGumballGuardAuthorityInstructionData' }), (value) => ({ ...value, discriminator: new Uint8Array([133, 250, 37, 21, 110, 163, 26, 121]) }) ) as Serializer<SetGumballGuardAuthorityInstructionDataArgs, SetGumballGuardAuthorityInstructionData>;
+export function getSetGumballGuardAuthorityInstructionDataSerializer(): Serializer<
+  SetGumballGuardAuthorityInstructionDataArgs,
+  SetGumballGuardAuthorityInstructionData
+> {
+  return mapSerializer<
+    SetGumballGuardAuthorityInstructionDataArgs,
+    any,
+    SetGumballGuardAuthorityInstructionData
+  >(
+    struct<SetGumballGuardAuthorityInstructionData>(
+      [
+        ['discriminator', bytes({ size: 8 })],
+        ['newAuthority', publicKeySerializer()],
+      ],
+      { description: 'SetGumballGuardAuthorityInstructionData' }
+    ),
+    (value) => ({
+      ...value,
+      discriminator: new Uint8Array([133, 250, 37, 21, 110, 163, 26, 121]),
+    })
+  ) as Serializer<
+    SetGumballGuardAuthorityInstructionDataArgs,
+    SetGumballGuardAuthorityInstructionData
+  >;
 }
 
+// Args.
+export type SetGumballGuardAuthorityInstructionArgs =
+  SetGumballGuardAuthorityInstructionDataArgs;
 
-
-  
-  // Args.
-      export type SetGumballGuardAuthorityInstructionArgs =           SetGumballGuardAuthorityInstructionDataArgs
-      ;
-  
 // Instruction.
 export function setGumballGuardAuthority(
-  context: Pick<Context, "identity" | "programs">,
-                        input: SetGumballGuardAuthorityInstructionAccounts & SetGumballGuardAuthorityInstructionArgs,
-      ): TransactionBuilder {
+  context: Pick<Context, 'identity' | 'programs'>,
+  input: SetGumballGuardAuthorityInstructionAccounts &
+    SetGumballGuardAuthorityInstructionArgs
+): TransactionBuilder {
   // Program ID.
-  const programId = context.programs.getPublicKey('gumballGuard', 'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF');
+  const programId = context.programs.getPublicKey(
+    'gumballGuard',
+    'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF'
+  );
 
   // Accounts.
   const resolvedAccounts = {
-          gumballGuard: { index: 0, isWritable: true as boolean, value: input.gumballGuard ?? null },
-          authority: { index: 1, isWritable: false as boolean, value: input.authority ?? null },
-      } satisfies ResolvedAccountsWithIndices;
+    gumballGuard: {
+      index: 0,
+      isWritable: true as boolean,
+      value: input.gumballGuard ?? null,
+    },
+    authority: {
+      index: 1,
+      isWritable: false as boolean,
+      value: input.authority ?? null,
+    },
+  } satisfies ResolvedAccountsWithIndices;
 
-      // Arguments.
-    const resolvedArgs: SetGumballGuardAuthorityInstructionArgs = { ...input };
-  
-    // Default values.
+  // Arguments.
+  const resolvedArgs: SetGumballGuardAuthorityInstructionArgs = { ...input };
+
+  // Default values.
   if (!resolvedAccounts.authority.value) {
-        resolvedAccounts.authority.value = context.identity;
-      }
-      
+    resolvedAccounts.authority.value = context.identity;
+  }
+
   // Accounts in order.
-      const orderedAccounts: ResolvedAccount[] = Object.values(resolvedAccounts).sort((a,b) => a.index - b.index);
-  
-  
+  const orderedAccounts: ResolvedAccount[] = Object.values(
+    resolvedAccounts
+  ).sort((a, b) => a.index - b.index);
+
   // Keys and Signers.
-  const [keys, signers] = getAccountMetasAndSigners(orderedAccounts, "programId", programId);
+  const [keys, signers] = getAccountMetasAndSigners(
+    orderedAccounts,
+    'programId',
+    programId
+  );
 
   // Data.
-      const data = getSetGumballGuardAuthorityInstructionDataSerializer().serialize(resolvedArgs as SetGumballGuardAuthorityInstructionDataArgs);
-  
+  const data = getSetGumballGuardAuthorityInstructionDataSerializer().serialize(
+    resolvedArgs as SetGumballGuardAuthorityInstructionDataArgs
+  );
+
   // Bytes Created On Chain.
-      const bytesCreatedOnChain = 0;
-  
-  return transactionBuilder([{ instruction: { keys, programId, data }, signers, bytesCreatedOnChain }]);
+  const bytesCreatedOnChain = 0;
+
+  return transactionBuilder([
+    { instruction: { keys, programId, data }, signers, bytesCreatedOnChain },
+  ]);
 }

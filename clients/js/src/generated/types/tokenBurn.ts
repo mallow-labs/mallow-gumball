@@ -7,25 +7,33 @@
  */
 
 import { PublicKey } from '@metaplex-foundation/umi';
-import { Serializer, publicKey as publicKeySerializer, struct, u64 } from '@metaplex-foundation/umi/serializers';
+import {
+  Serializer,
+  publicKey as publicKeySerializer,
+  struct,
+  u64,
+} from '@metaplex-foundation/umi/serializers';
 
 /**
  * Guard that requires addresses that hold an amount of a specified spl-token
  * and burns them.
- * 
+ *
  * List of accounts required:
- * 
+ *
  * 0. `[writable]` Token account holding the required amount.
  * 1. `[writable]` Token mint account.
  */
 
-export type TokenBurn = { amount: bigint; mint: PublicKey;  };
+export type TokenBurn = { amount: bigint; mint: PublicKey };
 
-export type TokenBurnArgs = { amount: number | bigint; mint: PublicKey;  };
-
+export type TokenBurnArgs = { amount: number | bigint; mint: PublicKey };
 
 export function getTokenBurnSerializer(): Serializer<TokenBurnArgs, TokenBurn> {
-  return struct<TokenBurn>([['amount', u64()], ['mint', publicKeySerializer()]], { description: 'TokenBurn' }) as Serializer<TokenBurnArgs, TokenBurn>;
+  return struct<TokenBurn>(
+    [
+      ['amount', u64()],
+      ['mint', publicKeySerializer()],
+    ],
+    { description: 'TokenBurn' }
+  ) as Serializer<TokenBurnArgs, TokenBurn>;
 }
-
-

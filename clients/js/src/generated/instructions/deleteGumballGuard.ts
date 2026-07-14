@@ -6,83 +6,161 @@
  * @see https://github.com/codama-idl/codama
  */
 
-import { Context, Pda, PublicKey, Signer, TransactionBuilder, publicKey, transactionBuilder } from '@metaplex-foundation/umi';
-import { Serializer, bytes, mapSerializer, struct } from '@metaplex-foundation/umi/serializers';
+import {
+  Context,
+  Pda,
+  PublicKey,
+  Signer,
+  TransactionBuilder,
+  publicKey,
+  transactionBuilder,
+} from '@metaplex-foundation/umi';
+import {
+  Serializer,
+  bytes,
+  mapSerializer,
+  struct,
+} from '@metaplex-foundation/umi/serializers';
 import { findGumballMachineAuthorityPda } from '../../hooked';
-import { ResolvedAccount, ResolvedAccountsWithIndices, expectPublicKey, getAccountMetasAndSigners } from '../shared';
+import {
+  ResolvedAccount,
+  ResolvedAccountsWithIndices,
+  expectPublicKey,
+  getAccountMetasAndSigners,
+} from '../shared';
 
 // Accounts.
 export type DeleteGumballGuardInstructionAccounts = {
-    gumballGuard: PublicKey | Pda;
-    authority?: Signer;
-    machine: PublicKey | Pda;
-    authorityPda?: PublicKey | Pda;
-      /** Payment account for authority pda if using token payment */
-    authorityPdaPaymentAccount?: PublicKey | Pda;
-    machineProgram?: PublicKey | Pda;
-    tokenProgram?: PublicKey | Pda;
+  gumballGuard: PublicKey | Pda;
+  authority?: Signer;
+  machine: PublicKey | Pda;
+  authorityPda?: PublicKey | Pda;
+  /** Payment account for authority pda if using token payment */
+  authorityPdaPaymentAccount?: PublicKey | Pda;
+  machineProgram?: PublicKey | Pda;
+  tokenProgram?: PublicKey | Pda;
 };
 
-  // Data.
-  export type DeleteGumballGuardInstructionData = { discriminator: Uint8Array;  };
+// Data.
+export type DeleteGumballGuardInstructionData = { discriminator: Uint8Array };
 
-export type DeleteGumballGuardInstructionDataArgs = {  };
+export type DeleteGumballGuardInstructionDataArgs = {};
 
-
-  export function getDeleteGumballGuardInstructionDataSerializer(): Serializer<DeleteGumballGuardInstructionDataArgs, DeleteGumballGuardInstructionData> {
-  return mapSerializer<DeleteGumballGuardInstructionDataArgs, any, DeleteGumballGuardInstructionData>(struct<DeleteGumballGuardInstructionData>([['discriminator', bytes({ size: 8 })]], { description: 'DeleteGumballGuardInstructionData' }), (value) => ({ ...value, discriminator: new Uint8Array([183, 18, 70, 156, 148, 109, 161, 34]) }) ) as Serializer<DeleteGumballGuardInstructionDataArgs, DeleteGumballGuardInstructionData>;
+export function getDeleteGumballGuardInstructionDataSerializer(): Serializer<
+  DeleteGumballGuardInstructionDataArgs,
+  DeleteGumballGuardInstructionData
+> {
+  return mapSerializer<
+    DeleteGumballGuardInstructionDataArgs,
+    any,
+    DeleteGumballGuardInstructionData
+  >(
+    struct<DeleteGumballGuardInstructionData>(
+      [['discriminator', bytes({ size: 8 })]],
+      { description: 'DeleteGumballGuardInstructionData' }
+    ),
+    (value) => ({
+      ...value,
+      discriminator: new Uint8Array([183, 18, 70, 156, 148, 109, 161, 34]),
+    })
+  ) as Serializer<
+    DeleteGumballGuardInstructionDataArgs,
+    DeleteGumballGuardInstructionData
+  >;
 }
-
-
-
 
 // Instruction.
 export function deleteGumballGuard(
-  context: Pick<Context, "eddsa" | "identity" | "programs">,
-                        input: DeleteGumballGuardInstructionAccounts,
-      ): TransactionBuilder {
+  context: Pick<Context, 'eddsa' | 'identity' | 'programs'>,
+  input: DeleteGumballGuardInstructionAccounts
+): TransactionBuilder {
   // Program ID.
-  const programId = context.programs.getPublicKey('gumballGuard', 'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF');
+  const programId = context.programs.getPublicKey(
+    'gumballGuard',
+    'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF'
+  );
 
   // Accounts.
   const resolvedAccounts = {
-          gumballGuard: { index: 0, isWritable: true as boolean, value: input.gumballGuard ?? null },
-          authority: { index: 1, isWritable: true as boolean, value: input.authority ?? null },
-          machine: { index: 2, isWritable: true as boolean, value: input.machine ?? null },
-          authorityPda: { index: 3, isWritable: true as boolean, value: input.authorityPda ?? null },
-          authorityPdaPaymentAccount: { index: 4, isWritable: true as boolean, value: input.authorityPdaPaymentAccount ?? null },
-          machineProgram: { index: 5, isWritable: false as boolean, value: input.machineProgram ?? null },
-          tokenProgram: { index: 6, isWritable: false as boolean, value: input.tokenProgram ?? null },
-      } satisfies ResolvedAccountsWithIndices;
+    gumballGuard: {
+      index: 0,
+      isWritable: true as boolean,
+      value: input.gumballGuard ?? null,
+    },
+    authority: {
+      index: 1,
+      isWritable: true as boolean,
+      value: input.authority ?? null,
+    },
+    machine: {
+      index: 2,
+      isWritable: true as boolean,
+      value: input.machine ?? null,
+    },
+    authorityPda: {
+      index: 3,
+      isWritable: true as boolean,
+      value: input.authorityPda ?? null,
+    },
+    authorityPdaPaymentAccount: {
+      index: 4,
+      isWritable: true as boolean,
+      value: input.authorityPdaPaymentAccount ?? null,
+    },
+    machineProgram: {
+      index: 5,
+      isWritable: false as boolean,
+      value: input.machineProgram ?? null,
+    },
+    tokenProgram: {
+      index: 6,
+      isWritable: false as boolean,
+      value: input.tokenProgram ?? null,
+    },
+  } satisfies ResolvedAccountsWithIndices;
 
-  
-    // Default values.
+  // Default values.
   if (!resolvedAccounts.authority.value) {
-        resolvedAccounts.authority.value = context.identity;
-      }
-      if (!resolvedAccounts.authorityPda.value) {
-        resolvedAccounts.authorityPda.value = findGumballMachineAuthorityPda(context, { gumballMachine: expectPublicKey(resolvedAccounts.machine.value) });
-      }
-      if (!resolvedAccounts.machineProgram.value) {
-        resolvedAccounts.machineProgram.value = publicKey('MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa');
-      }
-      if (!resolvedAccounts.tokenProgram.value) {
-        resolvedAccounts.tokenProgram.value = context.programs.getPublicKey('splToken', 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
-resolvedAccounts.tokenProgram.isWritable = false
-      }
-      
+    resolvedAccounts.authority.value = context.identity;
+  }
+  if (!resolvedAccounts.authorityPda.value) {
+    resolvedAccounts.authorityPda.value = findGumballMachineAuthorityPda(
+      context,
+      { gumballMachine: expectPublicKey(resolvedAccounts.machine.value) }
+    );
+  }
+  if (!resolvedAccounts.machineProgram.value) {
+    resolvedAccounts.machineProgram.value = publicKey(
+      'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa'
+    );
+  }
+  if (!resolvedAccounts.tokenProgram.value) {
+    resolvedAccounts.tokenProgram.value = context.programs.getPublicKey(
+      'splToken',
+      'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
+    );
+    resolvedAccounts.tokenProgram.isWritable = false;
+  }
+
   // Accounts in order.
-      const orderedAccounts: ResolvedAccount[] = Object.values(resolvedAccounts).sort((a,b) => a.index - b.index);
-  
-  
+  const orderedAccounts: ResolvedAccount[] = Object.values(
+    resolvedAccounts
+  ).sort((a, b) => a.index - b.index);
+
   // Keys and Signers.
-  const [keys, signers] = getAccountMetasAndSigners(orderedAccounts, "programId", programId);
+  const [keys, signers] = getAccountMetasAndSigners(
+    orderedAccounts,
+    'programId',
+    programId
+  );
 
   // Data.
-      const data = getDeleteGumballGuardInstructionDataSerializer().serialize({});
-  
+  const data = getDeleteGumballGuardInstructionDataSerializer().serialize({});
+
   // Bytes Created On Chain.
-      const bytesCreatedOnChain = 0;
-  
-  return transactionBuilder([{ instruction: { keys, programId, data }, signers, bytesCreatedOnChain }]);
+  const bytesCreatedOnChain = 0;
+
+  return transactionBuilder([
+    { instruction: { keys, programId, data }, signers, bytesCreatedOnChain },
+  ]);
 }

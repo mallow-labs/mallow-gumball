@@ -6,89 +6,173 @@
  * @see https://github.com/codama-idl/codama
  */
 
-import { Context, Pda, PublicKey, Signer, TransactionBuilder, transactionBuilder } from '@metaplex-foundation/umi';
-import { Serializer, bytes, mapSerializer, struct } from '@metaplex-foundation/umi/serializers';
+import {
+  Context,
+  Pda,
+  PublicKey,
+  Signer,
+  TransactionBuilder,
+  transactionBuilder,
+} from '@metaplex-foundation/umi';
+import {
+  Serializer,
+  bytes,
+  mapSerializer,
+  struct,
+} from '@metaplex-foundation/umi/serializers';
 import { findAddItemRequestPda } from '../accounts';
-import { ResolvedAccount, ResolvedAccountsWithIndices, expectPublicKey, getAccountMetasAndSigners } from '../shared';
+import {
+  ResolvedAccount,
+  ResolvedAccountsWithIndices,
+  expectPublicKey,
+  getAccountMetasAndSigners,
+} from '../shared';
 
 // Accounts.
 export type CancelAddCoreAssetRequestInstructionAccounts = {
-      /** Seller history account. */
-    sellerHistory: PublicKey | Pda;
-      /** Add item request account. */
-    addItemRequest?: PublicKey | Pda;
-    authorityPda: PublicKey | Pda;
-      /** Seller of the asset. */
-    seller?: Signer;
-    asset: PublicKey | Pda;
-      /** Core asset's collection if it's part of one. */
-    collection?: PublicKey | Pda;
-    mplCoreProgram?: PublicKey | Pda;
-    systemProgram?: PublicKey | Pda;
+  /** Seller history account. */
+  sellerHistory: PublicKey | Pda;
+  /** Add item request account. */
+  addItemRequest?: PublicKey | Pda;
+  authorityPda: PublicKey | Pda;
+  /** Seller of the asset. */
+  seller?: Signer;
+  asset: PublicKey | Pda;
+  /** Core asset's collection if it's part of one. */
+  collection?: PublicKey | Pda;
+  mplCoreProgram?: PublicKey | Pda;
+  systemProgram?: PublicKey | Pda;
 };
 
-  // Data.
-  export type CancelAddCoreAssetRequestInstructionData = { discriminator: Uint8Array;  };
+// Data.
+export type CancelAddCoreAssetRequestInstructionData = {
+  discriminator: Uint8Array;
+};
 
-export type CancelAddCoreAssetRequestInstructionDataArgs = {  };
+export type CancelAddCoreAssetRequestInstructionDataArgs = {};
 
-
-  export function getCancelAddCoreAssetRequestInstructionDataSerializer(): Serializer<CancelAddCoreAssetRequestInstructionDataArgs, CancelAddCoreAssetRequestInstructionData> {
-  return mapSerializer<CancelAddCoreAssetRequestInstructionDataArgs, any, CancelAddCoreAssetRequestInstructionData>(struct<CancelAddCoreAssetRequestInstructionData>([['discriminator', bytes({ size: 8 })]], { description: 'CancelAddCoreAssetRequestInstructionData' }), (value) => ({ ...value, discriminator: new Uint8Array([154, 46, 224, 244, 88, 92, 247, 38]) }) ) as Serializer<CancelAddCoreAssetRequestInstructionDataArgs, CancelAddCoreAssetRequestInstructionData>;
+export function getCancelAddCoreAssetRequestInstructionDataSerializer(): Serializer<
+  CancelAddCoreAssetRequestInstructionDataArgs,
+  CancelAddCoreAssetRequestInstructionData
+> {
+  return mapSerializer<
+    CancelAddCoreAssetRequestInstructionDataArgs,
+    any,
+    CancelAddCoreAssetRequestInstructionData
+  >(
+    struct<CancelAddCoreAssetRequestInstructionData>(
+      [['discriminator', bytes({ size: 8 })]],
+      { description: 'CancelAddCoreAssetRequestInstructionData' }
+    ),
+    (value) => ({
+      ...value,
+      discriminator: new Uint8Array([154, 46, 224, 244, 88, 92, 247, 38]),
+    })
+  ) as Serializer<
+    CancelAddCoreAssetRequestInstructionDataArgs,
+    CancelAddCoreAssetRequestInstructionData
+  >;
 }
-
-
-
 
 // Instruction.
 export function cancelAddCoreAssetRequest(
-  context: Pick<Context, "eddsa" | "identity" | "programs">,
-                        input: CancelAddCoreAssetRequestInstructionAccounts,
-      ): TransactionBuilder {
+  context: Pick<Context, 'eddsa' | 'identity' | 'programs'>,
+  input: CancelAddCoreAssetRequestInstructionAccounts
+): TransactionBuilder {
   // Program ID.
-  const programId = context.programs.getPublicKey('mallowGumball', 'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa');
+  const programId = context.programs.getPublicKey(
+    'mallowGumball',
+    'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa'
+  );
 
   // Accounts.
   const resolvedAccounts = {
-          sellerHistory: { index: 0, isWritable: true as boolean, value: input.sellerHistory ?? null },
-          addItemRequest: { index: 1, isWritable: true as boolean, value: input.addItemRequest ?? null },
-          authorityPda: { index: 2, isWritable: true as boolean, value: input.authorityPda ?? null },
-          seller: { index: 3, isWritable: true as boolean, value: input.seller ?? null },
-          asset: { index: 4, isWritable: true as boolean, value: input.asset ?? null },
-          collection: { index: 5, isWritable: true as boolean, value: input.collection ?? null },
-          mplCoreProgram: { index: 6, isWritable: false as boolean, value: input.mplCoreProgram ?? null },
-          systemProgram: { index: 7, isWritable: false as boolean, value: input.systemProgram ?? null },
-      } satisfies ResolvedAccountsWithIndices;
+    sellerHistory: {
+      index: 0,
+      isWritable: true as boolean,
+      value: input.sellerHistory ?? null,
+    },
+    addItemRequest: {
+      index: 1,
+      isWritable: true as boolean,
+      value: input.addItemRequest ?? null,
+    },
+    authorityPda: {
+      index: 2,
+      isWritable: true as boolean,
+      value: input.authorityPda ?? null,
+    },
+    seller: {
+      index: 3,
+      isWritable: true as boolean,
+      value: input.seller ?? null,
+    },
+    asset: {
+      index: 4,
+      isWritable: true as boolean,
+      value: input.asset ?? null,
+    },
+    collection: {
+      index: 5,
+      isWritable: true as boolean,
+      value: input.collection ?? null,
+    },
+    mplCoreProgram: {
+      index: 6,
+      isWritable: false as boolean,
+      value: input.mplCoreProgram ?? null,
+    },
+    systemProgram: {
+      index: 7,
+      isWritable: false as boolean,
+      value: input.systemProgram ?? null,
+    },
+  } satisfies ResolvedAccountsWithIndices;
 
-  
-    // Default values.
+  // Default values.
   if (!resolvedAccounts.addItemRequest.value) {
-        resolvedAccounts.addItemRequest.value = findAddItemRequestPda(context, { asset: expectPublicKey(resolvedAccounts.asset.value) });
-      }
-      if (!resolvedAccounts.seller.value) {
-        resolvedAccounts.seller.value = context.identity;
-      }
-      if (!resolvedAccounts.mplCoreProgram.value) {
-        resolvedAccounts.mplCoreProgram.value = context.programs.getPublicKey('mplCoreProgram', 'CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d');
-resolvedAccounts.mplCoreProgram.isWritable = false
-      }
-      if (!resolvedAccounts.systemProgram.value) {
-        resolvedAccounts.systemProgram.value = context.programs.getPublicKey('systemProgram', '11111111111111111111111111111111');
-resolvedAccounts.systemProgram.isWritable = false
-      }
-      
+    resolvedAccounts.addItemRequest.value = findAddItemRequestPda(context, {
+      asset: expectPublicKey(resolvedAccounts.asset.value),
+    });
+  }
+  if (!resolvedAccounts.seller.value) {
+    resolvedAccounts.seller.value = context.identity;
+  }
+  if (!resolvedAccounts.mplCoreProgram.value) {
+    resolvedAccounts.mplCoreProgram.value = context.programs.getPublicKey(
+      'mplCoreProgram',
+      'CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d'
+    );
+    resolvedAccounts.mplCoreProgram.isWritable = false;
+  }
+  if (!resolvedAccounts.systemProgram.value) {
+    resolvedAccounts.systemProgram.value = context.programs.getPublicKey(
+      'systemProgram',
+      '11111111111111111111111111111111'
+    );
+    resolvedAccounts.systemProgram.isWritable = false;
+  }
+
   // Accounts in order.
-      const orderedAccounts: ResolvedAccount[] = Object.values(resolvedAccounts).sort((a,b) => a.index - b.index);
-  
-  
+  const orderedAccounts: ResolvedAccount[] = Object.values(
+    resolvedAccounts
+  ).sort((a, b) => a.index - b.index);
+
   // Keys and Signers.
-  const [keys, signers] = getAccountMetasAndSigners(orderedAccounts, "programId", programId);
+  const [keys, signers] = getAccountMetasAndSigners(
+    orderedAccounts,
+    'programId',
+    programId
+  );
 
   // Data.
-      const data = getCancelAddCoreAssetRequestInstructionDataSerializer().serialize({});
-  
+  const data =
+    getCancelAddCoreAssetRequestInstructionDataSerializer().serialize({});
+
   // Bytes Created On Chain.
-      const bytesCreatedOnChain = 0;
-  
-  return transactionBuilder([{ instruction: { keys, programId, data }, signers, bytesCreatedOnChain }]);
+  const bytesCreatedOnChain = 0;
+
+  return transactionBuilder([
+    { instruction: { keys, programId, data }, signers, bytesCreatedOnChain },
+  ]);
 }

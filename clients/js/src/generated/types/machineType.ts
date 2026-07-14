@@ -8,13 +8,18 @@
 
 import { Serializer, scalarEnum } from '@metaplex-foundation/umi/serializers';
 
-
-export enum MachineType { Gumball, Jellybean };
+export enum MachineType {
+  Gumball,
+  Jellybean,
+}
 
 export type MachineTypeArgs = MachineType;
 
-export function getMachineTypeSerializer(): Serializer<MachineTypeArgs, MachineType> {
-  return scalarEnum<MachineType>(MachineType, { description: 'MachineType' }) as Serializer<MachineTypeArgs, MachineType>;
+export function getMachineTypeSerializer(): Serializer<
+  MachineTypeArgs,
+  MachineType
+> {
+  return scalarEnum<MachineType>(MachineType, {
+    description: 'MachineType',
+  }) as Serializer<MachineTypeArgs, MachineType>;
 }
-
-

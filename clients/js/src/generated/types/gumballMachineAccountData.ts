@@ -7,53 +7,98 @@
  */
 
 import { Option, OptionOrNullable, PublicKey } from '@metaplex-foundation/umi';
-import { Serializer, bytes, mapSerializer, option, publicKey as publicKeySerializer, struct, u64, u8 } from '@metaplex-foundation/umi/serializers';
-import { FeeConfig, FeeConfigArgs, GumballSettings, GumballSettingsArgs, GumballState, GumballStateArgs, getFeeConfigSerializer, getGumballSettingsSerializer, getGumballStateSerializer } from '.';
+import {
+  Serializer,
+  bytes,
+  mapSerializer,
+  option,
+  publicKey as publicKeySerializer,
+  struct,
+  u64,
+  u8,
+} from '@metaplex-foundation/umi/serializers';
+import {
+  FeeConfig,
+  FeeConfigArgs,
+  GumballSettings,
+  GumballSettingsArgs,
+  GumballState,
+  GumballStateArgs,
+  getFeeConfigSerializer,
+  getGumballSettingsSerializer,
+  getGumballStateSerializer,
+} from '.';
 
+export type GumballMachineAccountData = {
+  discriminator: Uint8Array;
+  /** Version of the account. */
+  version: number;
+  /** Authority address. */
+  authority: PublicKey;
+  /** Authority address allowed to mint from the gumball machine. */
+  mintAuthority: PublicKey;
+  /** Fee config for the marketplace this gumball is listed on */
+  marketplaceFeeConfig: Option<FeeConfig>;
+  /** Number of assets redeemed. */
+  itemsRedeemed: bigint;
+  /** Number of assets settled after sale. */
+  itemsSettled: bigint;
+  /** Amount of lamports/tokens received from purchases. */
+  totalRevenue: bigint;
+  /** True if the authority has finalized details, which prevents adding more nfts. */
+  state: GumballState;
+  /** User-defined settings */
+  settings: GumballSettings;
+};
 
-export type GumballMachineAccountData = { discriminator: Uint8Array; 
-/** Version of the account. */
-version: number; 
-/** Authority address. */
-authority: PublicKey; 
-/** Authority address allowed to mint from the gumball machine. */
-mintAuthority: PublicKey; 
-/** Fee config for the marketplace this gumball is listed on */
-marketplaceFeeConfig: Option<FeeConfig>; 
-/** Number of assets redeemed. */
-itemsRedeemed: bigint; 
-/** Number of assets settled after sale. */
-itemsSettled: bigint; 
-/** Amount of lamports/tokens received from purchases. */
-totalRevenue: bigint; 
-/** True if the authority has finalized details, which prevents adding more nfts. */
-state: GumballState; 
-/** User-defined settings */
-settings: GumballSettings;  };
+export type GumballMachineAccountDataArgs = {
+  /** Version of the account. */
+  version: number;
+  /** Authority address. */
+  authority: PublicKey;
+  /** Authority address allowed to mint from the gumball machine. */
+  mintAuthority: PublicKey;
+  /** Fee config for the marketplace this gumball is listed on */
+  marketplaceFeeConfig: OptionOrNullable<FeeConfigArgs>;
+  /** Number of assets redeemed. */
+  itemsRedeemed: number | bigint;
+  /** Number of assets settled after sale. */
+  itemsSettled: number | bigint;
+  /** Amount of lamports/tokens received from purchases. */
+  totalRevenue: number | bigint;
+  /** True if the authority has finalized details, which prevents adding more nfts. */
+  state: GumballStateArgs;
+  /** User-defined settings */
+  settings: GumballSettingsArgs;
+};
 
-export type GumballMachineAccountDataArgs = { 
-/** Version of the account. */
-version: number; 
-/** Authority address. */
-authority: PublicKey; 
-/** Authority address allowed to mint from the gumball machine. */
-mintAuthority: PublicKey; 
-/** Fee config for the marketplace this gumball is listed on */
-marketplaceFeeConfig: OptionOrNullable<FeeConfigArgs>; 
-/** Number of assets redeemed. */
-itemsRedeemed: number | bigint; 
-/** Number of assets settled after sale. */
-itemsSettled: number | bigint; 
-/** Amount of lamports/tokens received from purchases. */
-totalRevenue: number | bigint; 
-/** True if the authority has finalized details, which prevents adding more nfts. */
-state: GumballStateArgs; 
-/** User-defined settings */
-settings: GumballSettingsArgs;  };
-
-
-export function getGumballMachineAccountDataSerializer(): Serializer<GumballMachineAccountDataArgs, GumballMachineAccountData> {
-  return mapSerializer<GumballMachineAccountDataArgs, any, GumballMachineAccountData>(struct<GumballMachineAccountData>([['discriminator', bytes({ size: 8 })], ['version', u8()], ['authority', publicKeySerializer()], ['mintAuthority', publicKeySerializer()], ['marketplaceFeeConfig', option(getFeeConfigSerializer())], ['itemsRedeemed', u64()], ['itemsSettled', u64()], ['totalRevenue', u64()], ['state', getGumballStateSerializer()], ['settings', getGumballSettingsSerializer()]], { description: 'GumballMachineAccountData' }), (value) => ({ ...value, discriminator: new Uint8Array([87, 13, 57, 25, 98, 234, 26, 27]) }) ) as Serializer<GumballMachineAccountDataArgs, GumballMachineAccountData>;
+export function getGumballMachineAccountDataSerializer(): Serializer<
+  GumballMachineAccountDataArgs,
+  GumballMachineAccountData
+> {
+  return mapSerializer<
+    GumballMachineAccountDataArgs,
+    any,
+    GumballMachineAccountData
+  >(
+    struct<GumballMachineAccountData>(
+      [
+        ['discriminator', bytes({ size: 8 })],
+        ['version', u8()],
+        ['authority', publicKeySerializer()],
+        ['mintAuthority', publicKeySerializer()],
+        ['marketplaceFeeConfig', option(getFeeConfigSerializer())],
+        ['itemsRedeemed', u64()],
+        ['itemsSettled', u64()],
+        ['totalRevenue', u64()],
+        ['state', getGumballStateSerializer()],
+        ['settings', getGumballSettingsSerializer()],
+      ],
+      { description: 'GumballMachineAccountData' }
+    ),
+    (value) => ({
+      ...value,
+      discriminator: new Uint8Array([87, 13, 57, 25, 98, 234, 26, 27]),
+    })
+  ) as Serializer<GumballMachineAccountDataArgs, GumballMachineAccountData>;
 }
-
-

@@ -8,7 +8,10 @@
 
 import { Program, ProgramError } from '@metaplex-foundation/umi';
 
-type ProgramErrorConstructor = new (program: Program, cause?: Error) => ProgramError;
+type ProgramErrorConstructor = new (
+  program: Program,
+  cause?: Error
+) => ProgramError;
 const codeToErrorMap: Map<number, ProgramErrorConstructor> = new Map();
 const nameToErrorMap: Map<string, ProgramErrorConstructor> = new Map();
 
@@ -17,7 +20,7 @@ export class IncorrectOwnerError extends ProgramError {
   override readonly name: string = 'IncorrectOwner';
 
   readonly code: number = 0x1770; // 6000
-  
+
   constructor(program: Program, cause?: Error) {
     super('Account does not have correct owner', program, cause);
   }
@@ -30,7 +33,7 @@ export class UninitializedError extends ProgramError {
   override readonly name: string = 'Uninitialized';
 
   readonly code: number = 0x1771; // 6001
-  
+
   constructor(program: Program, cause?: Error) {
     super('Account is not initialized', program, cause);
   }
@@ -43,7 +46,7 @@ export class MintMismatchError extends ProgramError {
   override readonly name: string = 'MintMismatch';
 
   readonly code: number = 0x1772; // 6002
-  
+
   constructor(program: Program, cause?: Error) {
     super('Mint Mismatch', program, cause);
   }
@@ -56,7 +59,7 @@ export class IndexGreaterThanLengthError extends ProgramError {
   override readonly name: string = 'IndexGreaterThanLength';
 
   readonly code: number = 0x1773; // 6003
-  
+
   constructor(program: Program, cause?: Error) {
     super('Index greater than length', program, cause);
   }
@@ -69,7 +72,7 @@ export class NumericalOverflowErrorError extends ProgramError {
   override readonly name: string = 'NumericalOverflowError';
 
   readonly code: number = 0x1774; // 6004
-  
+
   constructor(program: Program, cause?: Error) {
     super('Numerical overflow error', program, cause);
   }
@@ -82,9 +85,13 @@ export class TooManyCreatorsError extends ProgramError {
   override readonly name: string = 'TooManyCreators';
 
   readonly code: number = 0x1775; // 6005
-  
+
   constructor(program: Program, cause?: Error) {
-    super('Can only provide up to 4 creators to gumball machine (because gumball machine is one)', program, cause);
+    super(
+      'Can only provide up to 4 creators to gumball machine (because gumball machine is one)',
+      program,
+      cause
+    );
   }
 }
 codeToErrorMap.set(0x1775, TooManyCreatorsError);
@@ -95,7 +102,7 @@ export class GumballMachineEmptyError extends ProgramError {
   override readonly name: string = 'GumballMachineEmpty';
 
   readonly code: number = 0x1776; // 6006
-  
+
   constructor(program: Program, cause?: Error) {
     super('Gumball machine is empty', program, cause);
   }
@@ -108,22 +115,33 @@ export class HiddenSettingsDoNotHaveConfigLinesError extends ProgramError {
   override readonly name: string = 'HiddenSettingsDoNotHaveConfigLines';
 
   readonly code: number = 0x1777; // 6007
-  
+
   constructor(program: Program, cause?: Error) {
-    super('Gumball machines using hidden uris do not have config lines, they have a single hash representing hashed order', program, cause);
+    super(
+      'Gumball machines using hidden uris do not have config lines, they have a single hash representing hashed order',
+      program,
+      cause
+    );
   }
 }
 codeToErrorMap.set(0x1777, HiddenSettingsDoNotHaveConfigLinesError);
-nameToErrorMap.set('HiddenSettingsDoNotHaveConfigLines', HiddenSettingsDoNotHaveConfigLinesError);
+nameToErrorMap.set(
+  'HiddenSettingsDoNotHaveConfigLines',
+  HiddenSettingsDoNotHaveConfigLinesError
+);
 
 /** CannotChangeNumberOfLines: Cannot change number of lines unless is a hidden config */
 export class CannotChangeNumberOfLinesError extends ProgramError {
   override readonly name: string = 'CannotChangeNumberOfLines';
 
   readonly code: number = 0x1778; // 6008
-  
+
   constructor(program: Program, cause?: Error) {
-    super('Cannot change number of lines unless is a hidden config', program, cause);
+    super(
+      'Cannot change number of lines unless is a hidden config',
+      program,
+      cause
+    );
   }
 }
 codeToErrorMap.set(0x1778, CannotChangeNumberOfLinesError);
@@ -134,59 +152,83 @@ export class CannotSwitchToHiddenSettingsError extends ProgramError {
   override readonly name: string = 'CannotSwitchToHiddenSettings';
 
   readonly code: number = 0x1779; // 6009
-  
+
   constructor(program: Program, cause?: Error) {
-    super('Cannot switch to hidden settings after items available is greater than 0', program, cause);
+    super(
+      'Cannot switch to hidden settings after items available is greater than 0',
+      program,
+      cause
+    );
   }
 }
 codeToErrorMap.set(0x1779, CannotSwitchToHiddenSettingsError);
-nameToErrorMap.set('CannotSwitchToHiddenSettings', CannotSwitchToHiddenSettingsError);
+nameToErrorMap.set(
+  'CannotSwitchToHiddenSettings',
+  CannotSwitchToHiddenSettingsError
+);
 
 /** IncorrectCollectionAuthority: Incorrect collection NFT authority */
 export class IncorrectCollectionAuthorityError extends ProgramError {
   override readonly name: string = 'IncorrectCollectionAuthority';
 
   readonly code: number = 0x177a; // 6010
-  
+
   constructor(program: Program, cause?: Error) {
     super('Incorrect collection NFT authority', program, cause);
   }
 }
 codeToErrorMap.set(0x177a, IncorrectCollectionAuthorityError);
-nameToErrorMap.set('IncorrectCollectionAuthority', IncorrectCollectionAuthorityError);
+nameToErrorMap.set(
+  'IncorrectCollectionAuthority',
+  IncorrectCollectionAuthorityError
+);
 
 /** MetadataAccountMustBeEmpty: The metadata account has data in it, and this must be empty to mint a new NFT */
 export class MetadataAccountMustBeEmptyError extends ProgramError {
   override readonly name: string = 'MetadataAccountMustBeEmpty';
 
   readonly code: number = 0x177b; // 6011
-  
+
   constructor(program: Program, cause?: Error) {
-    super('The metadata account has data in it, and this must be empty to mint a new NFT', program, cause);
+    super(
+      'The metadata account has data in it, and this must be empty to mint a new NFT',
+      program,
+      cause
+    );
   }
 }
 codeToErrorMap.set(0x177b, MetadataAccountMustBeEmptyError);
-nameToErrorMap.set('MetadataAccountMustBeEmpty', MetadataAccountMustBeEmptyError);
+nameToErrorMap.set(
+  'MetadataAccountMustBeEmpty',
+  MetadataAccountMustBeEmptyError
+);
 
 /** NoChangingCollectionDuringMint: Can't change collection settings after items have begun to be minted */
 export class NoChangingCollectionDuringMintError extends ProgramError {
   override readonly name: string = 'NoChangingCollectionDuringMint';
 
   readonly code: number = 0x177c; // 6012
-  
+
   constructor(program: Program, cause?: Error) {
-    super('Can\'t change collection settings after items have begun to be minted', program, cause);
+    super(
+      "Can't change collection settings after items have begun to be minted",
+      program,
+      cause
+    );
   }
 }
 codeToErrorMap.set(0x177c, NoChangingCollectionDuringMintError);
-nameToErrorMap.set('NoChangingCollectionDuringMint', NoChangingCollectionDuringMintError);
+nameToErrorMap.set(
+  'NoChangingCollectionDuringMint',
+  NoChangingCollectionDuringMintError
+);
 
 /** ExceededLengthError: Value longer than expected maximum value */
 export class ExceededLengthErrorError extends ProgramError {
   override readonly name: string = 'ExceededLengthError';
 
   readonly code: number = 0x177d; // 6013
-  
+
   constructor(program: Program, cause?: Error) {
     super('Value longer than expected maximum value', program, cause);
   }
@@ -199,22 +241,29 @@ export class MissingConfigLinesSettingsError extends ProgramError {
   override readonly name: string = 'MissingConfigLinesSettings';
 
   readonly code: number = 0x177e; // 6014
-  
+
   constructor(program: Program, cause?: Error) {
     super('Missing config lines settings', program, cause);
   }
 }
 codeToErrorMap.set(0x177e, MissingConfigLinesSettingsError);
-nameToErrorMap.set('MissingConfigLinesSettings', MissingConfigLinesSettingsError);
+nameToErrorMap.set(
+  'MissingConfigLinesSettings',
+  MissingConfigLinesSettingsError
+);
 
 /** CannotIncreaseLength: Cannot increase the length in config lines settings */
 export class CannotIncreaseLengthError extends ProgramError {
   override readonly name: string = 'CannotIncreaseLength';
 
   readonly code: number = 0x177f; // 6015
-  
+
   constructor(program: Program, cause?: Error) {
-    super('Cannot increase the length in config lines settings', program, cause);
+    super(
+      'Cannot increase the length in config lines settings',
+      program,
+      cause
+    );
   }
 }
 codeToErrorMap.set(0x177f, CannotIncreaseLengthError);
@@ -225,33 +274,43 @@ export class CannotSwitchFromHiddenSettingsError extends ProgramError {
   override readonly name: string = 'CannotSwitchFromHiddenSettings';
 
   readonly code: number = 0x1780; // 6016
-  
+
   constructor(program: Program, cause?: Error) {
     super('Cannot switch from hidden settings', program, cause);
   }
 }
 codeToErrorMap.set(0x1780, CannotSwitchFromHiddenSettingsError);
-nameToErrorMap.set('CannotSwitchFromHiddenSettings', CannotSwitchFromHiddenSettingsError);
+nameToErrorMap.set(
+  'CannotSwitchFromHiddenSettings',
+  CannotSwitchFromHiddenSettingsError
+);
 
 /** CannotChangeSequentialIndexGeneration: Cannot change sequential index generation after items have begun to be minted */
 export class CannotChangeSequentialIndexGenerationError extends ProgramError {
   override readonly name: string = 'CannotChangeSequentialIndexGeneration';
 
   readonly code: number = 0x1781; // 6017
-  
+
   constructor(program: Program, cause?: Error) {
-    super('Cannot change sequential index generation after items have begun to be minted', program, cause);
+    super(
+      'Cannot change sequential index generation after items have begun to be minted',
+      program,
+      cause
+    );
   }
 }
 codeToErrorMap.set(0x1781, CannotChangeSequentialIndexGenerationError);
-nameToErrorMap.set('CannotChangeSequentialIndexGeneration', CannotChangeSequentialIndexGenerationError);
+nameToErrorMap.set(
+  'CannotChangeSequentialIndexGeneration',
+  CannotChangeSequentialIndexGenerationError
+);
 
 /** CollectionKeyMismatch: Collection public key mismatch */
 export class CollectionKeyMismatchError extends ProgramError {
   override readonly name: string = 'CollectionKeyMismatch';
 
   readonly code: number = 0x1782; // 6018
-  
+
   constructor(program: Program, cause?: Error) {
     super('Collection public key mismatch', program, cause);
   }
@@ -264,22 +323,29 @@ export class CouldNotRetrieveConfigLineDataError extends ProgramError {
   override readonly name: string = 'CouldNotRetrieveConfigLineData';
 
   readonly code: number = 0x1783; // 6019
-  
+
   constructor(program: Program, cause?: Error) {
     super('Could not retrive config line data', program, cause);
   }
 }
 codeToErrorMap.set(0x1783, CouldNotRetrieveConfigLineDataError);
-nameToErrorMap.set('CouldNotRetrieveConfigLineData', CouldNotRetrieveConfigLineDataError);
+nameToErrorMap.set(
+  'CouldNotRetrieveConfigLineData',
+  CouldNotRetrieveConfigLineDataError
+);
 
 /** NotFullyLoaded: Not all config lines were added to the gumball machine */
 export class NotFullyLoadedError extends ProgramError {
   override readonly name: string = 'NotFullyLoaded';
 
   readonly code: number = 0x1784; // 6020
-  
+
   constructor(program: Program, cause?: Error) {
-    super('Not all config lines were added to the gumball machine', program, cause);
+    super(
+      'Not all config lines were added to the gumball machine',
+      program,
+      cause
+    );
   }
 }
 codeToErrorMap.set(0x1784, NotFullyLoadedError);
@@ -290,7 +356,7 @@ export class InstructionBuilderFailedError extends ProgramError {
   override readonly name: string = 'InstructionBuilderFailed';
 
   readonly code: number = 0x1785; // 6021
-  
+
   constructor(program: Program, cause?: Error) {
     super('Instruction could not be created', program, cause);
   }
@@ -303,33 +369,39 @@ export class MissingCollectionAuthorityRecordError extends ProgramError {
   override readonly name: string = 'MissingCollectionAuthorityRecord';
 
   readonly code: number = 0x1786; // 6022
-  
+
   constructor(program: Program, cause?: Error) {
     super('Missing collection authority record', program, cause);
   }
 }
 codeToErrorMap.set(0x1786, MissingCollectionAuthorityRecordError);
-nameToErrorMap.set('MissingCollectionAuthorityRecord', MissingCollectionAuthorityRecordError);
+nameToErrorMap.set(
+  'MissingCollectionAuthorityRecord',
+  MissingCollectionAuthorityRecordError
+);
 
 /** MissingMetadataDelegateRecord: Missing metadata delegate record */
 export class MissingMetadataDelegateRecordError extends ProgramError {
   override readonly name: string = 'MissingMetadataDelegateRecord';
 
   readonly code: number = 0x1787; // 6023
-  
+
   constructor(program: Program, cause?: Error) {
     super('Missing metadata delegate record', program, cause);
   }
 }
 codeToErrorMap.set(0x1787, MissingMetadataDelegateRecordError);
-nameToErrorMap.set('MissingMetadataDelegateRecord', MissingMetadataDelegateRecordError);
+nameToErrorMap.set(
+  'MissingMetadataDelegateRecord',
+  MissingMetadataDelegateRecordError
+);
 
 /** InvalidTokenStandard: Invalid token standard */
 export class InvalidTokenStandardError extends ProgramError {
   override readonly name: string = 'InvalidTokenStandard';
 
   readonly code: number = 0x1788; // 6024
-  
+
   constructor(program: Program, cause?: Error) {
     super('Invalid token standard', program, cause);
   }
@@ -342,7 +414,7 @@ export class MissingTokenAccountError extends ProgramError {
   override readonly name: string = 'MissingTokenAccount';
 
   readonly code: number = 0x1789; // 6025
-  
+
   constructor(program: Program, cause?: Error) {
     super('Missing token account', program, cause);
   }
@@ -355,7 +427,7 @@ export class MissingTokenRecordError extends ProgramError {
   override readonly name: string = 'MissingTokenRecord';
 
   readonly code: number = 0x178a; // 6026
-  
+
   constructor(program: Program, cause?: Error) {
     super('Missing token record', program, cause);
   }
@@ -368,7 +440,7 @@ export class MissingInstructionsSysvarError extends ProgramError {
   override readonly name: string = 'MissingInstructionsSysvar';
 
   readonly code: number = 0x178b; // 6027
-  
+
   constructor(program: Program, cause?: Error) {
     super('Missing instructions sysvar account', program, cause);
   }
@@ -381,7 +453,7 @@ export class MissingSplAtaProgramError extends ProgramError {
   override readonly name: string = 'MissingSplAtaProgram';
 
   readonly code: number = 0x178c; // 6028
-  
+
   constructor(program: Program, cause?: Error) {
     super('Missing SPL ATA program', program, cause);
   }
@@ -394,7 +466,7 @@ export class InvalidAccountVersionError extends ProgramError {
   override readonly name: string = 'InvalidAccountVersion';
 
   readonly code: number = 0x178d; // 6029
-  
+
   constructor(program: Program, cause?: Error) {
     super('Invalid account version', program, cause);
   }
@@ -407,7 +479,7 @@ export class NotPrimarySaleError extends ProgramError {
   override readonly name: string = 'NotPrimarySale';
 
   readonly code: number = 0x178e; // 6030
-  
+
   constructor(program: Program, cause?: Error) {
     super('Not a primary sale asset', program, cause);
   }
@@ -420,7 +492,7 @@ export class InvalidEditionAccountError extends ProgramError {
   override readonly name: string = 'InvalidEditionAccount';
 
   readonly code: number = 0x178f; // 6031
-  
+
   constructor(program: Program, cause?: Error) {
     super('Invalid edition account', program, cause);
   }
@@ -433,20 +505,23 @@ export class InvalidMasterEditionSupplyError extends ProgramError {
   override readonly name: string = 'InvalidMasterEditionSupply';
 
   readonly code: number = 0x1790; // 6032
-  
+
   constructor(program: Program, cause?: Error) {
     super('Invalid master edition supply', program, cause);
   }
 }
 codeToErrorMap.set(0x1790, InvalidMasterEditionSupplyError);
-nameToErrorMap.set('InvalidMasterEditionSupply', InvalidMasterEditionSupplyError);
+nameToErrorMap.set(
+  'InvalidMasterEditionSupply',
+  InvalidMasterEditionSupplyError
+);
 
 /** PublicKeyMismatch: Public key mismatch */
 export class PublicKeyMismatchError extends ProgramError {
   override readonly name: string = 'PublicKeyMismatch';
 
   readonly code: number = 0x1791; // 6033
-  
+
   constructor(program: Program, cause?: Error) {
     super('Public key mismatch', program, cause);
   }
@@ -459,7 +534,7 @@ export class InvalidCollectionError extends ProgramError {
   override readonly name: string = 'InvalidCollection';
 
   readonly code: number = 0x1792; // 6034
-  
+
   constructor(program: Program, cause?: Error) {
     super('Invalid collection', program, cause);
   }
@@ -472,20 +547,23 @@ export class GumballMachineDetailsFinalizedError extends ProgramError {
   override readonly name: string = 'GumballMachineDetailsFinalized';
 
   readonly code: number = 0x1793; // 6035
-  
+
   constructor(program: Program, cause?: Error) {
     super('Gumball machine detailed finalized', program, cause);
   }
 }
 codeToErrorMap.set(0x1793, GumballMachineDetailsFinalizedError);
-nameToErrorMap.set('GumballMachineDetailsFinalized', GumballMachineDetailsFinalizedError);
+nameToErrorMap.set(
+  'GumballMachineDetailsFinalized',
+  GumballMachineDetailsFinalizedError
+);
 
 /** InvalidState: Invalid state */
 export class InvalidStateError extends ProgramError {
   override readonly name: string = 'InvalidState';
 
   readonly code: number = 0x1794; // 6036
-  
+
   constructor(program: Program, cause?: Error) {
     super('Invalid state', program, cause);
   }
@@ -498,7 +576,7 @@ export class InvalidAuthorityError extends ProgramError {
   override readonly name: string = 'InvalidAuthority';
 
   readonly code: number = 0x1795; // 6037
-  
+
   constructor(program: Program, cause?: Error) {
     super('Invalid authority', program, cause);
   }
@@ -511,7 +589,7 @@ export class InvalidMintAuthorityError extends ProgramError {
   override readonly name: string = 'InvalidMintAuthority';
 
   readonly code: number = 0x1796; // 6038
-  
+
   constructor(program: Program, cause?: Error) {
     super('Invalid mint authority', program, cause);
   }
@@ -524,7 +602,7 @@ export class InvalidMintError extends ProgramError {
   override readonly name: string = 'InvalidMint';
 
   readonly code: number = 0x1797; // 6039
-  
+
   constructor(program: Program, cause?: Error) {
     super('Invalid mint', program, cause);
   }
@@ -537,7 +615,7 @@ export class InvalidPaymentMintError extends ProgramError {
   override readonly name: string = 'InvalidPaymentMint';
 
   readonly code: number = 0x1798; // 6040
-  
+
   constructor(program: Program, cause?: Error) {
     super('Invalid payment mint', program, cause);
   }
@@ -550,7 +628,7 @@ export class InvalidSellerError extends ProgramError {
   override readonly name: string = 'InvalidSeller';
 
   readonly code: number = 0x1799; // 6041
-  
+
   constructor(program: Program, cause?: Error) {
     super('Invalid seller', program, cause);
   }
@@ -563,7 +641,7 @@ export class InvalidBuyerError extends ProgramError {
   override readonly name: string = 'InvalidBuyer';
 
   readonly code: number = 0x179a; // 6042
-  
+
   constructor(program: Program, cause?: Error) {
     super('Invalid buyer', program, cause);
   }
@@ -576,7 +654,7 @@ export class UriTooLongError extends ProgramError {
   override readonly name: string = 'UriTooLong';
 
   readonly code: number = 0x179b; // 6043
-  
+
   constructor(program: Program, cause?: Error) {
     super('URI too long', program, cause);
   }
@@ -589,7 +667,7 @@ export class InvalidProofPathError extends ProgramError {
   override readonly name: string = 'InvalidProofPath';
 
   readonly code: number = 0x179c; // 6044
-  
+
   constructor(program: Program, cause?: Error) {
     super('Invalid proof path', program, cause);
   }
@@ -602,7 +680,7 @@ export class InvalidSettingUpdateError extends ProgramError {
   override readonly name: string = 'InvalidSettingUpdate';
 
   readonly code: number = 0x179d; // 6045
-  
+
   constructor(program: Program, cause?: Error) {
     super('Invalid setting update', program, cause);
   }
@@ -615,7 +693,7 @@ export class SellerTooManyItemsError extends ProgramError {
   override readonly name: string = 'SellerTooManyItems';
 
   readonly code: number = 0x179e; // 6046
-  
+
   constructor(program: Program, cause?: Error) {
     super('Seller has too many items', program, cause);
   }
@@ -628,7 +706,7 @@ export class NotAllSettledError extends ProgramError {
   override readonly name: string = 'NotAllSettled';
 
   readonly code: number = 0x179f; // 6047
-  
+
   constructor(program: Program, cause?: Error) {
     super('Not all items have been settled', program, cause);
   }
@@ -641,7 +719,7 @@ export class ItemAlreadySettledError extends ProgramError {
   override readonly name: string = 'ItemAlreadySettled';
 
   readonly code: number = 0x17a0; // 6048
-  
+
   constructor(program: Program, cause?: Error) {
     super('Item already settled', program, cause);
   }
@@ -654,7 +732,7 @@ export class ItemAlreadyClaimedError extends ProgramError {
   override readonly name: string = 'ItemAlreadyClaimed';
 
   readonly code: number = 0x17a1; // 6049
-  
+
   constructor(program: Program, cause?: Error) {
     super('Item already claimed', program, cause);
   }
@@ -667,7 +745,7 @@ export class ItemAlreadyDrawnError extends ProgramError {
   override readonly name: string = 'ItemAlreadyDrawn';
 
   readonly code: number = 0x17a2; // 6050
-  
+
   constructor(program: Program, cause?: Error) {
     super('Item already drawn', program, cause);
   }
@@ -680,7 +758,7 @@ export class InvalidGumballMachineError extends ProgramError {
   override readonly name: string = 'InvalidGumballMachine';
 
   readonly code: number = 0x17a3; // 6051
-  
+
   constructor(program: Program, cause?: Error) {
     super('Invalid gumball machine', program, cause);
   }
@@ -693,7 +771,7 @@ export class SellerCannotBeAuthorityError extends ProgramError {
   override readonly name: string = 'SellerCannotBeAuthority';
 
   readonly code: number = 0x17a4; // 6052
-  
+
   constructor(program: Program, cause?: Error) {
     super('Seller cannot be authority', program, cause);
   }
@@ -706,7 +784,7 @@ export class InvalidAssetPluginError extends ProgramError {
   override readonly name: string = 'InvalidAssetPlugin';
 
   readonly code: number = 0x17a5; // 6053
-  
+
   constructor(program: Program, cause?: Error) {
     super('Asset has an invalid plugin', program, cause);
   }
@@ -719,7 +797,7 @@ export class InvalidAmountError extends ProgramError {
   override readonly name: string = 'InvalidAmount';
 
   readonly code: number = 0x17a6; // 6054
-  
+
   constructor(program: Program, cause?: Error) {
     super('Invalid amount', program, cause);
   }
@@ -732,7 +810,7 @@ export class DuplicateIndexError extends ProgramError {
   override readonly name: string = 'DuplicateIndex';
 
   readonly code: number = 0x17a7; // 6055
-  
+
   constructor(program: Program, cause?: Error) {
     super('Duplicate index', program, cause);
   }
@@ -745,7 +823,7 @@ export class InvalidInputLengthError extends ProgramError {
   override readonly name: string = 'InvalidInputLength';
 
   readonly code: number = 0x17a8; // 6056
-  
+
   constructor(program: Program, cause?: Error) {
     super('Invalid input length', program, cause);
   }
@@ -758,7 +836,7 @@ export class BuyBackNotEnabledError extends ProgramError {
   override readonly name: string = 'BuyBackNotEnabled';
 
   readonly code: number = 0x17a9; // 6057
-  
+
   constructor(program: Program, cause?: Error) {
     super('Buy back not enabled', program, cause);
   }
@@ -771,7 +849,7 @@ export class BuyBackFundsNotZeroError extends ProgramError {
   override readonly name: string = 'BuyBackFundsNotZero';
 
   readonly code: number = 0x17aa; // 6058
-  
+
   constructor(program: Program, cause?: Error) {
     super('Buy back funds not zero', program, cause);
   }
@@ -784,7 +862,7 @@ export class InsufficientFundsError extends ProgramError {
   override readonly name: string = 'InsufficientFunds';
 
   readonly code: number = 0x17ab; // 6059
-  
+
   constructor(program: Program, cause?: Error) {
     super('Insufficient funds', program, cause);
   }
@@ -797,7 +875,7 @@ export class InvalidVersionError extends ProgramError {
   override readonly name: string = 'InvalidVersion';
 
   readonly code: number = 0x17ac; // 6060
-  
+
   constructor(program: Program, cause?: Error) {
     super('Invalid version', program, cause);
   }
@@ -810,7 +888,7 @@ export class InvalidOracleSignerError extends ProgramError {
   override readonly name: string = 'InvalidOracleSigner';
 
   readonly code: number = 0x17ad; // 6061
-  
+
   constructor(program: Program, cause?: Error) {
     super('Invalid oracle signer', program, cause);
   }
@@ -823,7 +901,7 @@ export class InvalidPayerError extends ProgramError {
   override readonly name: string = 'InvalidPayer';
 
   readonly code: number = 0x17ae; // 6062
-  
+
   constructor(program: Program, cause?: Error) {
     super('Invalid payer', program, cause);
   }
@@ -836,7 +914,7 @@ export class NotImplementedError extends ProgramError {
   override readonly name: string = 'NotImplemented';
 
   readonly code: number = 0x17af; // 6063
-  
+
   constructor(program: Program, cause?: Error) {
     super('Not implemented', program, cause);
   }
@@ -849,7 +927,7 @@ export class BuyBackCutoffReachedError extends ProgramError {
   override readonly name: string = 'BuyBackCutoffReached';
 
   readonly code: number = 0x17b0; // 6064
-  
+
   constructor(program: Program, cause?: Error) {
     super('Buy back cutoff reached', program, cause);
   }
@@ -862,7 +940,7 @@ export class NotASoloGumballError extends ProgramError {
   override readonly name: string = 'NotASoloGumball';
 
   readonly code: number = 0x17b1; // 6065
-  
+
   constructor(program: Program, cause?: Error) {
     super('Not a solo gumball', program, cause);
   }
@@ -875,7 +953,7 @@ export class ItemNotClaimedError extends ProgramError {
   override readonly name: string = 'ItemNotClaimed';
 
   readonly code: number = 0x17b2; // 6066
-  
+
   constructor(program: Program, cause?: Error) {
     super('Item not claimed', program, cause);
   }
@@ -888,7 +966,7 @@ export class ItemNotSettledError extends ProgramError {
   override readonly name: string = 'ItemNotSettled';
 
   readonly code: number = 0x17b3; // 6067
-  
+
   constructor(program: Program, cause?: Error) {
     super('Item not settled', program, cause);
   }
@@ -901,7 +979,7 @@ export class MissingItemIndexError extends ProgramError {
   override readonly name: string = 'MissingItemIndex';
 
   readonly code: number = 0x17b4; // 6068
-  
+
   constructor(program: Program, cause?: Error) {
     super('Missing item index', program, cause);
   }
@@ -914,9 +992,13 @@ export class UnsupportedCnftVersionError extends ProgramError {
   override readonly name: string = 'UnsupportedCnftVersion';
 
   readonly code: number = 0x17b5; // 6069
-  
+
   constructor(program: Program, cause?: Error) {
-    super('Unsupported Bubblegum version (only V1 compressed NFTs can be traded)', program, cause);
+    super(
+      'Unsupported Bubblegum version (only V1 compressed NFTs can be traded)',
+      program,
+      cause
+    );
   }
 }
 codeToErrorMap.set(0x17b5, UnsupportedCnftVersionError);
@@ -927,7 +1009,7 @@ export class InvalidMerkleTreeError extends ProgramError {
   override readonly name: string = 'InvalidMerkleTree';
 
   readonly code: number = 0x17b6; // 6070
-  
+
   constructor(program: Program, cause?: Error) {
     super('Invalid merkle tree for the stored asset id', program, cause);
   }
@@ -940,7 +1022,7 @@ export class AccountAlreadyInitializedError extends ProgramError {
   override readonly name: string = 'AccountAlreadyInitialized';
 
   readonly code: number = 0x17b7; // 6071
-  
+
   constructor(program: Program, cause?: Error) {
     super('Account is already initialized', program, cause);
   }
@@ -952,7 +1034,11 @@ nameToErrorMap.set('AccountAlreadyInitialized', AccountAlreadyInitializedError);
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors
  */
-export function getMallowGumballErrorFromCode(code: number, program: Program, cause?: Error): ProgramError | null {
+export function getMallowGumballErrorFromCode(
+  code: number,
+  program: Program,
+  cause?: Error
+): ProgramError | null {
   const constructor = codeToErrorMap.get(code);
   return constructor ? new constructor(program, cause) : null;
 }
@@ -961,7 +1047,11 @@ export function getMallowGumballErrorFromCode(code: number, program: Program, ca
  * Attempts to resolve a custom program error from the provided error name, i.e. 'Unauthorized'.
  * @category Errors
  */
-export function getMallowGumballErrorFromName(name: string, program: Program, cause?: Error): ProgramError | null {
+export function getMallowGumballErrorFromName(
+  name: string,
+  program: Program,
+  cause?: Error
+): ProgramError | null {
   const constructor = nameToErrorMap.get(name);
   return constructor ? new constructor(program, cause) : null;
 }

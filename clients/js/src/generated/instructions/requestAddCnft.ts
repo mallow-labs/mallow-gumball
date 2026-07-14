@@ -6,124 +6,241 @@
  * @see https://github.com/codama-idl/codama
  */
 
-import { Context, Pda, PublicKey, Signer, TransactionBuilder, transactionBuilder } from '@metaplex-foundation/umi';
-import { Serializer, bytes, mapSerializer, struct } from '@metaplex-foundation/umi/serializers';
+import {
+  Context,
+  Pda,
+  PublicKey,
+  Signer,
+  TransactionBuilder,
+  transactionBuilder,
+} from '@metaplex-foundation/umi';
+import {
+  Serializer,
+  bytes,
+  mapSerializer,
+  struct,
+} from '@metaplex-foundation/umi/serializers';
 import { findGumballMachineAuthorityPda } from '../../hooked';
 import { findAddItemRequestPda, findSellerHistoryPda } from '../accounts';
-import { ResolvedAccount, ResolvedAccountsWithIndices, expectPublicKey, getAccountMetasAndSigners } from '../shared';
+import {
+  ResolvedAccount,
+  ResolvedAccountsWithIndices,
+  expectPublicKey,
+  getAccountMetasAndSigners,
+} from '../shared';
 import { CnftArgs, CnftArgsArgs, getCnftArgsSerializer } from '../types';
 
 // Accounts.
 export type RequestAddCnftInstructionAccounts = {
-      /** Gumball Machine account. */
-    gumballMachine: PublicKey | Pda;
-      /** Seller history account. */
-    sellerHistory?: PublicKey | Pda;
-      /** Add item request account, keyed by the asset id. */
-    addItemRequest?: PublicKey | Pda;
-    authorityPda?: PublicKey | Pda;
-      /** Seller of the cNFT (current leaf owner). */
-    seller?: Signer;
-      /**
- * The cNFT asset id (a Bubblegum PDA; not a real account). Used only as the
- * request PDA seed and bound to (merkle_tree, nonce) in the handler.
- */
+  /** Gumball Machine account. */
+  gumballMachine: PublicKey | Pda;
+  /** Seller history account. */
+  sellerHistory?: PublicKey | Pda;
+  /** Add item request account, keyed by the asset id. */
+  addItemRequest?: PublicKey | Pda;
+  authorityPda?: PublicKey | Pda;
+  /** Seller of the cNFT (current leaf owner). */
+  seller?: Signer;
+  /**
+   * The cNFT asset id (a Bubblegum PDA; not a real account). Used only as the
+   * request PDA seed and bound to (merkle_tree, nonce) in the handler.
+   */
 
-    asset: PublicKey | Pda;
-    treeConfig: PublicKey | Pda;
-    merkleTree: PublicKey | Pda;
-    logWrapper?: PublicKey | Pda;
-    compressionProgram?: PublicKey | Pda;
-    bubblegumProgram?: PublicKey | Pda;
-    systemProgram?: PublicKey | Pda;
+  asset: PublicKey | Pda;
+  treeConfig: PublicKey | Pda;
+  merkleTree: PublicKey | Pda;
+  logWrapper?: PublicKey | Pda;
+  compressionProgram?: PublicKey | Pda;
+  bubblegumProgram?: PublicKey | Pda;
+  systemProgram?: PublicKey | Pda;
 };
 
-  // Data.
-  export type RequestAddCnftInstructionData = { discriminator: Uint8Array; args: CnftArgs;  };
+// Data.
+export type RequestAddCnftInstructionData = {
+  discriminator: Uint8Array;
+  args: CnftArgs;
+};
 
-export type RequestAddCnftInstructionDataArgs = { args: CnftArgsArgs;  };
+export type RequestAddCnftInstructionDataArgs = { args: CnftArgsArgs };
 
-
-  export function getRequestAddCnftInstructionDataSerializer(): Serializer<RequestAddCnftInstructionDataArgs, RequestAddCnftInstructionData> {
-  return mapSerializer<RequestAddCnftInstructionDataArgs, any, RequestAddCnftInstructionData>(struct<RequestAddCnftInstructionData>([['discriminator', bytes({ size: 8 })], ['args', getCnftArgsSerializer()]], { description: 'RequestAddCnftInstructionData' }), (value) => ({ ...value, discriminator: new Uint8Array([189, 159, 171, 46, 145, 188, 38, 32]) }) ) as Serializer<RequestAddCnftInstructionDataArgs, RequestAddCnftInstructionData>;
+export function getRequestAddCnftInstructionDataSerializer(): Serializer<
+  RequestAddCnftInstructionDataArgs,
+  RequestAddCnftInstructionData
+> {
+  return mapSerializer<
+    RequestAddCnftInstructionDataArgs,
+    any,
+    RequestAddCnftInstructionData
+  >(
+    struct<RequestAddCnftInstructionData>(
+      [
+        ['discriminator', bytes({ size: 8 })],
+        ['args', getCnftArgsSerializer()],
+      ],
+      { description: 'RequestAddCnftInstructionData' }
+    ),
+    (value) => ({
+      ...value,
+      discriminator: new Uint8Array([189, 159, 171, 46, 145, 188, 38, 32]),
+    })
+  ) as Serializer<
+    RequestAddCnftInstructionDataArgs,
+    RequestAddCnftInstructionData
+  >;
 }
 
+// Args.
+export type RequestAddCnftInstructionArgs = RequestAddCnftInstructionDataArgs;
 
-
-  
-  // Args.
-      export type RequestAddCnftInstructionArgs =           RequestAddCnftInstructionDataArgs
-      ;
-  
 // Instruction.
 export function requestAddCnft(
-  context: Pick<Context, "eddsa" | "identity" | "programs">,
-                        input: RequestAddCnftInstructionAccounts & RequestAddCnftInstructionArgs,
-      ): TransactionBuilder {
+  context: Pick<Context, 'eddsa' | 'identity' | 'programs'>,
+  input: RequestAddCnftInstructionAccounts & RequestAddCnftInstructionArgs
+): TransactionBuilder {
   // Program ID.
-  const programId = context.programs.getPublicKey('mallowGumball', 'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa');
+  const programId = context.programs.getPublicKey(
+    'mallowGumball',
+    'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa'
+  );
 
   // Accounts.
   const resolvedAccounts = {
-          gumballMachine: { index: 0, isWritable: true as boolean, value: input.gumballMachine ?? null },
-          sellerHistory: { index: 1, isWritable: true as boolean, value: input.sellerHistory ?? null },
-          addItemRequest: { index: 2, isWritable: true as boolean, value: input.addItemRequest ?? null },
-          authorityPda: { index: 3, isWritable: true as boolean, value: input.authorityPda ?? null },
-          seller: { index: 4, isWritable: true as boolean, value: input.seller ?? null },
-          asset: { index: 5, isWritable: false as boolean, value: input.asset ?? null },
-          treeConfig: { index: 6, isWritable: false as boolean, value: input.treeConfig ?? null },
-          merkleTree: { index: 7, isWritable: true as boolean, value: input.merkleTree ?? null },
-          logWrapper: { index: 8, isWritable: false as boolean, value: input.logWrapper ?? null },
-          compressionProgram: { index: 9, isWritable: false as boolean, value: input.compressionProgram ?? null },
-          bubblegumProgram: { index: 10, isWritable: false as boolean, value: input.bubblegumProgram ?? null },
-          systemProgram: { index: 11, isWritable: false as boolean, value: input.systemProgram ?? null },
-      } satisfies ResolvedAccountsWithIndices;
+    gumballMachine: {
+      index: 0,
+      isWritable: true as boolean,
+      value: input.gumballMachine ?? null,
+    },
+    sellerHistory: {
+      index: 1,
+      isWritable: true as boolean,
+      value: input.sellerHistory ?? null,
+    },
+    addItemRequest: {
+      index: 2,
+      isWritable: true as boolean,
+      value: input.addItemRequest ?? null,
+    },
+    authorityPda: {
+      index: 3,
+      isWritable: true as boolean,
+      value: input.authorityPda ?? null,
+    },
+    seller: {
+      index: 4,
+      isWritable: true as boolean,
+      value: input.seller ?? null,
+    },
+    asset: {
+      index: 5,
+      isWritable: false as boolean,
+      value: input.asset ?? null,
+    },
+    treeConfig: {
+      index: 6,
+      isWritable: false as boolean,
+      value: input.treeConfig ?? null,
+    },
+    merkleTree: {
+      index: 7,
+      isWritable: true as boolean,
+      value: input.merkleTree ?? null,
+    },
+    logWrapper: {
+      index: 8,
+      isWritable: false as boolean,
+      value: input.logWrapper ?? null,
+    },
+    compressionProgram: {
+      index: 9,
+      isWritable: false as boolean,
+      value: input.compressionProgram ?? null,
+    },
+    bubblegumProgram: {
+      index: 10,
+      isWritable: false as boolean,
+      value: input.bubblegumProgram ?? null,
+    },
+    systemProgram: {
+      index: 11,
+      isWritable: false as boolean,
+      value: input.systemProgram ?? null,
+    },
+  } satisfies ResolvedAccountsWithIndices;
 
-      // Arguments.
-    const resolvedArgs: RequestAddCnftInstructionArgs = { ...input };
-  
-    // Default values.
+  // Arguments.
+  const resolvedArgs: RequestAddCnftInstructionArgs = { ...input };
+
+  // Default values.
   if (!resolvedAccounts.seller.value) {
-        resolvedAccounts.seller.value = context.identity;
-      }
-      if (!resolvedAccounts.sellerHistory.value) {
-        resolvedAccounts.sellerHistory.value = findSellerHistoryPda(context, { seller: expectPublicKey(resolvedAccounts.seller.value), gumballMachine: expectPublicKey(resolvedAccounts.gumballMachine.value) });
-      }
-      if (!resolvedAccounts.addItemRequest.value) {
-        resolvedAccounts.addItemRequest.value = findAddItemRequestPda(context, { asset: expectPublicKey(resolvedAccounts.asset.value) });
-      }
-      if (!resolvedAccounts.authorityPda.value) {
-        resolvedAccounts.authorityPda.value = findGumballMachineAuthorityPda(context, { gumballMachine: expectPublicKey(resolvedAccounts.gumballMachine.value) });
-      }
-      if (!resolvedAccounts.logWrapper.value) {
-        resolvedAccounts.logWrapper.value = context.programs.getPublicKey('logWrapper', 'noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV');
-resolvedAccounts.logWrapper.isWritable = false
-      }
-      if (!resolvedAccounts.compressionProgram.value) {
-        resolvedAccounts.compressionProgram.value = context.programs.getPublicKey('compressionProgram', 'cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK');
-resolvedAccounts.compressionProgram.isWritable = false
-      }
-      if (!resolvedAccounts.bubblegumProgram.value) {
-        resolvedAccounts.bubblegumProgram.value = context.programs.getPublicKey('bubblegumProgram', 'BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY');
-resolvedAccounts.bubblegumProgram.isWritable = false
-      }
-      if (!resolvedAccounts.systemProgram.value) {
-        resolvedAccounts.systemProgram.value = context.programs.getPublicKey('systemProgram', '11111111111111111111111111111111');
-resolvedAccounts.systemProgram.isWritable = false
-      }
-      
+    resolvedAccounts.seller.value = context.identity;
+  }
+  if (!resolvedAccounts.sellerHistory.value) {
+    resolvedAccounts.sellerHistory.value = findSellerHistoryPda(context, {
+      seller: expectPublicKey(resolvedAccounts.seller.value),
+      gumballMachine: expectPublicKey(resolvedAccounts.gumballMachine.value),
+    });
+  }
+  if (!resolvedAccounts.addItemRequest.value) {
+    resolvedAccounts.addItemRequest.value = findAddItemRequestPda(context, {
+      asset: expectPublicKey(resolvedAccounts.asset.value),
+    });
+  }
+  if (!resolvedAccounts.authorityPda.value) {
+    resolvedAccounts.authorityPda.value = findGumballMachineAuthorityPda(
+      context,
+      { gumballMachine: expectPublicKey(resolvedAccounts.gumballMachine.value) }
+    );
+  }
+  if (!resolvedAccounts.logWrapper.value) {
+    resolvedAccounts.logWrapper.value = context.programs.getPublicKey(
+      'logWrapper',
+      'noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV'
+    );
+    resolvedAccounts.logWrapper.isWritable = false;
+  }
+  if (!resolvedAccounts.compressionProgram.value) {
+    resolvedAccounts.compressionProgram.value = context.programs.getPublicKey(
+      'compressionProgram',
+      'cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK'
+    );
+    resolvedAccounts.compressionProgram.isWritable = false;
+  }
+  if (!resolvedAccounts.bubblegumProgram.value) {
+    resolvedAccounts.bubblegumProgram.value = context.programs.getPublicKey(
+      'bubblegumProgram',
+      'BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY'
+    );
+    resolvedAccounts.bubblegumProgram.isWritable = false;
+  }
+  if (!resolvedAccounts.systemProgram.value) {
+    resolvedAccounts.systemProgram.value = context.programs.getPublicKey(
+      'systemProgram',
+      '11111111111111111111111111111111'
+    );
+    resolvedAccounts.systemProgram.isWritable = false;
+  }
+
   // Accounts in order.
-      const orderedAccounts: ResolvedAccount[] = Object.values(resolvedAccounts).sort((a,b) => a.index - b.index);
-  
-  
+  const orderedAccounts: ResolvedAccount[] = Object.values(
+    resolvedAccounts
+  ).sort((a, b) => a.index - b.index);
+
   // Keys and Signers.
-  const [keys, signers] = getAccountMetasAndSigners(orderedAccounts, "programId", programId);
+  const [keys, signers] = getAccountMetasAndSigners(
+    orderedAccounts,
+    'programId',
+    programId
+  );
 
   // Data.
-      const data = getRequestAddCnftInstructionDataSerializer().serialize(resolvedArgs as RequestAddCnftInstructionDataArgs);
-  
+  const data = getRequestAddCnftInstructionDataSerializer().serialize(
+    resolvedArgs as RequestAddCnftInstructionDataArgs
+  );
+
   // Bytes Created On Chain.
-      const bytesCreatedOnChain = 0;
-  
-  return transactionBuilder([{ instruction: { keys, programId, data }, signers, bytesCreatedOnChain }]);
+  const bytesCreatedOnChain = 0;
+
+  return transactionBuilder([
+    { instruction: { keys, programId, data }, signers, bytesCreatedOnChain },
+  ]);
 }

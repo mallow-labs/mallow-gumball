@@ -8,7 +8,10 @@
 
 import { Program, ProgramError } from '@metaplex-foundation/umi';
 
-type ProgramErrorConstructor = new (program: Program, cause?: Error) => ProgramError;
+type ProgramErrorConstructor = new (
+  program: Program,
+  cause?: Error
+) => ProgramError;
 const codeToErrorMap: Map<number, ProgramErrorConstructor> = new Map();
 const nameToErrorMap: Map<string, ProgramErrorConstructor> = new Map();
 
@@ -17,7 +20,7 @@ export class CgInvalidAccountSizeError extends ProgramError {
   override readonly name: string = 'CgInvalidAccountSize';
 
   readonly code: number = 0x1770; // 6000
-  
+
   constructor(program: Program, cause?: Error) {
     super('Could not save guard to account', program, cause);
   }
@@ -30,7 +33,7 @@ export class CgDeserializationErrorError extends ProgramError {
   override readonly name: string = 'CgDeserializationError';
 
   readonly code: number = 0x1771; // 6001
-  
+
   constructor(program: Program, cause?: Error) {
     super('Could not deserialize guard', program, cause);
   }
@@ -43,7 +46,7 @@ export class CgPublicKeyMismatchError extends ProgramError {
   override readonly name: string = 'CgPublicKeyMismatch';
 
   readonly code: number = 0x1772; // 6002
-  
+
   constructor(program: Program, cause?: Error) {
     super('Public key mismatch', program, cause);
   }
@@ -56,20 +59,23 @@ export class CgDataIncrementLimitExceededError extends ProgramError {
   override readonly name: string = 'CgDataIncrementLimitExceeded';
 
   readonly code: number = 0x1773; // 6003
-  
+
   constructor(program: Program, cause?: Error) {
     super('Exceeded account increase limit', program, cause);
   }
 }
 codeToErrorMap.set(0x1773, CgDataIncrementLimitExceededError);
-nameToErrorMap.set('CgDataIncrementLimitExceeded', CgDataIncrementLimitExceededError);
+nameToErrorMap.set(
+  'CgDataIncrementLimitExceeded',
+  CgDataIncrementLimitExceededError
+);
 
 /** IncorrectOwner: Account does not have correct owner */
 export class CgIncorrectOwnerError extends ProgramError {
   override readonly name: string = 'CgIncorrectOwner';
 
   readonly code: number = 0x1774; // 6004
-  
+
   constructor(program: Program, cause?: Error) {
     super('Account does not have correct owner', program, cause);
   }
@@ -82,7 +88,7 @@ export class CgUninitializedError extends ProgramError {
   override readonly name: string = 'CgUninitialized';
 
   readonly code: number = 0x1775; // 6005
-  
+
   constructor(program: Program, cause?: Error) {
     super('Account is not initialized', program, cause);
   }
@@ -95,7 +101,7 @@ export class CgMissingRemainingAccountError extends ProgramError {
   override readonly name: string = 'CgMissingRemainingAccount';
 
   readonly code: number = 0x1776; // 6006
-  
+
   constructor(program: Program, cause?: Error) {
     super('Missing expected remaining account', program, cause);
   }
@@ -108,7 +114,7 @@ export class CgNumericalOverflowErrorError extends ProgramError {
   override readonly name: string = 'CgNumericalOverflowError';
 
   readonly code: number = 0x1777; // 6007
-  
+
   constructor(program: Program, cause?: Error) {
     super('Numerical overflow error', program, cause);
   }
@@ -121,20 +127,23 @@ export class CgRequiredGroupLabelNotFoundError extends ProgramError {
   override readonly name: string = 'CgRequiredGroupLabelNotFound';
 
   readonly code: number = 0x1778; // 6008
-  
+
   constructor(program: Program, cause?: Error) {
     super('Missing required group label', program, cause);
   }
 }
 codeToErrorMap.set(0x1778, CgRequiredGroupLabelNotFoundError);
-nameToErrorMap.set('CgRequiredGroupLabelNotFound', CgRequiredGroupLabelNotFoundError);
+nameToErrorMap.set(
+  'CgRequiredGroupLabelNotFound',
+  CgRequiredGroupLabelNotFoundError
+);
 
 /** GroupNotFound: Group not found */
 export class CgGroupNotFoundError extends ProgramError {
   override readonly name: string = 'CgGroupNotFound';
 
   readonly code: number = 0x1779; // 6009
-  
+
   constructor(program: Program, cause?: Error) {
     super('Group not found', program, cause);
   }
@@ -147,7 +156,7 @@ export class CgExceededLengthError extends ProgramError {
   override readonly name: string = 'CgExceededLength';
 
   readonly code: number = 0x177a; // 6010
-  
+
   constructor(program: Program, cause?: Error) {
     super('Value exceeded maximum length', program, cause);
   }
@@ -160,7 +169,7 @@ export class CgGumballMachineEmptyError extends ProgramError {
   override readonly name: string = 'CgGumballMachineEmpty';
 
   readonly code: number = 0x177b; // 6011
-  
+
   constructor(program: Program, cause?: Error) {
     super('Gumball machine is empty', program, cause);
   }
@@ -173,7 +182,7 @@ export class CgInstructionNotFoundError extends ProgramError {
   override readonly name: string = 'CgInstructionNotFound';
 
   readonly code: number = 0x177c; // 6012
-  
+
   constructor(program: Program, cause?: Error) {
     super('No instruction was found', program, cause);
   }
@@ -186,7 +195,7 @@ export class CgCollectionKeyMismatchError extends ProgramError {
   override readonly name: string = 'CgCollectionKeyMismatch';
 
   readonly code: number = 0x177d; // 6013
-  
+
   constructor(program: Program, cause?: Error) {
     super('Collection public key mismatch', program, cause);
   }
@@ -199,35 +208,45 @@ export class CgMissingCollectionAccountsError extends ProgramError {
   override readonly name: string = 'CgMissingCollectionAccounts';
 
   readonly code: number = 0x177e; // 6014
-  
+
   constructor(program: Program, cause?: Error) {
     super('Missing collection accounts', program, cause);
   }
 }
 codeToErrorMap.set(0x177e, CgMissingCollectionAccountsError);
-nameToErrorMap.set('CgMissingCollectionAccounts', CgMissingCollectionAccountsError);
+nameToErrorMap.set(
+  'CgMissingCollectionAccounts',
+  CgMissingCollectionAccountsError
+);
 
 /** CollectionUpdateAuthorityKeyMismatch: Collection update authority public key mismatch */
 export class CgCollectionUpdateAuthorityKeyMismatchError extends ProgramError {
   override readonly name: string = 'CgCollectionUpdateAuthorityKeyMismatch';
 
   readonly code: number = 0x177f; // 6015
-  
+
   constructor(program: Program, cause?: Error) {
     super('Collection update authority public key mismatch', program, cause);
   }
 }
 codeToErrorMap.set(0x177f, CgCollectionUpdateAuthorityKeyMismatchError);
-nameToErrorMap.set('CgCollectionUpdateAuthorityKeyMismatch', CgCollectionUpdateAuthorityKeyMismatchError);
+nameToErrorMap.set(
+  'CgCollectionUpdateAuthorityKeyMismatch',
+  CgCollectionUpdateAuthorityKeyMismatchError
+);
 
 /** MintNotLastTransaction: Mint must be the last instructions of the transaction */
 export class CgMintNotLastTransactionError extends ProgramError {
   override readonly name: string = 'CgMintNotLastTransaction';
 
   readonly code: number = 0x1780; // 6016
-  
+
   constructor(program: Program, cause?: Error) {
-    super('Mint must be the last instructions of the transaction', program, cause);
+    super(
+      'Mint must be the last instructions of the transaction',
+      program,
+      cause
+    );
   }
 }
 codeToErrorMap.set(0x1780, CgMintNotLastTransactionError);
@@ -238,7 +257,7 @@ export class CgMintNotLiveError extends ProgramError {
   override readonly name: string = 'CgMintNotLive';
 
   readonly code: number = 0x1781; // 6017
-  
+
   constructor(program: Program, cause?: Error) {
     super('Mint is not live', program, cause);
   }
@@ -251,7 +270,7 @@ export class CgNotEnoughSOLError extends ProgramError {
   override readonly name: string = 'CgNotEnoughSOL';
 
   readonly code: number = 0x1782; // 6018
-  
+
   constructor(program: Program, cause?: Error) {
     super('Not enough SOL to pay for the mint', program, cause);
   }
@@ -264,7 +283,7 @@ export class CgTokenBurnFailedError extends ProgramError {
   override readonly name: string = 'CgTokenBurnFailed';
 
   readonly code: number = 0x1783; // 6019
-  
+
   constructor(program: Program, cause?: Error) {
     super('Token burn failed', program, cause);
   }
@@ -277,7 +296,7 @@ export class CgNotEnoughTokensError extends ProgramError {
   override readonly name: string = 'CgNotEnoughTokens';
 
   readonly code: number = 0x1784; // 6020
-  
+
   constructor(program: Program, cause?: Error) {
     super('Not enough tokens on the account', program, cause);
   }
@@ -290,7 +309,7 @@ export class CgTokenTransferFailedError extends ProgramError {
   override readonly name: string = 'CgTokenTransferFailed';
 
   readonly code: number = 0x1785; // 6021
-  
+
   constructor(program: Program, cause?: Error) {
     super('Token transfer failed', program, cause);
   }
@@ -303,20 +322,23 @@ export class CgMissingRequiredSignatureError extends ProgramError {
   override readonly name: string = 'CgMissingRequiredSignature';
 
   readonly code: number = 0x1786; // 6022
-  
+
   constructor(program: Program, cause?: Error) {
     super('A signature was required but not found', program, cause);
   }
 }
 codeToErrorMap.set(0x1786, CgMissingRequiredSignatureError);
-nameToErrorMap.set('CgMissingRequiredSignature', CgMissingRequiredSignatureError);
+nameToErrorMap.set(
+  'CgMissingRequiredSignature',
+  CgMissingRequiredSignatureError
+);
 
 /** GatewayTokenInvalid: Gateway token is not valid */
 export class CgGatewayTokenInvalidError extends ProgramError {
   override readonly name: string = 'CgGatewayTokenInvalid';
 
   readonly code: number = 0x1787; // 6023
-  
+
   constructor(program: Program, cause?: Error) {
     super('Gateway token is not valid', program, cause);
   }
@@ -329,7 +351,7 @@ export class CgAfterEndDateError extends ProgramError {
   override readonly name: string = 'CgAfterEndDate';
 
   readonly code: number = 0x1788; // 6024
-  
+
   constructor(program: Program, cause?: Error) {
     super('Current time is after the set end date', program, cause);
   }
@@ -342,7 +364,7 @@ export class CgInvalidMintTimeError extends ProgramError {
   override readonly name: string = 'CgInvalidMintTime';
 
   readonly code: number = 0x1789; // 6025
-  
+
   constructor(program: Program, cause?: Error) {
     super('Current time is not within the allowed mint time', program, cause);
   }
@@ -355,20 +377,23 @@ export class CgAddressNotFoundInAllowedListError extends ProgramError {
   override readonly name: string = 'CgAddressNotFoundInAllowedList';
 
   readonly code: number = 0x178a; // 6026
-  
+
   constructor(program: Program, cause?: Error) {
     super('Address not found on the allowed list', program, cause);
   }
 }
 codeToErrorMap.set(0x178a, CgAddressNotFoundInAllowedListError);
-nameToErrorMap.set('CgAddressNotFoundInAllowedList', CgAddressNotFoundInAllowedListError);
+nameToErrorMap.set(
+  'CgAddressNotFoundInAllowedList',
+  CgAddressNotFoundInAllowedListError
+);
 
 /** MissingAllowedListProof: Missing allowed list proof */
 export class CgMissingAllowedListProofError extends ProgramError {
   override readonly name: string = 'CgMissingAllowedListProof';
 
   readonly code: number = 0x178b; // 6027
-  
+
   constructor(program: Program, cause?: Error) {
     super('Missing allowed list proof', program, cause);
   }
@@ -381,7 +406,7 @@ export class CgAllowedListNotEnabledError extends ProgramError {
   override readonly name: string = 'CgAllowedListNotEnabled';
 
   readonly code: number = 0x178c; // 6028
-  
+
   constructor(program: Program, cause?: Error) {
     super('Allow list guard is not enabled', program, cause);
   }
@@ -394,7 +419,7 @@ export class CgAllowedMintLimitReachedError extends ProgramError {
   override readonly name: string = 'CgAllowedMintLimitReached';
 
   readonly code: number = 0x178d; // 6029
-  
+
   constructor(program: Program, cause?: Error) {
     super('The maximum number of allowed mints was reached', program, cause);
   }
@@ -407,7 +432,7 @@ export class CgInvalidNftCollectionError extends ProgramError {
   override readonly name: string = 'CgInvalidNftCollection';
 
   readonly code: number = 0x178e; // 6030
-  
+
   constructor(program: Program, cause?: Error) {
     super('Invalid NFT collection', program, cause);
   }
@@ -420,7 +445,7 @@ export class CgMissingNftError extends ProgramError {
   override readonly name: string = 'CgMissingNft';
 
   readonly code: number = 0x178f; // 6031
-  
+
   constructor(program: Program, cause?: Error) {
     super('Missing NFT on the account', program, cause);
   }
@@ -433,9 +458,13 @@ export class CgMaximumRedeemedAmountError extends ProgramError {
   override readonly name: string = 'CgMaximumRedeemedAmount';
 
   readonly code: number = 0x1790; // 6032
-  
+
   constructor(program: Program, cause?: Error) {
-    super('Current redemeed items is at the set maximum amount', program, cause);
+    super(
+      'Current redemeed items is at the set maximum amount',
+      program,
+      cause
+    );
   }
 }
 codeToErrorMap.set(0x1790, CgMaximumRedeemedAmountError);
@@ -446,7 +475,7 @@ export class CgAddressNotAuthorizedError extends ProgramError {
   override readonly name: string = 'CgAddressNotAuthorized';
 
   readonly code: number = 0x1791; // 6033
-  
+
   constructor(program: Program, cause?: Error) {
     super('Address not authorized', program, cause);
   }
@@ -459,20 +488,23 @@ export class CgMissingFreezeInstructionError extends ProgramError {
   override readonly name: string = 'CgMissingFreezeInstruction';
 
   readonly code: number = 0x1792; // 6034
-  
+
   constructor(program: Program, cause?: Error) {
     super('Missing freeze instruction data', program, cause);
   }
 }
 codeToErrorMap.set(0x1792, CgMissingFreezeInstructionError);
-nameToErrorMap.set('CgMissingFreezeInstruction', CgMissingFreezeInstructionError);
+nameToErrorMap.set(
+  'CgMissingFreezeInstruction',
+  CgMissingFreezeInstructionError
+);
 
 /** FreezeGuardNotEnabled: Freeze guard must be enabled */
 export class CgFreezeGuardNotEnabledError extends ProgramError {
   override readonly name: string = 'CgFreezeGuardNotEnabled';
 
   readonly code: number = 0x1793; // 6035
-  
+
   constructor(program: Program, cause?: Error) {
     super('Freeze guard must be enabled', program, cause);
   }
@@ -485,7 +517,7 @@ export class CgFreezeNotInitializedError extends ProgramError {
   override readonly name: string = 'CgFreezeNotInitialized';
 
   readonly code: number = 0x1794; // 6036
-  
+
   constructor(program: Program, cause?: Error) {
     super('Freeze must be initialized', program, cause);
   }
@@ -498,7 +530,7 @@ export class CgMissingFreezePeriodError extends ProgramError {
   override readonly name: string = 'CgMissingFreezePeriod';
 
   readonly code: number = 0x1795; // 6037
-  
+
   constructor(program: Program, cause?: Error) {
     super('Missing freeze period', program, cause);
   }
@@ -511,33 +543,39 @@ export class CgFreezeEscrowAlreadyExistsError extends ProgramError {
   override readonly name: string = 'CgFreezeEscrowAlreadyExists';
 
   readonly code: number = 0x1796; // 6038
-  
+
   constructor(program: Program, cause?: Error) {
     super('The freeze escrow account already exists', program, cause);
   }
 }
 codeToErrorMap.set(0x1796, CgFreezeEscrowAlreadyExistsError);
-nameToErrorMap.set('CgFreezeEscrowAlreadyExists', CgFreezeEscrowAlreadyExistsError);
+nameToErrorMap.set(
+  'CgFreezeEscrowAlreadyExists',
+  CgFreezeEscrowAlreadyExistsError
+);
 
 /** ExceededMaximumFreezePeriod: Maximum freeze period exceeded */
 export class CgExceededMaximumFreezePeriodError extends ProgramError {
   override readonly name: string = 'CgExceededMaximumFreezePeriod';
 
   readonly code: number = 0x1797; // 6039
-  
+
   constructor(program: Program, cause?: Error) {
     super('Maximum freeze period exceeded', program, cause);
   }
 }
 codeToErrorMap.set(0x1797, CgExceededMaximumFreezePeriodError);
-nameToErrorMap.set('CgExceededMaximumFreezePeriod', CgExceededMaximumFreezePeriodError);
+nameToErrorMap.set(
+  'CgExceededMaximumFreezePeriod',
+  CgExceededMaximumFreezePeriodError
+);
 
 /** ThawNotEnabled: Thaw is not enabled */
 export class CgThawNotEnabledError extends ProgramError {
   override readonly name: string = 'CgThawNotEnabled';
 
   readonly code: number = 0x1798; // 6040
-  
+
   constructor(program: Program, cause?: Error) {
     super('Thaw is not enabled', program, cause);
   }
@@ -550,7 +588,7 @@ export class CgUnlockNotEnabledError extends ProgramError {
   override readonly name: string = 'CgUnlockNotEnabled';
 
   readonly code: number = 0x1799; // 6041
-  
+
   constructor(program: Program, cause?: Error) {
     super('Unlock is not enabled (not all NFTs are thawed)', program, cause);
   }
@@ -563,7 +601,7 @@ export class CgDuplicatedGroupLabelError extends ProgramError {
   override readonly name: string = 'CgDuplicatedGroupLabel';
 
   readonly code: number = 0x179a; // 6042
-  
+
   constructor(program: Program, cause?: Error) {
     super('Duplicated group label', program, cause);
   }
@@ -576,7 +614,7 @@ export class CgDuplicatedMintLimitIdError extends ProgramError {
   override readonly name: string = 'CgDuplicatedMintLimitId';
 
   readonly code: number = 0x179b; // 6043
-  
+
   constructor(program: Program, cause?: Error) {
     super('Duplicated mint limit id', program, cause);
   }
@@ -589,22 +627,33 @@ export class CgUnauthorizedProgramFoundError extends ProgramError {
   override readonly name: string = 'CgUnauthorizedProgramFound';
 
   readonly code: number = 0x179c; // 6044
-  
+
   constructor(program: Program, cause?: Error) {
-    super('An unauthorized program was found in the transaction', program, cause);
+    super(
+      'An unauthorized program was found in the transaction',
+      program,
+      cause
+    );
   }
 }
 codeToErrorMap.set(0x179c, CgUnauthorizedProgramFoundError);
-nameToErrorMap.set('CgUnauthorizedProgramFound', CgUnauthorizedProgramFoundError);
+nameToErrorMap.set(
+  'CgUnauthorizedProgramFound',
+  CgUnauthorizedProgramFoundError
+);
 
 /** ExceededProgramListSize: Exceeded the maximum number of programs in the additional list */
 export class CgExceededProgramListSizeError extends ProgramError {
   override readonly name: string = 'CgExceededProgramListSize';
 
   readonly code: number = 0x179d; // 6045
-  
+
   constructor(program: Program, cause?: Error) {
-    super('Exceeded the maximum number of programs in the additional list', program, cause);
+    super(
+      'Exceeded the maximum number of programs in the additional list',
+      program,
+      cause
+    );
   }
 }
 codeToErrorMap.set(0x179d, CgExceededProgramListSizeError);
@@ -615,20 +664,23 @@ export class CgAllocationNotInitializedError extends ProgramError {
   override readonly name: string = 'CgAllocationNotInitialized';
 
   readonly code: number = 0x179e; // 6046
-  
+
   constructor(program: Program, cause?: Error) {
     super('Allocation PDA not initialized', program, cause);
   }
 }
 codeToErrorMap.set(0x179e, CgAllocationNotInitializedError);
-nameToErrorMap.set('CgAllocationNotInitialized', CgAllocationNotInitializedError);
+nameToErrorMap.set(
+  'CgAllocationNotInitialized',
+  CgAllocationNotInitializedError
+);
 
 /** AllocationLimitReached: Allocation limit was reached */
 export class CgAllocationLimitReachedError extends ProgramError {
   override readonly name: string = 'CgAllocationLimitReached';
 
   readonly code: number = 0x179f; // 6047
-  
+
   constructor(program: Program, cause?: Error) {
     super('Allocation limit was reached', program, cause);
   }
@@ -641,20 +693,23 @@ export class CgAllocationGuardNotEnabledError extends ProgramError {
   override readonly name: string = 'CgAllocationGuardNotEnabled';
 
   readonly code: number = 0x17a0; // 6048
-  
+
   constructor(program: Program, cause?: Error) {
     super('Allocation guard must be enabled', program, cause);
   }
 }
 codeToErrorMap.set(0x17a0, CgAllocationGuardNotEnabledError);
-nameToErrorMap.set('CgAllocationGuardNotEnabled', CgAllocationGuardNotEnabledError);
+nameToErrorMap.set(
+  'CgAllocationGuardNotEnabled',
+  CgAllocationGuardNotEnabledError
+);
 
 /** InvalidMintAuthority: Gumball machine has an invalid mint authority */
 export class CgInvalidMintAuthorityError extends ProgramError {
   override readonly name: string = 'CgInvalidMintAuthority';
 
   readonly code: number = 0x17a1; // 6049
-  
+
   constructor(program: Program, cause?: Error) {
     super('Gumball machine has an invalid mint authority', program, cause);
   }
@@ -667,20 +722,23 @@ export class CgInstructionBuilderFailedError extends ProgramError {
   override readonly name: string = 'CgInstructionBuilderFailed';
 
   readonly code: number = 0x17a2; // 6050
-  
+
   constructor(program: Program, cause?: Error) {
     super('Instruction could not be created', program, cause);
   }
 }
 codeToErrorMap.set(0x17a2, CgInstructionBuilderFailedError);
-nameToErrorMap.set('CgInstructionBuilderFailed', CgInstructionBuilderFailedError);
+nameToErrorMap.set(
+  'CgInstructionBuilderFailed',
+  CgInstructionBuilderFailedError
+);
 
 /** InvalidAccountVersion: Invalid account version */
 export class CgInvalidAccountVersionError extends ProgramError {
   override readonly name: string = 'CgInvalidAccountVersion';
 
   readonly code: number = 0x17a3; // 6051
-  
+
   constructor(program: Program, cause?: Error) {
     super('Invalid account version', program, cause);
   }
@@ -693,7 +751,7 @@ export class CgInvalidPDAError extends ProgramError {
   override readonly name: string = 'CgInvalidPDA';
 
   readonly code: number = 0x17a4; // 6052
-  
+
   constructor(program: Program, cause?: Error) {
     super('Invalid PDA', program, cause);
   }
@@ -706,7 +764,7 @@ export class CgInvalidPaymentMintError extends ProgramError {
   override readonly name: string = 'CgInvalidPaymentMint';
 
   readonly code: number = 0x17a5; // 6053
-  
+
   constructor(program: Program, cause?: Error) {
     super('Invalid payment mint', program, cause);
   }
@@ -719,7 +777,7 @@ export class CgInvalidMachineStateError extends ProgramError {
   override readonly name: string = 'CgInvalidMachineState';
 
   readonly code: number = 0x17a6; // 6054
-  
+
   constructor(program: Program, cause?: Error) {
     super('Invalid machine state', program, cause);
   }
@@ -732,7 +790,7 @@ export class CgGuardNotSupportedError extends ProgramError {
   override readonly name: string = 'CgGuardNotSupported';
 
   readonly code: number = 0x17a7; // 6055
-  
+
   constructor(program: Program, cause?: Error) {
     super('Guard not supported', program, cause);
   }
@@ -745,7 +803,7 @@ export class CgInvalidMachineError extends ProgramError {
   override readonly name: string = 'CgInvalidMachine';
 
   readonly code: number = 0x17a8; // 6056
-  
+
   constructor(program: Program, cause?: Error) {
     super('Invalid machine', program, cause);
   }
@@ -758,7 +816,7 @@ export class CgMissingFeeAccountsError extends ProgramError {
   override readonly name: string = 'CgMissingFeeAccounts';
 
   readonly code: number = 0x17a9; // 6057
-  
+
   constructor(program: Program, cause?: Error) {
     super('Machine has no fee accounts to receive the payment', program, cause);
   }
@@ -770,7 +828,11 @@ nameToErrorMap.set('CgMissingFeeAccounts', CgMissingFeeAccountsError);
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors
  */
-export function getGumballGuardErrorFromCode(code: number, program: Program, cause?: Error): ProgramError | null {
+export function getGumballGuardErrorFromCode(
+  code: number,
+  program: Program,
+  cause?: Error
+): ProgramError | null {
   const constructor = codeToErrorMap.get(code);
   return constructor ? new constructor(program, cause) : null;
 }
@@ -779,7 +841,11 @@ export function getGumballGuardErrorFromCode(code: number, program: Program, cau
  * Attempts to resolve a custom program error from the provided error name, i.e. 'Unauthorized'.
  * @category Errors
  */
-export function getGumballGuardErrorFromName(name: string, program: Program, cause?: Error): ProgramError | null {
+export function getGumballGuardErrorFromName(
+  name: string,
+  program: Program,
+  cause?: Error
+): ProgramError | null {
   const constructor = nameToErrorMap.get(name);
   return constructor ? new constructor(program, cause) : null;
 }

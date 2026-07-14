@@ -6,26 +6,30 @@
  * @see https://github.com/codama-idl/codama
  */
 
-import { Serializer, bytes, struct } from '@metaplex-foundation/umi/serializers';
+import {
+  Serializer,
+  bytes,
+  struct,
+} from '@metaplex-foundation/umi/serializers';
 
 /**
  * Guard that uses a merkle tree to specify the addresses allowed to mint.
- * 
+ *
  * List of accounts required:
- * 
+ *
  * 0. `[]` Pda created by the merkle proof instruction (seeds `["allow_list", merke tree root,
  * payer key, gumball guard pubkey, gumball machine pubkey]`).
  */
 
-export type AllowList = { 
-/** Merkle root of the addresses allowed to mint. */
-merkleRoot: Uint8Array;  };
+export type AllowList = {
+  /** Merkle root of the addresses allowed to mint. */
+  merkleRoot: Uint8Array;
+};
 
 export type AllowListArgs = AllowList;
 
-
 export function getAllowListSerializer(): Serializer<AllowListArgs, AllowList> {
-  return struct<AllowList>([['merkleRoot', bytes({ size: 32 })]], { description: 'AllowList' }) as Serializer<AllowListArgs, AllowList>;
+  return struct<AllowList>([['merkleRoot', bytes({ size: 32 })]], {
+    description: 'AllowList',
+  }) as Serializer<AllowListArgs, AllowList>;
 }
-
-

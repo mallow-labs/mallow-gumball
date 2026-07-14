@@ -13,13 +13,15 @@ import { Serializer, struct, u64 } from '@metaplex-foundation/umi/serializers';
  * redeenmed is reached.
  */
 
-export type RedeemedAmount = { maximum: bigint;  };
+export type RedeemedAmount = { maximum: bigint };
 
-export type RedeemedAmountArgs = { maximum: number | bigint;  };
+export type RedeemedAmountArgs = { maximum: number | bigint };
 
-
-export function getRedeemedAmountSerializer(): Serializer<RedeemedAmountArgs, RedeemedAmount> {
-  return struct<RedeemedAmount>([['maximum', u64()]], { description: 'RedeemedAmount' }) as Serializer<RedeemedAmountArgs, RedeemedAmount>;
+export function getRedeemedAmountSerializer(): Serializer<
+  RedeemedAmountArgs,
+  RedeemedAmount
+> {
+  return struct<RedeemedAmount>([['maximum', u64()]], {
+    description: 'RedeemedAmount',
+  }) as Serializer<RedeemedAmountArgs, RedeemedAmount>;
 }
-
-

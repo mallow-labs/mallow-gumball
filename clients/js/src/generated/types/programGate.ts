@@ -7,20 +7,27 @@
  */
 
 import { PublicKey } from '@metaplex-foundation/umi';
-import { Serializer, array, publicKey as publicKeySerializer, struct } from '@metaplex-foundation/umi/serializers';
+import {
+  Serializer,
+  array,
+  publicKey as publicKeySerializer,
+  struct,
+} from '@metaplex-foundation/umi/serializers';
 
 /**
  * Guard that restricts the programs that can be in a mint transaction. The guard allows the
  * necessary programs for the mint and any other program specified in the configuration.
  */
 
-export type ProgramGate = { additional: Array<PublicKey>;  };
+export type ProgramGate = { additional: Array<PublicKey> };
 
 export type ProgramGateArgs = ProgramGate;
 
-
-export function getProgramGateSerializer(): Serializer<ProgramGateArgs, ProgramGate> {
-  return struct<ProgramGate>([['additional', array(publicKeySerializer())]], { description: 'ProgramGate' }) as Serializer<ProgramGateArgs, ProgramGate>;
+export function getProgramGateSerializer(): Serializer<
+  ProgramGateArgs,
+  ProgramGate
+> {
+  return struct<ProgramGate>([['additional', array(publicKeySerializer())]], {
+    description: 'ProgramGate',
+  }) as Serializer<ProgramGateArgs, ProgramGate>;
 }
-
-

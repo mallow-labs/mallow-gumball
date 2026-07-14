@@ -6,82 +6,147 @@
  * @see https://github.com/codama-idl/codama
  */
 
-import { Context, Option, OptionOrNullable, Pda, PublicKey, Signer, TransactionBuilder, transactionBuilder } from '@metaplex-foundation/umi';
-import { Serializer, bytes, mapSerializer, option, string, struct, u32 } from '@metaplex-foundation/umi/serializers';
+import {
+  Context,
+  Option,
+  OptionOrNullable,
+  Pda,
+  PublicKey,
+  Signer,
+  TransactionBuilder,
+  transactionBuilder,
+} from '@metaplex-foundation/umi';
+import {
+  Serializer,
+  bytes,
+  mapSerializer,
+  option,
+  string,
+  struct,
+  u32,
+} from '@metaplex-foundation/umi/serializers';
 import { findGumballGuardPda } from '../../hooked';
-import { ResolvedAccount, ResolvedAccountsWithIndices, expectPublicKey, getAccountMetasAndSigners } from '../shared';
+import {
+  ResolvedAccount,
+  ResolvedAccountsWithIndices,
+  expectPublicKey,
+  getAccountMetasAndSigners,
+} from '../shared';
 import { GuardType, GuardTypeArgs, getGuardTypeSerializer } from '../types';
 
 // Accounts.
 export type RouteInstructionAccounts = {
-    gumballGuard?: PublicKey | Pda;
-    machine: PublicKey | Pda;
-    payer?: Signer;
+  gumballGuard?: PublicKey | Pda;
+  machine: PublicKey | Pda;
+  payer?: Signer;
 };
 
-  // Data.
-  export type RouteInstructionData = { discriminator: Uint8Array; 
-/** The target guard type. */
-guard: GuardType; 
-/** Arguments for the guard instruction. */
-data: Uint8Array; group: Option<string>;  };
+// Data.
+export type RouteInstructionData = {
+  discriminator: Uint8Array;
+  /** The target guard type. */
+  guard: GuardType;
+  /** Arguments for the guard instruction. */
+  data: Uint8Array;
+  group: Option<string>;
+};
 
-export type RouteInstructionDataArgs = { 
-/** The target guard type. */
-guard: GuardTypeArgs; 
-/** Arguments for the guard instruction. */
-data: Uint8Array; group: OptionOrNullable<string>;  };
+export type RouteInstructionDataArgs = {
+  /** The target guard type. */
+  guard: GuardTypeArgs;
+  /** Arguments for the guard instruction. */
+  data: Uint8Array;
+  group: OptionOrNullable<string>;
+};
 
-
-  export function getRouteInstructionDataSerializer(): Serializer<RouteInstructionDataArgs, RouteInstructionData> {
-  return mapSerializer<RouteInstructionDataArgs, any, RouteInstructionData>(struct<RouteInstructionData>([['discriminator', bytes({ size: 8 })], ['guard', getGuardTypeSerializer()], ['data', bytes({ size: u32() })], ['group', option(string())]], { description: 'RouteInstructionData' }), (value) => ({ ...value, discriminator: new Uint8Array([229, 23, 203, 151, 122, 227, 173, 42]) }) ) as Serializer<RouteInstructionDataArgs, RouteInstructionData>;
+export function getRouteInstructionDataSerializer(): Serializer<
+  RouteInstructionDataArgs,
+  RouteInstructionData
+> {
+  return mapSerializer<RouteInstructionDataArgs, any, RouteInstructionData>(
+    struct<RouteInstructionData>(
+      [
+        ['discriminator', bytes({ size: 8 })],
+        ['guard', getGuardTypeSerializer()],
+        ['data', bytes({ size: u32() })],
+        ['group', option(string())],
+      ],
+      { description: 'RouteInstructionData' }
+    ),
+    (value) => ({
+      ...value,
+      discriminator: new Uint8Array([229, 23, 203, 151, 122, 227, 173, 42]),
+    })
+  ) as Serializer<RouteInstructionDataArgs, RouteInstructionData>;
 }
 
+// Args.
+export type RouteInstructionArgs = RouteInstructionDataArgs;
 
-
-  
-  // Args.
-      export type RouteInstructionArgs =           RouteInstructionDataArgs
-      ;
-  
 // Instruction.
 export function route(
-  context: Pick<Context, "eddsa" | "payer" | "programs">,
-                        input: RouteInstructionAccounts & RouteInstructionArgs,
-      ): TransactionBuilder {
+  context: Pick<Context, 'eddsa' | 'payer' | 'programs'>,
+  input: RouteInstructionAccounts & RouteInstructionArgs
+): TransactionBuilder {
   // Program ID.
-  const programId = context.programs.getPublicKey('gumballGuard', 'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF');
+  const programId = context.programs.getPublicKey(
+    'gumballGuard',
+    'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF'
+  );
 
   // Accounts.
   const resolvedAccounts = {
-          gumballGuard: { index: 0, isWritable: false as boolean, value: input.gumballGuard ?? null },
-          machine: { index: 1, isWritable: true as boolean, value: input.machine ?? null },
-          payer: { index: 2, isWritable: true as boolean, value: input.payer ?? null },
-      } satisfies ResolvedAccountsWithIndices;
+    gumballGuard: {
+      index: 0,
+      isWritable: false as boolean,
+      value: input.gumballGuard ?? null,
+    },
+    machine: {
+      index: 1,
+      isWritable: true as boolean,
+      value: input.machine ?? null,
+    },
+    payer: {
+      index: 2,
+      isWritable: true as boolean,
+      value: input.payer ?? null,
+    },
+  } satisfies ResolvedAccountsWithIndices;
 
-      // Arguments.
-    const resolvedArgs: RouteInstructionArgs = { ...input };
-  
-    // Default values.
+  // Arguments.
+  const resolvedArgs: RouteInstructionArgs = { ...input };
+
+  // Default values.
   if (!resolvedAccounts.gumballGuard.value) {
-        resolvedAccounts.gumballGuard.value = findGumballGuardPda(context, { base: expectPublicKey(resolvedAccounts.machine.value) });
-      }
-      if (!resolvedAccounts.payer.value) {
-        resolvedAccounts.payer.value = context.payer;
-      }
-      
+    resolvedAccounts.gumballGuard.value = findGumballGuardPda(context, {
+      base: expectPublicKey(resolvedAccounts.machine.value),
+    });
+  }
+  if (!resolvedAccounts.payer.value) {
+    resolvedAccounts.payer.value = context.payer;
+  }
+
   // Accounts in order.
-      const orderedAccounts: ResolvedAccount[] = Object.values(resolvedAccounts).sort((a,b) => a.index - b.index);
-  
-  
+  const orderedAccounts: ResolvedAccount[] = Object.values(
+    resolvedAccounts
+  ).sort((a, b) => a.index - b.index);
+
   // Keys and Signers.
-  const [keys, signers] = getAccountMetasAndSigners(orderedAccounts, "programId", programId);
+  const [keys, signers] = getAccountMetasAndSigners(
+    orderedAccounts,
+    'programId',
+    programId
+  );
 
   // Data.
-      const data = getRouteInstructionDataSerializer().serialize(resolvedArgs as RouteInstructionDataArgs);
-  
+  const data = getRouteInstructionDataSerializer().serialize(
+    resolvedArgs as RouteInstructionDataArgs
+  );
+
   // Bytes Created On Chain.
-      const bytesCreatedOnChain = 0;
-  
-  return transactionBuilder([{ instruction: { keys, programId, data }, signers, bytesCreatedOnChain }]);
+  const bytesCreatedOnChain = 0;
+
+  return transactionBuilder([
+    { instruction: { keys, programId, data }, signers, bytesCreatedOnChain },
+  ]);
 }

@@ -7,20 +7,31 @@
  */
 
 import { PublicKey } from '@metaplex-foundation/umi';
-import { Serializer, publicKey as publicKeySerializer, struct } from '@metaplex-foundation/umi/serializers';
+import {
+  Serializer,
+  publicKey as publicKeySerializer,
+  struct,
+} from '@metaplex-foundation/umi/serializers';
 
 /** Config line struct for storing asset (NFT) data pre-mint. */
-export type ConfigLineInput = { 
-/** Mint account of the asset. */
-mint: PublicKey; 
-/** Wallet that submitted the asset for sale. */
-seller: PublicKey;  };
+export type ConfigLineInput = {
+  /** Mint account of the asset. */
+  mint: PublicKey;
+  /** Wallet that submitted the asset for sale. */
+  seller: PublicKey;
+};
 
 export type ConfigLineInputArgs = ConfigLineInput;
 
-
-export function getConfigLineInputSerializer(): Serializer<ConfigLineInputArgs, ConfigLineInput> {
-  return struct<ConfigLineInput>([['mint', publicKeySerializer()], ['seller', publicKeySerializer()]], { description: 'ConfigLineInput' }) as Serializer<ConfigLineInputArgs, ConfigLineInput>;
+export function getConfigLineInputSerializer(): Serializer<
+  ConfigLineInputArgs,
+  ConfigLineInput
+> {
+  return struct<ConfigLineInput>(
+    [
+      ['mint', publicKeySerializer()],
+      ['seller', publicKeySerializer()],
+    ],
+    { description: 'ConfigLineInput' }
+  ) as Serializer<ConfigLineInputArgs, ConfigLineInput>;
 }
-
-

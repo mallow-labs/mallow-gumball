@@ -6,49 +6,102 @@
  * @see https://github.com/codama-idl/codama
  */
 
-import { Account, Context, Pda, PublicKey, RpcAccount, RpcGetAccountOptions, RpcGetAccountsOptions, assertAccountExists, deserializeAccount, gpaBuilder, publicKey as toPublicKey } from '@metaplex-foundation/umi';
-import { Serializer, bytes, mapSerializer, publicKey as publicKeySerializer, string, struct } from '@metaplex-foundation/umi/serializers';
-import { TokenStandard, TokenStandardArgs, getTokenStandardSerializer } from '../types';
+import {
+  Account,
+  Context,
+  Pda,
+  PublicKey,
+  RpcAccount,
+  RpcGetAccountOptions,
+  RpcGetAccountsOptions,
+  assertAccountExists,
+  deserializeAccount,
+  gpaBuilder,
+  publicKey as toPublicKey,
+} from '@metaplex-foundation/umi';
+import {
+  Serializer,
+  bytes,
+  mapSerializer,
+  publicKey as publicKeySerializer,
+  string,
+  struct,
+} from '@metaplex-foundation/umi/serializers';
+import {
+  TokenStandard,
+  TokenStandardArgs,
+  getTokenStandardSerializer,
+} from '../types';
 
-  
-  export type AddItemRequest = Account<AddItemRequestAccountData>;
+export type AddItemRequest = Account<AddItemRequestAccountData>;
 
-  export type AddItemRequestAccountData = { discriminator: Uint8Array; 
-/** Gumball machine address. */
-gumballMachine: PublicKey; 
-/** Seller address. */
-seller: PublicKey; 
-/** Asset address. */
-asset: PublicKey; 
-/** Token standard. */
-tokenStandard: TokenStandard;  };
+export type AddItemRequestAccountData = {
+  discriminator: Uint8Array;
+  /** Gumball machine address. */
+  gumballMachine: PublicKey;
+  /** Seller address. */
+  seller: PublicKey;
+  /** Asset address. */
+  asset: PublicKey;
+  /** Token standard. */
+  tokenStandard: TokenStandard;
+};
 
-export type AddItemRequestAccountDataArgs = { 
-/** Gumball machine address. */
-gumballMachine: PublicKey; 
-/** Seller address. */
-seller: PublicKey; 
-/** Asset address. */
-asset: PublicKey; 
-/** Token standard. */
-tokenStandard: TokenStandardArgs;  };
+export type AddItemRequestAccountDataArgs = {
+  /** Gumball machine address. */
+  gumballMachine: PublicKey;
+  /** Seller address. */
+  seller: PublicKey;
+  /** Asset address. */
+  asset: PublicKey;
+  /** Token standard. */
+  tokenStandard: TokenStandardArgs;
+};
 
-
-  export function getAddItemRequestAccountDataSerializer(): Serializer<AddItemRequestAccountDataArgs, AddItemRequestAccountData> {
-  return mapSerializer<AddItemRequestAccountDataArgs, any, AddItemRequestAccountData>(struct<AddItemRequestAccountData>([['discriminator', bytes({ size: 8 })], ['gumballMachine', publicKeySerializer()], ['seller', publicKeySerializer()], ['asset', publicKeySerializer()], ['tokenStandard', getTokenStandardSerializer()]], { description: 'AddItemRequestAccountData' }), (value) => ({ ...value, discriminator: new Uint8Array([234, 140, 142, 7, 121, 224, 48, 173]) }) ) as Serializer<AddItemRequestAccountDataArgs, AddItemRequestAccountData>;
+export function getAddItemRequestAccountDataSerializer(): Serializer<
+  AddItemRequestAccountDataArgs,
+  AddItemRequestAccountData
+> {
+  return mapSerializer<
+    AddItemRequestAccountDataArgs,
+    any,
+    AddItemRequestAccountData
+  >(
+    struct<AddItemRequestAccountData>(
+      [
+        ['discriminator', bytes({ size: 8 })],
+        ['gumballMachine', publicKeySerializer()],
+        ['seller', publicKeySerializer()],
+        ['asset', publicKeySerializer()],
+        ['tokenStandard', getTokenStandardSerializer()],
+      ],
+      { description: 'AddItemRequestAccountData' }
+    ),
+    (value) => ({
+      ...value,
+      discriminator: new Uint8Array([234, 140, 142, 7, 121, 224, 48, 173]),
+    })
+  ) as Serializer<AddItemRequestAccountDataArgs, AddItemRequestAccountData>;
 }
 
-
-export function deserializeAddItemRequest(rawAccount: RpcAccount): AddItemRequest {
-  return deserializeAccount(rawAccount, getAddItemRequestAccountDataSerializer());
+export function deserializeAddItemRequest(
+  rawAccount: RpcAccount
+): AddItemRequest {
+  return deserializeAccount(
+    rawAccount,
+    getAddItemRequestAccountDataSerializer()
+  );
 }
 
 export async function fetchAddItemRequest(
   context: Pick<Context, 'rpc'>,
   publicKey: PublicKey | Pda,
-  options?: RpcGetAccountOptions,
+  options?: RpcGetAccountOptions
 ): Promise<AddItemRequest> {
-  const maybeAccount = await context.rpc.getAccount(toPublicKey(publicKey, false), options);
+  const maybeAccount = await context.rpc.getAccount(
+    toPublicKey(publicKey, false),
+    options
+  );
   assertAccountExists(maybeAccount, 'AddItemRequest');
   return deserializeAddItemRequest(maybeAccount);
 }
@@ -56,20 +109,24 @@ export async function fetchAddItemRequest(
 export async function safeFetchAddItemRequest(
   context: Pick<Context, 'rpc'>,
   publicKey: PublicKey | Pda,
-  options?: RpcGetAccountOptions,
+  options?: RpcGetAccountOptions
 ): Promise<AddItemRequest | null> {
-  const maybeAccount = await context.rpc.getAccount(toPublicKey(publicKey, false), options);
-  return maybeAccount.exists
-    ? deserializeAddItemRequest(maybeAccount)
-    : null;
+  const maybeAccount = await context.rpc.getAccount(
+    toPublicKey(publicKey, false),
+    options
+  );
+  return maybeAccount.exists ? deserializeAddItemRequest(maybeAccount) : null;
 }
 
 export async function fetchAllAddItemRequest(
   context: Pick<Context, 'rpc'>,
   publicKeys: Array<PublicKey | Pda>,
-  options?: RpcGetAccountsOptions,
+  options?: RpcGetAccountsOptions
 ): Promise<AddItemRequest[]> {
-  const maybeAccounts = await context.rpc.getAccounts(publicKeys.map(key => toPublicKey(key, false)), options);
+  const maybeAccounts = await context.rpc.getAccounts(
+    publicKeys.map((key) => toPublicKey(key, false)),
+    options
+  );
   return maybeAccounts.map((maybeAccount) => {
     assertAccountExists(maybeAccount, 'AddItemRequest');
     return deserializeAddItemRequest(maybeAccount);
@@ -79,20 +136,47 @@ export async function fetchAllAddItemRequest(
 export async function safeFetchAllAddItemRequest(
   context: Pick<Context, 'rpc'>,
   publicKeys: Array<PublicKey | Pda>,
-  options?: RpcGetAccountsOptions,
+  options?: RpcGetAccountsOptions
 ): Promise<AddItemRequest[]> {
-  const maybeAccounts = await context.rpc.getAccounts(publicKeys.map(key => toPublicKey(key, false)), options);
+  const maybeAccounts = await context.rpc.getAccounts(
+    publicKeys.map((key) => toPublicKey(key, false)),
+    options
+  );
   return maybeAccounts
     .filter((maybeAccount) => maybeAccount.exists)
-    .map((maybeAccount) => deserializeAddItemRequest(maybeAccount as RpcAccount));
+    .map((maybeAccount) =>
+      deserializeAddItemRequest(maybeAccount as RpcAccount)
+    );
 }
 
-export function getAddItemRequestGpaBuilder(context: Pick<Context, 'rpc' | 'programs'>) {
-  const programId = context.programs.getPublicKey('mallowGumball', 'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa');
+export function getAddItemRequestGpaBuilder(
+  context: Pick<Context, 'rpc' | 'programs'>
+) {
+  const programId = context.programs.getPublicKey(
+    'mallowGumball',
+    'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa'
+  );
   return gpaBuilder(context, programId)
-    .registerFields<{ 'discriminator': Uint8Array, 'gumballMachine': PublicKey, 'seller': PublicKey, 'asset': PublicKey, 'tokenStandard': TokenStandardArgs }>({ 'discriminator': [0, bytes({ size: 8 })], 'gumballMachine': [8, publicKeySerializer()], 'seller': [40, publicKeySerializer()], 'asset': [72, publicKeySerializer()], 'tokenStandard': [104, getTokenStandardSerializer()] })
-    .deserializeUsing<AddItemRequest>((account) => deserializeAddItemRequest(account))      .whereField('discriminator', new Uint8Array([234, 140, 142, 7, 121, 224, 48, 173]))
-    ;
+    .registerFields<{
+      discriminator: Uint8Array;
+      gumballMachine: PublicKey;
+      seller: PublicKey;
+      asset: PublicKey;
+      tokenStandard: TokenStandardArgs;
+    }>({
+      discriminator: [0, bytes({ size: 8 })],
+      gumballMachine: [8, publicKeySerializer()],
+      seller: [40, publicKeySerializer()],
+      asset: [72, publicKeySerializer()],
+      tokenStandard: [104, getTokenStandardSerializer()],
+    })
+    .deserializeUsing<AddItemRequest>((account) =>
+      deserializeAddItemRequest(account)
+    )
+    .whereField(
+      'discriminator',
+      new Uint8Array([234, 140, 142, 7, 121, 224, 48, 173])
+    );
 }
 
 export function getAddItemRequestSize(): number {
@@ -101,30 +185,41 @@ export function getAddItemRequestSize(): number {
 
 export function findAddItemRequestPda(
   context: Pick<Context, 'eddsa' | 'programs'>,
-      seeds: {
-                                      /** The address of the asset being added to the Gumball Machine */
-          asset: PublicKey;
-                  }
-  ): Pda {
-  const programId = context.programs.getPublicKey('mallowGumball', 'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa');
+  seeds: {
+    /** The address of the asset being added to the Gumball Machine */
+    asset: PublicKey;
+  }
+): Pda {
+  const programId = context.programs.getPublicKey(
+    'mallowGumball',
+    'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa'
+  );
   return context.eddsa.findPda(programId, [
-                  string({ size: 'variable' }).serialize("add_item_request"),
-                        publicKeySerializer().serialize(seeds.asset),
-            ]);
+    string({ size: 'variable' }).serialize('add_item_request'),
+    publicKeySerializer().serialize(seeds.asset),
+  ]);
 }
 
 export async function fetchAddItemRequestFromSeeds(
   context: Pick<Context, 'eddsa' | 'programs' | 'rpc'>,
-      seeds: Parameters<typeof findAddItemRequestPda>[1],
-    options?: RpcGetAccountOptions,
+  seeds: Parameters<typeof findAddItemRequestPda>[1],
+  options?: RpcGetAccountOptions
 ): Promise<AddItemRequest> {
-  return fetchAddItemRequest(context, findAddItemRequestPda(context, seeds), options);
+  return fetchAddItemRequest(
+    context,
+    findAddItemRequestPda(context, seeds),
+    options
+  );
 }
 
 export async function safeFetchAddItemRequestFromSeeds(
   context: Pick<Context, 'eddsa' | 'programs' | 'rpc'>,
-      seeds: Parameters<typeof findAddItemRequestPda>[1],
-    options?: RpcGetAccountOptions,
+  seeds: Parameters<typeof findAddItemRequestPda>[1],
+  options?: RpcGetAccountOptions
 ): Promise<AddItemRequest | null> {
-  return safeFetchAddItemRequest(context, findAddItemRequestPda(context, seeds), options);
+  return safeFetchAddItemRequest(
+    context,
+    findAddItemRequestPda(context, seeds),
+    options
+  );
 }

@@ -6,73 +6,128 @@
  * @see https://github.com/codama-idl/codama
  */
 
-import { Context, Pda, PublicKey, Signer, TransactionBuilder, publicKey, transactionBuilder } from '@metaplex-foundation/umi';
-import { Serializer, bytes, mapSerializer, struct } from '@metaplex-foundation/umi/serializers';
-import { ResolvedAccount, ResolvedAccountsWithIndices, getAccountMetasAndSigners } from '../shared';
+import {
+  Context,
+  Pda,
+  PublicKey,
+  Signer,
+  TransactionBuilder,
+  publicKey,
+  transactionBuilder,
+} from '@metaplex-foundation/umi';
+import {
+  Serializer,
+  bytes,
+  mapSerializer,
+  struct,
+} from '@metaplex-foundation/umi/serializers';
+import {
+  ResolvedAccount,
+  ResolvedAccountsWithIndices,
+  getAccountMetasAndSigners,
+} from '../shared';
 
 // Accounts.
 export type WrapInstructionAccounts = {
-    gumballGuard: PublicKey | Pda;
-    authority?: Signer;
-    machine: PublicKey | Pda;
-    machineProgram?: PublicKey | Pda;
-    machineAuthority?: Signer;
+  gumballGuard: PublicKey | Pda;
+  authority?: Signer;
+  machine: PublicKey | Pda;
+  machineProgram?: PublicKey | Pda;
+  machineAuthority?: Signer;
 };
 
-  // Data.
-  export type WrapInstructionData = { discriminator: Uint8Array;  };
+// Data.
+export type WrapInstructionData = { discriminator: Uint8Array };
 
-export type WrapInstructionDataArgs = {  };
+export type WrapInstructionDataArgs = {};
 
-
-  export function getWrapInstructionDataSerializer(): Serializer<WrapInstructionDataArgs, WrapInstructionData> {
-  return mapSerializer<WrapInstructionDataArgs, any, WrapInstructionData>(struct<WrapInstructionData>([['discriminator', bytes({ size: 8 })]], { description: 'WrapInstructionData' }), (value) => ({ ...value, discriminator: new Uint8Array([178, 40, 10, 189, 228, 129, 186, 140]) }) ) as Serializer<WrapInstructionDataArgs, WrapInstructionData>;
+export function getWrapInstructionDataSerializer(): Serializer<
+  WrapInstructionDataArgs,
+  WrapInstructionData
+> {
+  return mapSerializer<WrapInstructionDataArgs, any, WrapInstructionData>(
+    struct<WrapInstructionData>([['discriminator', bytes({ size: 8 })]], {
+      description: 'WrapInstructionData',
+    }),
+    (value) => ({
+      ...value,
+      discriminator: new Uint8Array([178, 40, 10, 189, 228, 129, 186, 140]),
+    })
+  ) as Serializer<WrapInstructionDataArgs, WrapInstructionData>;
 }
-
-
-
 
 // Instruction.
 export function wrap(
-  context: Pick<Context, "identity" | "programs">,
-                        input: WrapInstructionAccounts,
-      ): TransactionBuilder {
+  context: Pick<Context, 'identity' | 'programs'>,
+  input: WrapInstructionAccounts
+): TransactionBuilder {
   // Program ID.
-  const programId = context.programs.getPublicKey('gumballGuard', 'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF');
+  const programId = context.programs.getPublicKey(
+    'gumballGuard',
+    'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF'
+  );
 
   // Accounts.
   const resolvedAccounts = {
-          gumballGuard: { index: 0, isWritable: false as boolean, value: input.gumballGuard ?? null },
-          authority: { index: 1, isWritable: false as boolean, value: input.authority ?? null },
-          machine: { index: 2, isWritable: true as boolean, value: input.machine ?? null },
-          machineProgram: { index: 3, isWritable: false as boolean, value: input.machineProgram ?? null },
-          machineAuthority: { index: 4, isWritable: false as boolean, value: input.machineAuthority ?? null },
-      } satisfies ResolvedAccountsWithIndices;
+    gumballGuard: {
+      index: 0,
+      isWritable: false as boolean,
+      value: input.gumballGuard ?? null,
+    },
+    authority: {
+      index: 1,
+      isWritable: false as boolean,
+      value: input.authority ?? null,
+    },
+    machine: {
+      index: 2,
+      isWritable: true as boolean,
+      value: input.machine ?? null,
+    },
+    machineProgram: {
+      index: 3,
+      isWritable: false as boolean,
+      value: input.machineProgram ?? null,
+    },
+    machineAuthority: {
+      index: 4,
+      isWritable: false as boolean,
+      value: input.machineAuthority ?? null,
+    },
+  } satisfies ResolvedAccountsWithIndices;
 
-  
-    // Default values.
+  // Default values.
   if (!resolvedAccounts.authority.value) {
-        resolvedAccounts.authority.value = context.identity;
-      }
-      if (!resolvedAccounts.machineProgram.value) {
-        resolvedAccounts.machineProgram.value = publicKey('MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa');
-      }
-      if (!resolvedAccounts.machineAuthority.value) {
-        resolvedAccounts.machineAuthority.value = context.identity;
-      }
-      
+    resolvedAccounts.authority.value = context.identity;
+  }
+  if (!resolvedAccounts.machineProgram.value) {
+    resolvedAccounts.machineProgram.value = publicKey(
+      'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa'
+    );
+  }
+  if (!resolvedAccounts.machineAuthority.value) {
+    resolvedAccounts.machineAuthority.value = context.identity;
+  }
+
   // Accounts in order.
-      const orderedAccounts: ResolvedAccount[] = Object.values(resolvedAccounts).sort((a,b) => a.index - b.index);
-  
-  
+  const orderedAccounts: ResolvedAccount[] = Object.values(
+    resolvedAccounts
+  ).sort((a, b) => a.index - b.index);
+
   // Keys and Signers.
-  const [keys, signers] = getAccountMetasAndSigners(orderedAccounts, "programId", programId);
+  const [keys, signers] = getAccountMetasAndSigners(
+    orderedAccounts,
+    'programId',
+    programId
+  );
 
   // Data.
-      const data = getWrapInstructionDataSerializer().serialize({});
-  
+  const data = getWrapInstructionDataSerializer().serialize({});
+
   // Bytes Created On Chain.
-      const bytesCreatedOnChain = 0;
-  
-  return transactionBuilder([{ instruction: { keys, programId, data }, signers, bytesCreatedOnChain }]);
+  const bytesCreatedOnChain = 0;
+
+  return transactionBuilder([
+    { instruction: { keys, programId, data }, signers, bytesCreatedOnChain },
+  ]);
 }

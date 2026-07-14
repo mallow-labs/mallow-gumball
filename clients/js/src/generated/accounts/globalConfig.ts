@@ -6,29 +6,68 @@
  * @see https://github.com/codama-idl/codama
  */
 
-import { Account, Context, Pda, PublicKey, RpcAccount, RpcGetAccountOptions, RpcGetAccountsOptions, assertAccountExists, deserializeAccount, gpaBuilder, publicKey as toPublicKey } from '@metaplex-foundation/umi';
-import { Serializer, bytes, mapSerializer, publicKey as publicKeySerializer, string, struct } from '@metaplex-foundation/umi/serializers';
+import {
+  Account,
+  Context,
+  Pda,
+  PublicKey,
+  RpcAccount,
+  RpcGetAccountOptions,
+  RpcGetAccountsOptions,
+  assertAccountExists,
+  deserializeAccount,
+  gpaBuilder,
+  publicKey as toPublicKey,
+} from '@metaplex-foundation/umi';
+import {
+  Serializer,
+  bytes,
+  mapSerializer,
+  publicKey as publicKeySerializer,
+  string,
+  struct,
+} from '@metaplex-foundation/umi/serializers';
 
-  
-  export type GlobalConfig = Account<GlobalConfigAccountData>;
+export type GlobalConfig = Account<GlobalConfigAccountData>;
 
-  export type GlobalConfigAccountData = { discriminator: Uint8Array; 
-/** The authority that can update this config via `update_global_config`. */
-configAuthority: PublicKey; 
-/** The authority that can close guard PDAs and receives their rent. */
-accountFeeAuthority: PublicKey;  };
+export type GlobalConfigAccountData = {
+  discriminator: Uint8Array;
+  /** The authority that can update this config via `update_global_config`. */
+  configAuthority: PublicKey;
+  /** The authority that can close guard PDAs and receives their rent. */
+  accountFeeAuthority: PublicKey;
+};
 
-export type GlobalConfigAccountDataArgs = { 
-/** The authority that can update this config via `update_global_config`. */
-configAuthority: PublicKey; 
-/** The authority that can close guard PDAs and receives their rent. */
-accountFeeAuthority: PublicKey;  };
+export type GlobalConfigAccountDataArgs = {
+  /** The authority that can update this config via `update_global_config`. */
+  configAuthority: PublicKey;
+  /** The authority that can close guard PDAs and receives their rent. */
+  accountFeeAuthority: PublicKey;
+};
 
-
-  export function getGlobalConfigAccountDataSerializer(): Serializer<GlobalConfigAccountDataArgs, GlobalConfigAccountData> {
-  return mapSerializer<GlobalConfigAccountDataArgs, any, GlobalConfigAccountData>(struct<GlobalConfigAccountData>([['discriminator', bytes({ size: 8 })], ['configAuthority', publicKeySerializer()], ['accountFeeAuthority', publicKeySerializer()]], { description: 'GlobalConfigAccountData' }), (value) => ({ ...value, discriminator: new Uint8Array([149, 8, 156, 202, 160, 252, 176, 217]) }) ) as Serializer<GlobalConfigAccountDataArgs, GlobalConfigAccountData>;
+export function getGlobalConfigAccountDataSerializer(): Serializer<
+  GlobalConfigAccountDataArgs,
+  GlobalConfigAccountData
+> {
+  return mapSerializer<
+    GlobalConfigAccountDataArgs,
+    any,
+    GlobalConfigAccountData
+  >(
+    struct<GlobalConfigAccountData>(
+      [
+        ['discriminator', bytes({ size: 8 })],
+        ['configAuthority', publicKeySerializer()],
+        ['accountFeeAuthority', publicKeySerializer()],
+      ],
+      { description: 'GlobalConfigAccountData' }
+    ),
+    (value) => ({
+      ...value,
+      discriminator: new Uint8Array([149, 8, 156, 202, 160, 252, 176, 217]),
+    })
+  ) as Serializer<GlobalConfigAccountDataArgs, GlobalConfigAccountData>;
 }
-
 
 export function deserializeGlobalConfig(rawAccount: RpcAccount): GlobalConfig {
   return deserializeAccount(rawAccount, getGlobalConfigAccountDataSerializer());
@@ -37,9 +76,12 @@ export function deserializeGlobalConfig(rawAccount: RpcAccount): GlobalConfig {
 export async function fetchGlobalConfig(
   context: Pick<Context, 'rpc'>,
   publicKey: PublicKey | Pda,
-  options?: RpcGetAccountOptions,
+  options?: RpcGetAccountOptions
 ): Promise<GlobalConfig> {
-  const maybeAccount = await context.rpc.getAccount(toPublicKey(publicKey, false), options);
+  const maybeAccount = await context.rpc.getAccount(
+    toPublicKey(publicKey, false),
+    options
+  );
   assertAccountExists(maybeAccount, 'GlobalConfig');
   return deserializeGlobalConfig(maybeAccount);
 }
@@ -47,20 +89,24 @@ export async function fetchGlobalConfig(
 export async function safeFetchGlobalConfig(
   context: Pick<Context, 'rpc'>,
   publicKey: PublicKey | Pda,
-  options?: RpcGetAccountOptions,
+  options?: RpcGetAccountOptions
 ): Promise<GlobalConfig | null> {
-  const maybeAccount = await context.rpc.getAccount(toPublicKey(publicKey, false), options);
-  return maybeAccount.exists
-    ? deserializeGlobalConfig(maybeAccount)
-    : null;
+  const maybeAccount = await context.rpc.getAccount(
+    toPublicKey(publicKey, false),
+    options
+  );
+  return maybeAccount.exists ? deserializeGlobalConfig(maybeAccount) : null;
 }
 
 export async function fetchAllGlobalConfig(
   context: Pick<Context, 'rpc'>,
   publicKeys: Array<PublicKey | Pda>,
-  options?: RpcGetAccountsOptions,
+  options?: RpcGetAccountsOptions
 ): Promise<GlobalConfig[]> {
-  const maybeAccounts = await context.rpc.getAccounts(publicKeys.map(key => toPublicKey(key, false)), options);
+  const maybeAccounts = await context.rpc.getAccounts(
+    publicKeys.map((key) => toPublicKey(key, false)),
+    options
+  );
   return maybeAccounts.map((maybeAccount) => {
     assertAccountExists(maybeAccount, 'GlobalConfig');
     return deserializeGlobalConfig(maybeAccount);
@@ -70,20 +116,41 @@ export async function fetchAllGlobalConfig(
 export async function safeFetchAllGlobalConfig(
   context: Pick<Context, 'rpc'>,
   publicKeys: Array<PublicKey | Pda>,
-  options?: RpcGetAccountsOptions,
+  options?: RpcGetAccountsOptions
 ): Promise<GlobalConfig[]> {
-  const maybeAccounts = await context.rpc.getAccounts(publicKeys.map(key => toPublicKey(key, false)), options);
+  const maybeAccounts = await context.rpc.getAccounts(
+    publicKeys.map((key) => toPublicKey(key, false)),
+    options
+  );
   return maybeAccounts
     .filter((maybeAccount) => maybeAccount.exists)
     .map((maybeAccount) => deserializeGlobalConfig(maybeAccount as RpcAccount));
 }
 
-export function getGlobalConfigGpaBuilder(context: Pick<Context, 'rpc' | 'programs'>) {
-  const programId = context.programs.getPublicKey('gumballGuard', 'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF');
+export function getGlobalConfigGpaBuilder(
+  context: Pick<Context, 'rpc' | 'programs'>
+) {
+  const programId = context.programs.getPublicKey(
+    'gumballGuard',
+    'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF'
+  );
   return gpaBuilder(context, programId)
-    .registerFields<{ 'discriminator': Uint8Array, 'configAuthority': PublicKey, 'accountFeeAuthority': PublicKey }>({ 'discriminator': [0, bytes({ size: 8 })], 'configAuthority': [8, publicKeySerializer()], 'accountFeeAuthority': [40, publicKeySerializer()] })
-    .deserializeUsing<GlobalConfig>((account) => deserializeGlobalConfig(account))      .whereField('discriminator', new Uint8Array([149, 8, 156, 202, 160, 252, 176, 217]))
-    ;
+    .registerFields<{
+      discriminator: Uint8Array;
+      configAuthority: PublicKey;
+      accountFeeAuthority: PublicKey;
+    }>({
+      discriminator: [0, bytes({ size: 8 })],
+      configAuthority: [8, publicKeySerializer()],
+      accountFeeAuthority: [40, publicKeySerializer()],
+    })
+    .deserializeUsing<GlobalConfig>((account) =>
+      deserializeGlobalConfig(account)
+    )
+    .whereField(
+      'discriminator',
+      new Uint8Array([149, 8, 156, 202, 160, 252, 176, 217])
+    );
 }
 
 export function getGlobalConfigSize(): number {
@@ -91,24 +158,27 @@ export function getGlobalConfigSize(): number {
 }
 
 export function findGlobalConfigPda(
-  context: Pick<Context, 'eddsa' | 'programs'>,
-  ): Pda {
-  const programId = context.programs.getPublicKey('gumballGuard', 'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF');
+  context: Pick<Context, 'eddsa' | 'programs'>
+): Pda {
+  const programId = context.programs.getPublicKey(
+    'gumballGuard',
+    'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF'
+  );
   return context.eddsa.findPda(programId, [
-                  string({ size: 'variable' }).serialize("global_config"),
-            ]);
+    string({ size: 'variable' }).serialize('global_config'),
+  ]);
 }
 
 export async function fetchGlobalConfigFromSeeds(
   context: Pick<Context, 'eddsa' | 'programs' | 'rpc'>,
-    options?: RpcGetAccountOptions,
+  options?: RpcGetAccountOptions
 ): Promise<GlobalConfig> {
   return fetchGlobalConfig(context, findGlobalConfigPda(context), options);
 }
 
 export async function safeFetchGlobalConfigFromSeeds(
   context: Pick<Context, 'eddsa' | 'programs' | 'rpc'>,
-    options?: RpcGetAccountOptions,
+  options?: RpcGetAccountOptions
 ): Promise<GlobalConfig | null> {
   return safeFetchGlobalConfig(context, findGlobalConfigPda(context), options);
 }

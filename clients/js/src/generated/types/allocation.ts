@@ -6,29 +6,41 @@
  * @see https://github.com/codama-idl/codama
  */
 
-import { Serializer, struct, u32, u8 } from '@metaplex-foundation/umi/serializers';
+import {
+  Serializer,
+  struct,
+  u32,
+  u8,
+} from '@metaplex-foundation/umi/serializers';
 
 /**
  * Gaurd to specify the maximum number of mints in a guard set.
- * 
+ *
  * List of accounts required:
- * 
+ *
  * 0. `[writable]` Allocation tracker PDA. The PDA is derived
  * using the seed `["allocation", allocation id,
  * gumball guard pubkey, gumball machine pubkey]`.
  */
 
-export type Allocation = { 
-/** Unique identifier of the allocation. */
-id: number; 
-/** The limit of the allocation. */
-limit: number;  };
+export type Allocation = {
+  /** Unique identifier of the allocation. */
+  id: number;
+  /** The limit of the allocation. */
+  limit: number;
+};
 
 export type AllocationArgs = Allocation;
 
-
-export function getAllocationSerializer(): Serializer<AllocationArgs, Allocation> {
-  return struct<Allocation>([['id', u8()], ['limit', u32()]], { description: 'Allocation' }) as Serializer<AllocationArgs, Allocation>;
+export function getAllocationSerializer(): Serializer<
+  AllocationArgs,
+  Allocation
+> {
+  return struct<Allocation>(
+    [
+      ['id', u8()],
+      ['limit', u32()],
+    ],
+    { description: 'Allocation' }
+  ) as Serializer<AllocationArgs, Allocation>;
 }
-
-

@@ -6,139 +6,275 @@
  * @see https://github.com/codama-idl/codama
  */
 
-import { findMasterEditionPda, findMetadataPda, findTokenRecordPda } from '@metaplex-foundation/mpl-token-metadata';
+import {
+  findMasterEditionPda,
+  findMetadataPda,
+  findTokenRecordPda,
+} from '@metaplex-foundation/mpl-token-metadata';
 import { findAssociatedTokenPda } from '@metaplex-foundation/mpl-toolbox';
-import { Context, Pda, PublicKey, Signer, TransactionBuilder, none, publicKey, transactionBuilder } from '@metaplex-foundation/umi';
-import { Serializer, bytes, mapSerializer, struct } from '@metaplex-foundation/umi/serializers';
+import {
+  Context,
+  Pda,
+  PublicKey,
+  Signer,
+  TransactionBuilder,
+  none,
+  publicKey,
+  transactionBuilder,
+} from '@metaplex-foundation/umi';
+import {
+  Serializer,
+  bytes,
+  mapSerializer,
+  struct,
+} from '@metaplex-foundation/umi/serializers';
 import { findGumballMachineAuthorityPda } from '../../hooked';
 import { findSellerHistoryPda } from '../accounts';
-import { ResolvedAccount, ResolvedAccountsWithIndices, expectPublicKey, getAccountMetasAndSigners } from '../shared';
-import { AddItemArgs, AddItemArgsArgs, getAddItemArgsSerializer } from '../types';
+import {
+  ResolvedAccount,
+  ResolvedAccountsWithIndices,
+  expectPublicKey,
+  getAccountMetasAndSigners,
+} from '../shared';
+import {
+  AddItemArgs,
+  AddItemArgsArgs,
+  getAddItemArgsSerializer,
+} from '../types';
 
 // Accounts.
 export type AddNftInstructionAccounts = {
-      /** Gumball Machine account. */
-    gumballMachine: PublicKey | Pda;
-      /** Seller history account. */
-    sellerHistory?: PublicKey | Pda;
-    authorityPda?: PublicKey | Pda;
-      /** Seller of the nft */
-    seller?: Signer;
-    mint: PublicKey | Pda;
-    tokenAccount?: PublicKey | Pda;
-    metadata?: PublicKey | Pda;
-    edition?: PublicKey | Pda;
-    tokenProgram?: PublicKey | Pda;
-    tokenMetadataProgram?: PublicKey | Pda;
-    systemProgram?: PublicKey | Pda;
-      /** OPTIONAL PNFT ACCOUNTS */
-    sellerTokenRecord?: PublicKey | Pda;
-    authRules?: PublicKey | Pda;
-    instructions?: PublicKey | Pda;
-    authRulesProgram?: PublicKey | Pda;
+  /** Gumball Machine account. */
+  gumballMachine: PublicKey | Pda;
+  /** Seller history account. */
+  sellerHistory?: PublicKey | Pda;
+  authorityPda?: PublicKey | Pda;
+  /** Seller of the nft */
+  seller?: Signer;
+  mint: PublicKey | Pda;
+  tokenAccount?: PublicKey | Pda;
+  metadata?: PublicKey | Pda;
+  edition?: PublicKey | Pda;
+  tokenProgram?: PublicKey | Pda;
+  tokenMetadataProgram?: PublicKey | Pda;
+  systemProgram?: PublicKey | Pda;
+  /** OPTIONAL PNFT ACCOUNTS */
+  sellerTokenRecord?: PublicKey | Pda;
+  authRules?: PublicKey | Pda;
+  instructions?: PublicKey | Pda;
+  authRulesProgram?: PublicKey | Pda;
 };
 
-  // Data.
-  export type AddNftInstructionData = { discriminator: Uint8Array; args: AddItemArgs;  };
+// Data.
+export type AddNftInstructionData = {
+  discriminator: Uint8Array;
+  args: AddItemArgs;
+};
 
-export type AddNftInstructionDataArgs = { args?: AddItemArgsArgs;  };
+export type AddNftInstructionDataArgs = { args?: AddItemArgsArgs };
 
-
-  export function getAddNftInstructionDataSerializer(): Serializer<AddNftInstructionDataArgs, AddNftInstructionData> {
-  return mapSerializer<AddNftInstructionDataArgs, any, AddNftInstructionData>(struct<AddNftInstructionData>([['discriminator', bytes({ size: 8 })], ['args', getAddItemArgsSerializer()]], { description: 'AddNftInstructionData' }), (value) => ({ ...value, discriminator: new Uint8Array([55, 57, 85, 145, 81, 134, 220, 223]), args: value.args ?? { sellerProofPath: none(), index: none() } }) ) as Serializer<AddNftInstructionDataArgs, AddNftInstructionData>;
+export function getAddNftInstructionDataSerializer(): Serializer<
+  AddNftInstructionDataArgs,
+  AddNftInstructionData
+> {
+  return mapSerializer<AddNftInstructionDataArgs, any, AddNftInstructionData>(
+    struct<AddNftInstructionData>(
+      [
+        ['discriminator', bytes({ size: 8 })],
+        ['args', getAddItemArgsSerializer()],
+      ],
+      { description: 'AddNftInstructionData' }
+    ),
+    (value) => ({
+      ...value,
+      discriminator: new Uint8Array([55, 57, 85, 145, 81, 134, 220, 223]),
+      args: value.args ?? { sellerProofPath: none(), index: none() },
+    })
+  ) as Serializer<AddNftInstructionDataArgs, AddNftInstructionData>;
 }
 
+// Args.
+export type AddNftInstructionArgs = AddNftInstructionDataArgs;
 
-
-  
-  // Args.
-      export type AddNftInstructionArgs =           AddNftInstructionDataArgs
-      ;
-  
 // Instruction.
 export function addNft(
-  context: Pick<Context, "eddsa" | "identity" | "programs">,
-                        input: AddNftInstructionAccounts & AddNftInstructionArgs,
-      ): TransactionBuilder {
+  context: Pick<Context, 'eddsa' | 'identity' | 'programs'>,
+  input: AddNftInstructionAccounts & AddNftInstructionArgs
+): TransactionBuilder {
   // Program ID.
-  const programId = context.programs.getPublicKey('mallowGumball', 'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa');
+  const programId = context.programs.getPublicKey(
+    'mallowGumball',
+    'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa'
+  );
 
   // Accounts.
   const resolvedAccounts = {
-          gumballMachine: { index: 0, isWritable: true as boolean, value: input.gumballMachine ?? null },
-          sellerHistory: { index: 1, isWritable: true as boolean, value: input.sellerHistory ?? null },
-          authorityPda: { index: 2, isWritable: true as boolean, value: input.authorityPda ?? null },
-          seller: { index: 3, isWritable: true as boolean, value: input.seller ?? null },
-          mint: { index: 4, isWritable: false as boolean, value: input.mint ?? null },
-          tokenAccount: { index: 5, isWritable: true as boolean, value: input.tokenAccount ?? null },
-          metadata: { index: 6, isWritable: true as boolean, value: input.metadata ?? null },
-          edition: { index: 7, isWritable: false as boolean, value: input.edition ?? null },
-          tokenProgram: { index: 8, isWritable: false as boolean, value: input.tokenProgram ?? null },
-          tokenMetadataProgram: { index: 9, isWritable: false as boolean, value: input.tokenMetadataProgram ?? null },
-          systemProgram: { index: 10, isWritable: false as boolean, value: input.systemProgram ?? null },
-          sellerTokenRecord: { index: 11, isWritable: true as boolean, value: input.sellerTokenRecord ?? null },
-          authRules: { index: 12, isWritable: false as boolean, value: input.authRules ?? null },
-          instructions: { index: 13, isWritable: false as boolean, value: input.instructions ?? null },
-          authRulesProgram: { index: 14, isWritable: false as boolean, value: input.authRulesProgram ?? null },
-      } satisfies ResolvedAccountsWithIndices;
+    gumballMachine: {
+      index: 0,
+      isWritable: true as boolean,
+      value: input.gumballMachine ?? null,
+    },
+    sellerHistory: {
+      index: 1,
+      isWritable: true as boolean,
+      value: input.sellerHistory ?? null,
+    },
+    authorityPda: {
+      index: 2,
+      isWritable: true as boolean,
+      value: input.authorityPda ?? null,
+    },
+    seller: {
+      index: 3,
+      isWritable: true as boolean,
+      value: input.seller ?? null,
+    },
+    mint: { index: 4, isWritable: false as boolean, value: input.mint ?? null },
+    tokenAccount: {
+      index: 5,
+      isWritable: true as boolean,
+      value: input.tokenAccount ?? null,
+    },
+    metadata: {
+      index: 6,
+      isWritable: true as boolean,
+      value: input.metadata ?? null,
+    },
+    edition: {
+      index: 7,
+      isWritable: false as boolean,
+      value: input.edition ?? null,
+    },
+    tokenProgram: {
+      index: 8,
+      isWritable: false as boolean,
+      value: input.tokenProgram ?? null,
+    },
+    tokenMetadataProgram: {
+      index: 9,
+      isWritable: false as boolean,
+      value: input.tokenMetadataProgram ?? null,
+    },
+    systemProgram: {
+      index: 10,
+      isWritable: false as boolean,
+      value: input.systemProgram ?? null,
+    },
+    sellerTokenRecord: {
+      index: 11,
+      isWritable: true as boolean,
+      value: input.sellerTokenRecord ?? null,
+    },
+    authRules: {
+      index: 12,
+      isWritable: false as boolean,
+      value: input.authRules ?? null,
+    },
+    instructions: {
+      index: 13,
+      isWritable: false as boolean,
+      value: input.instructions ?? null,
+    },
+    authRulesProgram: {
+      index: 14,
+      isWritable: false as boolean,
+      value: input.authRulesProgram ?? null,
+    },
+  } satisfies ResolvedAccountsWithIndices;
 
-      // Arguments.
-    const resolvedArgs: AddNftInstructionArgs = { ...input };
-  
-    // Default values.
+  // Arguments.
+  const resolvedArgs: AddNftInstructionArgs = { ...input };
+
+  // Default values.
   if (!resolvedAccounts.seller.value) {
-        resolvedAccounts.seller.value = context.identity;
-      }
-      if (!resolvedAccounts.sellerHistory.value) {
-        resolvedAccounts.sellerHistory.value = findSellerHistoryPda(context, { seller: expectPublicKey(resolvedAccounts.seller.value), gumballMachine: expectPublicKey(resolvedAccounts.gumballMachine.value) });
-      }
-      if (!resolvedAccounts.authorityPda.value) {
-        resolvedAccounts.authorityPda.value = findGumballMachineAuthorityPda(context, { gumballMachine: expectPublicKey(resolvedAccounts.gumballMachine.value) });
-      }
-      if (!resolvedAccounts.tokenAccount.value) {
-        resolvedAccounts.tokenAccount.value = findAssociatedTokenPda(context, { mint: expectPublicKey(resolvedAccounts.mint.value), owner: expectPublicKey(resolvedAccounts.seller.value) });
-      }
-      if (!resolvedAccounts.metadata.value) {
-        resolvedAccounts.metadata.value = findMetadataPda(context, { mint: expectPublicKey(resolvedAccounts.mint.value) });
-      }
-      if (!resolvedAccounts.edition.value) {
-        resolvedAccounts.edition.value = findMasterEditionPda(context, { mint: expectPublicKey(resolvedAccounts.mint.value) });
-      }
-      if (!resolvedAccounts.tokenProgram.value) {
-        resolvedAccounts.tokenProgram.value = context.programs.getPublicKey('tokenProgram', 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
-resolvedAccounts.tokenProgram.isWritable = false
-      }
-      if (!resolvedAccounts.tokenMetadataProgram.value) {
-        resolvedAccounts.tokenMetadataProgram.value = context.programs.getPublicKey('tokenMetadataProgram', 'metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s');
-resolvedAccounts.tokenMetadataProgram.isWritable = false
-      }
-      if (!resolvedAccounts.systemProgram.value) {
-        resolvedAccounts.systemProgram.value = context.programs.getPublicKey('systemProgram', '11111111111111111111111111111111');
-resolvedAccounts.systemProgram.isWritable = false
-      }
-      if (!resolvedAccounts.sellerTokenRecord.value) {
-        if (resolvedAccounts.authRulesProgram.value) {
-resolvedAccounts.sellerTokenRecord.value = findTokenRecordPda(context, { mint: expectPublicKey(resolvedAccounts.mint.value), token: expectPublicKey(resolvedAccounts.tokenAccount.value) });
-}
-      }
-      if (!resolvedAccounts.instructions.value) {
-        if (resolvedAccounts.authRulesProgram.value) {
-resolvedAccounts.instructions.value = publicKey('Sysvar1nstructions1111111111111111111111111');
-}
-      }
-      
+    resolvedAccounts.seller.value = context.identity;
+  }
+  if (!resolvedAccounts.sellerHistory.value) {
+    resolvedAccounts.sellerHistory.value = findSellerHistoryPda(context, {
+      seller: expectPublicKey(resolvedAccounts.seller.value),
+      gumballMachine: expectPublicKey(resolvedAccounts.gumballMachine.value),
+    });
+  }
+  if (!resolvedAccounts.authorityPda.value) {
+    resolvedAccounts.authorityPda.value = findGumballMachineAuthorityPda(
+      context,
+      { gumballMachine: expectPublicKey(resolvedAccounts.gumballMachine.value) }
+    );
+  }
+  if (!resolvedAccounts.tokenAccount.value) {
+    resolvedAccounts.tokenAccount.value = findAssociatedTokenPda(context, {
+      mint: expectPublicKey(resolvedAccounts.mint.value),
+      owner: expectPublicKey(resolvedAccounts.seller.value),
+    });
+  }
+  if (!resolvedAccounts.metadata.value) {
+    resolvedAccounts.metadata.value = findMetadataPda(context, {
+      mint: expectPublicKey(resolvedAccounts.mint.value),
+    });
+  }
+  if (!resolvedAccounts.edition.value) {
+    resolvedAccounts.edition.value = findMasterEditionPda(context, {
+      mint: expectPublicKey(resolvedAccounts.mint.value),
+    });
+  }
+  if (!resolvedAccounts.tokenProgram.value) {
+    resolvedAccounts.tokenProgram.value = context.programs.getPublicKey(
+      'tokenProgram',
+      'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
+    );
+    resolvedAccounts.tokenProgram.isWritable = false;
+  }
+  if (!resolvedAccounts.tokenMetadataProgram.value) {
+    resolvedAccounts.tokenMetadataProgram.value = context.programs.getPublicKey(
+      'tokenMetadataProgram',
+      'metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s'
+    );
+    resolvedAccounts.tokenMetadataProgram.isWritable = false;
+  }
+  if (!resolvedAccounts.systemProgram.value) {
+    resolvedAccounts.systemProgram.value = context.programs.getPublicKey(
+      'systemProgram',
+      '11111111111111111111111111111111'
+    );
+    resolvedAccounts.systemProgram.isWritable = false;
+  }
+  if (!resolvedAccounts.sellerTokenRecord.value) {
+    if (resolvedAccounts.authRulesProgram.value) {
+      resolvedAccounts.sellerTokenRecord.value = findTokenRecordPda(context, {
+        mint: expectPublicKey(resolvedAccounts.mint.value),
+        token: expectPublicKey(resolvedAccounts.tokenAccount.value),
+      });
+    }
+  }
+  if (!resolvedAccounts.instructions.value) {
+    if (resolvedAccounts.authRulesProgram.value) {
+      resolvedAccounts.instructions.value = publicKey(
+        'Sysvar1nstructions1111111111111111111111111'
+      );
+    }
+  }
+
   // Accounts in order.
-      const orderedAccounts: ResolvedAccount[] = Object.values(resolvedAccounts).sort((a,b) => a.index - b.index);
-  
-  
+  const orderedAccounts: ResolvedAccount[] = Object.values(
+    resolvedAccounts
+  ).sort((a, b) => a.index - b.index);
+
   // Keys and Signers.
-  const [keys, signers] = getAccountMetasAndSigners(orderedAccounts, "programId", programId);
+  const [keys, signers] = getAccountMetasAndSigners(
+    orderedAccounts,
+    'programId',
+    programId
+  );
 
   // Data.
-      const data = getAddNftInstructionDataSerializer().serialize(resolvedArgs as AddNftInstructionDataArgs);
-  
+  const data = getAddNftInstructionDataSerializer().serialize(
+    resolvedArgs as AddNftInstructionDataArgs
+  );
+
   // Bytes Created On Chain.
-      const bytesCreatedOnChain = 0;
-  
-  return transactionBuilder([{ instruction: { keys, programId, data }, signers, bytesCreatedOnChain }]);
+  const bytesCreatedOnChain = 0;
+
+  return transactionBuilder([
+    { instruction: { keys, programId, data }, signers, bytesCreatedOnChain },
+  ]);
 }

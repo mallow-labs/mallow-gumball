@@ -6,108 +6,193 @@
  * @see https://github.com/codama-idl/codama
  */
 
-import { Context, Pda, PublicKey, Signer, TransactionBuilder, publicKey, transactionBuilder } from '@metaplex-foundation/umi';
-import { Serializer, bytes, mapSerializer, struct } from '@metaplex-foundation/umi/serializers';
+import {
+  Context,
+  Pda,
+  PublicKey,
+  Signer,
+  TransactionBuilder,
+  publicKey,
+  transactionBuilder,
+} from '@metaplex-foundation/umi';
+import {
+  Serializer,
+  bytes,
+  mapSerializer,
+  struct,
+} from '@metaplex-foundation/umi/serializers';
 import { findEventAuthorityPda } from '../../hooked';
-import { ResolvedAccount, ResolvedAccountsWithIndices, getAccountMetasAndSigners } from '../shared';
+import {
+  ResolvedAccount,
+  ResolvedAccountsWithIndices,
+  getAccountMetasAndSigners,
+} from '../shared';
 
 // Accounts.
 export type DrawFromGumballMachineInstructionAccounts = {
-      /** Gumball machine account. */
-    gumballMachine: PublicKey | Pda;
-      /** Gumball machine mint authority (mint only allowed for the mint_authority). */
-    mintAuthority?: Signer;
-      /** Payer for the transaction and account allocation (rent). */
-    payer?: Signer;
-      /**
- * NFT account owner.
- * 
- */
+  /** Gumball machine account. */
+  gumballMachine: PublicKey | Pda;
+  /** Gumball machine mint authority (mint only allowed for the mint_authority). */
+  mintAuthority?: Signer;
+  /** Payer for the transaction and account allocation (rent). */
+  payer?: Signer;
+  /**
+   * NFT account owner.
+   *
+   */
 
-    buyer?: PublicKey | Pda;
-      /** System program. */
-    systemProgram?: PublicKey | Pda;
-      /**
- * SlotHashes sysvar cluster data.
- * 
- */
+  buyer?: PublicKey | Pda;
+  /** System program. */
+  systemProgram?: PublicKey | Pda;
+  /**
+   * SlotHashes sysvar cluster data.
+   *
+   */
 
-    recentSlothashes?: PublicKey | Pda;
-    eventAuthority?: PublicKey | Pda;
-    program?: PublicKey | Pda;
+  recentSlothashes?: PublicKey | Pda;
+  eventAuthority?: PublicKey | Pda;
+  program?: PublicKey | Pda;
 };
 
-  // Data.
-  export type DrawFromGumballMachineInstructionData = { discriminator: Uint8Array;  };
+// Data.
+export type DrawFromGumballMachineInstructionData = {
+  discriminator: Uint8Array;
+};
 
-export type DrawFromGumballMachineInstructionDataArgs = {  };
+export type DrawFromGumballMachineInstructionDataArgs = {};
 
-
-  export function getDrawFromGumballMachineInstructionDataSerializer(): Serializer<DrawFromGumballMachineInstructionDataArgs, DrawFromGumballMachineInstructionData> {
-  return mapSerializer<DrawFromGumballMachineInstructionDataArgs, any, DrawFromGumballMachineInstructionData>(struct<DrawFromGumballMachineInstructionData>([['discriminator', bytes({ size: 8 })]], { description: 'DrawFromGumballMachineInstructionData' }), (value) => ({ ...value, discriminator: new Uint8Array([61, 40, 62, 184, 31, 176, 24, 130]) }) ) as Serializer<DrawFromGumballMachineInstructionDataArgs, DrawFromGumballMachineInstructionData>;
+export function getDrawFromGumballMachineInstructionDataSerializer(): Serializer<
+  DrawFromGumballMachineInstructionDataArgs,
+  DrawFromGumballMachineInstructionData
+> {
+  return mapSerializer<
+    DrawFromGumballMachineInstructionDataArgs,
+    any,
+    DrawFromGumballMachineInstructionData
+  >(
+    struct<DrawFromGumballMachineInstructionData>(
+      [['discriminator', bytes({ size: 8 })]],
+      { description: 'DrawFromGumballMachineInstructionData' }
+    ),
+    (value) => ({
+      ...value,
+      discriminator: new Uint8Array([61, 40, 62, 184, 31, 176, 24, 130]),
+    })
+  ) as Serializer<
+    DrawFromGumballMachineInstructionDataArgs,
+    DrawFromGumballMachineInstructionData
+  >;
 }
-
-
-
 
 // Instruction.
 export function drawFromGumballMachine(
-  context: Pick<Context, "eddsa" | "identity" | "payer" | "programs">,
-                        input: DrawFromGumballMachineInstructionAccounts,
-      ): TransactionBuilder {
+  context: Pick<Context, 'eddsa' | 'identity' | 'payer' | 'programs'>,
+  input: DrawFromGumballMachineInstructionAccounts
+): TransactionBuilder {
   // Program ID.
-  const programId = context.programs.getPublicKey('mallowGumball', 'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa');
+  const programId = context.programs.getPublicKey(
+    'mallowGumball',
+    'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa'
+  );
 
   // Accounts.
   const resolvedAccounts = {
-          gumballMachine: { index: 0, isWritable: true as boolean, value: input.gumballMachine ?? null },
-          mintAuthority: { index: 1, isWritable: false as boolean, value: input.mintAuthority ?? null },
-          payer: { index: 2, isWritable: true as boolean, value: input.payer ?? null },
-          buyer: { index: 3, isWritable: false as boolean, value: input.buyer ?? null },
-          systemProgram: { index: 4, isWritable: false as boolean, value: input.systemProgram ?? null },
-          recentSlothashes: { index: 5, isWritable: false as boolean, value: input.recentSlothashes ?? null },
-          eventAuthority: { index: 6, isWritable: false as boolean, value: input.eventAuthority ?? null },
-          program: { index: 7, isWritable: false as boolean, value: input.program ?? null },
-      } satisfies ResolvedAccountsWithIndices;
+    gumballMachine: {
+      index: 0,
+      isWritable: true as boolean,
+      value: input.gumballMachine ?? null,
+    },
+    mintAuthority: {
+      index: 1,
+      isWritable: false as boolean,
+      value: input.mintAuthority ?? null,
+    },
+    payer: {
+      index: 2,
+      isWritable: true as boolean,
+      value: input.payer ?? null,
+    },
+    buyer: {
+      index: 3,
+      isWritable: false as boolean,
+      value: input.buyer ?? null,
+    },
+    systemProgram: {
+      index: 4,
+      isWritable: false as boolean,
+      value: input.systemProgram ?? null,
+    },
+    recentSlothashes: {
+      index: 5,
+      isWritable: false as boolean,
+      value: input.recentSlothashes ?? null,
+    },
+    eventAuthority: {
+      index: 6,
+      isWritable: false as boolean,
+      value: input.eventAuthority ?? null,
+    },
+    program: {
+      index: 7,
+      isWritable: false as boolean,
+      value: input.program ?? null,
+    },
+  } satisfies ResolvedAccountsWithIndices;
 
-  
-    // Default values.
+  // Default values.
   if (!resolvedAccounts.mintAuthority.value) {
-        resolvedAccounts.mintAuthority.value = context.identity;
-      }
-      if (!resolvedAccounts.payer.value) {
-        resolvedAccounts.payer.value = context.payer;
-      }
-      if (!resolvedAccounts.buyer.value) {
-        resolvedAccounts.buyer.value = context.identity.publicKey;
-      }
-      if (!resolvedAccounts.systemProgram.value) {
-        resolvedAccounts.systemProgram.value = context.programs.getPublicKey('systemProgram', '11111111111111111111111111111111');
-resolvedAccounts.systemProgram.isWritable = false
-      }
-      if (!resolvedAccounts.recentSlothashes.value) {
-        resolvedAccounts.recentSlothashes.value = context.programs.getPublicKey('recentSlothashes', 'SysvarS1otHashes111111111111111111111111111');
-resolvedAccounts.recentSlothashes.isWritable = false
-      }
-      if (!resolvedAccounts.eventAuthority.value) {
-        resolvedAccounts.eventAuthority.value = findEventAuthorityPda(context);
-      }
-      if (!resolvedAccounts.program.value) {
-        resolvedAccounts.program.value = publicKey('MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa');
-      }
-      
+    resolvedAccounts.mintAuthority.value = context.identity;
+  }
+  if (!resolvedAccounts.payer.value) {
+    resolvedAccounts.payer.value = context.payer;
+  }
+  if (!resolvedAccounts.buyer.value) {
+    resolvedAccounts.buyer.value = context.identity.publicKey;
+  }
+  if (!resolvedAccounts.systemProgram.value) {
+    resolvedAccounts.systemProgram.value = context.programs.getPublicKey(
+      'systemProgram',
+      '11111111111111111111111111111111'
+    );
+    resolvedAccounts.systemProgram.isWritable = false;
+  }
+  if (!resolvedAccounts.recentSlothashes.value) {
+    resolvedAccounts.recentSlothashes.value = context.programs.getPublicKey(
+      'recentSlothashes',
+      'SysvarS1otHashes111111111111111111111111111'
+    );
+    resolvedAccounts.recentSlothashes.isWritable = false;
+  }
+  if (!resolvedAccounts.eventAuthority.value) {
+    resolvedAccounts.eventAuthority.value = findEventAuthorityPda(context);
+  }
+  if (!resolvedAccounts.program.value) {
+    resolvedAccounts.program.value = publicKey(
+      'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa'
+    );
+  }
+
   // Accounts in order.
-      const orderedAccounts: ResolvedAccount[] = Object.values(resolvedAccounts).sort((a,b) => a.index - b.index);
-  
-  
+  const orderedAccounts: ResolvedAccount[] = Object.values(
+    resolvedAccounts
+  ).sort((a, b) => a.index - b.index);
+
   // Keys and Signers.
-  const [keys, signers] = getAccountMetasAndSigners(orderedAccounts, "programId", programId);
+  const [keys, signers] = getAccountMetasAndSigners(
+    orderedAccounts,
+    'programId',
+    programId
+  );
 
   // Data.
-      const data = getDrawFromGumballMachineInstructionDataSerializer().serialize({});
-  
+  const data = getDrawFromGumballMachineInstructionDataSerializer().serialize(
+    {}
+  );
+
   // Bytes Created On Chain.
-      const bytesCreatedOnChain = 0;
-  
-  return transactionBuilder([{ instruction: { keys, programId, data }, signers, bytesCreatedOnChain }]);
+  const bytesCreatedOnChain = 0;
+
+  return transactionBuilder([
+    { instruction: { keys, programId, data }, signers, bytesCreatedOnChain },
+  ]);
 }

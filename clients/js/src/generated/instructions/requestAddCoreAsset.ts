@@ -6,99 +6,190 @@
  * @see https://github.com/codama-idl/codama
  */
 
-import { Context, Pda, PublicKey, Signer, TransactionBuilder, transactionBuilder } from '@metaplex-foundation/umi';
-import { Serializer, bytes, mapSerializer, struct } from '@metaplex-foundation/umi/serializers';
+import {
+  Context,
+  Pda,
+  PublicKey,
+  Signer,
+  TransactionBuilder,
+  transactionBuilder,
+} from '@metaplex-foundation/umi';
+import {
+  Serializer,
+  bytes,
+  mapSerializer,
+  struct,
+} from '@metaplex-foundation/umi/serializers';
 import { findGumballMachineAuthorityPda } from '../../hooked';
 import { findAddItemRequestPda, findSellerHistoryPda } from '../accounts';
-import { ResolvedAccount, ResolvedAccountsWithIndices, expectPublicKey, getAccountMetasAndSigners } from '../shared';
+import {
+  ResolvedAccount,
+  ResolvedAccountsWithIndices,
+  expectPublicKey,
+  getAccountMetasAndSigners,
+} from '../shared';
 
 // Accounts.
 export type RequestAddCoreAssetInstructionAccounts = {
-      /** Gumball Machine account. */
-    gumballMachine: PublicKey | Pda;
-      /** Seller history account. */
-    sellerHistory?: PublicKey | Pda;
-      /** Add item request account. */
-    addItemRequest?: PublicKey | Pda;
-    authorityPda?: PublicKey | Pda;
-      /** Seller of the asset. */
-    seller?: Signer;
-    asset: PublicKey | Pda;
-      /** Core asset's collection if it's part of one. */
-    collection?: PublicKey | Pda;
-    mplCoreProgram?: PublicKey | Pda;
-    systemProgram?: PublicKey | Pda;
+  /** Gumball Machine account. */
+  gumballMachine: PublicKey | Pda;
+  /** Seller history account. */
+  sellerHistory?: PublicKey | Pda;
+  /** Add item request account. */
+  addItemRequest?: PublicKey | Pda;
+  authorityPda?: PublicKey | Pda;
+  /** Seller of the asset. */
+  seller?: Signer;
+  asset: PublicKey | Pda;
+  /** Core asset's collection if it's part of one. */
+  collection?: PublicKey | Pda;
+  mplCoreProgram?: PublicKey | Pda;
+  systemProgram?: PublicKey | Pda;
 };
 
-  // Data.
-  export type RequestAddCoreAssetInstructionData = { discriminator: Uint8Array;  };
+// Data.
+export type RequestAddCoreAssetInstructionData = { discriminator: Uint8Array };
 
-export type RequestAddCoreAssetInstructionDataArgs = {  };
+export type RequestAddCoreAssetInstructionDataArgs = {};
 
-
-  export function getRequestAddCoreAssetInstructionDataSerializer(): Serializer<RequestAddCoreAssetInstructionDataArgs, RequestAddCoreAssetInstructionData> {
-  return mapSerializer<RequestAddCoreAssetInstructionDataArgs, any, RequestAddCoreAssetInstructionData>(struct<RequestAddCoreAssetInstructionData>([['discriminator', bytes({ size: 8 })]], { description: 'RequestAddCoreAssetInstructionData' }), (value) => ({ ...value, discriminator: new Uint8Array([146, 149, 3, 10, 129, 64, 146, 87]) }) ) as Serializer<RequestAddCoreAssetInstructionDataArgs, RequestAddCoreAssetInstructionData>;
+export function getRequestAddCoreAssetInstructionDataSerializer(): Serializer<
+  RequestAddCoreAssetInstructionDataArgs,
+  RequestAddCoreAssetInstructionData
+> {
+  return mapSerializer<
+    RequestAddCoreAssetInstructionDataArgs,
+    any,
+    RequestAddCoreAssetInstructionData
+  >(
+    struct<RequestAddCoreAssetInstructionData>(
+      [['discriminator', bytes({ size: 8 })]],
+      { description: 'RequestAddCoreAssetInstructionData' }
+    ),
+    (value) => ({
+      ...value,
+      discriminator: new Uint8Array([146, 149, 3, 10, 129, 64, 146, 87]),
+    })
+  ) as Serializer<
+    RequestAddCoreAssetInstructionDataArgs,
+    RequestAddCoreAssetInstructionData
+  >;
 }
-
-
-
 
 // Instruction.
 export function requestAddCoreAsset(
-  context: Pick<Context, "eddsa" | "identity" | "programs">,
-                        input: RequestAddCoreAssetInstructionAccounts,
-      ): TransactionBuilder {
+  context: Pick<Context, 'eddsa' | 'identity' | 'programs'>,
+  input: RequestAddCoreAssetInstructionAccounts
+): TransactionBuilder {
   // Program ID.
-  const programId = context.programs.getPublicKey('mallowGumball', 'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa');
+  const programId = context.programs.getPublicKey(
+    'mallowGumball',
+    'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa'
+  );
 
   // Accounts.
   const resolvedAccounts = {
-          gumballMachine: { index: 0, isWritable: true as boolean, value: input.gumballMachine ?? null },
-          sellerHistory: { index: 1, isWritable: true as boolean, value: input.sellerHistory ?? null },
-          addItemRequest: { index: 2, isWritable: true as boolean, value: input.addItemRequest ?? null },
-          authorityPda: { index: 3, isWritable: true as boolean, value: input.authorityPda ?? null },
-          seller: { index: 4, isWritable: true as boolean, value: input.seller ?? null },
-          asset: { index: 5, isWritable: true as boolean, value: input.asset ?? null },
-          collection: { index: 6, isWritable: true as boolean, value: input.collection ?? null },
-          mplCoreProgram: { index: 7, isWritable: false as boolean, value: input.mplCoreProgram ?? null },
-          systemProgram: { index: 8, isWritable: false as boolean, value: input.systemProgram ?? null },
-      } satisfies ResolvedAccountsWithIndices;
+    gumballMachine: {
+      index: 0,
+      isWritable: true as boolean,
+      value: input.gumballMachine ?? null,
+    },
+    sellerHistory: {
+      index: 1,
+      isWritable: true as boolean,
+      value: input.sellerHistory ?? null,
+    },
+    addItemRequest: {
+      index: 2,
+      isWritable: true as boolean,
+      value: input.addItemRequest ?? null,
+    },
+    authorityPda: {
+      index: 3,
+      isWritable: true as boolean,
+      value: input.authorityPda ?? null,
+    },
+    seller: {
+      index: 4,
+      isWritable: true as boolean,
+      value: input.seller ?? null,
+    },
+    asset: {
+      index: 5,
+      isWritable: true as boolean,
+      value: input.asset ?? null,
+    },
+    collection: {
+      index: 6,
+      isWritable: true as boolean,
+      value: input.collection ?? null,
+    },
+    mplCoreProgram: {
+      index: 7,
+      isWritable: false as boolean,
+      value: input.mplCoreProgram ?? null,
+    },
+    systemProgram: {
+      index: 8,
+      isWritable: false as boolean,
+      value: input.systemProgram ?? null,
+    },
+  } satisfies ResolvedAccountsWithIndices;
 
-  
-    // Default values.
+  // Default values.
   if (!resolvedAccounts.seller.value) {
-        resolvedAccounts.seller.value = context.identity;
-      }
-      if (!resolvedAccounts.sellerHistory.value) {
-        resolvedAccounts.sellerHistory.value = findSellerHistoryPda(context, { seller: expectPublicKey(resolvedAccounts.seller.value), gumballMachine: expectPublicKey(resolvedAccounts.gumballMachine.value) });
-      }
-      if (!resolvedAccounts.addItemRequest.value) {
-        resolvedAccounts.addItemRequest.value = findAddItemRequestPda(context, { asset: expectPublicKey(resolvedAccounts.asset.value) });
-      }
-      if (!resolvedAccounts.authorityPda.value) {
-        resolvedAccounts.authorityPda.value = findGumballMachineAuthorityPda(context, { gumballMachine: expectPublicKey(resolvedAccounts.gumballMachine.value) });
-      }
-      if (!resolvedAccounts.mplCoreProgram.value) {
-        resolvedAccounts.mplCoreProgram.value = context.programs.getPublicKey('mplCoreProgram', 'CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d');
-resolvedAccounts.mplCoreProgram.isWritable = false
-      }
-      if (!resolvedAccounts.systemProgram.value) {
-        resolvedAccounts.systemProgram.value = context.programs.getPublicKey('systemProgram', '11111111111111111111111111111111');
-resolvedAccounts.systemProgram.isWritable = false
-      }
-      
+    resolvedAccounts.seller.value = context.identity;
+  }
+  if (!resolvedAccounts.sellerHistory.value) {
+    resolvedAccounts.sellerHistory.value = findSellerHistoryPda(context, {
+      seller: expectPublicKey(resolvedAccounts.seller.value),
+      gumballMachine: expectPublicKey(resolvedAccounts.gumballMachine.value),
+    });
+  }
+  if (!resolvedAccounts.addItemRequest.value) {
+    resolvedAccounts.addItemRequest.value = findAddItemRequestPda(context, {
+      asset: expectPublicKey(resolvedAccounts.asset.value),
+    });
+  }
+  if (!resolvedAccounts.authorityPda.value) {
+    resolvedAccounts.authorityPda.value = findGumballMachineAuthorityPda(
+      context,
+      { gumballMachine: expectPublicKey(resolvedAccounts.gumballMachine.value) }
+    );
+  }
+  if (!resolvedAccounts.mplCoreProgram.value) {
+    resolvedAccounts.mplCoreProgram.value = context.programs.getPublicKey(
+      'mplCoreProgram',
+      'CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d'
+    );
+    resolvedAccounts.mplCoreProgram.isWritable = false;
+  }
+  if (!resolvedAccounts.systemProgram.value) {
+    resolvedAccounts.systemProgram.value = context.programs.getPublicKey(
+      'systemProgram',
+      '11111111111111111111111111111111'
+    );
+    resolvedAccounts.systemProgram.isWritable = false;
+  }
+
   // Accounts in order.
-      const orderedAccounts: ResolvedAccount[] = Object.values(resolvedAccounts).sort((a,b) => a.index - b.index);
-  
-  
+  const orderedAccounts: ResolvedAccount[] = Object.values(
+    resolvedAccounts
+  ).sort((a, b) => a.index - b.index);
+
   // Keys and Signers.
-  const [keys, signers] = getAccountMetasAndSigners(orderedAccounts, "programId", programId);
+  const [keys, signers] = getAccountMetasAndSigners(
+    orderedAccounts,
+    'programId',
+    programId
+  );
 
   // Data.
-      const data = getRequestAddCoreAssetInstructionDataSerializer().serialize({});
-  
+  const data = getRequestAddCoreAssetInstructionDataSerializer().serialize({});
+
   // Bytes Created On Chain.
-      const bytesCreatedOnChain = 0;
-  
-  return transactionBuilder([{ instruction: { keys, programId, data }, signers, bytesCreatedOnChain }]);
+  const bytesCreatedOnChain = 0;
+
+  return transactionBuilder([
+    { instruction: { keys, programId, data }, signers, bytesCreatedOnChain },
+  ]);
 }

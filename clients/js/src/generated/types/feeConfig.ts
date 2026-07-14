@@ -7,20 +7,28 @@
  */
 
 import { PublicKey } from '@metaplex-foundation/umi';
-import { Serializer, publicKey as publicKeySerializer, struct, u16 } from '@metaplex-foundation/umi/serializers';
+import {
+  Serializer,
+  publicKey as publicKeySerializer,
+  struct,
+  u16,
+} from '@metaplex-foundation/umi/serializers';
 
-
-export type FeeConfig = { 
-/** Where fees will go */
-feeAccount: PublicKey; 
-/** Sale basis points for fees */
-feeBps: number;  };
+export type FeeConfig = {
+  /** Where fees will go */
+  feeAccount: PublicKey;
+  /** Sale basis points for fees */
+  feeBps: number;
+};
 
 export type FeeConfigArgs = FeeConfig;
 
-
 export function getFeeConfigSerializer(): Serializer<FeeConfigArgs, FeeConfig> {
-  return struct<FeeConfig>([['feeAccount', publicKeySerializer()], ['feeBps', u16()]], { description: 'FeeConfig' }) as Serializer<FeeConfigArgs, FeeConfig>;
+  return struct<FeeConfig>(
+    [
+      ['feeAccount', publicKeySerializer()],
+      ['feeBps', u16()],
+    ],
+    { description: 'FeeConfig' }
+  ) as Serializer<FeeConfigArgs, FeeConfig>;
 }
-
-

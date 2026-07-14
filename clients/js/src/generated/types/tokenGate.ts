@@ -7,23 +7,31 @@
  */
 
 import { PublicKey } from '@metaplex-foundation/umi';
-import { Serializer, publicKey as publicKeySerializer, struct, u64 } from '@metaplex-foundation/umi/serializers';
+import {
+  Serializer,
+  publicKey as publicKeySerializer,
+  struct,
+  u64,
+} from '@metaplex-foundation/umi/serializers';
 
 /**
  * Guard that restricts access to addresses that hold the specified spl-token.
- * 
+ *
  * List of accounts required:
- * 
+ *
  * 0. `[]` Token account holding the required amount.
  */
 
-export type TokenGate = { amount: bigint; mint: PublicKey;  };
+export type TokenGate = { amount: bigint; mint: PublicKey };
 
-export type TokenGateArgs = { amount: number | bigint; mint: PublicKey;  };
-
+export type TokenGateArgs = { amount: number | bigint; mint: PublicKey };
 
 export function getTokenGateSerializer(): Serializer<TokenGateArgs, TokenGate> {
-  return struct<TokenGate>([['amount', u64()], ['mint', publicKeySerializer()]], { description: 'TokenGate' }) as Serializer<TokenGateArgs, TokenGate>;
+  return struct<TokenGate>(
+    [
+      ['amount', u64()],
+      ['mint', publicKeySerializer()],
+    ],
+    { description: 'TokenGate' }
+  ) as Serializer<TokenGateArgs, TokenGate>;
 }
-
-

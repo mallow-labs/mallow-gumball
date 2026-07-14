@@ -7,14 +7,18 @@
  */
 
 import { PublicKey } from '@metaplex-foundation/umi';
-import { Serializer, publicKey as publicKeySerializer, struct } from '@metaplex-foundation/umi/serializers';
+import {
+  Serializer,
+  publicKey as publicKeySerializer,
+  struct,
+} from '@metaplex-foundation/umi/serializers';
 
 /**
  * Guard that charges another NFT (token) from a specific collection as payment
  * for the mint.
- * 
+ *
  * List of accounts required:
- * 
+ *
  * 0. `[writeable]` Token account of the NFT.
  * 1. `[writeable]` Metadata account of the NFT.
  * 2. `[]` Mint account of the NFT.
@@ -28,13 +32,22 @@ import { Serializer, publicKey as publicKeySerializer, struct } from '@metaplex-
  * 10. `[]` Token Authorization Rules account (pNFT)
  */
 
-export type NftPayment = { requiredCollection: PublicKey; destination: PublicKey;  };
+export type NftPayment = {
+  requiredCollection: PublicKey;
+  destination: PublicKey;
+};
 
 export type NftPaymentArgs = NftPayment;
 
-
-export function getNftPaymentSerializer(): Serializer<NftPaymentArgs, NftPayment> {
-  return struct<NftPayment>([['requiredCollection', publicKeySerializer()], ['destination', publicKeySerializer()]], { description: 'NftPayment' }) as Serializer<NftPaymentArgs, NftPayment>;
+export function getNftPaymentSerializer(): Serializer<
+  NftPaymentArgs,
+  NftPayment
+> {
+  return struct<NftPayment>(
+    [
+      ['requiredCollection', publicKeySerializer()],
+      ['destination', publicKeySerializer()],
+    ],
+    { description: 'NftPayment' }
+  ) as Serializer<NftPaymentArgs, NftPayment>;
 }
-
-

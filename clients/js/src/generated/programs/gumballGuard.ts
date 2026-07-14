@@ -6,11 +6,19 @@
  * @see https://github.com/codama-idl/codama
  */
 
-import { ClusterFilter, Context, Program, PublicKey } from '@metaplex-foundation/umi';
-import { getGumballGuardErrorFromCode, getGumballGuardErrorFromName } from '../errors';
+import {
+  ClusterFilter,
+  Context,
+  Program,
+  PublicKey,
+} from '@metaplex-foundation/umi';
+import {
+  getGumballGuardErrorFromCode,
+  getGumballGuardErrorFromName,
+} from '../errors';
 
-export const GUMBALL_GUARD_PROGRAM_ID = 'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF' as PublicKey<'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF'>;
-
+export const GUMBALL_GUARD_PROGRAM_ID =
+  'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF' as PublicKey<'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF'>;
 
 export function createGumballGuardProgram(): Program {
   return {
@@ -28,10 +36,20 @@ export function createGumballGuardProgram(): Program {
   };
 }
 
-export function getGumballGuardProgram<T extends Program = Program>(context: Pick<Context, 'programs'>, clusterFilter?: ClusterFilter): T {
-  return context.programs.get<T>("gumballGuard", clusterFilter);
+export function getGumballGuardProgram<T extends Program = Program>(
+  context: Pick<Context, 'programs'>,
+  clusterFilter?: ClusterFilter
+): T {
+  return context.programs.get<T>('gumballGuard', clusterFilter);
 }
 
-export function getGumballGuardProgramId(context: Pick<Context, 'programs'>, clusterFilter?: ClusterFilter): PublicKey {
-  return context.programs.getPublicKey("gumballGuard", GUMBALL_GUARD_PROGRAM_ID, clusterFilter);
+export function getGumballGuardProgramId(
+  context: Pick<Context, 'programs'>,
+  clusterFilter?: ClusterFilter
+): PublicKey {
+  return context.programs.getPublicKey(
+    'gumballGuard',
+    GUMBALL_GUARD_PROGRAM_ID,
+    clusterFilter
+  );
 }
