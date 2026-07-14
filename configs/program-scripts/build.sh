@@ -40,6 +40,8 @@ for p in ${PROGRAMS[@]}; do
     # exceed the v0 fixed 4KB frame and fault at runtime; v2 removes the limit.
     # NOTE: deploy targets must have SBPFv2 execution activated.
     cargo build-sbf --arch v2 --sbf-out-dir ${WORKING_DIR}/${OUTPUT} $ARGS
-    anchor build # generate types
+    anchor build # generate types + spec-0.1.0 IDL
     cp ${WORKING_DIR}/programs/${p}/target/types/*.ts ${WORKING_DIR}/clients/js/src/anchorIdls/
+    # idls/ is the canonical codama input (see codama.mjs).
+    cp ${WORKING_DIR}/programs/${p}/target/idl/*.json ${WORKING_DIR}/idls/
 done

@@ -197,7 +197,7 @@ pub struct BuyBackConfig {
 }
 
 /// Config line struct for storing asset (NFT) data pre-mint.
-#[derive(AnchorSerialize, AnchorDeserialize, Debug)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct ConfigLineInput {
     /// Mint account of the asset.
     pub mint: Pubkey,
@@ -206,7 +206,7 @@ pub struct ConfigLineInput {
 }
 
 /// Config line struct for storing asset (NFT) data pre-mint.
-#[derive(AnchorSerialize, AnchorDeserialize, Debug)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct ConfigLineV2Input {
     /// Mint account of the asset.
     pub mint: Pubkey,
@@ -217,7 +217,7 @@ pub struct ConfigLineV2Input {
 }
 
 /// Config line struct for storing asset data.
-#[derive(AnchorSerialize, AnchorDeserialize, Debug)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct ConfigLine {
     /// Mint account of the asset.
     pub mint: Pubkey,
@@ -230,7 +230,7 @@ pub struct ConfigLine {
 }
 
 /// Config line struct for storing asset data.
-#[derive(AnchorSerialize, AnchorDeserialize, Debug, InitSpace)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, InitSpace)]
 pub struct ConfigLineV2 {
     /// Mint account of the asset.
     pub mint: Pubkey,

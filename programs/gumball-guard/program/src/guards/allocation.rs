@@ -20,7 +20,7 @@ pub struct Allocation {
 }
 
 /// PDA to track the number of mints.
-#[derive(AnchorDeserialize, AnchorSerialize)]
+#[derive(AnchorDeserialize, AnchorSerialize, Clone)]
 pub struct AllocationTracker {
     pub count: u32,
 }

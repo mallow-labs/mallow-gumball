@@ -6,15 +6,15 @@
 		"programs:build": "./configs/program-scripts/build.sh",
 		"programs:test": "./configs/program-scripts/test.sh",
 		"programs:clean": "rm -rf ./programs/.bin",
-		"generate": "pnpm generate:idls && pnpm generate:clients",
-		"generate:idls": "node ./configs/shank.cjs",
-		"generate:clients": "node ./configs/kinobi.cjs && pnpm --filter @mallow-labs/mallow-gumball format:fix",
+		"generate": "pnpm generate:clients",
+		"generate:clients": "node ./codama.mjs && pnpm --filter @mallow-labs/mallow-gumball format:fix",
 		"test": "pnpm test:js",
 		"test:js": "cd clients/js && pnpm test"
 	},
 	"devDependencies": {
-		"@metaplex-foundation/kinobi": "^0.14.0",
-		"@metaplex-foundation/shank-js": "^0.1.5",
+		"@codama/nodes-from-anchor": "^1.5.0",
+		"@codama/renderers-js-umi": "^1.1.0",
+		"codama": "^1.8.0",
 		"typescript": "^5.8.3"
 	},
 	"packageManager": "pnpm@10.9.0"

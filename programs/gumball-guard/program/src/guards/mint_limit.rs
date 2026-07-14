@@ -162,7 +162,7 @@ impl Condition for MintLimit {
 }
 
 /// PDA to track the number of mints for an individual address.
-#[derive(AnchorDeserialize, AnchorSerialize)]
+#[derive(AnchorDeserialize, AnchorSerialize, Clone)]
 pub struct MintCounter {
     pub count: u16,
 }
