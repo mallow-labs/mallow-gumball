@@ -43,9 +43,11 @@ function formatTable(baseline: Metrics, current: Metrics): string {
       cur
     ).padStart(9)}   ${sign}${delta} (${sign}${pct}%)`;
   });
-  return ['', '  scenario           baseline ->   current   delta', ...lines].join(
-    '\n'
-  );
+  return [
+    '',
+    '  scenario           baseline ->   current   delta',
+    ...lines,
+  ].join('\n');
 }
 
 // `CU_SNAPSHOT=1` (re)writes the committed baseline from this run instead of
@@ -68,7 +70,9 @@ test.serial('compute unit benchmark', async (t) => {
   t.log(formatTable(baseline, current));
 
   if (Object.keys(baseline).length === 0) {
-    t.log('No committed baseline found — run with CU_SNAPSHOT=1 to create one.');
+    t.log(
+      'No committed baseline found — run with CU_SNAPSHOT=1 to create one.'
+    );
     t.pass();
     return;
   }

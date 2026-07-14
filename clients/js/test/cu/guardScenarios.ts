@@ -1,15 +1,16 @@
 /* eslint-disable import/no-extraneous-dependencies */
+import { TokenStandard as MplTokenStandard } from '@metaplex-foundation/mpl-token-metadata';
 import {
   createMintWithAssociatedToken,
   getSplMemoProgramId,
 } from '@metaplex-foundation/mpl-toolbox';
-import { TokenStandard as MplTokenStandard } from '@metaplex-foundation/mpl-token-metadata';
 import {
   base58PublicKey,
   generateSigner,
   sol,
   some,
   transactionBuilder,
+  Umi,
 } from '@metaplex-foundation/umi';
 import { generateSignerWithSol } from '@metaplex-foundation/umi-bundle-tests';
 import {
@@ -19,15 +20,14 @@ import {
   route,
   TokenStandard,
 } from '../../src';
-import { Umi } from '@metaplex-foundation/umi';
 import {
   create,
   createCollectionNft,
-  createNft,
   createMintWithHolders,
+  createNft,
   createVerifiedNft,
-  yesterday,
   tomorrow,
+  yesterday,
 } from '../_setup';
 import { drawCu } from './measure';
 import { createDeterministicUmi as createUmi } from './umi';
@@ -250,7 +250,10 @@ const guardScenarios: Record<string, () => Promise<number>> = {
           routeArgs: {
             path: 'proof',
             merkleRoot,
-            merkleProof: getMerkleProof(allowList, base58PublicKey(umi.identity)),
+            merkleProof: getMerkleProof(
+              allowList,
+              base58PublicKey(umi.identity)
+            ),
           },
         })
       )
