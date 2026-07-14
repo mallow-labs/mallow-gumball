@@ -143,7 +143,7 @@ pub struct SellItem<'info> {
     /// CHECK: Safe due to token metadata program check
     pub auth_rules: Option<UncheckedAccount<'info>>,
     /// CHECK: Safe due to address check
-    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    #[account(address = solana_program::sysvar::instructions::id())]
     pub instructions: Option<UncheckedAccount<'info>>,
     /// CHECK: Safe due to address check
     #[account(address = MPL_TOKEN_AUTH_RULES_PROGRAM)]
@@ -151,7 +151,7 @@ pub struct SellItem<'info> {
 }
 
 pub fn sell_item<'info>(
-    ctx: Context<'_, '_, '_, 'info, SellItem<'info>>,
+    ctx: Context<'info, SellItem<'info>>,
     index: u32,
     amount: u64,
     buy_price: u64,

@@ -1,6 +1,7 @@
 use super::*;
 use crate::{state::GuardType, utils::cmp_pubkeys};
-use solana_program::{program::invoke_signed, system_instruction};
+use anchor_lang::solana_program::system_instruction;
+use solana_program::program::invoke_signed;
 use utils::{assert_keys_equal, assert_owned_by};
 
 /// Gaurd to specify the maximum number of mints in a guard set.
@@ -43,7 +44,7 @@ impl Guard for Allocation {
     ///   1. `[signer]` Gumball Guard authority.
     ///   2. `[]` System program account.
     fn instruction<'c: 'info, 'info>(
-        ctx: &Context<'_, '_, 'c, 'info, Route<'info>>,
+        ctx: &Context<'info, Route<'info>>,
         route_context: RouteContext<'info>,
         _data: Vec<u8>,
     ) -> Result<()> {
@@ -130,7 +131,7 @@ impl Guard for Allocation {
         // initial count is always zero
         mint_tracker.count = 0;
         // saves the changes back to the pda
-        let data = &mut mint_tracker.try_to_vec().unwrap();
+        let data = &mut borsh::to_vec(&mint_tracker).unwrap();
         account_data[0..data.len()].copy_from_slice(data);
 
         Ok(())
@@ -192,7 +193,7 @@ impl Condition for Allocation {
 
         mint_tracker.count += 1;
         // saves the changes back to the pda
-        let data = &mut mint_tracker.try_to_vec().unwrap();
+        let data = &mut borsh::to_vec(&mint_tracker).unwrap();
         account_data[0..data.len()].copy_from_slice(data);
 
         Ok(())

@@ -50,7 +50,9 @@ pub struct TokenTransferParams<'a: 'b, 'b> {
 }
 
 pub fn cmp_pubkeys(a: &Pubkey, b: &Pubkey) -> bool {
-    sol_memcmp(a.as_ref(), b.as_ref(), PUBKEY_BYTES) == 0
+    // `sol_memcmp` became an `unsafe` syscall binding in Solana 3.0. Inputs are
+    // fixed-size (`PUBKEY_BYTES`) pubkey slices, so the read is in bounds.
+    unsafe { sol_memcmp(a.as_ref(), b.as_ref(), PUBKEY_BYTES) == 0 }
 }
 
 pub fn assert_is_token_account(

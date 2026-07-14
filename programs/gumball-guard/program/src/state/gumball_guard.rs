@@ -229,7 +229,7 @@ impl GumballGuardData {
                 let label_slice = group_label.as_bytes();
                 // retrieves the selected group
                 for _i in 0..group_counter {
-                    if sol_memcmp(label_slice, &data[cursor..], label_slice.len()) == 0 {
+                    if unsafe { sol_memcmp(label_slice, &data[cursor..], label_slice.len()) } == 0 {
                         cursor += MAX_LABEL_SIZE;
                         let (guards, _) = GuardSet::from_data(&data[cursor..])?;
                         default.merge(guards);

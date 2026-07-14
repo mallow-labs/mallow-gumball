@@ -233,7 +233,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
             }
 
             pub fn route<'c:'info,'info>(
-                ctx: Context<'_, '_, 'c, 'info, crate::instructions::Route<'info>>,
+                ctx: Context<'info, crate::instructions::Route<'info>>,
                 route_context: crate::instructions::RouteContext<'info>,
                 args: crate::instructions::RouteArgs
             ) -> anchor_lang::Result<()> {

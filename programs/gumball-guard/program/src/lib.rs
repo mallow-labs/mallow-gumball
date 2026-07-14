@@ -25,7 +25,7 @@ pub mod gumball_guard {
 
     /// Draw a prize from a gumball machine wrapped in the gumball guard.
     pub fn draw<'c: 'info, 'info>(
-        ctx: Context<'_, '_, 'c, 'info, Draw<'info>>,
+        ctx: Context<'info, Draw<'info>>,
         mint_args: Vec<u8>,
         label: Option<String>,
     ) -> Result<()> {
@@ -34,7 +34,7 @@ pub mod gumball_guard {
 
     /// Draw a prize from a gumball machine wrapped in the gumball guard.
     pub fn draw_jellybean<'c: 'info, 'info>(
-        ctx: Context<'_, '_, 'c, 'info, DrawJellybean<'info>>,
+        ctx: Context<'info, DrawJellybean<'info>>,
         mint_args: Vec<u8>,
         label: Option<String>,
     ) -> Result<()> {
@@ -43,7 +43,7 @@ pub mod gumball_guard {
 
     /// Route the transaction to a guard instruction.
     pub fn route<'c: 'info, 'info>(
-        ctx: Context<'_, '_, 'c, 'info, Route<'info>>,
+        ctx: Context<'info, Route<'info>>,
         args: RouteArgs,
         label: Option<String>,
     ) -> Result<()> {
@@ -67,7 +67,7 @@ pub mod gumball_guard {
     }
 
     /// Withdraw the rent SOL from the gumball guard account.
-    pub fn withdraw<'info>(ctx: Context<'_, '_, '_, 'info, Withdraw<'info>>) -> Result<()> {
+    pub fn withdraw<'info>(ctx: Context<'info, Withdraw<'info>>) -> Result<()> {
         instructions::withdraw(ctx)
     }
 

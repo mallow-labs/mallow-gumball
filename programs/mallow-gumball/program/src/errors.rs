@@ -214,4 +214,7 @@ pub enum GumballError {
 
     #[msg("Invalid merkle tree for the stored asset id")]
     InvalidMerkleTree,
+
+    #[msg("Account is already initialized")]
+    AccountAlreadyInitialized,
 }

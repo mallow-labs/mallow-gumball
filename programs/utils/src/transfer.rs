@@ -9,7 +9,7 @@ use mpl_token_metadata::accounts::Metadata;
 use mpl_token_metadata::instructions::TransferV1CpiBuilder;
 use mpl_token_metadata::types::{Payload, PayloadType, ProgrammableConfig, TokenStandard};
 use solana_program::program::{invoke, invoke_signed};
-use solana_program::{account_info::AccountInfo, system_instruction};
+use solana_program::account_info::AccountInfo;
 
 /// Transfers SOL or SPL tokens from a program owned account to another account.
 pub fn transfer<'a>(
@@ -169,7 +169,7 @@ pub fn transfer_spl<'a>(
     )?;
 
     let transfer_cpi = CpiContext::new(
-        token_program.to_account_info(),
+        *token_program.key,
         Transfer {
             from: from_token_account.to_account_info(),
             to: to_token_account.to_account_info(),
@@ -240,12 +240,12 @@ pub fn make_ata<'a>(
     if fee_payer_seeds.is_some() {
         let seeds = &[fee_payer_seeds.unwrap()];
         create(CpiContext::new_with_signer(
-            ata_program.to_account_info(),
+            *ata_program.key,
             accounts,
             seeds,
         ))?;
     } else {
-        create(CpiContext::new(ata_program.to_account_info(), accounts))?;
+        create(CpiContext::new(*ata_program.key, accounts))?;
     }
 
     Ok(())

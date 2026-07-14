@@ -104,7 +104,7 @@ pub struct SettleTokensSale<'info> {
 }
 
 pub fn settle_tokens_sale<'info>(
-    ctx: Context<'_, '_, '_, 'info, SettleTokensSale<'info>>,
+    ctx: Context<'info, SettleTokensSale<'info>>,
     index: u32,
 ) -> Result<()> {
     let gumball_machine = &mut ctx.accounts.gumball_machine;

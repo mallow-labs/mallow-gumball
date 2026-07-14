@@ -48,7 +48,7 @@ pub struct ManageBuyBackFunds<'info> {
 }
 
 pub fn manage_buy_back_funds<'info>(
-    ctx: Context<'_, '_, '_, 'info, ManageBuyBackFunds<'info>>,
+    ctx: Context<'info, ManageBuyBackFunds<'info>>,
     amount: u64,
     is_withdraw: bool,
 ) -> Result<()> {

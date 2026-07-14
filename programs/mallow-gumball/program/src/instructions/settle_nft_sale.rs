@@ -133,7 +133,7 @@ pub struct SettleNftSale<'info> {
     /// CHECK: Safe due to token metadata program check
     pub auth_rules: Option<UncheckedAccount<'info>>,
     /// CHECK: Safe due to address check
-    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    #[account(address = solana_program::sysvar::instructions::id())]
     pub instructions: Option<UncheckedAccount<'info>>,
     /// CHECK: Safe due to address check
     #[account(address = MPL_TOKEN_AUTH_RULES_PROGRAM)]
@@ -141,7 +141,7 @@ pub struct SettleNftSale<'info> {
 }
 
 pub fn settle_nft_sale<'info>(
-    ctx: Context<'_, '_, '_, 'info, SettleNftSale<'info>>,
+    ctx: Context<'info, SettleNftSale<'info>>,
     index: u32,
 ) -> Result<()> {
     let gumball_machine = &mut ctx.accounts.gumball_machine;

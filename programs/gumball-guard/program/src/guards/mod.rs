@@ -104,7 +104,7 @@ pub trait Guard: Condition + AnchorSerialize + AnchorDeserialize {
     /// Executes an instruction. This function is called from the `route` instruction
     /// handler.
     fn instruction<'c: 'info, 'info>(
-        _ctx: &Context<'_, '_, 'c, 'info, Route<'info>>,
+        _ctx: &Context<'info, Route<'info>>,
         _route_context: RouteContext<'info>,
         _data: Vec<u8>,
     ) -> Result<()> {

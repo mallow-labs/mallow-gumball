@@ -72,7 +72,7 @@ pub struct ClaimCnft<'info> {
 }
 
 pub fn claim_cnft<'info>(
-    ctx: Context<'_, '_, '_, 'info, ClaimCnft<'info>>,
+    ctx: Context<'info, ClaimCnft<'info>>,
     index: u32,
     args: CnftArgs,
 ) -> Result<()> {

@@ -102,7 +102,7 @@ pub fn assert_can_add_item(
         verify_proof(
             &seller_proof_path.as_ref().unwrap()[..],
             &gumball_machine.settings.sellers_merkle_root.unwrap(),
-            &leaf.0,
+            &leaf.to_bytes(),
         ),
         GumballError::InvalidProofPath
     );
@@ -202,7 +202,9 @@ pub fn get_config_count(data: &[u8]) -> Result<usize> {
 }
 
 pub fn cmp_pubkeys(a: &Pubkey, b: &Pubkey) -> bool {
-    sol_memcmp(a.as_ref(), b.as_ref(), PUBKEY_BYTES) == 0
+    // `sol_memcmp` became an `unsafe` syscall binding in Solana 3.0. The inputs are
+    // fixed-size (`PUBKEY_BYTES`) pubkey slices, so the read is in bounds.
+    unsafe { sol_memcmp(a.as_ref(), b.as_ref(), PUBKEY_BYTES) == 0 }
 }
 
 pub fn get_core_asset_update_authority<'info>(
@@ -480,7 +482,7 @@ pub fn approve_and_freeze_nft_v2<'a>(
     } else {
         approve(
             CpiContext::new(
-                token_program.to_account_info(),
+                token_program.key(),
                 Approve {
                     to: token_account.to_account_info(),
                     delegate: new_authority_info.to_account_info(),
@@ -761,7 +763,7 @@ pub fn transfer_and_close_if_empty<'a>(
     // Close the token account back to authority if token account is empty
     if token_account.amount == 0 {
         close_account(CpiContext::new_with_signer(
-            token_program.to_account_info(),
+            token_program.key(),
             CloseAccount {
                 account: token_account.to_account_info(),
                 destination: rent_recipient.to_account_info(),

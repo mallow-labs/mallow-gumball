@@ -36,7 +36,7 @@ pub struct Withdraw<'info> {
     pub token_program: Program<'info, Token>,
 }
 
-pub fn withdraw<'info>(ctx: Context<'_, '_, '_, 'info, Withdraw<'info>>) -> Result<()> {
+pub fn withdraw<'info>(ctx: Context<'info, Withdraw<'info>>) -> Result<()> {
     let gumball_guard = &ctx.accounts.gumball_guard;
     let machine_program = ctx.accounts.machine_program.to_account_info();
     let machine = &ctx.accounts.machine.to_account_info();
@@ -54,7 +54,7 @@ pub fn withdraw<'info>(ctx: Context<'_, '_, '_, 'info, Withdraw<'info>>) -> Resu
     if let Ok(_) = try_from!(Account::<GumballMachine>, machine) {
         withdraw_cpi(
             CpiContext::new_with_signer(
-                machine_program,
+                machine_program.key(),
                 CloseGumballMachine {
                     gumball_machine: machine.to_account_info(),
                     authority,

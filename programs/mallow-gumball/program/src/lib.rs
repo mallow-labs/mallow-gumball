@@ -337,7 +337,7 @@ pub mod mallow_gumball {
     ///   3. `[]` Buyer account
     ///   4. `[]` System program
     ///   5. `[]` SlotHashes sysvar cluster data
-    pub fn draw<'info>(ctx: Context<'_, '_, '_, 'info, Draw<'info>>) -> Result<()> {
+    pub fn draw<'info>(ctx: Context<'info, Draw<'info>>) -> Result<()> {
         instructions::draw(ctx)
     }
 
@@ -352,7 +352,7 @@ pub mod mallow_gumball {
     ///   0. `[writable]` Gumball Machine account
     ///   1. `[signer]` Gumball Machine mint authority
     pub fn increment_total_revenue<'info>(
-        ctx: Context<'_, '_, '_, 'info, IncrementTotalRevenue<'info>>,
+        ctx: Context<'info, IncrementTotalRevenue<'info>>,
         revenue: u64,
     ) -> Result<()> {
         instructions::increment_total_revenue(ctx, revenue)
@@ -395,7 +395,7 @@ pub mod mallow_gumball {
     ///   27. `[optional]` Instructions sysvar (for pNFT)
     ///   28. `[optional]` Auth rules program (for pNFT)
     pub fn sell_item<'info>(
-        ctx: Context<'_, '_, '_, 'info, SellItem<'info>>,
+        ctx: Context<'info, SellItem<'info>>,
         index: u32,
         amount: u64,
         buy_price: u64,
@@ -418,7 +418,7 @@ pub mod mallow_gumball {
     ///   7. `[writable, optional]` Collection account if asset is part of one.
     ///   8. `[]` MPL Core program.
     pub fn claim_core_asset<'info>(
-        ctx: Context<'_, '_, '_, 'info, ClaimCoreAsset<'info>>,
+        ctx: Context<'info, ClaimCoreAsset<'info>>,
         index: u32,
     ) -> Result<()> {
         instructions::claim_core_asset(ctx, index)
@@ -451,7 +451,7 @@ pub mod mallow_gumball {
     ///   19. `[optional]` Instructions sysvar (pNFT)
     ///   20. `[optional]` Auth rules program (pNFT)
     pub fn claim_nft<'info>(
-        ctx: Context<'_, '_, '_, 'info, ClaimNft<'info>>,
+        ctx: Context<'info, ClaimNft<'info>>,
         index: u32,
     ) -> Result<()> {
         instructions::claim_nft(ctx, index)
@@ -475,7 +475,7 @@ pub mod mallow_gumball {
     ///   11. `[writable]` Buyer's token account (must match mint and buyer)
     ///   12. `[writable]` Authority PDA's token account (must match mint and authority PDA)
     pub fn claim_tokens<'info>(
-        ctx: Context<'_, '_, '_, 'info, ClaimTokens<'info>>,
+        ctx: Context<'info, ClaimTokens<'info>>,
         index: u32,
     ) -> Result<()> {
         instructions::claim_tokens(ctx, index)
@@ -509,7 +509,7 @@ pub mod mallow_gumball {
     ///   19. `[]` MPL Core program.
     ///   Remaining accounts: Royalty recipients
     pub fn settle_core_asset_sale<'info>(
-        ctx: Context<'_, '_, '_, 'info, SettleCoreAssetSale<'info>>,
+        ctx: Context<'info, SettleCoreAssetSale<'info>>,
         index: u32,
     ) -> Result<()> {
         instructions::settle_core_asset_sale(ctx, index)
@@ -552,7 +552,7 @@ pub mod mallow_gumball {
     ///   28. `[optional]` Auth rules program (pNFT)
     ///   Remaining accounts: Royalty recipients
     pub fn settle_nft_sale<'info>(
-        ctx: Context<'_, '_, '_, 'info, SettleNftSale<'info>>,
+        ctx: Context<'info, SettleNftSale<'info>>,
         index: u32,
     ) -> Result<()> {
         instructions::settle_nft_sale(ctx, index)
@@ -586,7 +586,7 @@ pub mod mallow_gumball {
     ///   19. `[writable]` Authority PDA's token account
     ///   Remaining accounts: Fee recipients
     pub fn settle_tokens_sale<'info>(
-        ctx: Context<'_, '_, '_, 'info, SettleTokensSale<'info>>,
+        ctx: Context<'info, SettleTokensSale<'info>>,
         index: u32,
     ) -> Result<()> {
         instructions::settle_tokens_sale(ctx, index)
@@ -617,7 +617,7 @@ pub mod mallow_gumball {
     ///   16. `[writable]` Authority PDA's token account
     ///   Remaining accounts: Fee recipients
     pub fn settle_tokens_sale_claimed<'info>(
-        ctx: Context<'_, '_, '_, 'info, SettleTokensSaleClaimed<'info>>,
+        ctx: Context<'info, SettleTokensSaleClaimed<'info>>,
         args: SettleTokensSaleClaimedArgs,
     ) -> Result<()> {
         instructions::settle_tokens_sale_claimed(ctx, args)
@@ -663,7 +663,7 @@ pub mod mallow_gumball {
     ///     - `[]` System program
     ///     - `[]` Rent sysvar
     pub fn withdraw<'info>(
-        ctx: Context<'_, '_, '_, 'info, CloseGumballMachine<'info>>,
+        ctx: Context<'info, CloseGumballMachine<'info>>,
     ) -> Result<()> {
         instructions::close_gumball_machine(ctx)
     }
@@ -683,7 +683,7 @@ pub mod mallow_gumball {
     ///   8. `[]` System program
     ///   9. `[]` Rent sysvar
     pub fn manage_buy_back_funds<'info>(
-        ctx: Context<'_, '_, '_, 'info, ManageBuyBackFunds<'info>>,
+        ctx: Context<'info, ManageBuyBackFunds<'info>>,
         amount: u64,
         is_withdraw: bool,
     ) -> Result<()> {
@@ -709,7 +709,7 @@ pub mod mallow_gumball {
     ///   9. `[]` System program
     ///   Remaining accounts: merkle proof nodes
     pub fn add_cnft<'info>(
-        ctx: Context<'_, '_, '_, 'info, AddCnft<'info>>,
+        ctx: Context<'info, AddCnft<'info>>,
         args: CnftArgs,
         add_item_args: AddItemArgs,
     ) -> Result<()> {
@@ -735,7 +735,7 @@ pub mod mallow_gumball {
     ///   11. `[]` System program
     ///   Remaining accounts: merkle proof nodes
     pub fn request_add_cnft<'info>(
-        ctx: Context<'_, '_, '_, 'info, RequestAddCnft<'info>>,
+        ctx: Context<'info, RequestAddCnft<'info>>,
         args: CnftArgs,
     ) -> Result<()> {
         instructions::request_add_cnft(ctx, args)
@@ -759,7 +759,7 @@ pub mod mallow_gumball {
     ///   10. `[]` System program
     ///   Remaining accounts: merkle proof nodes
     pub fn cancel_add_cnft_request<'info>(
-        ctx: Context<'_, '_, '_, 'info, CancelAddCnftRequest<'info>>,
+        ctx: Context<'info, CancelAddCnftRequest<'info>>,
         args: CnftArgs,
     ) -> Result<()> {
         instructions::cancel_add_cnft_request(ctx, args)
@@ -784,7 +784,7 @@ pub mod mallow_gumball {
     ///   10. `[]` System program
     ///   Remaining accounts: merkle proof nodes
     pub fn remove_cnft<'info>(
-        ctx: Context<'_, '_, '_, 'info, RemoveCnft<'info>>,
+        ctx: Context<'info, RemoveCnft<'info>>,
         index: u32,
         args: CnftArgs,
     ) -> Result<()> {
@@ -809,7 +809,7 @@ pub mod mallow_gumball {
     ///   10. `[]` System program
     ///   Remaining accounts: merkle proof nodes
     pub fn claim_cnft<'info>(
-        ctx: Context<'_, '_, '_, 'info, ClaimCnft<'info>>,
+        ctx: Context<'info, ClaimCnft<'info>>,
         index: u32,
         args: CnftArgs,
     ) -> Result<()> {
@@ -849,7 +849,7 @@ pub mod mallow_gumball {
     ///   21. `[]` Bubblegum program
     ///   Remaining accounts: creator payout accounts, then merkle proof nodes
     pub fn settle_cnft_sale<'info>(
-        ctx: Context<'_, '_, '_, 'info, SettleCnftSale<'info>>,
+        ctx: Context<'info, SettleCnftSale<'info>>,
         index: u32,
         args: CnftArgs,
         current_leaf_owner: Pubkey,

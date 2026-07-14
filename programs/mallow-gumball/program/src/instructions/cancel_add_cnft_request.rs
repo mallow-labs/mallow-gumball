@@ -84,7 +84,7 @@ pub struct CancelAddCnftRequest<'info> {
 }
 
 pub fn cancel_add_cnft_request<'info>(
-    ctx: Context<'_, '_, '_, 'info, CancelAddCnftRequest<'info>>,
+    ctx: Context<'info, CancelAddCnftRequest<'info>>,
     args: CnftArgs,
 ) -> Result<()> {
     assert_cnft_v1(args.version)?;

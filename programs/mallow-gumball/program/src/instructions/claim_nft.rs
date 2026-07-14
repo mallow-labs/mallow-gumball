@@ -91,7 +91,7 @@ pub struct ClaimNft<'info> {
     /// CHECK: Safe due to token metadata program check
     pub auth_rules: Option<UncheckedAccount<'info>>,
     /// CHECK: Safe due to address check
-    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    #[account(address = solana_program::sysvar::instructions::id())]
     pub instructions: Option<UncheckedAccount<'info>>,
     /// CHECK: Safe due to address check
     #[account(address = MPL_TOKEN_AUTH_RULES_PROGRAM)]
@@ -99,7 +99,7 @@ pub struct ClaimNft<'info> {
 }
 
 pub fn claim_nft<'info>(
-    ctx: Context<'_, '_, '_, 'info, ClaimNft<'info>>,
+    ctx: Context<'info, ClaimNft<'info>>,
     index: u32,
 ) -> Result<()> {
     let gumball_machine = &mut ctx.accounts.gumball_machine;

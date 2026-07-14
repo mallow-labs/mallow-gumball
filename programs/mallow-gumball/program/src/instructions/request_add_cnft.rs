@@ -94,7 +94,7 @@ pub struct RequestAddCnft<'info> {
 }
 
 pub fn request_add_cnft<'info>(
-    ctx: Context<'_, '_, '_, 'info, RequestAddCnft<'info>>,
+    ctx: Context<'info, RequestAddCnft<'info>>,
     args: CnftArgs,
 ) -> Result<()> {
     assert_cnft_v1(args.version)?;

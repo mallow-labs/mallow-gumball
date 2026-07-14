@@ -134,7 +134,7 @@ pub struct SettleCnftSale<'info> {
 }
 
 pub fn settle_cnft_sale<'info>(
-    ctx: Context<'_, '_, '_, 'info, SettleCnftSale<'info>>,
+    ctx: Context<'info, SettleCnftSale<'info>>,
     index: u32,
     args: CnftArgs,
     current_leaf_owner: Pubkey,

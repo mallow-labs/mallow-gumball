@@ -46,7 +46,7 @@ pub struct CloseGumballMachine<'info> {
 }
 
 pub fn close_gumball_machine<'info>(
-    ctx: Context<'_, '_, '_, 'info, CloseGumballMachine<'info>>,
+    ctx: Context<'info, CloseGumballMachine<'info>>,
 ) -> Result<()> {
     let account_info = ctx.accounts.gumball_machine.to_account_info();
     let account_data = account_info.data.borrow();

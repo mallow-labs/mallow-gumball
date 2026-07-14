@@ -80,7 +80,7 @@ pub struct AddCnft<'info> {
 }
 
 pub fn add_cnft<'info>(
-    ctx: Context<'_, '_, '_, 'info, AddCnft<'info>>,
+    ctx: Context<'info, AddCnft<'info>>,
     args: CnftArgs,
     add_item_args: AddItemArgs,
 ) -> Result<()> {

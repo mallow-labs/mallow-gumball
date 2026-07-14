@@ -3,7 +3,8 @@ use super::*;
 use anchor_spl::token::spl_token::native_mint;
 use mallow_gumball::{constants::AUTHORITY_SEED, GumballMachine};
 use mallow_jellybean_sdk::accounts::JellybeanMachine;
-use solana_program::{program::invoke, system_instruction};
+use anchor_lang::solana_program::system_instruction;
+use solana_program::program::invoke;
 use utils::{assert_keys_equal, transfer_sol};
 
 use crate::{

@@ -67,7 +67,7 @@ pub struct ClaimTokens<'info> {
 }
 
 pub fn claim_tokens<'info>(
-    ctx: Context<'_, '_, '_, 'info, ClaimTokens<'info>>,
+    ctx: Context<'info, ClaimTokens<'info>>,
     index: u32,
 ) -> Result<()> {
     let gumball_machine = &mut ctx.accounts.gumball_machine;

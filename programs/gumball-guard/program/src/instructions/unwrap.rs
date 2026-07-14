@@ -14,7 +14,7 @@ pub fn unwrap(ctx: Context<Unwrap>) -> Result<()> {
         authority: gumball_machine_authority.to_account_info(),
         mint_authority: gumball_machine_authority.to_account_info(),
     };
-    let cpi_ctx = CpiContext::new(gumball_machine_program, update_ix);
+    let cpi_ctx = CpiContext::new(gumball_machine_program.key(), update_ix);
     // gumball machine set_mint_authority CPI
     set_mint_authority(cpi_ctx)?;
 

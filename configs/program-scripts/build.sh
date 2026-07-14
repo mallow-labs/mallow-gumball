@@ -1,7 +1,7 @@
 #!/bin/bash
 
-agave-install init 1.18.15
-rustup default 1.79.0
+agave-install init 3.1.12
+avm use 1.1.2
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 OUTPUT="./programs/.bin"
@@ -36,7 +36,10 @@ export SBF_OUT_DIR="${WORKING_DIR}/${OUTPUT}"
 
 for p in ${PROGRAMS[@]}; do
     cd ${WORKING_DIR}/programs/${p}/program
-    cargo build-sbf --sbf-out-dir ${WORKING_DIR}/${OUTPUT} $ARGS
+    # SBPFv2 (dynamic stack frames): mpl-core 0.12.1's Core-asset deserializers
+    # exceed the v0 fixed 4KB frame and fault at runtime; v2 removes the limit.
+    # NOTE: deploy targets must have SBPFv2 execution activated.
+    cargo build-sbf --arch v2 --sbf-out-dir ${WORKING_DIR}/${OUTPUT} $ARGS
     anchor build # generate types
     cp ${WORKING_DIR}/programs/${p}/target/types/*.ts ${WORKING_DIR}/clients/js/src/anchorIdls/
 done

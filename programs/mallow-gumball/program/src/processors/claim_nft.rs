@@ -170,7 +170,7 @@ pub fn transfer_nft_with_revoke<'a, 'b>(
     };
 
     close_account(CpiContext::new_with_signer(
-        token_program.to_account_info(),
+        token_program.key(),
         CloseAccount {
             account: authority_pda_token_account.to_account_info(),
             destination: rent_recipient.to_account_info(),

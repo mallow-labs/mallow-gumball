@@ -100,7 +100,7 @@ pub struct SettleTokensSaleClaimedArgs {
 }
 
 pub fn settle_tokens_sale_claimed<'info>(
-    ctx: Context<'_, '_, '_, 'info, SettleTokensSaleClaimed<'info>>,
+    ctx: Context<'info, SettleTokensSaleClaimed<'info>>,
     args: SettleTokensSaleClaimedArgs,
 ) -> Result<()> {
     // Validate start and end indices

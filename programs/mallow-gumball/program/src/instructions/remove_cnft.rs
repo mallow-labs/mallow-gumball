@@ -76,7 +76,7 @@ pub struct RemoveCnft<'info> {
 }
 
 pub fn remove_cnft<'info>(
-    ctx: Context<'_, '_, '_, 'info, RemoveCnft<'info>>,
+    ctx: Context<'info, RemoveCnft<'info>>,
     index: u32,
     args: CnftArgs,
 ) -> Result<()> {

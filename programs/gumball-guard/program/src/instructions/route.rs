@@ -10,7 +10,7 @@ use mallow_jellybean_sdk::accounts::JellybeanMachine;
 /// empty gumball guard and gumball machine accounts and it is up to individual guard
 /// instructions to validate whether the instruction can be executed or not.
 pub fn route<'c: 'info, 'info>(
-    ctx: Context<'_, '_, 'c, 'info, Route<'info>>,
+    ctx: Context<'info, Route<'info>>,
     args: RouteArgs,
     label: Option<String>,
 ) -> Result<()> {
