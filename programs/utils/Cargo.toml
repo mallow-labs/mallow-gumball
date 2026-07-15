@@ -12,6 +12,6 @@ name = "utils"
 [dependencies]
 anchor-lang = "1.1.2"
 anchor-spl = {version = "1.1.2", features = ["metadata"]}
-solana-program = "3.0.0"
+solana-program = "4.0.0"
 mpl-token-metadata = { version = "=5.1.2-alpha.2" }
 mpl-core = { version = "0.12.1" }
