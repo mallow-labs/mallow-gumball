@@ -22,7 +22,7 @@ anchor-lang = {version = "1.1.2", features = ["init-if-needed", "event-cpi"]}
 anchor-spl = {version = "1.1.2", features = ["metadata"]}
 arrayref = ">=0.3.6"
 borsh = "1"
-solana-program = "3.0.0"
+solana-program = "4.0.0"
 mpl-token-metadata = { version = "=5.1.2-alpha.2" }
 mpl-core = { version = "0.12.1" }
 # V1 Bubblegum CPI only. V2 CPI (mpl-account-compression) is intentionally out of

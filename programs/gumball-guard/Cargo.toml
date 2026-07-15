@@ -10,5 +10,5 @@ members = [
 
 [workspace.metadata.cli]
 anchor = "1.1.2"
-solana = "3.1.12"
+solana = "4.1.12"
 rustc = "1.92.0"

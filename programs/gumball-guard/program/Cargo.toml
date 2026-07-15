@@ -30,7 +30,7 @@ mallow-gumball = { path = "../../mallow-gumball/program", features = ["cpi"] }
 mallow-jellybean-sdk = { path = "../../../../mallow-jellybean/clients/rust", features = ["anchor"] }
 mpl-token-metadata = { version = "=5.1.2-alpha.2" }
 mpl-core = { version = "0.12.1" }
-solana-program = "3.0.0"
+solana-program = "4.0.0"
 # anchor-spl 1.1.2 pairs with the split-out `spl-token-2022-interface` (v2). Pull
 # the same crate (renamed to keep the `spl_token_2022` import path) so there's a
 # single, version-unified token-2022 in the graph.
