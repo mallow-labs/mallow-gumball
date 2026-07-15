@@ -12,8 +12,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # LiteSVM's native binding requires Node >= 20.
-        node: ["20.x", "22.x"]
+        # LiteSVM's napi binding corrupts V8's GC and aborts with std::bad_alloc
+        # on linux-x64-gnu under Node 20/22 (LiteSVM#171); Node 24 is unaffected.
+        node: ["24.x"]
     steps:
       - name: Git checkout
         uses: actions/checkout@v3
