@@ -5,7 +5,7 @@ use crate::{
 };
 use anchor_lang::prelude::*;
 use mallow_gumball::{GumballMachine, GumballState};
-use mallow_jellybean_sdk::{accounts::JellybeanMachine, types::JellybeanState};
+use mallow_jellybean_client::{accounts::JellybeanMachine, types::JellybeanState};
 use anchor_lang::solana_program::system_instruction;
 use solana_program::{entrypoint::MAX_PERMITTED_DATA_INCREASE, program::invoke};
 use utils::assert_keys_equal;

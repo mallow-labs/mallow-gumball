@@ -16,7 +16,7 @@ no-entrypoint = []
 test-bpf = []
 cpi = ["no-entrypoint"]
 default = []
-idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build", "mallow-jellybean-sdk/anchor-idl-build"]
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build", "mallow-jellybean-client/anchor-idl-build"]
 
 [dependencies]
 anchor-lang = { version = "1.1.2", features = ["init-if-needed"] }
@@ -27,7 +27,7 @@ gumball-guard-derive = { path = "../macro", version = "0.2.0" }
 mallow-gumball = { path = "../../mallow-gumball/program", features = ["cpi"] }
 # Local path dep to the sibling mallow-jellybean checkout (its published crate is
 # Solana-1.x only). Requires the repos to be siblings under the same parent dir.
-mallow-jellybean-sdk = { path = "../../../../mallow-jellybean/clients/rust", features = ["anchor"] }
+mallow-jellybean-client = { path = "../../../../mallow-jellybean/clients/rust", features = ["anchor"] }
 mpl-token-metadata = { version = "=5.1.2-alpha.2" }
 mpl-core = { version = "0.12.1" }
 solana-program = "4.0.0"

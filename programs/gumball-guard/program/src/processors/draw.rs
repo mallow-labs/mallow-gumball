@@ -1,5 +1,5 @@
 use anchor_lang::{prelude::*, Discriminator};
-use mallow_jellybean_sdk::instructions::DrawCpiBuilder;
+use mallow_jellybean_client::instructions::DrawCpiBuilder;
 use solana_program::{instruction::Instruction, program::invoke_signed};
 
 use crate::{

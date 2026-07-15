@@ -1,5 +1,5 @@
 use mallow_gumball::{GumballMachine, GumballState};
-use mallow_jellybean_sdk::{
+use mallow_jellybean_client::{
     accounts::JellybeanMachine, instructions::StartSaleCpiBuilder, types::JellybeanState,
 };
 

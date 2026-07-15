@@ -1,5 +1,5 @@
 use mallow_gumball::GumballMachine;
-use mallow_jellybean_sdk::accounts::JellybeanMachine;
+use mallow_jellybean_client::accounts::JellybeanMachine;
 
 use crate::{state::GuardType, try_from};
 
