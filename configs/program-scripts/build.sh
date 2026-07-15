@@ -1,8 +1,5 @@
 #!/bin/bash
 
-agave-install init 3.1.12
-avm use 1.1.2
-
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 OUTPUT="./programs/.bin"
 # saves external programs binaries to the output directory

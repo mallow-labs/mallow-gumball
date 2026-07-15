@@ -15,3 +15,4 @@ members = [
 
 [toolchain]
 anchor_version = "1.1.2"
+solana_version = "3.1.12"
