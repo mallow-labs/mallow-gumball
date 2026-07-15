@@ -1079,7 +1079,7 @@ dependencies = [
  "mpl-bubblegum",
  "mpl-core",
  "mpl-token-metadata",
- "solana-program 3.0.0",
+ "solana-program 4.0.0",
  "utils",
 ]
 
