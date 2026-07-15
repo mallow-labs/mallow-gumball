@@ -1,5 +1,5 @@
 use mallow_gumball::{constants::AUTHORITY_SEED, GumballMachine};
-use mallow_jellybean_sdk::accounts::JellybeanMachine;
+use mallow_jellybean_client::accounts::JellybeanMachine;
 
 use super::*;
 

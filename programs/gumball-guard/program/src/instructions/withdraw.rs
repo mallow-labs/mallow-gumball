@@ -9,7 +9,7 @@ use mallow_gumball::{
     cpi::{accounts::CloseGumballMachine, withdraw as withdraw_cpi},
     GumballMachine,
 };
-use mallow_jellybean_sdk::{accounts::JellybeanMachine, instructions::WithdrawCpiBuilder};
+use mallow_jellybean_client::{accounts::JellybeanMachine, instructions::WithdrawCpiBuilder};
 use utils::assert_owned_by;
 
 /// Withdraw the rent SOL from the gumball guard account, ensuring that Gumball Machine can also be closed.

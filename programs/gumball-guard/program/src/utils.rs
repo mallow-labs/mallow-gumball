@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use mallow_gumball::{GumballMachine, GumballState};
-use mallow_jellybean_sdk::{accounts::JellybeanMachine, types::FeeAccount, types::JellybeanState};
+use mallow_jellybean_client::{accounts::JellybeanMachine, types::FeeAccount, types::JellybeanState};
 use solana_program::{program::invoke_signed, program_memory::sol_memcmp, pubkey::PUBKEY_BYTES};
 use utils::{assert_initialized, assert_keys_equal, assert_owned_by, transfer_sol};
 
