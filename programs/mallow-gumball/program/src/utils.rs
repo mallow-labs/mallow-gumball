@@ -802,26 +802,22 @@ pub fn compute_cnft_data_hash(meta_hash: &[u8; 32], seller_fee_basis_points: u16
 
 /// Recomputes the Bubblegum leaf `creator_hash` from the supplied creators.
 ///
-/// Byte-for-byte identical to `mpl_bubblegum::hash::hash_creators`: for each
-/// creator, `keccak` over `address ‖ [verified as u8] ‖ [share]`. Computed here
-/// (rather than calling the mpl helper) to avoid crossing the mpl borsh types
-/// into instruction args. A lie about creators changes `creator_hash` and the
-/// proof fails, so royalty payouts driven off these creators are trustless.
+/// Delegates to `mpl_bubblegum::hash::hash_creators` after mapping the local
+/// `CnftCreator` type to `mpl_bubblegum::types::Creator` (the local type exists
+/// only so creators can cross the Anchor instruction boundary, which the mpl
+/// borsh types can't). Calling the mpl helper keeps this in lockstep with
+/// Bubblegum's on-chain hashing. A lie about creators changes `creator_hash` and
+/// the proof fails, so royalty payouts driven off these creators are trustless.
 pub fn compute_cnft_creator_hash(creators: &[crate::CnftCreator]) -> [u8; 32] {
-    let creator_data: Vec<Vec<u8>> = creators
+    let creators: Vec<mpl_bubblegum::types::Creator> = creators
         .iter()
-        .map(|c| {
-            [c.address.as_ref(), &[c.verified as u8][..], &[c.share][..]].concat()
+        .map(|c| mpl_bubblegum::types::Creator {
+            address: c.address,
+            verified: c.verified,
+            share: c.share,
         })
         .collect();
-    solana_program::keccak::hashv(
-        creator_data
-            .iter()
-            .map(|c| c.as_slice())
-            .collect::<Vec<&[u8]>>()
-            .as_ref(),
-    )
-    .to_bytes()
+    mpl_bubblegum::hash::hash_creators(&creators)
 }
 
 /// Derives the Bubblegum asset id for a leaf: `PDA(["asset", tree, nonce_le])`.

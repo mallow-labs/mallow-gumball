@@ -830,11 +830,6 @@ export type GumballGuard = {
       name: 'invalidMachine';
       msg: 'Invalid machine';
     },
-    {
-      code: 6057;
-      name: 'missingFeeAccounts';
-      msg: 'Machine has no fee accounts to receive the payment';
-    },
   ];
   types: [
     {

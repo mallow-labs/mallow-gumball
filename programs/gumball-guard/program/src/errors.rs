@@ -172,7 +172,4 @@ pub enum GumballGuardError {
 
     #[msg("Invalid machine")]
     InvalidMachine,
-
-    #[msg("Machine has no fee accounts to receive the payment")]
-    MissingFeeAccounts,
 }

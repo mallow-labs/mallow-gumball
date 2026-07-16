@@ -1112,6 +1112,8 @@ dependencies = [
 [[package]]
 name = "mallow-jellybean-client"
 version = "1.0.0-alpha.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e892537f9811fd07a6b4aa9731582e3be1b2f6126deb831e05d9adbe6cafad1"
 dependencies = [
  "anchor-lang",
  "borsh 1.7.0",

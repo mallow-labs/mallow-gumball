@@ -21,8 +21,8 @@ pub struct Initialize<'info> {
     // never-initialized account).
     #[account(
         mut,
-        constraint = gumball_machine.to_account_info().data.borrow()[..8] == [0u8; 8] @ GumballError::AccountAlreadyInitialized,
-        constraint = gumball_machine.to_account_info().owner == __program_id && gumball_machine.to_account_info().data_len() >= GumballMachine::get_size(args.settings.item_capacity, GumballMachine::CURRENT_VERSION)
+        constraint = gumball_machine.to_account_info().owner == __program_id && gumball_machine.to_account_info().data_len() >= GumballMachine::get_size(args.settings.item_capacity, GumballMachine::CURRENT_VERSION),
+        constraint = gumball_machine.to_account_info().data.borrow()[..8] == [0u8; 8] @ GumballError::AccountAlreadyInitialized
     )]
     gumball_machine: UncheckedAccount<'info>,
 

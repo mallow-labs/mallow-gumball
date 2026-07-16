@@ -25,9 +25,7 @@ arrayref = ">=0.3.6"
 borsh = "1"
 gumball-guard-derive = { path = "../macro", version = "0.2.0" }
 mallow-gumball = { path = "../../mallow-gumball/program", features = ["cpi"] }
-# Local path dep to the sibling mallow-jellybean checkout (its published crate is
-# Solana-1.x only). Requires the repos to be siblings under the same parent dir.
-mallow-jellybean-client = { path = "../../../../mallow-jellybean/clients/rust", features = ["anchor"] }
+mallow-jellybean-client = { version = "1.0.0-alpha.0", features = ["anchor"] }
 mpl-token-metadata = { version = "=5.1.2-alpha.2" }
 mpl-core = { version = "0.12.1" }
 solana-program = "4.0.0"

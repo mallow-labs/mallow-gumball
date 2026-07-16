@@ -86,4 +86,11 @@ test.serial('compute unit benchmark', async (t) => {
       `${label} CU regressed: ${base} -> ${current[label]} (ceiling ${ceiling})`
     );
   }
+
+  for (const label of Object.keys(baseline)) {
+    t.true(
+      label in current,
+      `scenario '${label}' is in baseline.json but was not measured — remove it from the baseline or restore the scenario`
+    );
+  }
 });

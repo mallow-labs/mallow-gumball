@@ -1,5 +1,7 @@
+import { TokenStandard } from '@metaplex-foundation/mpl-token-metadata';
 import {
   none,
+  Option,
   OptionOrNullable,
   publicKey,
   TransactionBuilder,
@@ -23,9 +25,23 @@ import { findGumballGuardPda } from './hooked';
 
 export { DrawJellybeanInstructionAccounts };
 
+/**
+ * @deprecated No longer used internally. Kept for backward compatibility.
+ */
+export type DrawJellybeanInstructionData<MA extends GuardSetMintArgs> = {
+  discriminator: Array<number>;
+  mintArgs: MA;
+  group: Option<string>;
+};
+
 export type DrawJellybeanInstructionDataArgs<MA extends GuardSetMintArgs> = {
   mintArgs?: Partial<MA>;
   group?: OptionOrNullable<string>;
+  /**
+   * @deprecated No longer used by the instruction. Accepted but ignored; kept
+   * for backward compatibility.
+   */
+  tokenStandard?: TokenStandard;
 };
 
 export function drawJellybean<
@@ -39,7 +55,9 @@ export function drawJellybean<
       MA extends undefined ? DefaultGuardSetMintArgs : MA
     >
 ): TransactionBuilder {
-  const { mintArgs = {}, group = none(), ...rest } = input;
+  // `tokenStandard` is accepted but ignored; destructured out so it is not
+  // threaded into the instruction data.
+  const { mintArgs = {}, group = none(), tokenStandard, ...rest } = input;
 
   // Parsing mint data.
   const program = context.programs.get<GumballGuardProgram>('gumballGuard');
