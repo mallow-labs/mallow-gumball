@@ -47,8 +47,8 @@ export type JellybeanFeeAccount = { address: PublicKey; basisPoints: number };
  *
  * `feeAccounts` are written into the machine settings; the solPayment/token
  * payment guards distribute the draw price across them. Pass `[]` to build a
- * machine with no fee destinations (used to exercise the MissingFeeAccounts
- * guard path).
+ * machine with no fee destinations (a valid config: the draw succeeds and no
+ * payment is collected since there is nowhere to route it).
  */
 export const setupJellybeanMachine = async <
   DA extends GuardSetArgs = DefaultGuardSetArgs,

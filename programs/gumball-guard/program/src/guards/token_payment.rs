@@ -207,12 +207,6 @@ impl TokenPayment {
         ctx.indices.insert("fee_accounts", ctx.account_cursor);
 
         let jellybean_machine = try_from!(Account::<JellybeanMachine>, ctx.accounts.machine)?;
-        // The payment (including any rounding dust) is distributed to the fee
-        // accounts; with none configured there is no valid destination.
-        require!(
-            !jellybean_machine.fee_accounts.is_empty(),
-            GumballGuardError::MissingFeeAccounts
-        );
         for fee_account in &jellybean_machine.fee_accounts {
             let fee_account_ata = try_get_account_info(ctx.accounts.remaining, ctx.account_cursor)?;
             assert_is_token_account(fee_account_ata, fee_account.address, self.mint)?;
@@ -257,15 +251,18 @@ impl TokenPayment {
             .checked_sub(amount_transferred)
             .ok_or(GumballGuardError::NumericalOverflowError)?;
 
-        // Any remaining dust goes to first fee account
-        spl_token_transfer(TokenTransferParams {
-            source: source_token_account_info.to_account_info(),
-            destination: remaining_accounts[0].to_account_info(),
-            authority: ctx.accounts.payer.to_account_info(),
-            authority_signer_seeds: &[],
-            token_program: ctx.accounts.spl_token_program.to_account_info(),
-            amount: remaining_tokens,
-        })?;
+        // Any remaining dust goes to first fee account. A machine with no fee
+        // accounts has no destination, so nothing is transferred.
+        if !remaining_accounts.is_empty() {
+            spl_token_transfer(TokenTransferParams {
+                source: source_token_account_info.to_account_info(),
+                destination: remaining_accounts[0].to_account_info(),
+                authority: ctx.accounts.payer.to_account_info(),
+                authority_signer_seeds: &[],
+                token_program: ctx.accounts.spl_token_program.to_account_info(),
+                amount: remaining_tokens,
+            })?;
+        }
 
         Ok(())
     }

@@ -128,9 +128,11 @@ test('it rejects a jellybean draw whose fee account does not match the machine',
   await t.throwsAsync(promise, { message: /Invalid fee account address/ });
 });
 
-// Hardening: a jellybean machine with no fee accounts has nowhere to route the
-// solPayment price, so the guard must refuse rather than silently drop funds.
-test('it rejects a solPayment jellybean draw when the machine has no fee accounts', async (t) => {
+// An empty fee_accounts list is a valid jellybean configuration. The draw must
+// succeed; with no fee destination the solPayment price is simply not collected
+// (the guard still requires the payer to hold the funds, but there is nowhere to
+// route them), so the payer keeps their balance rather than the draw bricking.
+test('it succeeds on a solPayment jellybean draw when the machine has no fee accounts', async (t) => {
   const umi = await createJellybeanUmi(createUmi);
 
   const jellybeanMachine = await setupJellybeanMachine(umi, {
@@ -141,7 +143,7 @@ test('it rejects a solPayment jellybean draw when the machine has no fee account
   const payer = await generateSignerWithSol(umi, sol(10));
   const buyer = generateSigner(umi);
 
-  const promise = transactionBuilder()
+  await transactionBuilder()
     .add(setComputeUnitLimit(umi, { units: 800_000 }))
     .add(
       drawJellybean(umi, {
@@ -153,7 +155,48 @@ test('it rejects a solPayment jellybean draw when the machine has no fee account
     )
     .sendAndConfirm(umi);
 
-  await t.throwsAsync(promise, { message: /MissingFeeAccounts/ });
+  // No fee account means no destination, so the 1 SOL price is never pulled.
+  const payerBalance = await umi.rpc.getBalance(payer.publicKey);
+  t.true(
+    isEqualToAmount(payerBalance, sol(10), sol(0.1)),
+    `payer balance unchanged: ${payerBalance.basisPoints}`
+  );
+});
+
+// Same for the spl tokenPayment branch: an empty fee_accounts list is valid, the
+// draw must succeed, and with no fee destination no tokens are pulled.
+test('it succeeds on an spl tokenPayment jellybean draw when the machine has no fee accounts', async (t) => {
+  const umi = await createJellybeanUmi(createUmi);
+  const payer = await generateSignerWithSol(umi, sol(10));
+
+  const [tokenMint, payerAta] = await createMintWithHolders(umi, {
+    holders: [{ owner: payer.publicKey, amount: 1000 }],
+  });
+
+  const jellybeanMachine = await setupJellybeanMachine(umi, {
+    feeAccounts: [],
+    guards: {
+      tokenPayment: some({ mint: tokenMint.publicKey, amount: 5 }),
+    },
+  });
+
+  const buyer = generateSigner(umi);
+  await transactionBuilder()
+    .add(setComputeUnitLimit(umi, { units: 800_000 }))
+    .add(
+      drawJellybean(umi, {
+        jellybeanMachine,
+        payer,
+        buyer,
+        mintArgs: {
+          tokenPayment: some({ mint: tokenMint.publicKey, feeAccounts: [] }),
+        },
+      })
+    )
+    .sendAndConfirm(umi);
+
+  // No fee account means no destination, so the payer's tokens are untouched.
+  t.is((await fetchToken(umi, payerAta)).amount, 1000n);
 });
 
 // tokenPayment (SPL Token) has its own jellybean branch: the price is pulled

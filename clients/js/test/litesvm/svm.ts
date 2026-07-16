@@ -64,24 +64,24 @@ const PROGRAMS: { id: string; file: string; required: boolean }[] = [
   {
     id: 'BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY',
     file: 'programs/.bin/mpl_bubblegum.so',
-    required: false,
+    required: true,
   },
   {
     id: 'cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK',
     file: 'programs/.bin/spl_account_compression.so',
-    required: false,
+    required: true,
   },
   {
     id: 'noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV',
     file: 'programs/.bin/spl_noop.so',
-    required: false,
+    required: true,
   },
   // Jellybean Machine program, driven by the gumball-guard `draw_jellybean`
   // flow (drawJellybean.test.ts + _jellybeanSetup.ts).
   {
     id: 'J3LLYcm8V5hJRzCKENRPW3yGdQ6xU8Nie8jr3mU88eqq',
     file: 'programs/.bin/mallow_jellybean.so',
-    required: false,
+    required: true,
   },
 ];
 

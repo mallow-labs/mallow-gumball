@@ -197,12 +197,6 @@ impl SolPayment {
         ctx.indices.insert("fee_accounts", ctx.account_cursor);
 
         let jellybean_machine = try_from!(Account::<JellybeanMachine>, ctx.accounts.machine)?;
-        // The payment (including any rounding dust) is distributed to the fee
-        // accounts; with none configured there is no valid destination.
-        require!(
-            !jellybean_machine.fee_accounts.is_empty(),
-            GumballGuardError::MissingFeeAccounts
-        );
         for fee_account in &jellybean_machine.fee_accounts {
             let fee_destination = try_get_account_info(ctx.accounts.remaining, ctx.account_cursor)?;
             assert_keys_equal(
@@ -247,14 +241,17 @@ impl SolPayment {
             .checked_sub(amount_transferred)
             .ok_or(GumballGuardError::NumericalOverflowError)?;
 
-        // Any remaining dust goes to first fee account
-        transfer_sol(
-            &mut ctx.accounts.payer,
-            &ctx.accounts.remaining[fee_accounts_start],
-            &ctx.accounts.system_program,
-            None,
-            remaining_lamports,
-        )?;
+        // Any remaining dust goes to first fee account. A machine with no fee
+        // accounts has no destination, so nothing is transferred.
+        if !remaining_accounts.is_empty() {
+            transfer_sol(
+                &mut ctx.accounts.payer,
+                &ctx.accounts.remaining[fee_accounts_start],
+                &ctx.accounts.system_program,
+                None,
+                remaining_lamports,
+            )?;
+        }
 
         Ok(())
     }
