@@ -1,22 +1,25 @@
+import { type Address } from '@solana/kit';
 import {
+  getNftPaymentCodec,
+  NftPayment,
+  NftPaymentArgs,
+  TokenStandard,
+} from '../generated';
+import { GuardManifest, GuardRemainingAccount, noopParser } from '../guards';
+import {
+  findAssociatedTokenPda,
   findMasterEditionPda,
   findMetadataPda,
   findTokenRecordPda,
-  isProgrammable,
-  TokenStandard,
-} from '@metaplex-foundation/mpl-token-metadata';
-import {
-  findAssociatedTokenPda,
-  getSplAssociatedTokenProgramId,
-} from '@metaplex-foundation/mpl-toolbox';
-import { PublicKey } from '@metaplex-foundation/umi';
-import {
-  getNftPaymentSerializer,
-  NftPayment,
-  NftPaymentArgs,
-} from '../generated';
-import { GuardManifest, GuardRemainingAccount, noopParser } from '../guards';
-import { getMplTokenAuthRulesProgramId } from '../programs';
+} from '../hooked';
+
+const ASSOCIATED_TOKEN_PROGRAM_ID =
+  'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL' as Address;
+const TOKEN_AUTH_RULES_PROGRAM_ID =
+  'auth9SigNpDKz4sJJ1DfCTuZrZNSAgh9sFD3rboVmgg' as Address;
+
+const isProgrammable = (tokenStandard: TokenStandard): boolean =>
+  tokenStandard === TokenStandard.ProgrammableNonFungible;
 
 /**
  * The nftPayment guard allows minting by charging the
@@ -34,58 +37,59 @@ export const nftPaymentGuardManifest: GuardManifest<
   NftPaymentMintArgs
 > = {
   name: 'nftPayment',
-  serializer: getNftPaymentSerializer,
-  mintParser: (context, mintContext, args) => {
+  codec: getNftPaymentCodec,
+  mintParser: async (mintContext, args) => {
     const nftTokenAccount =
       args.tokenAccount ??
-      findAssociatedTokenPda(context, {
-        mint: args.mint,
-        owner: mintContext.buyer.publicKey,
-      })[0];
-    const [nftMetadata] = findMetadataPda(context, { mint: args.mint });
-    const [destinationAta] = findAssociatedTokenPda(context, {
+      (
+        await findAssociatedTokenPda({
+          mint: args.mint,
+          owner: mintContext.buyer.address,
+        })
+      )[0];
+    const [nftMetadata] = await findMetadataPda({ mint: args.mint });
+    const [destinationAta] = await findAssociatedTokenPda({
       mint: args.mint,
       owner: args.destination,
     });
 
     const remainingAccounts: GuardRemainingAccount[] = [
-      { publicKey: nftTokenAccount, isWritable: true },
-      { publicKey: nftMetadata, isWritable: true },
-      { publicKey: args.mint, isWritable: false },
-      { publicKey: args.destination, isWritable: false },
-      { publicKey: destinationAta, isWritable: true },
+      { address: nftTokenAccount, isWritable: true },
+      { address: nftMetadata, isWritable: true },
+      { address: args.mint, isWritable: false },
+      { address: args.destination, isWritable: false },
+      { address: destinationAta, isWritable: true },
       {
-        publicKey: getSplAssociatedTokenProgramId(context),
+        address: ASSOCIATED_TOKEN_PROGRAM_ID,
         isWritable: false,
       },
     ];
 
     if (isProgrammable(args.tokenStandard)) {
-      const [nftMasterEdition] = findMasterEditionPda(context, {
+      const [nftMasterEdition] = await findMasterEditionPda({
         mint: args.mint,
       });
-      const [ownerTokenRecord] = findTokenRecordPda(context, {
+      const [ownerTokenRecord] = await findTokenRecordPda({
         mint: args.mint,
         token: nftTokenAccount,
       });
-      const [destinationTokenRecord] = findTokenRecordPda(context, {
+      const [destinationTokenRecord] = await findTokenRecordPda({
         mint: args.mint,
         token: destinationAta,
       });
-      const tokenAuthRules = getMplTokenAuthRulesProgramId(context);
       remainingAccounts.push(
         ...[
-          { publicKey: nftMasterEdition, isWritable: false },
-          { publicKey: ownerTokenRecord, isWritable: true },
-          { publicKey: destinationTokenRecord, isWritable: true },
+          { address: nftMasterEdition, isWritable: false },
+          { address: ownerTokenRecord, isWritable: true },
+          { address: destinationTokenRecord, isWritable: true },
         ]
       );
 
       if (args.ruleSet) {
         remainingAccounts.push(
           ...[
-            { publicKey: tokenAuthRules, isWritable: false },
-            { publicKey: args.ruleSet, isWritable: false },
+            { address: TOKEN_AUTH_RULES_PROGRAM_ID, isWritable: false },
+            { address: args.ruleSet, isWritable: false },
           ]
         );
       }
@@ -102,7 +106,7 @@ export type NftPaymentMintArgs = Omit<NftPaymentArgs, 'requiredCollection'> & {
    * This must be part of the required collection and must
    * belong to the payer.
    */
-  mint: PublicKey;
+  mint: Address;
 
   /**
    * The token standard of the NFT used to pay.
@@ -114,7 +118,7 @@ export type NftPaymentMintArgs = Omit<NftPaymentArgs, 'requiredCollection'> & {
    *
    * @defaultValue Default to not using a ruleSet.
    */
-  ruleSet?: PublicKey;
+  ruleSet?: Address;
 
   /**
    * The token account linking the NFT with its owner.
@@ -123,5 +127,5 @@ export type NftPaymentMintArgs = Omit<NftPaymentArgs, 'requiredCollection'> & {
    * Defaults to the associated token address using the
    * mint address of the NFT and the payer's address.
    */
-  tokenAccount?: PublicKey;
+  tokenAccount?: Address;
 };

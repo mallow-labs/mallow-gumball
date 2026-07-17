@@ -7,14 +7,18 @@
 		"programs:test": "./configs/program-scripts/test.sh",
 		"programs:clean": "rm -rf ./programs/.bin",
 		"generate": "pnpm generate:clients",
-		"generate:clients": "node ./codama.mjs && pnpm --filter @mallow-labs/mallow-gumball format:fix",
-		"test": "pnpm test:js",
-		"test:js": "cd clients/js && pnpm test"
+		"generate:clients": "node ./codama.mjs && pnpm --filter @mallow-labs/mallow-gumball format:fix && pnpm --filter @mallow-labs/mallow-gumball-umi format:fix",
+		"test": "pnpm test:js && pnpm test:umi",
+		"test:js": "cd clients/js && pnpm test",
+		"test:umi": "cd clients/umi && pnpm test"
 	},
 	"devDependencies": {
 		"@codama/nodes-from-anchor": "^1.5.0",
+		"@codama/renderers-js": "^2.3.0",
 		"@codama/renderers-js-umi": "^1.1.0",
 		"codama": "^1.8.0",
+		"prettier": "^3.5.3",
+		"prettier-plugin-organize-imports": "^4.0.0",
 		"typescript": "^5.8.3"
 	},
 	"packageManager": "pnpm@10.9.0"

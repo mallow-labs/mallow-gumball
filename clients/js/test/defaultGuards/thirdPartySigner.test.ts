@@ -1,130 +1,102 @@
-import { setComputeUnitLimit } from '@metaplex-foundation/mpl-toolbox';
-import {
-  generateSigner,
-  sol,
-  some,
-  transactionBuilder,
-} from '@metaplex-foundation/umi';
+import { generateKeyPairSigner, some } from '@solana/kit';
 import test from 'ava';
-import { draw, TokenStandard } from '../../src';
+import { draw } from '../../src';
 import {
-  assertBotTax,
-  assertItemBought,
-  create,
-  createNft,
-  createUmi,
+  COMPUTE_UNITS,
+  fetchGumballMachine,
+  generateKeyPairSignerWithSol,
+  sendTransaction,
+  sol,
 } from '../_setup';
+import {
+  createClient,
+  createMachineWithGuards,
+  sendAndGetLogs,
+} from './_guardsASetup';
 
 test('it allows minting when the third party signer is provided', async (t) => {
   // Given a loaded Gumball Machine with a third party signer guard.
-  const umi = await createUmi();
-  const thirdPartySigner = generateSigner(umi);
-
-  const { publicKey: gumballMachine } = await create(umi, {
-    items: [
-      {
-        id: (await createNft(umi)).publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-    ],
-    startSale: true,
+  const client = await createClient();
+  const thirdPartySigner = await generateKeyPairSigner();
+  const { gumballMachine } = await createMachineWithGuards(client, {
     guards: {
-      thirdPartySigner: some({ signerKey: thirdPartySigner.publicKey }),
+      thirdPartySigner: some({ signerKey: thirdPartySigner.address }),
     },
   });
 
-  // When we mint from it by providing the third party as a Signer.
-
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(umi, {
-        gumballMachine,
-
-        mintArgs: {
-          thirdPartySigner: some({ signer: thirdPartySigner }),
-        },
-      })
-    )
-    .sendAndConfirm(umi);
+  // When we draw providing the third party as a Signer.
+  const buyer = await generateKeyPairSignerWithSol(client.svm, sol(10));
+  await sendTransaction(client.svm, buyer, [
+    COMPUTE_UNITS,
+    await draw({
+      gumballMachine,
+      payer: buyer,
+      buyer,
+      mintArgs: { thirdPartySigner: some({ signer: thirdPartySigner }) },
+    }),
+  ]);
 
   // Then minting was successful.
-  await assertItemBought(t, umi, { gumballMachine });
+  t.is(fetchGumballMachine(client.svm, gumballMachine).itemsRedeemed, 1n);
 });
 
 test('it forbids minting when the third party signer is wrong', async (t) => {
   // Given a loaded Gumball Machine with a third party signer guard.
-  const umi = await createUmi();
-  const thirdPartySigner = generateSigner(umi);
-
-  const { publicKey: gumballMachine } = await create(umi, {
-    items: [
-      {
-        id: (await createNft(umi)).publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-    ],
-    startSale: true,
+  const client = await createClient();
+  const thirdPartySigner = await generateKeyPairSigner();
+  const { gumballMachine } = await createMachineWithGuards(client, {
     guards: {
-      thirdPartySigner: some({ signerKey: thirdPartySigner.publicKey }),
+      thirdPartySigner: some({ signerKey: thirdPartySigner.address }),
     },
   });
 
-  // When we try to mint from it by providing the wrong third party signer.
-  const wrongThirdPartySigner = generateSigner(umi);
-
-  const promise = transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(umi, {
+  // When we try to draw providing the wrong third party signer, then we expect
+  // an error.
+  const buyer = await generateKeyPairSignerWithSol(client.svm, sol(10));
+  const wrongThirdPartySigner = await generateKeyPairSigner();
+  await t.throwsAsync(
+    sendTransaction(client.svm, buyer, [
+      COMPUTE_UNITS,
+      await draw({
         gumballMachine,
-
+        payer: buyer,
+        buyer,
         mintArgs: {
           thirdPartySigner: some({ signer: wrongThirdPartySigner }),
         },
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then we expect an error.
-  await t.throwsAsync(promise, { message: /MissingRequiredSignature/ });
+      }),
+    ]),
+    { message: /MissingRequiredSignature/ }
+  );
 });
 
 test('it charges a bot tax when trying to mint using the wrong third party signer', async (t) => {
-  // Given a loaded Gumball Machine with a third party signer guard and a bot tax guard.
-  const umi = await createUmi();
-  const thirdPartySigner = generateSigner(umi);
-
-  const { publicKey: gumballMachine } = await create(umi, {
-    items: [
-      {
-        id: (await createNft(umi)).publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-    ],
-    startSale: true,
+  // Given a loaded Gumball Machine with a third party signer guard and a bot tax
+  // guard.
+  const client = await createClient();
+  const thirdPartySigner = await generateKeyPairSigner();
+  const { gumballMachine } = await createMachineWithGuards(client, {
     guards: {
       botTax: some({ lamports: sol(0.1), lastInstruction: true }),
-      thirdPartySigner: some({ signerKey: thirdPartySigner.publicKey }),
+      thirdPartySigner: some({ signerKey: thirdPartySigner.address }),
     },
   });
 
-  // When we try to mint from it by providing the wrong third party signer.
-  const wrongThirdPartySigner = generateSigner(umi);
+  // When we try to draw providing the wrong third party signer.
+  const buyer = await generateKeyPairSignerWithSol(client.svm, sol(10));
+  const wrongThirdPartySigner = await generateKeyPairSigner();
+  const logs = await sendAndGetLogs(client.svm, buyer, [
+    COMPUTE_UNITS,
+    await draw({
+      gumballMachine,
+      payer: buyer,
+      buyer,
+      mintArgs: { thirdPartySigner: some({ signer: wrongThirdPartySigner }) },
+    }),
+  ]);
 
-  const { signature } = await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(umi, {
-        gumballMachine,
-
-        mintArgs: {
-          thirdPartySigner: some({ signer: wrongThirdPartySigner }),
-        },
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then we expect a silent bot tax error.
-  await assertBotTax(t, umi, signature, /MissingRequiredSignature/);
+  // Then we expect a silent bot tax error and no item redeemed.
+  t.regex(logs, /Botting is taxed/);
+  t.regex(logs, /MissingRequiredSignature/);
+  t.is(fetchGumballMachine(client.svm, gumballMachine).itemsRedeemed, 0n);
 });

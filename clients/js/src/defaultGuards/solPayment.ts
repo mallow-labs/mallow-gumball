@@ -1,6 +1,6 @@
-import { PublicKey } from '@metaplex-foundation/umi';
+import { type Address } from '@solana/kit';
 import {
-  getSolPaymentSerializer,
+  getSolPaymentCodec,
   MachineType,
   SolPayment,
   SolPaymentArgs,
@@ -18,14 +18,16 @@ export const solPaymentGuardManifest: GuardManifest<
   SolPaymentMintArgs
 > = {
   name: 'solPayment',
-  serializer: getSolPaymentSerializer,
-  mintParser: (context, mintContext, args) => {
-    const feeAccounts: PublicKey[] = [];
+  codec: getSolPaymentCodec,
+  mintParser: async (mintContext, args) => {
+    const feeAccounts: Address[] = [];
     if (mintContext.machineType === MachineType.Gumball) {
       feeAccounts.push(
-        findGumballMachineAuthorityPda(context, {
-          gumballMachine: mintContext.machine,
-        })[0]
+        (
+          await findGumballMachineAuthorityPda({
+            gumballMachine: mintContext.machine,
+          })
+        )[0]
       );
     }
 
@@ -36,7 +38,7 @@ export const solPaymentGuardManifest: GuardManifest<
     return {
       data: new Uint8Array(),
       remainingAccounts: feeAccounts.map((feeAccount) => ({
-        publicKey: feeAccount,
+        address: feeAccount,
         isWritable: true,
       })),
     };
@@ -45,5 +47,5 @@ export const solPaymentGuardManifest: GuardManifest<
 };
 
 export type SolPaymentMintArgs = {
-  feeAccounts?: PublicKey[];
+  feeAccounts?: Address[];
 };

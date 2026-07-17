@@ -1,14 +1,20 @@
+import { type Address } from '@solana/kit';
 import {
+  getNftBurnCodec,
+  NftBurn,
+  NftBurnArgs,
+  TokenStandard,
+} from '../generated';
+import { GuardManifest, GuardRemainingAccount, noopParser } from '../guards';
+import {
+  findAssociatedTokenPda,
   findMasterEditionPda,
   findMetadataPda,
   findTokenRecordPda,
-  isProgrammable,
-  TokenStandard,
-} from '@metaplex-foundation/mpl-token-metadata';
-import { findAssociatedTokenPda } from '@metaplex-foundation/mpl-toolbox';
-import { PublicKey } from '@metaplex-foundation/umi';
-import { getNftBurnSerializer, NftBurn, NftBurnArgs } from '../generated';
-import { GuardManifest, GuardRemainingAccount, noopParser } from '../guards';
+} from '../hooked';
+
+const isProgrammable = (tokenStandard: TokenStandard): boolean =>
+  tokenStandard === TokenStandard.ProgrammableNonFungible;
 
 /**
  * The nftBurn guard restricts the mint to holders of a predefined
@@ -25,36 +31,38 @@ export const nftBurnGuardManifest: GuardManifest<
   NftBurnMintArgs
 > = {
   name: 'nftBurn',
-  serializer: getNftBurnSerializer,
-  mintParser: (context, mintContext, args) => {
+  codec: getNftBurnCodec,
+  mintParser: async (mintContext, args) => {
     const nftTokenAccount =
       args.tokenAccount ??
-      findAssociatedTokenPda(context, {
-        mint: args.mint,
-        owner: mintContext.buyer.publicKey,
-      })[0];
-    const [nftMetadata] = findMetadataPda(context, { mint: args.mint });
-    const [nftMasterEdition] = findMasterEditionPda(context, {
+      (
+        await findAssociatedTokenPda({
+          mint: args.mint,
+          owner: mintContext.buyer.address,
+        })
+      )[0];
+    const [nftMetadata] = await findMetadataPda({ mint: args.mint });
+    const [nftMasterEdition] = await findMasterEditionPda({
       mint: args.mint,
     });
-    const [collectionMetadata] = findMetadataPda(context, {
+    const [collectionMetadata] = await findMetadataPda({
       mint: args.requiredCollection,
     });
 
     const remainingAccounts: GuardRemainingAccount[] = [
-      { publicKey: nftTokenAccount, isWritable: true },
-      { publicKey: nftMetadata, isWritable: true },
-      { publicKey: nftMasterEdition, isWritable: true },
-      { publicKey: args.mint, isWritable: true },
-      { publicKey: collectionMetadata, isWritable: true },
+      { address: nftTokenAccount, isWritable: true },
+      { address: nftMetadata, isWritable: true },
+      { address: nftMasterEdition, isWritable: true },
+      { address: args.mint, isWritable: true },
+      { address: collectionMetadata, isWritable: true },
     ];
 
     if (isProgrammable(args.tokenStandard)) {
-      const [nftTokenRecord] = findTokenRecordPda(context, {
+      const [nftTokenRecord] = await findTokenRecordPda({
         mint: args.mint,
         token: nftTokenAccount,
       });
-      remainingAccounts.push({ publicKey: nftTokenRecord, isWritable: true });
+      remainingAccounts.push({ address: nftTokenRecord, isWritable: true });
     }
 
     return { data: new Uint8Array(), remainingAccounts };
@@ -68,7 +76,7 @@ export type NftBurnMintArgs = NftBurnArgs & {
    * This must be part of the required collection and must
    * belong to the payer.
    */
-  mint: PublicKey;
+  mint: Address;
 
   /**
    * The token standard of the NFT to burn.
@@ -82,5 +90,5 @@ export type NftBurnMintArgs = NftBurnArgs & {
    * Defaults to the associated token address using the
    * mint address of the NFT and the payer's address.
    */
-  tokenAccount?: PublicKey;
+  tokenAccount?: Address;
 };

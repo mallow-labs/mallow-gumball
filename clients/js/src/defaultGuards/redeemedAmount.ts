@@ -1,5 +1,5 @@
 import {
-  getRedeemedAmountSerializer,
+  getRedeemedAmountCodec,
   RedeemedAmount,
   RedeemedAmountArgs,
 } from '../generated';
@@ -16,7 +16,7 @@ export const redeemedAmountGuardManifest: GuardManifest<
   RedeemedAmountMintArgs
 > = {
   name: 'redeemedAmount',
-  serializer: getRedeemedAmountSerializer,
+  codec: getRedeemedAmountCodec,
   mintParser: noopParser,
   routeParser: noopParser,
 };

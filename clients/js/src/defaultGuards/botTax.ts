@@ -1,4 +1,4 @@
-import { BotTax, BotTaxArgs, getBotTaxSerializer } from '../generated';
+import { BotTax, BotTaxArgs, getBotTaxCodec } from '../generated';
 import { GuardManifest, noopParser } from '../guards';
 
 /**
@@ -22,7 +22,7 @@ import { GuardManifest, noopParser } from '../guards';
  */
 export const botTaxGuardManifest: GuardManifest<BotTaxArgs, BotTax> = {
   name: 'botTax',
-  serializer: getBotTaxSerializer,
+  codec: getBotTaxCodec,
   mintParser: noopParser,
   routeParser: noopParser,
 };

@@ -1,9 +1,22 @@
 {
-    "extends": "./tsconfig-base.json",
-    "compilerOptions": {
-        "module": "esnext",
-		"target": "esnext",
-        "outDir": "dist/src/esm",
-        "lib": ["es2020", "dom"]
-    }
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    "composite": false,
+    "declaration": true,
+    "declarationMap": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "inlineSources": false,
+    "isolatedModules": true,
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "noFallthroughCasesInSwitch": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "outDir": "./dist",
+    "target": "ESNext"
+  },
+  "exclude": ["node_modules"],
+  "include": ["src", "test"]
 }

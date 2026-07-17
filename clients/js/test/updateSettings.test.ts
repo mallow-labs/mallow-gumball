@@ -1,92 +1,71 @@
-import {
-  generateSigner,
-  none,
-  publicKey,
-  transactionBuilder,
-} from '@metaplex-foundation/umi';
+import { generateKeyPairSigner, some } from '@solana/kit';
 import test from 'ava';
+import { getUpdateSettingsInstruction } from '../src';
+import { createMachineNoGuard } from './_lifecycleSetup';
 import {
-  BuyBackConfig,
-  create,
+  createClient,
+  defaultGumballSettings,
   fetchGumballMachine,
-  GumballMachine,
-  GumballSettings,
-  updateSettings,
-} from '../src';
-import { createUmi, defaultGumballSettings } from './_setup';
+  sendTransaction,
+} from './_setup';
 
 test('it can update settings', async (t) => {
-  // Given an existing collection NFT.
-  const umi = await createUmi();
+  const client = await createClient();
 
-  // When we create a new gumball machine with an associated gumball guard.
-  const gumballMachine = generateSigner(umi);
-  const createInstructions = await create(umi, {
-    gumballMachine,
-    settings: defaultGumballSettings(),
-  });
-  await transactionBuilder().add(createInstructions).sendAndConfirm(umi);
+  // Given an existing gumball machine.
+  const { gumballMachine } = await createMachineNoGuard(client);
 
-  const newSettings: GumballSettings = {
-    ...defaultGumballSettings(),
+  // When we update its settings.
+  const newSettings = defaultGumballSettings({
     uri: 'https://new-example.com',
     itemsPerSeller: 0,
-    sellersMerkleRoot: none(),
+    sellersMerkleRoot: null,
     curatorFeeBps: 100,
     hideSoldItems: true,
-    paymentMint: generateSigner(umi).publicKey,
-  };
-
-  await updateSettings(umi, {
-    gumballMachine: gumballMachine.publicKey,
-    settings: newSettings,
-  }).sendAndConfirm(umi);
-
-  // And the created gumball machine uses it as a mint authority.
-  const gumballMachineAccount = await fetchGumballMachine(
-    umi,
-    gumballMachine.publicKey
-  );
-  t.like(gumballMachineAccount, <GumballMachine>{
-    publicKey: publicKey(gumballMachine),
-    settings: newSettings,
+    paymentMint: (await generateKeyPairSigner()).address,
   });
+  await sendTransaction(client.svm, client.payer, [
+    getUpdateSettingsInstruction({
+      gumballMachine,
+      authority: client.payer,
+      settings: newSettings,
+    }),
+  ]);
+
+  // Then the settings were updated accordingly.
+  const account = fetchGumballMachine(client.svm, gumballMachine);
+  t.is(account.settings.uri, 'https://new-example.com');
+  t.is(account.settings.itemsPerSeller, 0);
+  t.is(account.settings.curatorFeeBps, 100);
+  t.is(account.settings.hideSoldItems, true);
+  t.is(account.settings.paymentMint, newSettings.paymentMint);
 });
 
 test('it can update buy back config', async (t) => {
-  // Given an existing collection NFT.
-  const umi = await createUmi();
+  const client = await createClient();
 
-  // When we create a new gumball machine with an associated gumball guard.
-  const gumballMachine = generateSigner(umi);
-  const createInstructions = await create(umi, {
-    gumballMachine,
-    settings: defaultGumballSettings(),
-  });
-  await transactionBuilder().add(createInstructions).sendAndConfirm(umi);
+  // Given an existing gumball machine.
+  const { gumballMachine } = await createMachineNoGuard(client);
 
-  const buyBackConfig: BuyBackConfig = {
+  // When we update its buy back config.
+  const buyBackConfig = {
     enabled: true,
     toGumballMachine: true,
-    oracleSigner: generateSigner(umi).publicKey,
+    oracleSigner: (await generateKeyPairSigner()).address,
     valuePct: 50,
     marketplaceFeeBps: 100,
     cutoffPct: 50,
   };
+  await sendTransaction(client.svm, client.payer, [
+    getUpdateSettingsInstruction({
+      gumballMachine,
+      authority: client.payer,
+      settings: defaultGumballSettings(),
+      buyBackConfig: some(buyBackConfig),
+    }),
+  ]);
 
-  await updateSettings(umi, {
-    gumballMachine: gumballMachine.publicKey,
-    settings: defaultGumballSettings(),
-    buyBackConfig,
-  }).sendAndConfirm(umi);
-
-  // And the created gumball machine uses it as a mint authority.
-  const gumballMachineAccount = await fetchGumballMachine(
-    umi,
-    gumballMachine.publicKey
-  );
-  t.like(gumballMachineAccount, <GumballMachine>{
-    publicKey: publicKey(gumballMachine),
-    buyBackConfig,
-  });
+  // Then the buy back config was updated accordingly.
+  const account = fetchGumballMachine(client.svm, gumballMachine);
+  t.deepEqual(account.buyBackConfig, buyBackConfig);
 });

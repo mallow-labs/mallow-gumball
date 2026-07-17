@@ -1,4 +1,4 @@
-import { EndDate, EndDateArgs, getEndDateSerializer } from '../generated';
+import { EndDate, EndDateArgs, getEndDateCodec } from '../generated';
 import { GuardManifest, noopParser } from '../guards';
 
 /**
@@ -7,7 +7,7 @@ import { GuardManifest, noopParser } from '../guards';
  */
 export const endDateGuardManifest: GuardManifest<EndDateArgs, EndDate> = {
   name: 'endDate',
-  serializer: getEndDateSerializer,
+  codec: getEndDateCodec,
   mintParser: noopParser,
   routeParser: noopParser,
 };

@@ -3,21 +3,34 @@
 // Reads the two Anchor 1.1.2 (spec-0.1.0) IDLs from `idls/`, merges them into a
 // single root (mallow_gumball as the main program, gumball_guard as an
 // additional program), applies the customizations previously encoded in
-// `configs/kinobi.cjs`, and renders the umi client into
-// `clients/js/src/generated/`.
+// `configs/kinobi.cjs`, and renders two clients from one shared codama tree:
+//   - the umi client into `clients/umi/src/generated/`
+//   - the Solana Kit client into `clients/js/src/generated/`
+//
+// The umi client is rendered FIRST from the shared tree (its behavior is frozen
+// and its test suite depends on it). The tree is then augmented with real PDA
+// nodes + kit-specific resolver defaults and the Kit client is rendered — so the
+// Kit client generates the PDA finders the umi client keeps hand-written in
+// `src/hooked`, without perturbing the umi output.
 //
 // Run via `pnpm generate` (which also runs prettier).
 
 import { rootNodeFromAnchor } from "@codama/nodes-from-anchor";
-import { renderVisitor } from "@codama/renderers-js-umi";
+import { renderVisitor as renderUmiVisitor } from "@codama/renderers-js-umi";
+import { renderVisitor as renderJavaScriptVisitor } from "@codama/renderers-js";
 import * as c from "codama";
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import * as babelPlugin from "prettier/plugins/babel";
+import * as estreePlugin from "prettier/plugins/estree";
+import * as typeScriptPlugin from "prettier/plugins/typescript";
+import organizeImportsPlugin from "prettier-plugin-organize-imports";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const idlDir = path.join(__dirname, "idls");
-const jsDir = path.join(__dirname, "clients", "js", "src", "generated");
+const umiDir = path.join(__dirname, "clients", "umi", "src", "generated");
+const kitClient = path.join(__dirname, "clients", "js");
 
 // Program IDs (spec-0.1.0 IDLs carry metadata.address, but we still reference
 // these for account default values that inject a program address).
@@ -683,11 +696,11 @@ codama.update(
 );
 
 // ---------------------------------------------------------------------------
-// Render the umi client.
+// Render the umi client (from the shared tree, frozen behavior).
 // ---------------------------------------------------------------------------
 
 await codama.accept(
-  renderVisitor(jsDir, {
+  renderUmiVisitor(umiDir, {
     deleteFolderBeforeRendering: true,
     formatCode: false,
     dependencyMap: {
@@ -734,11 +747,101 @@ await codama.accept(
 // must NOT be re-exported from the account index or it collides with the hooked
 // exports. Codama's `internalNodes` can't target it without also hiding the
 // same-named program, so drop just its re-export here.
-const accountsIndexPath = path.join(jsDir, "accounts", "index.ts");
+const umiAccountsIndexPath = path.join(umiDir, "accounts", "index.ts");
 writeFileSync(
-  accountsIndexPath,
-  readFileSync(accountsIndexPath, "utf-8")
+  umiAccountsIndexPath,
+  readFileSync(umiAccountsIndexPath, "utf-8")
     .split("\n")
     .filter((line) => !/from ['"]\.\/gumballGuard['"]/.test(line))
     .join("\n")
 );
+
+// ---------------------------------------------------------------------------
+// Render the Solana Kit client.
+//
+// Mirrors the umi render: the PDAs codama can't self-derive in this single-
+// program tree (external SPL/Metaplex programs, the external Jellybean program,
+// and the gumball event/authority PDAs the umi client also keeps hand-written)
+// are redirected to hand-written async finders in `clients/js/src/hooked`. Every
+// codama-derivable PDA (gumballGuard, sellerHistory, addItemRequest, globalConfig,
+// mintCounter, allowListProof, allocationTracker) is generated in `src/generated/pdas`.
+//
+// Kit PDA finders are async, so codama emits `*Async` instruction builders that
+// await them — matching the hand-written finders' `Promise<ProgramDerivedAddress>`.
+// ---------------------------------------------------------------------------
+
+await codama.accept(
+  renderJavaScriptVisitor(kitClient, {
+    deleteFolderBeforeRendering: true,
+    formatCode: false,
+    linkOverrides: {
+      pdas: {
+        // External SPL / Metaplex Token Metadata PDAs.
+        associatedToken: "hooked",
+        metadata: "hooked",
+        masterEdition: "hooked",
+        tokenRecord: "hooked",
+        // Gumball-program PDAs kept hand-written to mirror the umi client.
+        eventAuthority: "hooked",
+        gumballMachineAuthority: "hooked",
+        // External Jellybean-program PDAs (Jellybean integration deferred; the
+        // low-level instructions still render and resolve these finders).
+        jellybeanEventAuthority: "hooked",
+        jellybeanMachineAuthority: "hooked",
+        jellybeanUnclaimedPrizes: "hooked",
+      },
+    },
+    // The gumball machine + gumball guard accounts are variable-size / manually
+    // serialized; their codecs are hand-written in src/hooked.
+    customAccountData: [
+      { name: "gumballMachine", extract: true },
+      { name: "gumballGuard", extract: true },
+    ],
+    // NOTE: unlike the umi render we do NOT mark draw/route/initializeGumballGuard/
+    // updateGumballGuard as internalNodes. The Kit renderer's always-on program
+    // "plugin" references every instruction, so hiding them breaks the generated
+    // program file. The low-level builders keep their `get*Instruction[Async]`
+    // names; the hand-written guard wrappers (draw, route, createGumballGuard,
+    // updateGumballGuard) use distinct umi-style names, so there is no collision.
+    prettierOptions: {
+      plugins: [
+        estreePlugin,
+        typeScriptPlugin,
+        babelPlugin,
+        organizeImportsPlugin,
+      ],
+    },
+  })
+);
+
+// The Kit renderer always emits a program "plugin" (mallowGumballProgram /
+// gumballGuardProgram) that references a full `get<Account>Codec` + `<Account>` /
+// `<Account>Args` type for every program account — including the two manually
+// serialized accounts whose data codecs live in src/hooked. `customAccountData`
+// makes the account *files* import the hooked decoder, but does not add these
+// account-level names to `accounts/index.ts`. Append alias re-exports so the
+// generated program plugin resolves them from the hand-written hooked codecs.
+const kitAccountsIndexPath = path.join(
+  kitClient,
+  "src",
+  "generated",
+  "accounts",
+  "index.ts"
+);
+writeFileSync(
+  kitAccountsIndexPath,
+  readFileSync(kitAccountsIndexPath, "utf-8") +
+    [
+      "",
+      "// Appended by codama.mjs: the program plugin expects account-level codec",
+      "// + types for the manually-serialized gumballMachine / gumballGuard",
+      "// accounts, provided by the hand-written codecs in src/hooked.",
+      "export { getGumballMachineAccountDataCodec as getGumballMachineCodec } from '../../hooked';",
+      "export type { GumballMachineAccountData as GumballMachine, GumballMachineAccountDataArgs as GumballMachineArgs } from '../../hooked';",
+      "export { getGumballGuardAccountDataCodec as getGumballGuardCodec } from '../../hooked';",
+      "export type { GumballGuardAccountData as GumballGuard, GumballGuardAccountDataArgs as GumballGuardArgs } from '../../hooked';",
+      "",
+    ].join("\n")
+);
+
+console.log("✔ Generated umi + kit clients from idls/");

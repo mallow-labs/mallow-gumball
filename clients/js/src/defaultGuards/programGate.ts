@@ -1,10 +1,7 @@
-import {
-  fixSerializer,
-  mapSerializer,
-} from '@metaplex-foundation/umi/serializers';
+import { fixCodecSize, transformCodec } from '@solana/kit';
 import { MaximumOfFiveAdditionalProgramsError } from '../errors';
 import {
-  getProgramGateSerializer,
+  getProgramGateCodec,
   ProgramGate,
   ProgramGateArgs,
 } from '../generated';
@@ -35,10 +32,10 @@ export const programGateGuardManifest: GuardManifest<
   ProgramGate
 > = {
   name: 'programGate',
-  serializer: () =>
-    mapSerializer(
-      fixSerializer(getProgramGateSerializer(), 4 + 32 * 5),
-      (value) => {
+  codec: () =>
+    transformCodec(
+      fixCodecSize(getProgramGateCodec(), 4 + 32 * 5),
+      (value: ProgramGateArgs) => {
         if (value.additional.length > 5) {
           throw new MaximumOfFiveAdditionalProgramsError();
         }

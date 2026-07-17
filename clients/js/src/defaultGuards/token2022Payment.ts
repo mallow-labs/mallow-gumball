@@ -1,15 +1,14 @@
-import { PublicKey, publicKey } from '@metaplex-foundation/umi';
-import { publicKey as publicKeySerializer } from '@metaplex-foundation/umi/serializers';
+import { type Address } from '@solana/kit';
 import {
-  getToken2022PaymentSerializer,
+  getToken2022PaymentCodec,
   Token2022Payment,
   Token2022PaymentArgs,
 } from '../generated';
-import { GuardManifest, noopParser } from '../guards';
+import { GuardManifest, GuardRemainingAccount, noopParser } from '../guards';
+import { findAssociatedTokenPda } from '../hooked';
 
-const SPL_TOKEN_2022_PROGRAM_ID = publicKey(
-  'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb'
-);
+const SPL_TOKEN_2022_PROGRAM_ID =
+  'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb' as Address;
 
 /**
  * The token2022Payment guard allows minting by charging the
@@ -27,40 +26,40 @@ export const token2022PaymentGuardManifest: GuardManifest<
   Token2022PaymentMintArgs
 > = {
   name: 'token2022Payment',
-  serializer: getToken2022PaymentSerializer,
-  mintParser: (context, mintContext, args) => {
-    const associatedTokenProgramId =
-      context.programs.get('splAssociatedToken').publicKey;
-    const sourceAta = context.eddsa.findPda(associatedTokenProgramId, [
-      publicKeySerializer().serialize(mintContext.payer.publicKey),
-      publicKeySerializer().serialize(SPL_TOKEN_2022_PROGRAM_ID),
-      publicKeySerializer().serialize(args.mint),
-    ])[0];
+  codec: getToken2022PaymentCodec,
+  mintParser: async (mintContext, args) => {
+    const [sourceAta] = await findAssociatedTokenPda({
+      mint: args.mint,
+      owner: mintContext.payer.address,
+      tokenProgram: SPL_TOKEN_2022_PROGRAM_ID,
+    });
 
     const [feeDestinationAta] = args.feeAccount
-      ? context.eddsa.findPda(associatedTokenProgramId, [
-          publicKeySerializer().serialize(args.feeAccount),
-          publicKeySerializer().serialize(SPL_TOKEN_2022_PROGRAM_ID),
-          publicKeySerializer().serialize(args.mint),
-        ])
+      ? await findAssociatedTokenPda({
+          mint: args.mint,
+          owner: args.feeAccount,
+          tokenProgram: SPL_TOKEN_2022_PROGRAM_ID,
+        })
       : [];
+
+    const remainingAccounts: GuardRemainingAccount[] = [
+      { address: sourceAta, isWritable: true },
+      { address: args.destinationAta, isWritable: true },
+      { address: args.mint, isWritable: false },
+      { address: SPL_TOKEN_2022_PROGRAM_ID, isWritable: false },
+      ...(feeDestinationAta
+        ? [{ address: feeDestinationAta, isWritable: true }]
+        : []),
+    ];
 
     return {
       data: new Uint8Array(),
-      remainingAccounts: [
-        { publicKey: sourceAta, isWritable: true },
-        { publicKey: args.destinationAta, isWritable: true },
-        { publicKey: args.mint, isWritable: false },
-        { publicKey: SPL_TOKEN_2022_PROGRAM_ID, isWritable: false },
-        ...(feeDestinationAta
-          ? [{ publicKey: feeDestinationAta, isWritable: true }]
-          : []),
-      ],
+      remainingAccounts,
     };
   },
   routeParser: noopParser,
 };
 
 export type Token2022PaymentMintArgs = Omit<Token2022PaymentArgs, 'amount'> & {
-  feeAccount?: PublicKey;
+  feeAccount?: Address;
 };
