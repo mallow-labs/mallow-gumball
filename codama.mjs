@@ -239,8 +239,15 @@ codama.update(
 codama.update(
   c.bottomUpTransformerVisitor([
     {
-      select: (node) =>
-        c.isNode(node, "structFieldTypeNode") && node.name === "merkleRoot",
+      // Function selectors receive a NodePath (last element is the node), so
+      // resolve it before testing — calling isNode on the path itself never
+      // matches.
+      select: (path) => {
+        const node = c.getLastNodeFromPath(path);
+        return (
+          c.isNode(node, "structFieldTypeNode") && node.name === "merkleRoot"
+        );
+      },
       transform: (node) => ({
         ...node,
         type: c.fixedSizeTypeNode(c.bytesTypeNode(), 32),
@@ -851,10 +858,10 @@ writeFileSync(
 // deletes and regenerates `src/generated` and leaves the hand-maintained
 // Cargo.toml alone). Rendered from the same shared tree as umi + kit.
 //
-// NOTE: the manually-serialized gumballMachine / gumballGuard accounts (which
-// the umi + kit clients redirect to hand-written codecs in `src/hooked`) are
-// emitted here as plain borsh structs. They compile but do not decode the
-// trailing variable-length sections — see clients/rust/README.md.
+// NOTE: the manually-serialized gumballMachine / gumballGuard accounts are
+// emitted here as plain borsh structs covering only the fixed base header. The
+// hand-written codecs in clients/rust/src/hooked decode the full accounts
+// (hidden section / guard set), mirroring the umi + kit clients' src/hooked.
 // ---------------------------------------------------------------------------
 
 // The Rust renderer can't emit struct-valued argument defaults: the
