@@ -13,8 +13,9 @@ You will need a Rust version compatible with BPF to compile the program, current
 
 ## Clients
 
-This project contains the following clients, both generated from the on-chain
+This project contains the following clients, all generated from the on-chain
 IDLs via [Codama](https://github.com/codama-idl/codama) (`codama.mjs`):
 
 - [`@mallow-labs/mallow-gumball`](./clients/js/README.md) — Solana Kit client (`clients/js`)
 - [`@mallow-labs/mallow-gumball-umi`](./clients/umi/README.md) — umi client (`clients/umi`)
+- [`mallow-gumball-client`](./clients/rust/README.md) — Rust client (`clients/rust`)

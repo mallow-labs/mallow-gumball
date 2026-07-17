@@ -3,9 +3,10 @@
 // Reads the two Anchor 1.1.2 (spec-0.1.0) IDLs from `idls/`, merges them into a
 // single root (mallow_gumball as the main program, gumball_guard as an
 // additional program), applies the customizations previously encoded in
-// `configs/kinobi.cjs`, and renders two clients from one shared codama tree:
+// `configs/kinobi.cjs`, and renders three clients from one shared codama tree:
 //   - the umi client into `clients/umi/src/generated/`
 //   - the Solana Kit client into `clients/js/src/generated/`
+//   - the Rust client into `clients/rust/src/generated/`
 //
 // The umi client is rendered FIRST from the shared tree (its behavior is frozen
 // and its test suite depends on it). The tree is then augmented with real PDA
@@ -18,6 +19,7 @@
 import { rootNodeFromAnchor } from "@codama/nodes-from-anchor";
 import { renderVisitor as renderUmiVisitor } from "@codama/renderers-js-umi";
 import { renderVisitor as renderJavaScriptVisitor } from "@codama/renderers-js";
+import { renderVisitor as renderRustVisitor } from "@codama/renderers-rust";
 import * as c from "codama";
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -844,4 +846,117 @@ writeFileSync(
     ].join("\n")
 );
 
-console.log("✔ Generated umi + kit clients from idls/");
+// ---------------------------------------------------------------------------
+// Render the Rust client (renderers-rust@3.x: first arg is the crate folder; it
+// deletes and regenerates `src/generated` and leaves the hand-maintained
+// Cargo.toml alone). Rendered from the same shared tree as umi + kit.
+//
+// NOTE: the manually-serialized gumballMachine / gumballGuard accounts (which
+// the umi + kit clients redirect to hand-written codecs in `src/hooked`) are
+// emitted here as plain borsh structs. They compile but do not decode the
+// trailing variable-length sections — see clients/rust/README.md.
+// ---------------------------------------------------------------------------
+
+// The Rust renderer can't emit struct-valued argument defaults: the
+// `emptyAddItemArgs` default on addNft/addCoreAsset/addTokens renders as an
+// invalid Rust struct literal (`{ sellerProofPath: None, index: None }`).
+// Scalar defaults (None/false) render fine. Strip only the struct-valued arg
+// defaults here — this runs after the umi + kit renders, so their output (which
+// relies on these defaults for optional args) is unaffected.
+codama.update(
+  c.bottomUpTransformerVisitor([
+    {
+      // Function selectors receive a NodePath (last element is the node).
+      select: (path) => {
+        const node = c.getLastNodeFromPath(path);
+        return (
+          c.isNode(node, "instructionArgumentNode") &&
+          node.defaultValue != null &&
+          c.isNode(node.defaultValue, "structValueNode")
+        );
+      },
+      transform: (node) => {
+        const { defaultValue, defaultValueStrategy, ...rest } = node;
+        return rest;
+      },
+    },
+  ])
+);
+
+// The serde feature (below) derives serde on every struct, and the renderer
+// emits `serde_with` pubkey attributes only for account/defined-type fields —
+// NOT for instruction-args structs. So an instruction with a pubkey-typed
+// argument (createGlobalConfig, setGumballGuardAuthority, …) produces an
+// `InstructionArgs` struct with a bare `Address` field that fails to derive
+// serde. serde on instruction args isn't meaningful anyway (it matters for
+// on-chain account/type state), so drop the serde derives from every
+// instruction via a per-node trait override. Collected from the tree so it
+// stays correct as instructions are added/removed.
+const instructionNames = [];
+codama.accept(
+  c.bottomUpTransformerVisitor([
+    {
+      select: (path) => c.isNode(c.getLastNodeFromPath(path), "instructionNode"),
+      transform: (node) => {
+        instructionNames.push(node.name);
+        return node;
+      },
+    },
+  ])
+);
+const instructionTraitOverride = [
+  "borsh::BorshSerialize",
+  "borsh::BorshDeserialize",
+  "Clone",
+  "Debug",
+  "Eq",
+  "PartialEq",
+];
+const instructionTraitOverrides = Object.fromEntries(
+  instructionNames.map((name) => [name, instructionTraitOverride])
+);
+
+const rustClient = path.join(__dirname, "clients", "rust");
+await codama.accept(
+  renderRustVisitor(rustClient, {
+    syncCargoToml: false,
+    deleteFolderBeforeRendering: true,
+    formatCode: false,
+    // The serde derives below pull in the `serde` and `serde_with` crates, which
+    // the renderer requires versions for. Match the crate's hand-maintained
+    // optional deps in clients/rust/Cargo.toml.
+    dependencyVersions: {
+      serde: { optional: true, version: "^1.0" },
+      serde_with: { optional: true, version: "^3.0" },
+      // Referenced only in doc comments of the locally-defined CnftCreator /
+      // CnftArgs types (no real `use` is emitted). syncCargoToml is off, so these
+      // versions are never written; they only satisfy the renderer's used-
+      // dependency validation.
+      mpl_bubblegum: { version: "^2.0" },
+      mpl_token_metadata: { version: "^5.0" },
+    },
+    traitOptions: {
+      // Restore the feature-gated serde derives that the crate's `serde` feature
+      // advertises. The renderer partitions these traits into a
+      // `#[cfg_attr(feature = "serde", derive(...))]` line and emits the matching
+      // serde_with field attributes for pubkey/byte fields.
+      baseDefaults: [
+        "borsh::BorshSerialize",
+        "borsh::BorshDeserialize",
+        "serde::Serialize",
+        "serde::Deserialize",
+        "Clone",
+        "Debug",
+        "Eq",
+        "PartialEq",
+      ],
+      featureFlags: {
+        serde: ["serde::Serialize", "serde::Deserialize"],
+      },
+      // Instruction-args structs drop serde (see note above).
+      overrides: instructionTraitOverrides,
+    },
+  })
+);
+
+console.log("✔ Generated umi + kit + rust clients from idls/");
