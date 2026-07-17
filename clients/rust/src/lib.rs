@@ -4,6 +4,8 @@
 #![allow(clippy::doc_lazy_continuation)]
 
 mod generated;
+pub mod hooked;
 
 pub use generated::programs::MALLOW_GUMBALL_ID as ID;
 pub use generated::*;
+pub use hooked::*;
