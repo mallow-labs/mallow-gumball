@@ -1,39 +1,42 @@
-import {
-  generateSigner,
-  publicKey,
-  transactionBuilder,
-} from '@metaplex-foundation/umi';
+import { generateKeyPairSigner } from '@solana/kit';
 import test from 'ava';
 import {
-  fetchGumballGuard,
-  GumballGuard,
-  setGumballGuardAuthority,
+  createGumballGuard,
+  findGumballGuardPda,
+  getSetGumballGuardAuthorityInstruction,
 } from '../src';
-import { createGumballGuard, createUmi } from './_setup';
+import {
+  createClient,
+  fetchGumballGuard,
+  generateKeyPairSignerWithSol,
+  sendTransaction,
+} from './_setup';
 
 test('it can update the authority of a gumball guard', async (t) => {
-  // Given a Gumball Machine using authority A.
-  const umi = await createUmi();
-  const authorityA = generateSigner(umi);
-  const gumballGuard = await createGumballGuard(umi, {
-    authority: authorityA.publicKey,
-  });
+  // Given a Gumball Guard using authority A.
+  const client = await createClient();
+  const authorityA = await generateKeyPairSignerWithSol(client.svm);
+  const base = await generateKeyPairSigner();
+  await sendTransaction(client.svm, client.payer, [
+    await createGumballGuard({
+      base,
+      authority: authorityA.address,
+      payer: client.payer,
+    }),
+  ]);
+  const [gumballGuard] = await findGumballGuardPda({ base: base.address });
 
   // When we update it to use authority B.
-  const authorityB = generateSigner(umi);
-  await transactionBuilder()
-    .add(
-      setGumballGuardAuthority(umi, {
-        gumballGuard,
-        authority: authorityA,
-        newAuthority: authorityB.publicKey,
-      })
-    )
-    .sendAndConfirm(umi);
+  const authorityB = await generateKeyPairSigner();
+  await sendTransaction(client.svm, authorityA, [
+    getSetGumballGuardAuthorityInstruction({
+      gumballGuard,
+      authority: authorityA,
+      newAuthority: authorityB.address,
+    }),
+  ]);
 
   // Then the Gumball Guard's authority was updated accordingly.
-  const gumballGuardAccount = await fetchGumballGuard(umi, gumballGuard);
-  t.like(gumballGuardAccount, <GumballGuard>{
-    authority: publicKey(authorityB.publicKey),
-  });
+  const account = fetchGumballGuard(client.svm, gumballGuard);
+  t.is(account.authority, authorityB.address);
 });

@@ -1,13 +1,12 @@
-import { findMetadataPda } from '@metaplex-foundation/mpl-token-metadata';
-import { findAssociatedTokenPda } from '@metaplex-foundation/mpl-toolbox';
-import { PublicKey } from '@metaplex-foundation/umi';
+import { type Address } from '@solana/kit';
 import {
-  getNftGateSerializer,
+  getNftGateCodec,
   NftGate,
   NftGateArgs,
   TokenStandard,
 } from '../generated';
 import { GuardManifest, noopParser } from '../guards';
+import { findAssociatedTokenPda, findMetadataPda } from '../hooked';
 
 /**
  * The nftGate guard restricts minting to holders
@@ -22,8 +21,8 @@ export const nftGateGuardManifest: GuardManifest<
   NftGateMintArgs
 > = {
   name: 'nftGate',
-  serializer: getNftGateSerializer,
-  mintParser: (context, mintContext, args) => {
+  codec: getNftGateCodec,
+  mintParser: async (mintContext, args) => {
     const tokenStandard = args.tokenStandard ?? TokenStandard.NonFungible;
 
     switch (tokenStandard) {
@@ -31,24 +30,26 @@ export const nftGateGuardManifest: GuardManifest<
         return {
           data: new Uint8Array(),
           remainingAccounts: [
-            { publicKey: args.mint, isWritable: false },
-            { publicKey: args.mint, isWritable: false },
+            { address: args.mint, isWritable: false },
+            { address: args.mint, isWritable: false },
           ],
         };
       }
       default: {
         const tokenAccount =
           args.tokenAccount ??
-          findAssociatedTokenPda(context, {
-            mint: args.mint,
-            owner: mintContext.buyer.publicKey,
-          })[0];
-        const [tokenMetadata] = findMetadataPda(context, { mint: args.mint });
+          (
+            await findAssociatedTokenPda({
+              mint: args.mint,
+              owner: mintContext.buyer.address,
+            })
+          )[0];
+        const [tokenMetadata] = await findMetadataPda({ mint: args.mint });
         return {
           data: new Uint8Array(),
           remainingAccounts: [
-            { publicKey: tokenAccount, isWritable: false },
-            { publicKey: tokenMetadata, isWritable: false },
+            { address: tokenAccount, isWritable: false },
+            { address: tokenMetadata, isWritable: false },
           ],
         };
       }
@@ -62,7 +63,7 @@ export type NftGateMintArgs = {
    * The mint address of an NFT from the required
    * collection that belongs to the payer.
    */
-  mint: PublicKey;
+  mint: Address;
 
   /**
    * The token account linking the NFT with its owner.
@@ -71,7 +72,7 @@ export type NftGateMintArgs = {
    * Defaults to the associated token address using the
    * mint address of the NFT and the payer's address.
    */
-  tokenAccount?: PublicKey;
+  tokenAccount?: Address;
 
   /**
    * The token standard of the NFT.

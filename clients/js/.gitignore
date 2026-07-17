@@ -1,5 +1,2 @@
 .vercel
 docs
-
-# CU benchmark latest run (baseline.json is committed)
-test/cu/latest.json

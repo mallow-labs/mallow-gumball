@@ -1,609 +1,270 @@
-/* eslint-disable import/no-extraneous-dependencies */
+import { getSetComputeUnitLimitInstruction } from '@solana-program/compute-budget';
+import { getCreateAccountInstruction } from '@solana-program/system';
 import {
-  create as baseCreateCoreAsset,
-  createCollection,
-  ruleSet,
-} from '@metaplex-foundation/mpl-core';
-import {
-  createNft as baseCreateNft,
-  createProgrammableNft as baseCreateProgrammableNft,
-  DigitalAssetWithToken,
-  fetchDigitalAssetWithAssociatedToken,
-  findMasterEditionPda,
-  findMetadataPda,
-  TokenStandard as MplTokenStandard,
-  verifyCollectionV1,
-} from '@metaplex-foundation/mpl-token-metadata';
-import {
-  createAssociatedToken,
-  createMint,
   findAssociatedTokenPda,
-  mintTokensTo,
-  setComputeUnitLimit,
-} from '@metaplex-foundation/mpl-toolbox';
+  getCreateAssociatedTokenInstructionAsync,
+  getInitializeMintInstruction,
+  getMintSize,
+  getMintToInstruction,
+  TOKEN_PROGRAM_ADDRESS,
+} from '@solana-program/token';
 import {
-  assertAccountExists,
-  createSignerFromKeypair,
-  DateTime,
-  generateSigner,
-  none,
-  now,
-  percentAmount,
-  PublicKey,
-  publicKey,
-  PublicKeyInput,
-  Signer,
-  sol,
-  some,
-  transactionBuilder,
-  TransactionSignature,
-  Umi,
-  createUmi as umiCreate,
-} from '@metaplex-foundation/umi';
-import { testPlugins } from '@metaplex-foundation/umi-bundle-tests';
-import { Keypair } from '@solana/web3.js';
-import { Assertions } from 'ava';
+  appendTransactionMessageInstructions,
+  createTransactionMessage,
+  generateKeyPairSigner,
+  lamports,
+  pipe,
+  setTransactionMessageFeePayerSigner,
+  setTransactionMessageLifetimeUsingBlockhash,
+  signTransactionMessageWithSigners,
+  type Address,
+  type Blockhash,
+  type Instruction,
+  type Lamports,
+  type TransactionSigner,
+} from '@solana/kit';
+import { FailedTransactionMetadata, LiteSVM } from 'litesvm';
 import {
-  addCoreAsset,
-  addNft,
-  addTokens,
-  createGumballGuard as baseCreateGumballGuard,
-  createGumballMachine as baseCreateGumballMachineV2,
-  ConfigLineInput,
-  createGlobalConfig,
-  CreateGumballGuardInstructionDataArgs,
+  create,
+  createGumballGuard,
+  decodeGumballGuard,
+  decodeGumballMachine,
   DefaultGuardSetArgs,
-  draw,
-  fetchGumballMachine,
   findGumballGuardPda,
-  GuardSetArgs,
-  GumballGuardDataArgs,
-  GumballSettings,
+  GumballGuardAccountData,
+  GumballMachineAccountData,
   GumballSettingsArgs,
-  InitializeGumballGuardInstructionAccounts,
-  mallowGumball,
-  MPL_TOKEN_AUTH_RULES_PROGRAM_ID,
-  safeFetchGlobalConfigFromSeeds,
-  startSale,
-  TokenStandard,
-  updateGlobalConfig,
-  wrap,
+  type CreateInput,
 } from '../src';
-import { LiteSVMConnection } from './litesvm/connection';
-import { getSvm } from './litesvm/svm';
+import { createLiteSvmRpc, type LiteSvmRpc } from './litesvm/rpc';
+import { createSvm } from './litesvm/svm';
 
-export const METAPLEX_DEFAULT_RULESET = publicKey(
-  'eBJLFYPxJmMGKuFwpDWkzxZeUrad92kZRC5BJLpzyT9'
-);
+export const NATIVE_MINT: Address =
+  'So11111111111111111111111111111111111111112' as Address;
 
-// Each ava test file runs in its own worker process, so the per-process LiteSVM
-// singleton (getSvm) gives every file an isolated in-memory ledger. `testPlugins`
-// wires umi to it through the web3.js Connection shim (umi-rpc-web3js accepts a
-// Connection directly); `mallowGumball()` registers the program clients. We fund a
-// fresh generated identity per call, mirroring umi-bundle-tests' createUmi.
-export const createUmi = async () => {
-  const connection = new LiteSVMConnection(getSvm());
-  const umi = umiCreate()
-    .use(testPlugins(connection as any))
-    .use(mallowGumball());
-  await umi.rpc.airdrop(umi.identity.publicKey, sol(100));
-  return umi;
+/** SOL amount expressed as branded `Lamports` (1 SOL = 1e9 lamports). */
+export const sol = (amount: number): Lamports =>
+  lamports(BigInt(Math.round(amount * 1e9)));
+
+export type Client = {
+  svm: LiteSVM;
+  rpc: LiteSvmRpc;
+  /** Default fee payer and machine authority. */
+  payer: TransactionSigner;
 };
 
-export const createNft = async (
-  umi: Umi,
-  input: Partial<Parameters<typeof baseCreateNft>[1]> = {}
-): Promise<Signer> => {
-  const mint = generateSigner(umi);
-  await baseCreateNft(umi, {
-    mint,
-    ...defaultAssetData(),
-    ...input,
-  }).sendAndConfirm(umi);
-
-  return mint;
+/** Generate a fresh signer and fund it directly on the ledger. */
+export const generateKeyPairSignerWithSol = async (
+  svm: LiteSVM,
+  putativeLamports: bigint = sol(100)
+): Promise<TransactionSigner> => {
+  const signer = await generateKeyPairSigner();
+  svm.airdrop(signer.address, lamports(putativeLamports));
+  return signer;
 };
 
-export const createCoreAsset = async (
-  umi: Umi,
-  input: Partial<Parameters<typeof baseCreateCoreAsset>[1]> = {}
-): Promise<Signer> => {
-  const asset = generateSigner(umi);
-  const defaultData = defaultAssetData();
-
-  await baseCreateCoreAsset(umi, {
-    asset,
-    ...defaultData,
-    plugins: [
-      {
-        type: 'Royalties',
-        basisPoints: 1000,
-        creators: [
-          {
-            address: umi.identity.publicKey,
-            percentage: 100,
-          },
-        ],
-        ruleSet: ruleSet('None'),
-      },
-    ],
-    ...input,
-  }).sendAndConfirm(umi);
-
-  return asset;
+export const createClient = async (): Promise<Client> => {
+  const svm = createSvm();
+  const rpc = createLiteSvmRpc(svm);
+  const payer = await generateKeyPairSignerWithSol(svm);
+  return { svm, rpc, payer };
 };
 
-export const createCoreCollection = async (
-  umi: Umi,
-  input: Partial<Parameters<typeof createCollection>[1]> = {}
-): Promise<Signer> => {
-  const collection = generateSigner(umi);
-  const defaultData = defaultAssetData();
+/**
+ * Advance the ledger clock/slot before executing. Draw reads the SlotHashes
+ * sysvar for randomness (empty at genesis), and time-based guards read the
+ * clock's unix timestamp; warping a slot forward populates both.
+ */
+function syncClock(svm: LiteSVM): void {
+  const clock = svm.getClock();
+  svm.warpToSlot(clock.slot + 1n);
+  const next = svm.getClock();
+  next.unixTimestamp = BigInt(Math.floor(Date.now() / 1000));
+  svm.setClock(next);
+}
 
-  await createCollection(umi, {
-    collection,
-    ...defaultData,
-    plugins: [
-      {
-        type: 'Royalties',
-        basisPoints: 1000,
-        creators: [
-          {
-            address: umi.identity.publicKey,
-            percentage: 100,
-          },
-        ],
-        ruleSet: ruleSet('None'),
-      },
-    ],
-    ...input,
-  }).sendAndConfirm(umi);
-
-  return collection;
-};
-
-export const createProgrammableNft = async (
-  umi: Umi,
-  input: Partial<Parameters<typeof baseCreateProgrammableNft>[1]> = {},
-  options: {
-    withAuthRules?: boolean;
-  } = {}
-): Promise<Signer> => {
-  const mint = generateSigner(umi);
-  await baseCreateProgrammableNft(umi, {
-    mint,
-    ...defaultAssetData(),
-    ...input,
-    ruleSet: options.withAuthRules
-      ? publicKey('eBJLFYPxJmMGKuFwpDWkzxZeUrad92kZRC5BJLpzyT9')
-      : undefined,
-  }).sendAndConfirm(umi);
-
-  return mint;
-};
-
-export const createCollectionNft = async (
-  umi: Umi,
-  input: Partial<Parameters<typeof baseCreateNft>[1]> = {}
-): Promise<Signer> => createNft(umi, { ...input, isCollection: true });
-
-export const createVerifiedNft = async (
-  umi: Umi,
-  input: Partial<Parameters<typeof baseCreateNft>[1]> & {
-    collectionMint: PublicKey;
-    collectionAuthority?: Signer;
-  }
-): Promise<Signer> => {
-  const { collectionMint, collectionAuthority = umi.identity, ...rest } = input;
-  const mint = await createNft(umi, {
-    ...rest,
-    collection: some({ verified: false, key: collectionMint }),
-  });
-  const effectiveMint = publicKey(rest.mint ?? mint.publicKey);
-
-  await transactionBuilder()
-    .add(
-      verifyCollectionV1(umi, {
-        authority: collectionAuthority,
-        collectionMint,
-        metadata: findMetadataPda(umi, { mint: effectiveMint })[0],
-      })
-    )
-    .sendAndConfirm(umi);
-
-  return mint;
-};
-
-export const createVerifiedProgrammableNft = async (
-  umi: Umi,
-  input: Partial<Parameters<typeof baseCreateNft>[1]> & {
-    collectionMint: PublicKey;
-    collectionAuthority?: Signer;
-  }
-): Promise<Signer> => {
-  const { collectionMint, collectionAuthority = umi.identity, ...rest } = input;
-  const mint = await createProgrammableNft(umi, {
-    ...rest,
-    collection: some({ verified: false, key: collectionMint }),
-  });
-  const effectiveMint = publicKey(rest.mint ?? mint.publicKey);
-
-  await transactionBuilder()
-    .add(
-      verifyCollectionV1(umi, {
-        authority: collectionAuthority,
-        collectionMint,
-        metadata: findMetadataPda(umi, { mint: effectiveMint })[0],
-      })
-    )
-    .sendAndConfirm(umi);
-
-  return mint;
-};
-
-export const createMintWithHolders = async (
-  umi: Umi,
-  input: Partial<Omit<Parameters<typeof createMint>[1], 'mintAuthority'>> & {
-    mintAuthority?: Signer;
-    holders: { owner: PublicKeyInput; amount: number | bigint }[];
-  }
-): Promise<[Signer, ...PublicKey[]]> => {
-  const atas = [] as PublicKey[];
-  const mint = input.mint ?? generateSigner(umi);
-  const mintAuthority = input.mintAuthority ?? umi.identity;
-  let builder = transactionBuilder().add(
-    createMint(umi, {
-      ...input,
-      mint,
-      mintAuthority: mintAuthority.publicKey,
-    })
+/**
+ * Build, sign and send a kit transaction to LiteSVM. Every signer carried in the
+ * instruction account metas (fee payer, new-account and authority signers) is
+ * collected by `signTransactionMessageWithSigners`. Throws on failure with the
+ * program logs in the message so tests can assert on error codes.
+ */
+export const sendTransaction = async (
+  svm: LiteSVM,
+  feePayer: TransactionSigner,
+  instructions: Instruction[]
+): Promise<void> => {
+  syncClock(svm);
+  const blockhash = svm.latestBlockhash() as unknown as Blockhash;
+  const message = pipe(
+    createTransactionMessage({ version: 0 }),
+    (m) => setTransactionMessageFeePayerSigner(feePayer, m),
+    (m) =>
+      setTransactionMessageLifetimeUsingBlockhash(
+        { blockhash, lastValidBlockHeight: 2n ** 63n },
+        m
+      ),
+    (m) => appendTransactionMessageInstructions(instructions, m)
   );
-  input.holders.forEach((holder) => {
-    const owner = publicKey(holder.owner);
-    const [token] = findAssociatedTokenPda(umi, {
-      mint: mint.publicKey,
-      owner,
-    });
-    atas.push(token);
-    builder = builder.add(
-      createAssociatedToken(umi, { mint: mint.publicKey, owner })
-    );
-    if (holder.amount > 0) {
-      builder = builder.add(
-        mintTokensTo(umi, {
-          mint: mint.publicKey,
-          token,
-          amount: holder.amount,
-          mintAuthority,
-        })
-      );
-    }
-  });
-  await builder.sendAndConfirm(umi);
-
-  return [mint, ...atas];
+  const signedTransaction = await signTransactionMessageWithSigners(message);
+  const result = svm.sendTransaction(signedTransaction);
+  if (result instanceof FailedTransactionMetadata) {
+    const logs = result.meta().logs().join('\n');
+    throw new Error(`Transaction failed: ${result.toString()}\n${logs}`);
+  }
 };
 
-export const create = async <DA extends GuardSetArgs = DefaultGuardSetArgs>(
-  umi: Umi,
-  input: Omit<
-    Partial<Parameters<typeof baseCreateGumballMachineV2>[1]>,
-    'settings'
-  > & {
-    settings?: Partial<GumballSettingsArgs>;
-    items?: {
-      id: PublicKey;
-      tokenStandard: TokenStandard;
-      amount?: number;
-      quantity?: number;
-    }[];
-    startSale?: boolean;
-  } & Partial<
-      GumballGuardDataArgs<DA extends undefined ? DefaultGuardSetArgs : DA>
-    > = {}
-) => {
-  const gumballMachine = input.gumballMachine ?? generateSigner(umi);
-  let builder = await baseCreateGumballMachineV2(umi, {
-    ...input,
-    settings: {
-      ...defaultGumballSettings(),
-      ...input.settings,
-    },
-    gumballMachine,
-  });
-
-  if (input.guards !== undefined || input.groups !== undefined) {
-    const gumballGuard = findGumballGuardPda(umi, {
-      base: gumballMachine.publicKey,
-    });
-    builder = builder
-      .add(baseCreateGumballGuard<DA>(umi, { ...input, base: gumballMachine }))
-      .add(
-        wrap(umi, {
-          machine: gumballMachine.publicKey,
-          gumballGuard,
-        })
-      );
-  }
-
-  (input.items ?? []).forEach((item) => {
-    if (
-      item.tokenStandard === TokenStandard.NonFungible ||
-      item.tokenStandard === TokenStandard.ProgrammableNonFungible
-    ) {
-      builder = builder.add(
-        addNft(umi, {
-          gumballMachine: gumballMachine.publicKey,
-          mint: item.id,
-          authRulesProgram:
-            item.tokenStandard === TokenStandard.ProgrammableNonFungible
-              ? MPL_TOKEN_AUTH_RULES_PROGRAM_ID
-              : undefined,
-        })
-      );
-    } else if (item.tokenStandard === TokenStandard.Fungible) {
-      builder = builder.add(
-        addTokens(umi, {
-          gumballMachine: gumballMachine.publicKey,
-          mint: item.id,
-          amount: item.amount ?? 1,
-          quantity: item.quantity ?? 1,
-        })
-      );
-    } else {
-      builder = builder.add(
-        addCoreAsset(umi, {
-          gumballMachine: gumballMachine.publicKey,
-          asset: item.id,
-        })
-      );
-    }
-  });
-
-  if (input.startSale) {
-    builder = builder.add(
-      startSale(umi, {
-        gumballMachine: gumballMachine.publicKey,
-      })
-    );
-  }
-
-  await builder.sendAndConfirm(umi);
-  return gumballMachine;
-};
-
-export const defaultAssetData = () => ({
-  name: 'My Asset',
-  sellerFeeBasisPoints: percentAmount(10, 2),
-  uri: 'https://example.com/my-asset.json',
+export const COMPUTE_UNITS = getSetComputeUnitLimitInstruction({
+  units: 1_400_000,
 });
 
-export const defaultGumballSettings = (): GumballSettings => ({
-  itemCapacity: 100n,
+// -----------------------------------------------------------------------------
+// Account fetching (kit — decode straight off the LiteSVM ledger)
+// -----------------------------------------------------------------------------
+
+export const fetchGumballMachine = (
+  svm: LiteSVM,
+  machine: Address
+): GumballMachineAccountData => {
+  const account = svm.getAccount(machine);
+  if (!account || !account.exists) {
+    throw new Error(`Gumball machine ${machine} not found`);
+  }
+  return decodeGumballMachine(account).data;
+};
+
+export const fetchGumballGuard = (
+  svm: LiteSVM,
+  guard: Address
+): GumballGuardAccountData => {
+  const account = svm.getAccount(guard);
+  if (!account || !account.exists) {
+    throw new Error(`Gumball guard ${guard} not found`);
+  }
+  return decodeGumballGuard(account).data;
+};
+
+// -----------------------------------------------------------------------------
+// Gumball machine + guard scaffolding (kit)
+// -----------------------------------------------------------------------------
+
+export const defaultGumballSettings = (
+  overrides: Partial<GumballSettingsArgs> = {}
+): GumballSettingsArgs => ({
+  itemCapacity: 5,
   uri: 'https://example.com/gumball-machine.json',
   itemsPerSeller: 3,
-  sellersMerkleRoot: none(),
+  sellersMerkleRoot: null,
   curatorFeeBps: 500,
   hideSoldItems: false,
-  paymentMint: publicKey('So11111111111111111111111111111111111111112'),
-});
-
-export const createGumballGuard = async <
-  DA extends GuardSetArgs = DefaultGuardSetArgs,
->(
-  umi: Umi,
-  input: Partial<
-    InitializeGumballGuardInstructionAccounts &
-      CreateGumballGuardInstructionDataArgs<
-        DA extends undefined ? DefaultGuardSetArgs : DA
-      >
-  > = {}
-) => {
-  const base = input.base ?? generateSigner(umi);
-  await transactionBuilder()
-    .add(baseCreateGumballGuard<DA>(umi, { ...input, base }))
-    .sendAndConfirm(umi);
-
-  return findGumballGuardPda(umi, { base: base.publicKey });
-};
-
-export const assertSuccessfulMint = async (
-  t: Assertions,
-  umi: Umi,
-  input: {
-    mint: PublicKey | Signer;
-    owner: PublicKey | Signer;
-    token?: PublicKey;
-    tokenStandard?: MplTokenStandard;
-    name?: string | RegExp;
-    uri?: string | RegExp;
-  }
-) => {
-  const mint = publicKey(input.mint);
-  const owner = publicKey(input.owner);
-  const {
-    token = findAssociatedTokenPda(umi, { mint, owner }),
-    tokenStandard,
-    name,
-    uri,
-  } = input;
-
-  // Nft.
-  const nft = await fetchDigitalAssetWithAssociatedToken(umi, mint, owner);
-  t.like(nft, <DigitalAssetWithToken>{
-    publicKey: publicKey(mint),
-    mint: {
-      publicKey: publicKey(mint),
-      supply: 1n,
-    },
-    token: {
-      publicKey: publicKey(token),
-      mint: publicKey(mint),
-      owner: publicKey(owner),
-      amount: 1n,
-    },
-    edition: {
-      isOriginal: true,
-    },
-    metadata: {
-      tokenStandard: { __option: 'Some' },
-      primarySaleHappened: true,
-    },
-  });
-
-  // Token Stardard.
-  if (tokenStandard !== undefined) {
-    t.deepEqual(nft.metadata.tokenStandard, some(tokenStandard));
-  }
-
-  // Name.
-  if (typeof name === 'string') t.is(nft.metadata.name, name);
-  else if (name !== undefined) t.regex(nft.metadata.name, name);
-
-  // Uri.
-  if (typeof uri === 'string') t.is(nft.metadata.uri, uri);
-  else if (uri !== undefined) t.regex(nft.metadata.uri, uri);
-};
-
-export const assertItemBought = async (
-  t: Assertions,
-  umi: Umi,
-  input: {
-    gumballMachine: PublicKey;
-    buyer?: PublicKey;
-    count?: number;
-  }
-) => {
-  const gumballMachineAccount = await fetchGumballMachine(
-    umi,
-    input.gumballMachine
-  );
-
-  const buyerCount = gumballMachineAccount.items.filter(
-    (item) => item.buyer === (input.buyer ?? umi.identity.publicKey)
-  ).length;
-
-  t.is(buyerCount, input.count ?? 1);
-};
-
-export const assertBotTax = async (
-  t: Assertions,
-  umi: Umi,
-  signature: TransactionSignature,
-  extraRegex?: RegExp
-) => {
-  const transaction = await umi.rpc.getTransaction(signature);
-  t.true(transaction !== null);
-  const logs = transaction!.meta.logs.join('');
-  t.regex(logs, /Gumball Guard Botting is taxed/);
-  if (extraRegex !== undefined) t.regex(logs, extraRegex);
-};
-
-export const assertBurnedNft = async (
-  t: Assertions,
-  umi: Umi,
-  mint: Signer | PublicKey,
-  owner?: Signer | PublicKey
-) => {
-  owner = owner ?? umi.identity;
-  const [tokenAccount] = findAssociatedTokenPda(umi, {
-    mint: publicKey(mint),
-    owner: publicKey(owner),
-  });
-  const [metadataAccount] = findMetadataPda(umi, { mint: publicKey(mint) });
-  const [editionAccount] = findMasterEditionPda(umi, { mint: publicKey(mint) });
-
-  const metadata = await umi.rpc.getAccount(metadataAccount);
-  // Metadata accounts is not closed since it contains fees but
-  // the data length should be 1.
-  t.true(metadata.exists);
-  assertAccountExists(metadata);
-  t.true(metadata.data.length === 1);
-
-  t.false(await umi.rpc.accountExists(tokenAccount));
-  t.false(await umi.rpc.accountExists(editionAccount));
-};
-
-export const yesterday = (): DateTime => now() - 3600n * 24n;
-export const tomorrow = (): DateTime => now() + 3600n * 24n;
-
-export const getNewConfigLine = async (
-  umi: Umi,
-  overrides?: Partial<ConfigLineInput>
-): Promise<ConfigLineInput> => ({
-  mint: (await createNft(umi)).publicKey,
-  seller: publicKey(Keypair.generate().publicKey),
+  paymentMint: NATIVE_MINT,
   ...overrides,
 });
 
-// Fixed-seed keypair used as the test authority for GlobalConfig.
-// GlobalConfig is a program-wide singleton, so all tests must share one authority.
-// Using a deterministic seed means the same keypair is produced in every test run.
-export const getTestAuthority = (umi: Umi) => {
-  const web3Keypair = Keypair.fromSeed(new Uint8Array(32).fill(42));
-  const keypair = umi.eddsa.createKeypairFromSecretKey(web3Keypair.secretKey);
-  return createSignerFromKeypair(umi, keypair);
+/**
+ * Create a machine + guard (+ wrap) via the high-level kit `create` builder and
+ * send it. Returns the machine and guard addresses.
+ */
+export const createGumballMachine = async (
+  client: Client,
+  input: Omit<Partial<CreateInput>, 'settings' | 'authority' | 'payer'> & {
+    gumballMachine?: TransactionSigner;
+    settings?: Partial<GumballSettingsArgs>;
+    guards?: CreateInput['guards'];
+    groups?: CreateInput['groups'];
+  } = {}
+): Promise<{ gumballMachine: Address; gumballGuard: Address }> => {
+  const gumballMachine =
+    input.gumballMachine ?? (await generateKeyPairSigner());
+  const instructions = await create(
+    {
+      ...input,
+      gumballMachine,
+      authority: client.payer,
+      payer: client.payer,
+      settings: defaultGumballSettings(input.settings),
+    },
+    { rpc: client.rpc }
+  );
+  await sendTransaction(client.svm, client.payer, instructions);
+  const [gumballGuard] = await findGumballGuardPda({
+    base: gumballMachine.address,
+  });
+  return { gumballMachine: gumballMachine.address, gumballGuard };
 };
 
-// Create or idempotently re-use the GlobalConfig PDA with the test authority
-// as both config_authority and account_fee_authority.
-export const setupGlobalConfig = async (umi: Umi, authority: Signer) => {
-  await umi.rpc.airdrop(authority.publicKey, sol(1));
-
-  const existing = await safeFetchGlobalConfigFromSeeds(umi);
-  if (!existing) {
-    await createGlobalConfig(umi, {
-      authority,
-      configAuthority: authority.publicKey,
-      accountFeeAuthority: authority.publicKey,
-    }).sendAndConfirm(umi);
-  } else {
-    // Already exists — update if needed (signer must be current config_authority).
-    await updateGlobalConfig(umi, {
-      authority,
-      newAccountFeeAuthority: authority.publicKey,
-      newConfigAuthority: authority.publicKey,
-    }).sendAndConfirm(umi);
-  }
+/**
+ * Create a standalone gumball guard (no machine) with the given guards/groups,
+ * derived from a random base signer. Returns the guard PDA.
+ */
+export const createStandaloneGumballGuard = async (
+  client: Client,
+  input: {
+    guards?: Partial<DefaultGuardSetArgs>;
+    groups?: CreateInput['groups'];
+  } = {}
+): Promise<{ base: Address; gumballGuard: Address }> => {
+  const base = await generateKeyPairSigner();
+  const instruction = await createGumballGuard({
+    base,
+    authority: client.payer.address,
+    payer: client.payer,
+    guards: input.guards,
+    groups: input.groups,
+  });
+  await sendTransaction(client.svm, client.payer, [instruction]);
+  const [gumballGuard] = await findGumballGuardPda({ base: base.address });
+  return { base: base.address, gumballGuard };
 };
 
-export const drawRemainingItems = async (
-  umi: Umi,
-  gumballMachine: PublicKey,
-  available: number,
-  batchSizeSetting: number = 10
-) => {
-  const indices: number[] = [];
-  for (let i = 0; i < available; i += batchSizeSetting) {
-    const buyer = generateSigner(umi);
-    const batchSize = Math.min(batchSizeSetting, available - i);
+// -----------------------------------------------------------------------------
+// SPL token scaffolding (kit) — the simplest gumball item to load & draw.
+// -----------------------------------------------------------------------------
 
-    let builder = transactionBuilder().add(
-      setComputeUnitLimit(umi, { units: 1_400_000 })
-    );
+/**
+ * Create a fresh SPL mint and mint `amount` tokens to the payer's associated
+ * token account (the seller). Returns the mint + seller ATA addresses.
+ */
+export const createFungibleMint = async (
+  client: Client,
+  input: { amount: number | bigint; decimals?: number } = { amount: 100 }
+): Promise<{ mint: Address; sellerAta: Address }> => {
+  const { payer, svm } = client;
+  const decimals = input.decimals ?? 0;
+  const mint = await generateKeyPairSigner();
+  const space = BigInt(getMintSize());
+  const rent = svm.minimumBalanceForRentExemption(space);
+  const [sellerAta] = await findAssociatedTokenPda({
+    owner: payer.address,
+    mint: mint.address,
+    tokenProgram: TOKEN_PROGRAM_ADDRESS,
+  });
 
-    // Add all draws to the same transaction
-    for (let j = 0; j < batchSize; j += 1) {
-      builder = builder.add(
-        draw(umi, {
-          gumballMachine,
-          buyer,
-        })
-      );
-    }
+  await sendTransaction(svm, payer, [
+    getCreateAccountInstruction({
+      payer,
+      newAccount: mint,
+      lamports: rent,
+      space,
+      programAddress: TOKEN_PROGRAM_ADDRESS,
+    }),
+    getInitializeMintInstruction({
+      mint: mint.address,
+      decimals,
+      mintAuthority: payer.address,
+    }),
+    await getCreateAssociatedTokenInstructionAsync({
+      payer,
+      owner: payer.address,
+      mint: mint.address,
+    }),
+    getMintToInstruction({
+      mint: mint.address,
+      token: sellerAta,
+      mintAuthority: payer,
+      amount: input.amount,
+    }),
+  ]);
 
-    await builder.sendAndConfirm(umi);
-
-    // Fetch the machine once after the batch completes
-    const gumballMachineAccount = await fetchGumballMachine(
-      umi,
-      gumballMachine
-    );
-    const buyerItems = gumballMachineAccount.items.filter(
-      (item) => item.buyer === buyer.publicKey
-    );
-    indices.push(...buyerItems.map((item) => item.index));
-  }
-
-  return indices;
+  return { mint: mint.address, sellerAta };
 };

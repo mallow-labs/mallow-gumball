@@ -1,6 +1,6 @@
-import { findAssociatedTokenPda } from '@metaplex-foundation/mpl-toolbox';
-import { getTokenGateSerializer, TokenGate, TokenGateArgs } from '../generated';
+import { getTokenGateCodec, TokenGate, TokenGateArgs } from '../generated';
 import { GuardManifest, noopParser } from '../guards';
+import { findAssociatedTokenPda } from '../hooked';
 
 /**
  * The tokenGate guard restricts minting to token holders
@@ -17,15 +17,15 @@ export const tokenGateGuardManifest: GuardManifest<
   TokenGateMintArgs
 > = {
   name: 'tokenGate',
-  serializer: getTokenGateSerializer,
-  mintParser: (context, mintContext, args) => {
-    const [tokenAccount] = findAssociatedTokenPda(context, {
+  codec: getTokenGateCodec,
+  mintParser: async (mintContext, args) => {
+    const [tokenAccount] = await findAssociatedTokenPda({
       mint: args.mint,
-      owner: mintContext.buyer.publicKey,
+      owner: mintContext.buyer.address,
     });
     return {
       data: new Uint8Array(),
-      remainingAccounts: [{ publicKey: tokenAccount, isWritable: true }],
+      remainingAccounts: [{ address: tokenAccount, isWritable: true }],
     };
   },
   routeParser: noopParser,

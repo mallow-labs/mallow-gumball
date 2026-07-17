@@ -1,46 +1,45 @@
-import { findAssociatedTokenPda } from '@metaplex-foundation/mpl-toolbox';
-import {
-  Context,
-  publicKey,
-  PublicKey,
-  transactionBuilder,
-  TransactionBuilder,
-} from '@metaplex-foundation/umi';
+import { AccountRole, type Address, type Instruction } from '@solana/kit';
 import { NATIVE_MINT } from './constants';
-import { baseSettleNftSale } from './generated';
+import {
+  getBaseSettleNftSaleInstructionAsync,
+  type BaseSettleNftSaleAsyncInput,
+} from './generated';
+import { findAssociatedTokenPda } from './hooked';
 
-export type SettleNftSaleInput = Parameters<typeof baseSettleNftSale>[1] & {
-  creators: PublicKey[];
+export type SettleNftSaleInput = BaseSettleNftSaleAsyncInput & {
+  creators: Address[];
 };
 
-export const settleNftSale = (
-  context: Parameters<typeof baseSettleNftSale>[0] & Pick<Context, 'rpc'>,
+/**
+ * Builds the `baseSettleNftSale` instruction and appends the creator royalty
+ * remaining accounts (and their payment-mint ATAs for SPL payments).
+ */
+export const getSettleNftSaleInstructionAsync = async (
   input: SettleNftSaleInput
-): TransactionBuilder =>
-  transactionBuilder().add(
-    baseSettleNftSale(context, {
-      ...input,
-    }).addRemainingAccounts(
-      input.creators.flatMap((creator) => {
-        const accounts = [
-          {
-            pubkey: creator,
-            isSigner: false,
-            isWritable:
-              input.paymentMint == null || input.paymentMint === NATIVE_MINT,
-          },
-        ];
-        if (input.paymentMint != null && input.paymentMint !== NATIVE_MINT) {
-          accounts.push({
-            pubkey: findAssociatedTokenPda(context, {
-              mint: publicKey(input.paymentMint),
-              owner: creator,
-            })[0],
-            isSigner: false,
-            isWritable: true,
-          });
-        }
-        return accounts;
-      })
-    )
-  );
+): Promise<Instruction> => {
+  const { creators, ...rest } = input;
+  const instruction = await getBaseSettleNftSaleInstructionAsync(rest);
+  const isNativePayment =
+    input.paymentMint == null || input.paymentMint === NATIVE_MINT;
+
+  const remaining = [];
+  for (const creator of creators) {
+    remaining.push({
+      address: creator,
+      role: isNativePayment ? AccountRole.WRITABLE : AccountRole.READONLY,
+    });
+    if (!isNativePayment) {
+      // eslint-disable-next-line no-await-in-loop
+      const [ata] = await findAssociatedTokenPda({
+        mint: input.paymentMint as Address,
+        owner: creator,
+      });
+      remaining.push({ address: ata, role: AccountRole.WRITABLE });
+    }
+  }
+
+  return {
+    ...instruction,
+    accounts: [...(instruction.accounts ?? []), ...remaining],
+  };
+};

@@ -1,46 +1,55 @@
-import { publicKey, transactionBuilder } from '@metaplex-foundation/umi';
+import { type Address } from '@solana/kit';
 import test from 'ava';
-import { fetchGumballMachine, GumballMachine, wrap } from '../src';
-import { create, createGumballGuard, createUmi } from './_setup';
+import { getWrapInstruction } from '../src';
+import { createGumballMachineOnly } from './_settleSetup';
+import {
+  createClient,
+  createStandaloneGumballGuard,
+  fetchGumballMachine,
+  sendTransaction,
+  type Client,
+} from './_setup';
+
+const wrap = (client: Client, machine: Address, gumballGuard: Address) =>
+  sendTransaction(client.svm, client.payer, [
+    getWrapInstruction({
+      gumballGuard,
+      authority: client.payer,
+      machine,
+      machineAuthority: client.payer,
+    }),
+  ]);
 
 test('it can wrap a gumball machine v2 in a gumball guard', async (t) => {
-  // Given an existing gumball machine and gumball guard.
-  const umi = await createUmi();
-  const machine = (await create(umi)).publicKey;
-  const gumballGuard = await createGumballGuard(umi);
+  // Given an existing (unwrapped) gumball machine and gumball guard.
+  const client = await createClient();
+  const { gumballMachine } = await createGumballMachineOnly(client);
+  const { gumballGuard } = await createStandaloneGumballGuard(client);
 
   // When we wrap the gumball machine in the gumball guard.
-  await transactionBuilder()
-    .add(wrap(umi, { machine, gumballGuard }))
-    .sendAndConfirm(umi);
+  await wrap(client, gumballMachine, gumballGuard);
 
   // Then the mint authority of the gumball machine is the gumball guard.
-  const gumballMachineAccount = await fetchGumballMachine(umi, machine);
-  t.like(gumballMachineAccount, <GumballMachine>{
-    authority: publicKey(umi.identity),
-    mintAuthority: publicKey(gumballGuard),
-  });
+  const account = fetchGumballMachine(client.svm, gumballMachine);
+  t.is(account.authority, client.payer.address);
+  t.is(account.mintAuthority, gumballGuard);
 });
 
 test('it can update the gumball guard associated with a gumball machine', async (t) => {
-  // Given an existing gumball machine and a gumball guard associated with it.
-  const umi = await createUmi();
-  const machine = (await create(umi)).publicKey;
-  const gumballGuardA = await createGumballGuard(umi);
-  await transactionBuilder()
-    .add(wrap(umi, { machine, gumballGuard: gumballGuardA }))
-    .sendAndConfirm(umi);
+  // Given a gumball machine already wrapped in a first gumball guard.
+  const client = await createClient();
+  const { gumballMachine } = await createGumballMachineOnly(client);
+  const { gumballGuard: gumballGuardA } =
+    await createStandaloneGumballGuard(client);
+  await wrap(client, gumballMachine, gumballGuardA);
 
   // When we wrap the gumball machine in a different gumball guard.
-  const gumballGuardB = await createGumballGuard(umi);
-  await transactionBuilder()
-    .add(wrap(umi, { machine, gumballGuard: gumballGuardB }))
-    .sendAndConfirm(umi);
+  const { gumballGuard: gumballGuardB } =
+    await createStandaloneGumballGuard(client);
+  await wrap(client, gumballMachine, gumballGuardB);
 
   // Then the mint authority of the gumball machine was updated accordingly.
-  const gumballMachineAccount = await fetchGumballMachine(umi, machine);
-  t.like(gumballMachineAccount, <GumballMachine>{
-    authority: publicKey(umi.identity),
-    mintAuthority: publicKey(gumballGuardB),
-  });
+  const account = fetchGumballMachine(client.svm, gumballMachine);
+  t.is(account.authority, client.payer.address);
+  t.is(account.mintAuthority, gumballGuardB);
 });

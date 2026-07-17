@@ -1,4 +1,4 @@
-import { none, Option, OptionOrNullable } from '@metaplex-foundation/umi';
+import { none, Option, OptionOrNullable } from '@solana/kit';
 import {
   AddressGate,
   AddressGateArgs,

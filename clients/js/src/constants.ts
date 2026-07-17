@@ -1,4 +1,4 @@
-import { publicKey } from '@metaplex-foundation/umi';
+import { address, type Address } from '@solana/kit';
 
 export const FEE_CONFIG_SIZE =
   32 + // fee account
@@ -52,6 +52,6 @@ export const METADATA_SIZE: number = 679;
 
 export const MASTER_EDITION_SIZE: number = 282;
 
-export const NATIVE_MINT = publicKey(
+export const NATIVE_MINT: Address = address(
   'So11111111111111111111111111111111111111112'
 );

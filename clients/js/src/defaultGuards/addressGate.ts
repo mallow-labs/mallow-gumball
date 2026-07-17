@@ -1,7 +1,7 @@
 import {
   AddressGate,
   AddressGateArgs,
-  getAddressGateSerializer,
+  getAddressGateCodec,
 } from '../generated';
 import { GuardManifest, noopParser } from '../guards';
 
@@ -14,7 +14,7 @@ export const addressGateGuardManifest: GuardManifest<
   AddressGate
 > = {
   name: 'addressGate',
-  serializer: getAddressGateSerializer,
+  codec: getAddressGateCodec,
   mintParser: noopParser,
   routeParser: noopParser,
 };

@@ -1,22 +1,23 @@
 import {
-  AccountMeta,
-  Context,
+  AccountRole,
+  combineCodec,
+  createDecoder,
+  createEncoder,
   isNone,
   isOption,
   isSome,
   none,
-  Option,
-  OptionOrNullable,
-  Signer,
   some,
   wrapNullable,
-} from '@metaplex-foundation/umi';
-import {
-  bitArray,
-  mergeBytes,
-  reverseSerializer,
-  Serializer,
-} from '@metaplex-foundation/umi/serializers';
+  type AccountMeta,
+  type AccountSignerMeta,
+  type Codec,
+  type Decoder,
+  type Encoder,
+  type Option,
+  type OptionOrNullable,
+  type TransactionSigner,
+} from '@solana/kit';
 import { UnregisteredGumballGuardError } from '../errors';
 import {
   GuardInstructionExtras,
@@ -24,7 +25,7 @@ import {
   MintContext,
   RouteContext,
 } from './guardManifest';
-import { GuardRepository, GumballGuardProgram } from './guardRepository';
+import { AnyGuardManifest } from './guardRepository';
 
 export type GuardSetArgs = {
   [name: string]: OptionOrNullable<object>;
@@ -42,124 +43,180 @@ export type GuardSetRouteArgs = {
   [name: string]: object;
 };
 
-export function getGuardSetSerializer<
-  DA extends GuardSetArgs,
-  D extends DA & GuardSet,
->(
-  context: { guards: GuardRepository },
-  program: GumballGuardProgram
-): Serializer<Partial<DA>, D> {
-  const manifests = context.guards.forProgram(program);
-  const featuresSerializer = reverseSerializer(bitArray(8, true));
-  return {
-    description: 'guardSet',
-    fixedSize: null,
-    maxSize: null,
-    serialize: (set: Partial<DA>): Uint8Array => {
-      const features = [] as boolean[];
-      const bytes = [] as Uint8Array[];
+// The on-chain guard set is prefixed by an 8-byte little-endian "features"
+// bitset: guard index `i` maps to byte `i >> 3`, bit `1 << (i & 7)`. This
+// matches the umi client's `reverseSerializer(bitArray(8, true))`.
+const FEATURES_SIZE = 8;
+
+function encodeFeatures(features: boolean[]): Uint8Array {
+  const bytes = new Uint8Array(FEATURES_SIZE);
+  features.forEach((enabled, i) => {
+    if (enabled) bytes[Math.floor(i / 8)] |= 1 << (i % 8);
+  });
+  return bytes;
+}
+
+function readFeatures(
+  bytes: Uint8Array,
+  offset: number,
+  count: number
+): boolean[] {
+  const features: boolean[] = [];
+  for (let i = 0; i < count; i += 1) {
+    const byte = bytes[offset + Math.floor(i / 8)] ?? 0;
+    features.push((byte & (1 << (i % 8))) !== 0);
+  }
+  return features;
+}
+
+function mergeBytes(chunks: Uint8Array[]): Uint8Array {
+  const total = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+  const result = new Uint8Array(total);
+  let cursor = 0;
+  chunks.forEach((chunk) => {
+    result.set(chunk, cursor);
+    cursor += chunk.length;
+  });
+  return result;
+}
+
+export function getGuardSetEncoder<DA extends GuardSetArgs>(
+  manifests: AnyGuardManifest[]
+): Encoder<Partial<DA>> {
+  return createEncoder({
+    getSizeFromValue: (set: Partial<DA>) => {
+      let size = FEATURES_SIZE;
       manifests.forEach((manifest) => {
-        const value = set[manifest.name] ?? none();
+        const value = (set as GuardSetArgs)[manifest.name] ?? none();
+        const option = isOption(value) ? value : wrapNullable(value);
+        if (isSome(option)) {
+          size += manifest.codec().encode(option.value).length;
+        }
+      });
+      return size;
+    },
+    write: (set: Partial<DA>, bytes, offset) => {
+      const features: boolean[] = [];
+      const chunks: Uint8Array[] = [];
+      manifests.forEach((manifest) => {
+        const value = (set as GuardSetArgs)[manifest.name] ?? none();
         const option = isOption(value) ? value : wrapNullable(value);
         features.push(isSome(option));
-        bytes.push(
+        chunks.push(
           isSome(option)
-            ? manifest.serializer().serialize(option.value)
+            ? new Uint8Array(manifest.codec().encode(option.value))
             : new Uint8Array()
         );
       });
-      return mergeBytes([featuresSerializer.serialize(features), ...bytes]);
+      bytes.set(encodeFeatures(features), offset);
+      let cursor = offset + FEATURES_SIZE;
+      chunks.forEach((chunk) => {
+        bytes.set(chunk, cursor);
+        cursor += chunk.length;
+      });
+      return cursor;
     },
-    deserialize: (bytes: Uint8Array, offset = 0): [D, number] => {
-      const [features, featuresOffset] = featuresSerializer.deserialize(
-        bytes,
-        offset
-      );
-      offset = featuresOffset;
-      const guardSet = manifests.reduce((acc, manifest, index) => {
-        acc[manifest.name] = none();
-        if (!(features[index] ?? false)) return acc;
-        const serializer = manifest.serializer();
-        const [value, newOffset] = serializer.deserialize(bytes, offset);
-        offset = newOffset;
-        acc[manifest.name] = some(value);
-        return acc;
-      }, {} as GuardSet);
-      return [guardSet as D, offset];
-    },
-  };
+  });
 }
 
-export function parseMintArgs<MA extends GuardSetMintArgs>(
-  context: Pick<Context, 'eddsa' | 'programs'> & {
-    guards: GuardRepository;
-  },
-  program: GumballGuardProgram,
-  mintContext: MintContext,
-  mintArgs: Partial<MA>
-): GuardInstructionExtras {
-  const manifests = context.guards.forProgram(program);
-  return manifests.reduce(
-    (acc, manifest) => {
-      const args = mintArgs[manifest.name] ?? none();
-      const argsAsOption = isOption(args) ? args : wrapNullable(args);
-      if (isNone(argsAsOption)) return acc;
-      const { data, remainingAccounts } = manifest.mintParser(
-        context,
-        mintContext,
-        argsAsOption.value
-      );
-      return {
-        data: mergeBytes([acc.data, data]),
-        remainingAccounts: [...acc.remainingAccounts, ...remainingAccounts],
-      };
+export function getGuardSetDecoder<D extends GuardSet>(
+  manifests: AnyGuardManifest[]
+): Decoder<D> {
+  return createDecoder({
+    read: (bytes, offset) => {
+      const view = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+      const features = readFeatures(view, offset, manifests.length);
+      let cursor = offset + FEATURES_SIZE;
+      const guardSet = {} as GuardSet;
+      manifests.forEach((manifest, index) => {
+        guardSet[manifest.name] = none();
+        if (!(features[index] ?? false)) return;
+        const [value, newOffset] = manifest.codec().read(bytes, cursor);
+        cursor = newOffset;
+        guardSet[manifest.name] = some(value);
+      });
+      return [guardSet as D, cursor];
     },
-    { data: new Uint8Array(), remainingAccounts: [] } as GuardInstructionExtras
+  });
+}
+
+export function getGuardSetCodec<
+  DA extends GuardSetArgs,
+  D extends DA & GuardSet,
+>(manifests: AnyGuardManifest[]): Codec<Partial<DA>, D> {
+  return combineCodec(
+    getGuardSetEncoder<DA>(manifests),
+    getGuardSetDecoder<D>(manifests)
   );
 }
 
-export function parseRouteArgs<
+export async function parseMintArgs<MA extends GuardSetMintArgs>(
+  manifests: AnyGuardManifest[],
+  mintContext: MintContext,
+  mintArgs: Partial<MA>
+): Promise<GuardInstructionExtras> {
+  let acc: GuardInstructionExtras = {
+    data: new Uint8Array(),
+    remainingAccounts: [],
+  };
+  for (const manifest of manifests) {
+    const args = (mintArgs as GuardSetMintArgs)[manifest.name] ?? none();
+    const argsAsOption = isOption(args) ? args : wrapNullable(args);
+    if (isNone(argsAsOption)) continue;
+    // eslint-disable-next-line no-await-in-loop
+    const { data, remainingAccounts } = await manifest.mintParser(
+      mintContext,
+      argsAsOption.value
+    );
+    acc = {
+      data: mergeBytes([acc.data, data]),
+      remainingAccounts: [...acc.remainingAccounts, ...remainingAccounts],
+    };
+  }
+  return acc;
+}
+
+export async function parseRouteArgs<
   G extends keyof RA & string,
   RA extends GuardSetRouteArgs,
 >(
-  context: Pick<Context, 'eddsa' | 'programs'> & {
-    guards: GuardRepository;
-  },
-  program: GumballGuardProgram,
+  manifests: AnyGuardManifest[],
   routeContext: RouteContext,
   guard: G,
   routeArgs: RA[G]
-): GuardInstructionExtras & { guardIndex: number } {
-  const manifests = context.guards.forProgram(program);
+): Promise<GuardInstructionExtras & { guardIndex: number }> {
   const guardIndex = manifests.findIndex((m) => m.name === guard);
   if (guardIndex < 0) {
     throw new UnregisteredGumballGuardError(guard);
   }
-  const manifest = manifests[guardIndex];
-  const extras = manifest.routeParser(context, routeContext, routeArgs);
+  const extras = await manifests[guardIndex].routeParser(
+    routeContext,
+    routeArgs
+  );
   return { ...extras, guardIndex };
 }
 
+/**
+ * Converts the guard-provided remaining accounts into kit instruction account
+ * metas. Signer accounts carry their `TransactionSigner` so the transaction can
+ * collect them (kit's `AccountSignerMeta`).
+ */
 export function parseGuardRemainingAccounts(
   remainingAccounts: GuardRemainingAccount[]
-): [AccountMeta[], Signer[]] {
-  const accounts = [] as AccountMeta[];
-  const signers = [] as Signer[];
-  remainingAccounts.forEach((account) => {
+): Array<AccountMeta | AccountSignerMeta<string, TransactionSigner>> {
+  return remainingAccounts.map((account) => {
     if ('signer' in account) {
-      signers.push(account.signer);
-      accounts.push({
-        pubkey: account.signer.publicKey,
-        isSigner: true,
-        isWritable: account.isWritable,
-      });
-    } else {
-      accounts.push({
-        pubkey: account.publicKey,
-        isSigner: false,
-        isWritable: account.isWritable,
-      });
+      return {
+        address: account.signer.address,
+        role: account.isWritable
+          ? AccountRole.WRITABLE_SIGNER
+          : AccountRole.READONLY_SIGNER,
+        signer: account.signer,
+      };
     }
+    return {
+      address: account.address,
+      role: account.isWritable ? AccountRole.WRITABLE : AccountRole.READONLY,
+    };
   });
-  return [accounts, signers];
 }

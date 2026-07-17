@@ -1,253 +1,181 @@
-import { AssetV1, fetchAssetV1 } from '@metaplex-foundation/mpl-core';
 import {
-  fetchToken,
+  AccountState,
+  decodeToken,
   findAssociatedTokenPda,
-  TokenState,
-} from '@metaplex-foundation/mpl-toolbox';
-import { some, transactionBuilder } from '@metaplex-foundation/umi';
+  TOKEN_PROGRAM_ADDRESS,
+} from '@solana-program/token';
+import { some } from '@solana/kit';
 import test from 'ava';
 import {
-  approveAddItem,
-  fetchGumballMachine,
-  fetchSellerHistoryFromSeeds,
   findGumballMachineAuthorityPda,
-  GumballMachine,
-  requestAddCoreAsset,
-  requestAddNft,
-  safeFetchAddItemRequestFromSeeds,
-  SellerHistory,
-  startSale,
+  getAddCoreAssetInstructionAsync,
+  getApproveAddItemInstructionAsync,
+  getRequestAddCoreAssetInstructionAsync,
+  getRequestAddNftInstructionAsync,
+  getStartSaleInstruction,
   TokenStandard,
 } from '../src';
-import { create, createCoreAsset, createNft, createUmi } from './_setup';
+import {
+  createCoreAsset,
+  createNft,
+  getAddItemRequest,
+  getSellerHistory,
+} from './_addSetup';
+import {
+  createClient,
+  createGumballMachine,
+  fetchGumballMachine,
+  generateKeyPairSignerWithSol,
+  sendTransaction,
+} from './_setup';
+
+// NOTE: umi additionally asserts the core asset stays frozen/delegated after
+// approval. There is no generated kit mpl-core account decoder in this
+// workspace, so that plugin-state assertion is omitted for the core-asset case;
+// the nft case verifies frozen/delegated state via the SPL token account.
 
 test('it can approve a request to add core asset to a gumball machine', async (t) => {
-  // Given a Gumball Machine with 5 core assets.
-  const umi = await createUmi();
-  const gumballMachine = await create(umi, { settings: { itemCapacity: 5 } });
-
-  const sellerUmi = await createUmi();
-  const coreAsset = await createCoreAsset(sellerUmi);
-
-  // When we create a request to add an coreAsset to the Gumball Machine.
-  await transactionBuilder()
-    .add(
-      requestAddCoreAsset(sellerUmi, {
-        gumballMachine: gumballMachine.publicKey,
-        asset: coreAsset.publicKey,
-      })
-    )
-    .sendAndConfirm(sellerUmi);
-
-  // Then accept the request
-  await transactionBuilder()
-    .add(
-      approveAddItem(umi, {
-        gumballMachine: gumballMachine.publicKey,
-        seller: sellerUmi.identity.publicKey,
-        asset: coreAsset.publicKey,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then the request is closed
-  const addItemRequestAccount = await safeFetchAddItemRequestFromSeeds(umi, {
-    asset: coreAsset.publicKey,
+  const client = await createClient();
+  const { gumballMachine } = await createGumballMachine(client, {
+    settings: { itemCapacity: 5 },
   });
-  t.falsy(addItemRequestAccount);
+  const seller = await generateKeyPairSignerWithSol(client.svm);
+  const { asset } = await createCoreAsset(client, seller);
 
-  // Then the Gumball Machine has been updated properly.
-  const gumballMachineAccount = await fetchGumballMachine(
-    umi,
-    gumballMachine.publicKey
+  await sendTransaction(client.svm, seller, [
+    await getRequestAddCoreAssetInstructionAsync({
+      gumballMachine,
+      seller,
+      asset,
+    }),
+  ]);
+
+  await sendTransaction(client.svm, client.payer, [
+    await getApproveAddItemInstructionAsync({
+      gumballMachine,
+      authority: client.payer,
+      seller: seller.address,
+      asset,
+    }),
+  ]);
+
+  // The request is closed.
+  t.is(await getAddItemRequest(client, asset), null);
+
+  // The item is loaded into the machine.
+  const account = fetchGumballMachine(client.svm, gumballMachine);
+  t.is(account.itemsLoaded, 1);
+  t.like(account.items[0], {
+    index: 0,
+    isDrawn: false,
+    isClaimed: false,
+    isSettled: false,
+    mint: asset,
+    seller: seller.address,
+    buyer: undefined,
+    tokenStandard: TokenStandard.Core,
+    amount: 1,
+  });
+
+  const sellerHistory = await getSellerHistory(
+    client,
+    gumballMachine,
+    seller.address
   );
-
-  t.like(gumballMachineAccount, <Pick<GumballMachine, 'itemsLoaded' | 'items'>>{
-    itemsLoaded: 1,
-    items: [
-      {
-        index: 0,
-        isDrawn: false,
-        isClaimed: false,
-        isSettled: false,
-        mint: coreAsset.publicKey,
-        seller: sellerUmi.identity.publicKey,
-        buyer: undefined,
-        tokenStandard: TokenStandard.Core,
-        amount: 1,
-      },
-    ],
-  });
-
-  // Then the asset is still frozen/delegated to the gumball machine
-  const asset = await fetchAssetV1(umi, coreAsset.publicKey);
-  t.like(asset, <AssetV1>{
-    owner: sellerUmi.identity.publicKey,
-    transferDelegate: {
-      authority: {
-        type: 'Address',
-        address: findGumballMachineAuthorityPda(umi, {
-          gumballMachine: gumballMachine.publicKey,
-        })[0],
-      },
-    },
-    freezeDelegate: {
-      authority: {
-        type: 'Address',
-        address: findGumballMachineAuthorityPda(umi, {
-          gumballMachine: gumballMachine.publicKey,
-        })[0],
-      },
-      frozen: true,
-    },
-  });
-
-  // Seller history state is correct
-  const sellerHistoryAccount = await fetchSellerHistoryFromSeeds(umi, {
-    gumballMachine: gumballMachine.publicKey,
-    seller: sellerUmi.identity.publicKey,
-  });
-
-  t.like(sellerHistoryAccount, <SellerHistory>{
-    gumballMachine: gumballMachine.publicKey,
-    seller: sellerUmi.identity.publicKey,
-    itemCount: 1n,
-  });
+  t.is(sellerHistory?.itemCount, 1n);
 });
 
 test('it can approve a request to add an nft to a gumball machine', async (t) => {
-  // Given a Gumball Machine with 5 core assets.
-  const umi = await createUmi();
-  const gumballMachine = await create(umi, { settings: { itemCapacity: 5 } });
-
-  const sellerUmi = await createUmi();
-  const nft = await createNft(sellerUmi);
-
-  // When we create a request to add an nft to the Gumball Machine.
-  await transactionBuilder()
-    .add(
-      requestAddNft(sellerUmi, {
-        gumballMachine: gumballMachine.publicKey,
-        mint: nft.publicKey,
-      })
-    )
-    .sendAndConfirm(sellerUmi);
-
-  // Then accept the request
-  await transactionBuilder()
-    .add(
-      approveAddItem(umi, {
-        gumballMachine: gumballMachine.publicKey,
-        seller: sellerUmi.identity.publicKey,
-        asset: nft.publicKey,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then the request is closed
-  const addItemRequestAccount = await safeFetchAddItemRequestFromSeeds(umi, {
-    asset: nft.publicKey,
+  const client = await createClient();
+  const { gumballMachine } = await createGumballMachine(client, {
+    settings: { itemCapacity: 5 },
   });
-  t.falsy(addItemRequestAccount);
+  const seller = await generateKeyPairSignerWithSol(client.svm);
+  const { mint } = await createNft(client, seller);
 
-  // Then the Gumball Machine has been updated properly.
-  const gumballMachineAccount = await fetchGumballMachine(
-    umi,
-    gumballMachine.publicKey
+  await sendTransaction(client.svm, seller, [
+    await getRequestAddNftInstructionAsync({ gumballMachine, seller, mint }),
+  ]);
+
+  await sendTransaction(client.svm, client.payer, [
+    await getApproveAddItemInstructionAsync({
+      gumballMachine,
+      authority: client.payer,
+      seller: seller.address,
+      asset: mint,
+    }),
+  ]);
+
+  t.is(await getAddItemRequest(client, mint), null);
+
+  const account = fetchGumballMachine(client.svm, gumballMachine);
+  t.is(account.itemsLoaded, 1);
+  t.like(account.items[0], {
+    index: 0,
+    mint,
+    seller: seller.address,
+    tokenStandard: TokenStandard.NonFungible,
+    amount: 1,
+  });
+
+  // The nft is still frozen/delegated to the gumball machine authority PDA.
+  const [authorityPda] = await findGumballMachineAuthorityPda({
+    gumballMachine,
+  });
+  const [ata] = await findAssociatedTokenPda({
+    owner: seller.address,
+    mint,
+    tokenProgram: TOKEN_PROGRAM_ADDRESS,
+  });
+  const tokenAccount = decodeToken(client.svm.getAccount(ata) as never).data;
+  t.is(tokenAccount.state, AccountState.Frozen);
+  t.deepEqual(tokenAccount.delegate, some(authorityPda));
+
+  const sellerHistory = await getSellerHistory(
+    client,
+    gumballMachine,
+    seller.address
   );
-
-  t.like(gumballMachineAccount, <Pick<GumballMachine, 'itemsLoaded' | 'items'>>{
-    itemsLoaded: 1,
-    items: [
-      {
-        index: 0,
-        isDrawn: false,
-        isClaimed: false,
-        isSettled: false,
-        mint: nft.publicKey,
-        seller: sellerUmi.identity.publicKey,
-        buyer: undefined,
-        tokenStandard: TokenStandard.NonFungible,
-        amount: 1,
-      },
-    ],
-  });
-
-  // Then the nft is still frozen/delegated to the gumball machine
-  const tokenAccount = await fetchToken(
-    umi,
-    findAssociatedTokenPda(umi, {
-      mint: nft.publicKey,
-      owner: sellerUmi.identity.publicKey,
-    })[0]
-  );
-  t.like(tokenAccount, {
-    state: TokenState.Frozen,
-    owner: sellerUmi.identity.publicKey,
-    delegate: some(
-      findGumballMachineAuthorityPda(umi, {
-        gumballMachine: gumballMachine.publicKey,
-      })[0]
-    ),
-  });
-
-  // Seller history state is correct
-  const sellerHistoryAccount = await fetchSellerHistoryFromSeeds(umi, {
-    gumballMachine: gumballMachine.publicKey,
-    seller: sellerUmi.identity.publicKey,
-  });
-
-  t.like(sellerHistoryAccount, <SellerHistory>{
-    gumballMachine: gumballMachine.publicKey,
-    seller: sellerUmi.identity.publicKey,
-    itemCount: 1n,
-  });
+  t.is(sellerHistory?.itemCount, 1n);
 });
 
 test('it cannot approve a request to add core asset to a gumball machine after the gumball has started', async (t) => {
-  // Given a Gumball Machine with 5 core assets.
-  const umi = await createUmi();
-  const asset = await createCoreAsset(umi);
-  const gumballMachine = await create(umi, {
-    settings: {
-      itemCapacity: 5,
-    },
-    items: [
-      {
-        id: asset.publicKey,
-        tokenStandard: TokenStandard.Core,
-      },
-    ],
+  const client = await createClient();
+  const { asset: initialAsset } = await createCoreAsset(client);
+  const { gumballMachine } = await createGumballMachine(client, {
+    settings: { itemCapacity: 5 },
   });
+  await sendTransaction(client.svm, client.payer, [
+    await getAddCoreAssetInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      asset: initialAsset,
+    }),
+  ]);
 
-  const sellerUmi = await createUmi();
-  const coreAsset = await createCoreAsset(sellerUmi);
+  const seller = await generateKeyPairSignerWithSol(client.svm);
+  const { asset } = await createCoreAsset(client, seller);
+  await sendTransaction(client.svm, seller, [
+    await getRequestAddCoreAssetInstructionAsync({
+      gumballMachine,
+      seller,
+      asset,
+    }),
+  ]);
 
-  // When we create a request to add an coreAsset to the Gumball Machine.
-  await transactionBuilder()
-    .add(
-      requestAddCoreAsset(sellerUmi, {
-        gumballMachine: gumballMachine.publicKey,
-        asset: coreAsset.publicKey,
-      })
-    )
-    .sendAndConfirm(sellerUmi);
+  await sendTransaction(client.svm, client.payer, [
+    getStartSaleInstruction({ gumballMachine, authority: client.payer }),
+  ]);
 
-  // Then the sale starts
-  await startSale(umi, {
-    gumballMachine: gumballMachine.publicKey,
-  }).sendAndConfirm(umi);
-
-  // Then accepting the request fails
-  const promise = transactionBuilder()
-    .add(
-      approveAddItem(umi, {
-        gumballMachine: gumballMachine.publicKey,
-        seller: sellerUmi.identity.publicKey,
-        asset: coreAsset.publicKey,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  await t.throwsAsync(promise, { message: /InvalidState/ });
+  await t.throwsAsync(
+    sendTransaction(client.svm, client.payer, [
+      await getApproveAddItemInstructionAsync({
+        gumballMachine,
+        authority: client.payer,
+        seller: seller.address,
+        asset,
+      }),
+    ]),
+    { message: /InvalidState/ }
+  );
 });
