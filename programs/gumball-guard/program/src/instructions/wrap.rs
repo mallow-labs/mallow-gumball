@@ -8,7 +8,9 @@ use mallow_gumball::{
     cpi::{accounts::SetMintAuthority, set_mint_authority},
     GumballMachine,
 };
-use mallow_jellybean_sdk::{accounts::JellybeanMachine, instructions::SetMintAuthorityCpiBuilder};
+use mallow_jellybean_client::{
+    accounts::JellybeanMachine, instructions::SetMintAuthorityCpiBuilder,
+};
 use utils::{assert_keys_equal, assert_owned_by};
 
 pub fn wrap(ctx: Context<Wrap>) -> Result<()> {
@@ -34,7 +36,7 @@ pub fn wrap(ctx: Context<Wrap>) -> Result<()> {
 
         // gumball machine set_mint_authority CPI
         set_mint_authority(CpiContext::new_with_signer(
-            machine_program,
+            machine_program.key(),
             SetMintAuthority {
                 gumball_machine: machine.to_account_info(),
                 authority,

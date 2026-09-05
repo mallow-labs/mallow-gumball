@@ -1,182 +1,128 @@
-/* eslint-disable no-await-in-loop */
 import {
   fetchToken,
   findAssociatedTokenPda,
-  setComputeUnitLimit,
-  TokenState,
-} from '@metaplex-foundation/mpl-toolbox';
-import {
-  generateSigner,
-  none,
-  transactionBuilder,
-} from '@metaplex-foundation/umi';
+  TOKEN_PROGRAM_ADDRESS,
+} from '@solana-program/token';
 import test from 'ava';
 import {
-  claimTokens,
   draw,
-  fetchGumballMachine,
-  findGumballMachineAuthorityPda,
-  GumballMachine,
-  TokenStandard,
+  getAddTokensInstructionAsync,
+  getClaimTokensInstructionAsync,
+  getStartSaleInstruction,
 } from '../src';
 import {
-  assertItemBought as assertItemDrawn,
-  create,
-  createMintWithHolders,
-  createUmi,
+  COMPUTE_UNITS,
+  createClient,
+  createFungibleMint,
+  createGumballMachine,
+  fetchGumballMachine,
+  generateKeyPairSignerWithSol,
+  sendTransaction,
 } from './_setup';
 
 test('it can claim a tokens item', async (t) => {
-  // Given a gumball machine with a gumball guard that has no guards.
-  const umi = await createUmi();
-  const gumballMachineSigner = generateSigner(umi);
-
-  const [tokenMint] = await createMintWithHolders(umi, {
-    holders: [
-      { owner: umi.identity, amount: 100 },
-      {
-        owner: findGumballMachineAuthorityPda(umi, {
-          gumballMachine: gumballMachineSigner.publicKey,
-        }),
-        amount: 0,
-      },
-    ],
-  });
-
-  await create(umi, {
-    gumballMachine: gumballMachineSigner,
-    items: [
-      {
-        id: tokenMint.publicKey,
-        tokenStandard: TokenStandard.Fungible,
-        amount: 100,
-      },
-    ],
-    startSale: true,
+  // Given a machine with a no-guard gumball guard and a single token item.
+  const client = await createClient();
+  const { gumballMachine } = await createGumballMachine(client, {
+    settings: { itemCapacity: 5 },
     guards: {},
   });
-  const gumballMachine = gumballMachineSigner.publicKey;
+  const { mint } = await createFungibleMint(client, { amount: 100 });
 
-  // When we mint from the gumball guard.
-  const buyerUmi = await createUmi();
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(buyerUmi, {
-        gumballMachine,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
+  await sendTransaction(client.svm, client.payer, [
+    await getAddTokensInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint,
+      amount: 100,
+      quantity: 1,
+    }),
+    getStartSaleInstruction({ gumballMachine, authority: client.payer }),
+  ]);
 
-  // Then the mint was successful.
-  await assertItemDrawn(t, umi, {
-    gumballMachine,
-    buyer: buyerUmi.identity.publicKey,
+  // When a buyer draws the item.
+  const buyer = await generateKeyPairSignerWithSol(client.svm);
+  await sendTransaction(client.svm, buyer, [
+    COMPUTE_UNITS,
+    await draw({ gumballMachine, payer: buyer, buyer }),
+  ]);
+
+  // Then claim it as the buyer.
+  await sendTransaction(client.svm, buyer, [
+    await getClaimTokensInstructionAsync({
+      payer: buyer,
+      gumballMachine,
+      authority: client.payer.address,
+      seller: client.payer.address,
+      buyer: buyer.address,
+      mint,
+      index: 0,
+    }),
+  ]);
+
+  // And the machine reflects the claim.
+  const account = fetchGumballMachine(client.svm, gumballMachine);
+  t.is(account.itemsRedeemed, 1n);
+  t.is(account.itemsSettled, 0n);
+  t.like(account.items[0], {
+    index: 0,
+    isDrawn: true,
+    isClaimed: true,
+    isSettled: false,
+    mint,
+    seller: client.payer.address,
+    buyer: buyer.address,
+    amount: 100,
   });
 
-  await transactionBuilder()
-    .add(
-      claimTokens(buyerUmi, {
-        gumballMachine,
-        authority: umi.identity.publicKey,
-        index: 0,
-        seller: umi.identity.publicKey,
-        mint: tokenMint.publicKey,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
-
-  // And the gumball machine was updated.
-  const gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
-  t.like(gumballMachineAccount, <Partial<GumballMachine>>{
-    itemsRedeemed: 1n,
-    itemsSettled: 0n,
-    items: [
-      {
-        index: 0,
-        isDrawn: true,
-        isClaimed: true,
-        isSettled: false,
-        mint: tokenMint.publicKey,
-        seller: umi.identity.publicKey,
-        buyer: buyerUmi.identity.publicKey,
-        tokenStandard: TokenStandard.Fungible,
-        amount: 100,
-      },
-    ],
+  // And the buyer received the tokens.
+  const [buyerAta] = await findAssociatedTokenPda({
+    owner: buyer.address,
+    mint,
+    tokenProgram: TOKEN_PROGRAM_ADDRESS,
   });
-
-  // Buyer should be the owner of the tokens
-  const tokenAccount = await fetchToken(
-    umi,
-    findAssociatedTokenPda(umi, {
-      mint: tokenMint.publicKey,
-      owner: buyerUmi.identity.publicKey,
-    })[0]
-  );
-
-  t.like(tokenAccount, {
-    state: TokenState.Initialized,
-    owner: buyerUmi.identity.publicKey,
-    delegate: none(),
-    amount: 100n,
-  });
+  const token = await fetchToken(client.rpc, buyerAta);
+  t.is(token.data.amount, 100n);
 });
 
 test('it cannot claim a tokens item as another buyer', async (t) => {
-  // Given a gumball machine with a gumball guard that has no guards.
-  const umi = await createUmi();
-  const gumballMachineSigner = generateSigner(umi);
-
-  const [tokenMint] = await createMintWithHolders(umi, {
-    holders: [
-      { owner: umi.identity, amount: 100 },
-      {
-        owner: findGumballMachineAuthorityPda(umi, {
-          gumballMachine: gumballMachineSigner.publicKey,
-        }),
-        amount: 0,
-      },
-    ],
-  });
-
-  await create(umi, {
-    gumballMachine: gumballMachineSigner,
-    items: [
-      {
-        id: tokenMint.publicKey,
-        tokenStandard: TokenStandard.Fungible,
-        amount: 100,
-      },
-    ],
-    startSale: true,
+  const client = await createClient();
+  const { gumballMachine } = await createGumballMachine(client, {
+    settings: { itemCapacity: 5 },
     guards: {},
   });
-  const gumballMachine = gumballMachineSigner.publicKey;
+  const { mint } = await createFungibleMint(client, { amount: 100 });
 
-  // When we mint from the gumball guard.
-  const buyerUmi = await createUmi();
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(buyerUmi, {
-        gumballMachine,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
+  await sendTransaction(client.svm, client.payer, [
+    await getAddTokensInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint,
+      amount: 100,
+      quantity: 1,
+    }),
+    getStartSaleInstruction({ gumballMachine, authority: client.payer }),
+  ]);
 
-  // Then attempt to claim with a different user
-  const promise = transactionBuilder()
-    .add(
-      claimTokens(umi, {
+  const buyer = await generateKeyPairSignerWithSol(client.svm);
+  await sendTransaction(client.svm, buyer, [
+    COMPUTE_UNITS,
+    await draw({ gumballMachine, payer: buyer, buyer }),
+  ]);
+
+  // Claiming as someone other than the drawn buyer fails.
+  await t.throwsAsync(
+    sendTransaction(client.svm, client.payer, [
+      await getClaimTokensInstructionAsync({
+        payer: client.payer,
         gumballMachine,
-        authority: umi.identity.publicKey,
+        authority: client.payer.address,
+        seller: client.payer.address,
+        buyer: client.payer.address,
+        mint,
         index: 0,
-        seller: umi.identity.publicKey,
-        mint: tokenMint.publicKey,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  await t.throwsAsync(promise, { message: /InvalidBuyer/ });
+      }),
+    ]),
+    { message: /InvalidBuyer/ }
+  );
 });

@@ -1,123 +1,88 @@
-import { setComputeUnitLimit } from '@metaplex-foundation/mpl-toolbox';
-import {
-  generateSigner,
-  sol,
-  some,
-  transactionBuilder,
-} from '@metaplex-foundation/umi';
-import { generateSignerWithSol } from '@metaplex-foundation/umi-bundle-tests';
+import { some } from '@solana/kit';
 import test from 'ava';
-import { draw, TokenStandard } from '../../src';
+import { draw } from '../../src';
 import {
-  assertBotTax,
-  assertItemBought,
-  create,
-  createNft,
-  createUmi,
-  tomorrow,
-  yesterday,
+  COMPUTE_UNITS,
+  fetchGumballMachine,
+  generateKeyPairSignerWithSol,
+  sendTransaction,
+  sol,
 } from '../_setup';
+import {
+  createClient,
+  createMachineWithGuards,
+  sendAndGetLogs,
+} from './_guardsASetup';
+
+const DAY = 24 * 60 * 60;
+const yesterday = (): bigint => BigInt(Math.floor(Date.now() / 1000) - DAY);
+const tomorrow = (): bigint => BigInt(Math.floor(Date.now() / 1000) + DAY);
 
 test('it allows minting after the start date', async (t) => {
   // Given a gumball machine with a start date in the past.
-  const umi = await createUmi();
-
-  const { publicKey: gumballMachine } = await create(umi, {
-    items: [
-      {
-        id: (await createNft(umi)).publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-    ],
+  const client = await createClient();
+  const { gumballMachine } = await createMachineWithGuards(client, {
     guards: {
       solPayment: some({ lamports: sol(1) }),
       startDate: some({ date: yesterday() }),
     },
   });
 
-  // When we mint from it.
+  // When a buyer draws from it.
+  const buyer = await generateKeyPairSignerWithSol(client.svm, sol(10));
+  await sendTransaction(client.svm, buyer, [
+    COMPUTE_UNITS,
+    await draw({
+      gumballMachine,
+      payer: buyer,
+      buyer,
+      mintArgs: { solPayment: some(true) },
+    }),
+  ]);
 
-  // When we mint for another owner using an explicit payer.
-  const payer = await generateSignerWithSol(umi, sol(10));
-  const buyer = generateSigner(umi);
-
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(umi, {
-        gumballMachine,
-        buyer,
-        payer,
-        mintArgs: { solPayment: some(true) },
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then the mint was successful.
-  await assertItemBought(t, umi, { gumballMachine, buyer: buyer.publicKey });
+  // Then the draw was successful.
+  const account = fetchGumballMachine(client.svm, gumballMachine);
+  t.is(account.itemsRedeemed, 1n);
+  t.is(account.items.filter((i) => i.buyer === buyer.address).length, 1);
 });
 
 test('it forbids minting before the start date', async (t) => {
   // Given a gumball machine with a start date in the future.
-  const umi = await createUmi();
-
-  const { publicKey: gumballMachine } = await create(umi, {
-    items: [
-      {
-        id: (await createNft(umi)).publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-    ],
-    startSale: true,
-    guards: {
-      startDate: some({ date: tomorrow() }),
-    },
+  const client = await createClient();
+  const { gumballMachine } = await createMachineWithGuards(client, {
+    guards: { startDate: some({ date: tomorrow() }) },
   });
 
-  // When we try to mint from it.
-
-  const promise = transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(umi, {
-        gumballMachine,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then we expect a program error.
-  await t.throwsAsync(promise, { message: /MintNotLive/ });
+  // When we try to draw from it, then we expect a program error.
+  const buyer = await generateKeyPairSignerWithSol(client.svm, sol(10));
+  await t.throwsAsync(
+    sendTransaction(client.svm, buyer, [
+      COMPUTE_UNITS,
+      await draw({ gumballMachine, payer: buyer, buyer }),
+    ]),
+    { message: /MintNotLive/ }
+  );
 });
 
 test('it charges a bot tax when trying to mint before the start date', async (t) => {
   // Given a gumball machine with a bot tax and start date in the future.
-  const umi = await createUmi();
-
-  const { publicKey: gumballMachine } = await create(umi, {
-    items: [
-      {
-        id: (await createNft(umi)).publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-    ],
-    startSale: true,
+  const client = await createClient();
+  const { gumballMachine } = await createMachineWithGuards(client, {
     guards: {
       botTax: some({ lamports: sol(0.01), lastInstruction: true }),
       startDate: some({ date: tomorrow() }),
     },
   });
 
-  // When we mint from it.
+  // When we draw from it.
+  const buyer = await generateKeyPairSignerWithSol(client.svm, sol(10));
+  const logs = await sendAndGetLogs(client.svm, buyer, [
+    COMPUTE_UNITS,
+    await draw({ gumballMachine, payer: buyer, buyer }),
+  ]);
 
-  const { signature } = await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(umi, {
-        gumballMachine,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then we expect a silent bot tax error.
-  await assertBotTax(t, umi, signature, /MintNotLive/);
+  // Then we expect a silent bot tax error and no item redeemed.
+  t.regex(logs, /Botting is taxed/);
+  t.regex(logs, /MintNotLive/);
+  t.is(fetchGumballMachine(client.svm, gumballMachine).itemsRedeemed, 0n);
 });

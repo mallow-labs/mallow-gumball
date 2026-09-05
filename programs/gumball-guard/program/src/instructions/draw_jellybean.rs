@@ -1,7 +1,8 @@
 use std::collections::BTreeMap;
 
-use anchor_lang::{prelude::*, solana_program::sysvar};
-use mallow_jellybean_sdk::accounts::JellybeanMachine;
+use anchor_lang::prelude::*;
+use mallow_jellybean_client::accounts::JellybeanMachine;
+use solana_program::sysvar;
 
 use crate::{
     guards::{EvaluationContext, MachineType},
@@ -13,7 +14,7 @@ use crate::{
 use super::Token;
 
 pub fn draw_jellybean<'c: 'info, 'info>(
-    ctx: Context<'_, '_, 'c, 'info, DrawJellybean<'info>>,
+    ctx: Context<'info, DrawJellybean<'info>>,
     mint_args: Vec<u8>,
     label: Option<String>,
 ) -> Result<()> {
@@ -66,7 +67,7 @@ pub struct DrawJellybean<'info> {
     /// Jellybean Machine program account.
     ///
     /// CHECK: account constraints checked in account trait
-    #[account(address = mallow_jellybean_sdk::ID)]
+    #[account(address = mallow_jellybean_client::ID)]
     jellybean_machine_program: UncheckedAccount<'info>,
 
     /// Jellybean machine account.

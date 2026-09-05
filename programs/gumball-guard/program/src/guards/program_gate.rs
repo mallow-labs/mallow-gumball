@@ -1,7 +1,7 @@
+use anchor_lang::solana_program::system_program;
 use solana_program::{
     pubkey,
     serialize_utils::{read_pubkey, read_u16},
-    system_program,
 };
 
 use super::*;

@@ -22,6 +22,13 @@ pub fn claim_core_asset<'a, 'b>(
     system_program: &AccountInfo<'a>,
     auth_seeds: &[&[u8]],
 ) -> Result<()> {
+    // Reject unsold items: their recorded buyer is the default pubkey, and
+    // transferring the asset there would lose it irrecoverably.
+    require!(
+        to.key() != Pubkey::default(),
+        crate::GumballError::IncorrectOwner
+    );
+
     claim_item(gumball_machine, index)?;
 
     UpdatePluginV1CpiBuilder::new(mpl_core_program)

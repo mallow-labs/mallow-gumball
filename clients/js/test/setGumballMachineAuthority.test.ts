@@ -1,42 +1,29 @@
-import {
-  generateSigner,
-  publicKey,
-  transactionBuilder,
-} from '@metaplex-foundation/umi';
+import { generateKeyPairSigner } from '@solana/kit';
 import test from 'ava';
-import {
-  fetchGumballMachine,
-  GumballMachine,
-  setGumballMachineAuthority,
-} from '../src';
-import { create, createUmi } from './_setup';
+import { getSetGumballMachineAuthorityInstruction } from '../src';
+import { createMachineNoGuard } from './_lifecycleSetup';
+import { createClient, fetchGumballMachine, sendTransaction } from './_setup';
 
-test('it can update the authority of a gumball machine v2', async (t) => {
+test('it can update the authority of a gumball machine', async (t) => {
+  const client = await createClient();
+
   // Given a Gumball Machine using authority A.
-  const umi = await createUmi();
-  const authorityA = generateSigner(umi);
-  const gumballMachine = await create(umi, {
-    authority: authorityA.publicKey,
+  const authorityA = await generateKeyPairSigner();
+  const { gumballMachine } = await createMachineNoGuard(client, {
+    authority: authorityA,
   });
 
   // When we update it to use authority B.
-  const authorityB = generateSigner(umi);
-  await transactionBuilder()
-    .add(
-      setGumballMachineAuthority(umi, {
-        gumballMachine: gumballMachine.publicKey,
-        authority: authorityA,
-        newAuthority: authorityB.publicKey,
-      })
-    )
-    .sendAndConfirm(umi);
+  const authorityB = await generateKeyPairSigner();
+  await sendTransaction(client.svm, client.payer, [
+    getSetGumballMachineAuthorityInstruction({
+      gumballMachine,
+      authority: authorityA,
+      newAuthority: authorityB.address,
+    }),
+  ]);
 
   // Then the Gumball Machine's authority was updated accordingly.
-  const gumballMachineAccount = await fetchGumballMachine(
-    umi,
-    gumballMachine.publicKey
-  );
-  t.like(gumballMachineAccount, <GumballMachine>{
-    authority: publicKey(authorityB.publicKey),
-  });
+  const account = fetchGumballMachine(client.svm, gumballMachine);
+  t.is(account.authority, authorityB.address);
 });

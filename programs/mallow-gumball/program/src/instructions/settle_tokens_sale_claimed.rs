@@ -10,7 +10,9 @@ use crate::{
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, TokenAccount};
 use arrayref::array_ref;
-use utils::RoyaltyInfo;
+use utils::{
+    expects_token_program_slot, is_native_mint, resolve_currency_token_program, RoyaltyInfo,
+};
 
 /// Settles a span of token sales that have already been claimed
 #[event_cpi]
@@ -100,7 +102,7 @@ pub struct SettleTokensSaleClaimedArgs {
 }
 
 pub fn settle_tokens_sale_claimed<'info>(
-    ctx: Context<'_, '_, '_, 'info, SettleTokensSaleClaimed<'info>>,
+    ctx: Context<'info, SettleTokensSaleClaimed<'info>>,
     args: SettleTokensSaleClaimedArgs,
 ) -> Result<()> {
     // Validate start and end indices
@@ -277,7 +279,7 @@ pub fn settle_tokens_sale_claimed<'info>(
         transfer_and_close_if_empty(
             payer,
             authority_pda,
-            authority_pda_token_account,
+            &authority_pda_token_account.to_account_info(),
             seller,
             seller_token_account,
             mint,
@@ -289,6 +291,29 @@ pub fn settle_tokens_sale_claimed<'info>(
             total_unsold_tokens,
         )?;
     }
+
+    // §D5 slot 0. This is the only caller of `transfer_proceeds` that does not go
+    // through `claim_proceeds`, so it has to resolve the payment program itself:
+    // `transfer_proceeds` treats its `token_program` argument as *already*
+    // resolved, and handing it the named classic program would fail §D6 on a
+    // Token-2022 payment mint with no account list able to fix it.
+    //
+    // Royalties are disabled on this path (`RoyaltyInfo::default()` + the
+    // disable flags), so the remaining accounts hold nothing but the slot.
+    let currency_mint = if is_native_mint(gumball_machine.settings.payment_mint) {
+        None
+    } else {
+        payment_mint
+    };
+    let currency_token_program = if expects_token_program_slot(currency_mint) {
+        resolve_currency_token_program(
+            currency_mint,
+            ctx.remaining_accounts.first(),
+            token_program,
+        )?
+    } else {
+        resolve_currency_token_program(currency_mint, None, token_program)?
+    };
 
     transfer_proceeds(
         gumball_machine,
@@ -305,13 +330,13 @@ pub fn settle_tokens_sale_claimed<'info>(
         payment_mint,
         payer,
         associated_token_program,
-        token_program,
+        currency_token_program,
         system_program,
         &auth_seeds,
         &RoyaltyInfo::default(),
         true,
         true,
-        ctx.remaining_accounts,
+        &[],
     )?;
 
     seller_history.item_count -= total_items_settled as u64;

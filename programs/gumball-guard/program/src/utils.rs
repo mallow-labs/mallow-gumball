@@ -1,7 +1,13 @@
 use anchor_lang::prelude::*;
 use mallow_gumball::{GumballMachine, GumballState};
-use mallow_jellybean_sdk::{accounts::JellybeanMachine, types::FeeAccount, types::JellybeanState};
+use mallow_jellybean_client::{
+    accounts::JellybeanMachine, types::FeeAccount, types::JellybeanState,
+};
 use solana_program::{program::invoke_signed, program_memory::sol_memcmp, pubkey::PUBKEY_BYTES};
+use spl_token_2022::{
+    extension::StateWithExtensions,
+    state::{Account as SplToken2022Account, Mint as SplToken2022Mint},
+};
 use utils::{assert_initialized, assert_keys_equal, assert_owned_by, transfer_sol};
 
 use crate::{errors::GumballGuardError, try_from};
@@ -29,6 +35,31 @@ pub struct TokenBurnParams<'a: 'b, 'b> {
     pub token_program: AccountInfo<'a>,
 }
 
+/// `TokenTransferCheckedParams`
+pub struct TokenTransferCheckedParams<'a: 'b, 'b> {
+    /// source
+    /// CHECK: account checked in CPI
+    pub source: AccountInfo<'a>,
+    /// mint of the token being moved — required by `transfer_checked`
+    /// CHECK: account checked in CPI
+    pub mint: AccountInfo<'a>,
+    /// destination
+    /// CHECK: account checked in CPI
+    pub destination: AccountInfo<'a>,
+    /// amount
+    pub amount: u64,
+    /// decimals, read from the unpacked mint (never a stored constant)
+    pub decimals: u8,
+    /// authority
+    /// CHECK: account checked in CPI
+    pub authority: AccountInfo<'a>,
+    /// authority_signer_seeds
+    pub authority_signer_seeds: &'b [&'b [u8]],
+    /// token_program
+    /// CHECK: account checked in CPI
+    pub token_program: AccountInfo<'a>,
+}
+
 ///TokenTransferParams
 pub struct TokenTransferParams<'a: 'b, 'b> {
     /// source
@@ -50,7 +81,9 @@ pub struct TokenTransferParams<'a: 'b, 'b> {
 }
 
 pub fn cmp_pubkeys(a: &Pubkey, b: &Pubkey) -> bool {
-    sol_memcmp(a.as_ref(), b.as_ref(), PUBKEY_BYTES) == 0
+    // `sol_memcmp` became an `unsafe` syscall binding in Solana 3.0. Inputs are
+    // fixed-size (`PUBKEY_BYTES`) pubkey slices, so the read is in bounds.
+    unsafe { sol_memcmp(a.as_ref(), b.as_ref(), PUBKEY_BYTES) == 0 }
 }
 
 pub fn assert_is_token_account(
@@ -63,6 +96,88 @@ pub fn assert_is_token_account(
     assert_keys_equal(token_account.owner, wallet, "Invalid token account owner")?;
     assert_keys_equal(token_account.mint, mint, "Invalid token account mint")?;
     Ok(token_account)
+}
+
+/// Token-2022 counterpart of [`assert_is_token_account`].
+///
+/// Unpacks through `StateWithExtensions` rather than `Account::unpack`, because a
+/// Token-2022 token account carrying extensions is longer than the classic 165
+/// bytes and `Pack::unpack` would reject it on length.
+pub fn assert_is_token_2022_account(
+    ta: &AccountInfo,
+    wallet: Pubkey,
+    mint: Pubkey,
+) -> core::result::Result<SplToken2022Account, ProgramError> {
+    assert_owned_by(ta, &spl_token_2022::ID)?;
+    let data = ta.try_borrow_data()?;
+    let token_account = StateWithExtensions::<SplToken2022Account>::unpack(&data)?.base;
+    assert_keys_equal(token_account.owner, wallet, "Invalid token account owner")?;
+    assert_keys_equal(token_account.mint, mint, "Invalid token account mint")?;
+    Ok(token_account)
+}
+
+/// `assert_is_token_account` for whichever program owns `mint`.
+pub fn assert_is_token_account_for_program(
+    ta: &AccountInfo,
+    wallet: Pubkey,
+    mint: Pubkey,
+    token_program_id: &Pubkey,
+) -> Result<()> {
+    if *token_program_id == spl_token_2022::ID {
+        assert_is_token_2022_account(ta, wallet, mint)?;
+    } else {
+        assert_is_token_account(ta, wallet, mint)?;
+    }
+    Ok(())
+}
+
+/// Reads a mint's decimals through `StateWithExtensions`, so it works for both
+/// token programs and never hardcodes the classic 82-byte mint size.
+pub fn get_mint_decimals(mint_info: &AccountInfo) -> Result<u8> {
+    let data = mint_info.try_borrow_data()?;
+    Ok(StateWithExtensions::<SplToken2022Mint>::unpack(&data)?
+        .base
+        .decimals)
+}
+
+/// `transfer_checked` against either token program (§D4).
+///
+/// Token-2022 deprecates the unchecked `Transfer`, and `transfer_checked` is
+/// what a hook or fee mint requires; the classic program accepts the same
+/// instruction (tag 12) with an identical layout, so this one path serves both.
+pub fn token_transfer_checked(params: TokenTransferCheckedParams<'_, '_>) -> Result<()> {
+    let TokenTransferCheckedParams {
+        source,
+        mint,
+        destination,
+        authority,
+        token_program,
+        amount,
+        decimals,
+        authority_signer_seeds,
+    } = params;
+
+    let mut signer_seeds = vec![];
+    if !authority_signer_seeds.is_empty() {
+        signer_seeds.push(authority_signer_seeds)
+    }
+
+    let result = invoke_signed(
+        &spl_token_2022::instruction::transfer_checked(
+            token_program.key,
+            source.key,
+            mint.key,
+            destination.key,
+            authority.key,
+            &[],
+            amount,
+            decimals,
+        )?,
+        &[source, mint, destination, authority, token_program],
+        &signer_seeds,
+    );
+
+    result.map_err(|_| GumballGuardError::TokenTransferFailed.into())
 }
 
 pub fn assert_derivation(program_id: &Pubkey, account: &AccountInfo, path: &[&[u8]]) -> Result<u8> {
@@ -159,11 +274,21 @@ pub fn get_bps_of(amount: u64, bps: u16) -> Result<u64> {
     Ok(result)
 }
 
-/// Pays creator fees to the creators in the metadata and returns total paid
+/// Pays the machine's fee accounts and returns the total paid.
+///
+/// Three payment shapes:
+/// * `payment_mint == None` — native SOL.
+/// * `payment_mint == Some` and `payment_mint_account == None` — classic SPL,
+///   via the legacy unchecked transfer. `TokenPayment`'s Jellybean layout carries
+///   no mint account, so keeping this path leaves that guard's account list
+///   untouched.
+/// * both `Some` — `transfer_checked` against `token_program`, which is what
+///   Token-2022 requires (§D4). Decimals come from the unpacked mint.
 pub fn pay_fee_accounts<'a>(
     payer: &mut AccountInfo<'a>,
     payer_token_account: Option<&AccountInfo<'a>>,
     payment_mint: Option<Pubkey>,
+    payment_mint_account: Option<&AccountInfo<'a>>,
     fee_accounts: &Vec<FeeAccount>,
     remaining_accounts: &[AccountInfo<'a>],
     token_program: Option<&AccountInfo<'a>>,
@@ -171,10 +296,17 @@ pub fn pay_fee_accounts<'a>(
     amount: u64,
 ) -> Result<u64> {
     let is_native = payment_mint.is_none();
+    // Decimals come from the unpacked mint, never a stored constant.
+    let decimals = match payment_mint_account {
+        Some(mint_info) => Some(get_mint_decimals(mint_info)?),
+        None => None,
+    };
 
     let mut total_paid = 0;
-    let mut index = 0;
-    for fee_account in fee_accounts {
+    // One remaining account is provided per fee account (validated positionally by
+    // the caller), so the cursor must advance for every entry — including zero-bps
+    // ones — to stay aligned with `fee_accounts`.
+    for (index, fee_account) in fee_accounts.iter().enumerate() {
         if fee_account.basis_points == 0 {
             continue;
         }
@@ -186,8 +318,6 @@ pub fn pay_fee_accounts<'a>(
             .ok_or(GumballGuardError::NumericalOverflowError)? as u64;
 
         let current_fee_account = &remaining_accounts[index];
-
-        index += 1;
 
         if is_native {
             assert_keys_equal(
@@ -204,20 +334,39 @@ pub fn pay_fee_accounts<'a>(
                 fee_amount,
             )?;
         } else {
-            assert_is_token_account(
+            let token_program = token_program.ok_or(GumballGuardError::MissingRemainingAccount)?;
+
+            assert_is_token_account_for_program(
                 current_fee_account,
                 fee_account.address,
                 payment_mint.unwrap(),
+                token_program.key,
             )?;
 
-            spl_token_transfer(TokenTransferParams {
-                source: payer_token_account.unwrap().to_account_info(),
-                destination: current_fee_account.to_account_info(),
-                authority: payer.to_account_info(),
-                authority_signer_seeds: &[],
-                amount: fee_amount,
-                token_program: token_program.unwrap().to_account_info(),
-            })?;
+            match (payment_mint_account, decimals) {
+                (Some(mint_info), Some(decimals)) => {
+                    token_transfer_checked(TokenTransferCheckedParams {
+                        source: payer_token_account.unwrap().to_account_info(),
+                        mint: mint_info.to_account_info(),
+                        destination: current_fee_account.to_account_info(),
+                        authority: payer.to_account_info(),
+                        authority_signer_seeds: &[],
+                        amount: fee_amount,
+                        decimals,
+                        token_program: token_program.to_account_info(),
+                    })?;
+                }
+                _ => {
+                    spl_token_transfer(TokenTransferParams {
+                        source: payer_token_account.unwrap().to_account_info(),
+                        destination: current_fee_account.to_account_info(),
+                        authority: payer.to_account_info(),
+                        authority_signer_seeds: &[],
+                        amount: fee_amount,
+                        token_program: token_program.to_account_info(),
+                    })?;
+                }
+            }
         }
 
         total_paid += fee_amount;

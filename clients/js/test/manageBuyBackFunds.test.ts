@@ -1,216 +1,173 @@
-/* eslint-disable no-await-in-loop */
-import { transactionBuilder } from '@metaplex-foundation/umi';
-import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 import test from 'ava';
 import {
-  fetchGumballMachine,
   getDefaultBuyBackConfig,
-  GumballMachine,
-  manageBuyBackFunds,
+  getManageBuyBackFundsInstructionAsync,
 } from '../src';
-import { create, createUmi } from './_setup';
+import { createMachineNoGuard } from './_lifecycleSetup';
+import {
+  createClient,
+  fetchGumballMachine,
+  sendTransaction,
+  sol,
+} from './_setup';
+
+const enabledBuyBackConfig = () => ({
+  ...getDefaultBuyBackConfig(),
+  enabled: true,
+});
 
 test('it can deposit buy back funds', async (t) => {
-  // Given an existing gumball machine with buyback enabled
-  const umi = await createUmi();
+  const client = await createClient();
 
-  const gumballMachine = await create(umi, {
-    buyBackConfig: {
-      ...getDefaultBuyBackConfig(),
-      enabled: true,
-    },
+  // Given an existing gumball machine with buy back enabled.
+  const { gumballMachine } = await createMachineNoGuard(client, {
+    buyBackConfig: enabledBuyBackConfig(),
   });
 
-  // When we deposit funds
-  const depositAmount = 1 * LAMPORTS_PER_SOL;
-  await transactionBuilder()
-    .add(
-      manageBuyBackFunds(umi, {
-        gumballMachine: gumballMachine.publicKey,
-        amount: depositAmount,
-        isWithdraw: false,
-      })
-    )
-    .sendAndConfirm(umi);
+  // When we deposit funds.
+  const depositAmount = sol(1);
+  await sendTransaction(client.svm, client.payer, [
+    await getManageBuyBackFundsInstructionAsync({
+      gumballMachine,
+      authority: client.payer,
+      amount: depositAmount,
+      isWithdraw: false,
+    }),
+  ]);
 
-  // Then we expect the gumball machine account to have the right data.
-  const gumballMachineAccount = await fetchGumballMachine(
-    umi,
-    gumballMachine.publicKey
-  );
-  t.like(gumballMachineAccount, <GumballMachine>{
-    buyBackFundsAvailable: BigInt(depositAmount),
-  });
+  // Then the funds are available.
+  const account = fetchGumballMachine(client.svm, gumballMachine);
+  t.is(account.buyBackFundsAvailable, depositAmount);
 });
 
 test('it can withdraw all buy back funds', async (t) => {
-  // Given an existing gumball machine with buyback enabled and funds
-  const umi = await createUmi();
+  const client = await createClient();
 
-  const gumballMachine = await create(umi, {
-    buyBackConfig: {
-      ...getDefaultBuyBackConfig(),
-      enabled: true,
-    },
+  const { gumballMachine } = await createMachineNoGuard(client, {
+    buyBackConfig: enabledBuyBackConfig(),
   });
 
-  // Deposit funds first
-  const depositAmount = 1 * LAMPORTS_PER_SOL;
-  await transactionBuilder()
-    .add(
-      manageBuyBackFunds(umi, {
-        gumballMachine: gumballMachine.publicKey,
-        amount: depositAmount,
-        isWithdraw: false,
-      })
-    )
-    .sendAndConfirm(umi);
+  // Deposit funds first.
+  const depositAmount = sol(1);
+  await sendTransaction(client.svm, client.payer, [
+    await getManageBuyBackFundsInstructionAsync({
+      gumballMachine,
+      authority: client.payer,
+      amount: depositAmount,
+      isWithdraw: false,
+    }),
+  ]);
 
-  // When we withdraw all funds
-  await transactionBuilder()
-    .add(
-      manageBuyBackFunds(umi, {
-        gumballMachine: gumballMachine.publicKey,
-        amount: depositAmount,
-        isWithdraw: true,
-      })
-    )
-    .sendAndConfirm(umi);
+  // When we withdraw all funds.
+  await sendTransaction(client.svm, client.payer, [
+    await getManageBuyBackFundsInstructionAsync({
+      gumballMachine,
+      authority: client.payer,
+      amount: depositAmount,
+      isWithdraw: true,
+    }),
+  ]);
 
-  // Then we expect the gumball machine account to have the right data.
-  const gumballMachineAccount = await fetchGumballMachine(
-    umi,
-    gumballMachine.publicKey
-  );
-  t.like(gumballMachineAccount, <GumballMachine>{
-    buyBackFundsAvailable: 0n,
-  });
+  // Then no funds remain.
+  const account = fetchGumballMachine(client.svm, gumballMachine);
+  t.is(account.buyBackFundsAvailable, 0n);
 });
 
 test('it can withdraw partial buy back funds', async (t) => {
-  // Given an existing gumball machine with buyback enabled and funds
-  const umi = await createUmi();
+  const client = await createClient();
 
-  const gumballMachine = await create(umi, {
-    buyBackConfig: {
-      ...getDefaultBuyBackConfig(),
-      enabled: true,
-    },
+  const { gumballMachine } = await createMachineNoGuard(client, {
+    buyBackConfig: enabledBuyBackConfig(),
   });
 
-  // Deposit funds first
-  const depositAmount = 2 * LAMPORTS_PER_SOL;
-  await transactionBuilder()
-    .add(
-      manageBuyBackFunds(umi, {
-        gumballMachine: gumballMachine.publicKey,
-        amount: depositAmount,
-        isWithdraw: false,
-      })
-    )
-    .sendAndConfirm(umi);
+  // Deposit funds first.
+  const depositAmount = sol(2);
+  await sendTransaction(client.svm, client.payer, [
+    await getManageBuyBackFundsInstructionAsync({
+      gumballMachine,
+      authority: client.payer,
+      amount: depositAmount,
+      isWithdraw: false,
+    }),
+  ]);
 
-  // When we withdraw partial funds
-  const withdrawAmount = 1 * LAMPORTS_PER_SOL;
-  await transactionBuilder()
-    .add(
-      manageBuyBackFunds(umi, {
-        gumballMachine: gumballMachine.publicKey,
-        amount: withdrawAmount,
-        isWithdraw: true,
-      })
-    )
-    .sendAndConfirm(umi);
+  // When we withdraw partial funds.
+  const withdrawAmount = sol(1);
+  await sendTransaction(client.svm, client.payer, [
+    await getManageBuyBackFundsInstructionAsync({
+      gumballMachine,
+      authority: client.payer,
+      amount: withdrawAmount,
+      isWithdraw: true,
+    }),
+  ]);
 
-  // Then we expect the gumball machine account to have the right data.
-  let gumballMachineAccount = await fetchGumballMachine(
-    umi,
-    gumballMachine.publicKey
-  );
-  t.like(gumballMachineAccount, <GumballMachine>{
-    buyBackFundsAvailable: BigInt(depositAmount - withdrawAmount),
-  });
+  let account = fetchGumballMachine(client.svm, gumballMachine);
+  t.is(account.buyBackFundsAvailable, depositAmount - withdrawAmount);
 
-  // When we withdraw partial funds
-  await transactionBuilder()
-    .add(
-      manageBuyBackFunds(umi, {
-        gumballMachine: gumballMachine.publicKey,
-        amount: withdrawAmount,
-        isWithdraw: true,
-      })
-    )
-    .sendAndConfirm(umi);
+  // When we withdraw the rest.
+  await sendTransaction(client.svm, client.payer, [
+    await getManageBuyBackFundsInstructionAsync({
+      gumballMachine,
+      authority: client.payer,
+      amount: withdrawAmount,
+      isWithdraw: true,
+    }),
+  ]);
 
-  gumballMachineAccount = await fetchGumballMachine(
-    umi,
-    gumballMachine.publicKey
-  );
-  t.like(gumballMachineAccount, <GumballMachine>{
-    buyBackFundsAvailable: 0n,
-  });
+  account = fetchGumballMachine(client.svm, gumballMachine);
+  t.is(account.buyBackFundsAvailable, 0n);
 });
 
-test('it cannot withdraw more than the available buy back funds available', async (t) => {
-  // Given an existing gumball machine with buyback enabled and funds
-  const umi = await createUmi();
+test('it cannot withdraw more than the available buy back funds', async (t) => {
+  const client = await createClient();
 
-  const gumballMachine = await create(umi, {
-    buyBackConfig: {
-      ...getDefaultBuyBackConfig(),
-      enabled: true,
-    },
+  const { gumballMachine } = await createMachineNoGuard(client, {
+    buyBackConfig: enabledBuyBackConfig(),
   });
 
-  // Deposit funds first
-  const depositAmount = 1 * LAMPORTS_PER_SOL;
-  await transactionBuilder()
-    .add(
-      manageBuyBackFunds(umi, {
-        gumballMachine: gumballMachine.publicKey,
-        amount: depositAmount,
-        isWithdraw: false,
-      })
-    )
-    .sendAndConfirm(umi);
+  // Deposit funds first.
+  await sendTransaction(client.svm, client.payer, [
+    await getManageBuyBackFundsInstructionAsync({
+      gumballMachine,
+      authority: client.payer,
+      amount: sol(1),
+      isWithdraw: false,
+    }),
+  ]);
 
-  // When we try to withdraw more funds than available
-  const promise = transactionBuilder()
-    .add(
-      manageBuyBackFunds(umi, {
-        gumballMachine: gumballMachine.publicKey,
-        amount: 2 * LAMPORTS_PER_SOL, // More than what we deposited
+  // When we try to withdraw more funds than available.
+  await t.throwsAsync(
+    sendTransaction(client.svm, client.payer, [
+      await getManageBuyBackFundsInstructionAsync({
+        gumballMachine,
+        authority: client.payer,
+        amount: sol(2),
         isWithdraw: true,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then the transaction fails
-  await t.throwsAsync(promise, { message: /InsufficientFunds/ });
+      }),
+    ]),
+    { message: /InsufficientFunds/ }
+  );
 });
 
 test('it cannot deposit buy back funds when buy back setting is disabled', async (t) => {
-  // Given an existing gumball machine with buyback disabled
-  const umi = await createUmi();
+  const client = await createClient();
 
-  const gumballMachine = await create(umi, {
-    buyBackConfig: {
-      ...getDefaultBuyBackConfig(),
-      enabled: false, // Explicitly disabled
-    },
+  // Given an existing gumball machine with buy back explicitly disabled.
+  const { gumballMachine } = await createMachineNoGuard(client, {
+    buyBackConfig: { ...getDefaultBuyBackConfig(), enabled: false },
   });
 
-  // When we try to deposit funds
-  const promise = transactionBuilder()
-    .add(
-      manageBuyBackFunds(umi, {
-        gumballMachine: gumballMachine.publicKey,
-        amount: 1 * LAMPORTS_PER_SOL,
+  // When we try to deposit funds.
+  await t.throwsAsync(
+    sendTransaction(client.svm, client.payer, [
+      await getManageBuyBackFundsInstructionAsync({
+        gumballMachine,
+        authority: client.payer,
+        amount: sol(1),
         isWithdraw: false,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then the transaction fails
-  await t.throwsAsync(promise, { message: /BuyBackNotEnabled/ });
+      }),
+    ]),
+    { message: /BuyBackNotEnabled/ }
+  );
 });

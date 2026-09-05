@@ -1,7 +1,8 @@
 use super::*;
 use crate::{instructions::Route, state::GuardType, utils::cmp_pubkeys};
+use anchor_lang::solana_program::system_instruction;
 use anchor_lang::system_program;
-use solana_program::{program::invoke_signed, system_instruction};
+use solana_program::program::invoke_signed;
 use utils::{assert_keys_equal, assert_owned_by};
 
 /// Guard that uses a merkle tree to specify the addresses allowed to mint.
@@ -26,10 +27,12 @@ impl AllowList {
         for proof_element in proof.iter() {
             if computed_hash <= *proof_element {
                 // hash (current computed hash + current element of the proof)
-                computed_hash = solana_program::keccak::hashv(&[&computed_hash, proof_element]).0
+                computed_hash =
+                    solana_program::keccak::hashv(&[&computed_hash, proof_element]).to_bytes()
             } else {
                 // hash (current element of the proof + current computed hash)
-                computed_hash = solana_program::keccak::hashv(&[proof_element, &computed_hash]).0;
+                computed_hash =
+                    solana_program::keccak::hashv(&[proof_element, &computed_hash]).to_bytes();
             }
         }
         // check if the computed hash (root) is equal to the provided root
@@ -55,7 +58,7 @@ impl Guard for AllowList {
     ///   1. `[]` System program account.
     ///   2. `[optional]` Minter account.
     fn instruction<'c: 'info, 'info>(
-        ctx: &Context<'_, '_, 'c, 'info, Route<'info>>,
+        ctx: &Context<'info, Route<'info>>,
         route_context: RouteContext<'info>,
         data: Vec<u8>,
     ) -> Result<()> {
@@ -112,7 +115,7 @@ impl Guard for AllowList {
             return err!(GumballGuardError::AllowedListNotEnabled);
         };
 
-        if !Self::verify(&merkle_proof[..], merkle_root, &leaf.0) {
+        if !Self::verify(&merkle_proof[..], merkle_root, &leaf.to_bytes()) {
             return err!(GumballGuardError::AddressNotFoundInAllowedList);
         }
 
@@ -166,7 +169,7 @@ impl Guard for AllowList {
         let mut proof = AllowListProof::try_from_slice(&account_data)?;
         proof.timestamp = Clock::get()?.unix_timestamp;
         // saves the changes back to the pda
-        let data = &mut proof.try_to_vec().unwrap();
+        let data = &mut borsh::to_vec(&proof).unwrap();
         account_data[0..data.len()].copy_from_slice(data);
 
         Ok(())
@@ -211,7 +214,7 @@ impl Condition for AllowList {
 }
 
 /// PDA to track whether an address has been validated or not.
-#[derive(AnchorDeserialize, AnchorSerialize)]
+#[derive(AnchorDeserialize, AnchorSerialize, Clone)]
 pub struct AllowListProof {
     pub timestamp: i64,
 }

@@ -1,41 +1,49 @@
-import { createAccount } from '@metaplex-foundation/mpl-toolbox';
+import { getCreateAccountInstruction } from '@solana-program/system';
 import {
-  Context,
-  Signer,
-  transactionBuilder,
-  TransactionBuilder,
-} from '@metaplex-foundation/umi';
-import { initializeGumballMachine } from './generated';
+  type GetMinimumBalanceForRentExemptionApi,
+  type Instruction,
+  type Rpc,
+  type TransactionSigner,
+} from '@solana/kit';
+import {
+  getInitializeGumballMachineInstructionAsync,
+  MALLOW_GUMBALL_PROGRAM_ADDRESS,
+  type InitializeGumballMachineAsyncInput,
+} from './generated';
 import { getGumballMachineSizeForItemCount } from './hooked';
 
 export type CreateGumballMachineInput = Omit<
-  Parameters<typeof initializeGumballMachine>[1],
+  InitializeGumballMachineAsyncInput,
   'gumballMachine'
 > & {
-  gumballMachine: Signer;
+  gumballMachine: TransactionSigner;
 };
 
-export const createGumballMachine = async (
-  context: Parameters<typeof initializeGumballMachine>[0] &
-    Pick<Context, 'rpc'>,
-  input: CreateGumballMachineInput
-): Promise<TransactionBuilder> => {
-  const space = getGumballMachineSizeForItemCount(input.settings.itemCapacity);
-  const lamports = await context.rpc.getRent(space);
-
-  return transactionBuilder()
-    .add(
-      createAccount(context, {
-        newAccount: input.gumballMachine,
-        lamports,
-        space,
-        programId: context.programs.get('mallowGumball').publicKey,
-      })
-    )
-    .add(
-      initializeGumballMachine(context, {
-        ...input,
-        gumballMachine: input.gumballMachine.publicKey,
-      })
-    );
+/**
+ * Builds the two instructions needed to create a gumball machine: the
+ * `createAccount` for the correctly-sized (variable) machine account, plus the
+ * `initializeGumballMachine` instruction. Needs an RPC to compute rent.
+ */
+export const getCreateGumballMachineInstructionsAsync = async (
+  input: CreateGumballMachineInput,
+  config: { rpc: Rpc<GetMinimumBalanceForRentExemptionApi> }
+): Promise<Instruction[]> => {
+  const space = BigInt(
+    getGumballMachineSizeForItemCount(input.settings.itemCapacity)
+  );
+  const lamports = await config.rpc
+    .getMinimumBalanceForRentExemption(space)
+    .send();
+  const createAccount = getCreateAccountInstruction({
+    payer: input.payer,
+    newAccount: input.gumballMachine,
+    lamports,
+    space,
+    programAddress: MALLOW_GUMBALL_PROGRAM_ADDRESS,
+  });
+  const initialize = await getInitializeGumballMachineInstructionAsync({
+    ...input,
+    gumballMachine: input.gumballMachine.address,
+  });
+  return [createAccount, initialize];
 };

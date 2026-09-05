@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
-use solana_program::{program::invoke_signed, system_instruction};
+use anchor_lang::solana_program::system_instruction;
+use solana_program::program::invoke_signed;
 use utils::{assert_keys_equal, assert_owned_by};
 
 use super::*;
@@ -153,7 +154,7 @@ impl Condition for MintLimit {
         let mut mint_counter = MintCounter::try_from_slice(&account_data)?;
         mint_counter.count += 1;
         // saves the changes back to the pda
-        let data = &mut mint_counter.try_to_vec().unwrap();
+        let data = &mut borsh::to_vec(&mint_counter).unwrap();
         account_data[0..data.len()].copy_from_slice(data);
 
         Ok(())
@@ -161,7 +162,7 @@ impl Condition for MintLimit {
 }
 
 /// PDA to track the number of mints for an individual address.
-#[derive(AnchorDeserialize, AnchorSerialize)]
+#[derive(AnchorDeserialize, AnchorSerialize, Clone)]
 pub struct MintCounter {
     pub count: u16,
 }

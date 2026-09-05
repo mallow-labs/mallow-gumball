@@ -1,50 +1,57 @@
-import { Context, PublicKey, Signer } from '@metaplex-foundation/umi';
-import { Serializer } from '@metaplex-foundation/umi/serializers';
-import { MachineType } from 'generated';
+import { type Address, type Codec, type TransactionSigner } from '@solana/kit';
+import { MachineType } from '../generated';
 
+/**
+ * A guard manifest describes, for a single guard, how to (de)serialize its
+ * settings and how to parse its extra data + remaining accounts for the `draw`
+ * and `route` instructions.
+ *
+ * Ported from the umi client to Solana Kit idioms: umi `Serializer` becomes a
+ * kit `Codec`, and the mint/route parsers are async because kit PDA derivation
+ * is async.
+ */
 export type GuardManifest<
-  DA extends object = {},
+  DA extends object = object,
   D extends DA = DA,
-  MA extends object = {},
-  RA extends object = {},
+  MA extends object = object,
+  RA extends object = object,
 > = {
   name: string;
-  serializer: () => Serializer<DA, D>;
+  codec: () => Codec<DA, D>;
   mintParser: MintParser<MA>;
   routeParser: RouteParser<RA>;
 };
 
 export type MintParser<MA extends object> = (
-  context: Pick<Context, 'eddsa' | 'programs'>,
   mintContext: MintContext,
   args: MA
-) => GuardInstructionExtras;
+) => Promise<GuardInstructionExtras>;
 
 export type RouteParser<RA extends object> = (
-  context: Pick<Context, 'eddsa' | 'programs'>,
   routeContext: RouteContext,
   args: RA
-) => GuardInstructionExtras;
+) => Promise<GuardInstructionExtras>;
 
-export const noopParser: MintParser<{}> & RouteParser<{}> = () => ({
+export const noopParser: MintParser<object> &
+  RouteParser<object> = async () => ({
   data: new Uint8Array(),
   remainingAccounts: [],
 });
 
 export type MintContext = {
   /** The wallet to use for validation and non-SOL fees, this is typically the payer. */
-  buyer: Signer;
+  buyer: TransactionSigner;
   /** The wallet to use for SOL fees. */
-  payer: Signer;
+  payer: TransactionSigner;
   /** The address of the Gumball/Jellybean Machine we are using. */
-  machine: PublicKey;
+  machine: Address;
   /** The address of the Gumball Guard we are using. */
-  gumballGuard: PublicKey;
+  gumballGuard: Address;
   /** The type of machine we are using. */
   machineType: MachineType;
 };
 
-export type RouteContext = Omit<MintContext, 'buyer' | 'mint'>;
+export type RouteContext = Omit<MintContext, 'buyer'>;
 
 /** Additional data and accounts to pass to the mint or route instruction. */
 export type GuardInstructionExtras = {
@@ -55,10 +62,10 @@ export type GuardInstructionExtras = {
 };
 
 /**
- * A remaining account to push to the mint or route instruction.
- * When `isSigner` is true, the `address` attribute must be `Signer`
- * and it will be pushed to the `signers` array of the transaction.
+ * A remaining account to push to the mint or route instruction. When `signer`
+ * is provided, the account is a signer and the `TransactionSigner` is carried
+ * so the transaction can collect it.
  */
 export type GuardRemainingAccount =
-  | { publicKey: PublicKey; isWritable: boolean }
-  | { signer: Signer; isWritable: boolean };
+  | { address: Address; isWritable: boolean }
+  | { signer: TransactionSigner; isWritable: boolean };

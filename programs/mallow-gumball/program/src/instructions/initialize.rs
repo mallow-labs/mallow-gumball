@@ -8,16 +8,21 @@ use mpl_token_metadata::MAX_URI_LENGTH;
 
 /// Initializes a new gumball machine.
 #[derive(Accounts)]
-#[instruction(settings: GumballSettings)]
+#[instruction(args: InitializeArgs)]
 pub struct Initialize<'info> {
     /// Gumball Machine account. The account space must be allocated to allow accounts larger
     /// than 10kb.
     ///
     /// CHECK: account constraints checked in account trait
+    // `zero` in Anchor 1.x requires the account type to implement `Discriminator`,
+    // which `UncheckedAccount` does not. This is an oversized (>10kb), manually
+    // serialized account, so we keep it unchecked and reproduce `zero`'s re-init
+    // guard explicitly: the 8-byte discriminator region must be all zeros (a fresh,
+    // never-initialized account).
     #[account(
-        zero,
-        rent_exempt = skip,
-        constraint = gumball_machine.to_account_info().owner == __program_id && gumball_machine.to_account_info().data_len() >= GumballMachine::get_size(settings.item_capacity, GumballMachine::CURRENT_VERSION)
+        mut,
+        constraint = gumball_machine.to_account_info().owner == __program_id && gumball_machine.to_account_info().data_len() >= GumballMachine::get_size(args.settings.item_capacity, GumballMachine::CURRENT_VERSION),
+        constraint = gumball_machine.to_account_info().data.borrow()[..8] == [0u8; 8] @ GumballError::AccountAlreadyInitialized
     )]
     gumball_machine: UncheckedAccount<'info>,
 
@@ -89,8 +94,8 @@ pub fn initialize(ctx: Context<Initialize>, args: InitializeArgs) -> Result<()> 
         settings,
     };
 
-    let mut struct_data = GumballMachine::discriminator().try_to_vec().unwrap();
-    struct_data.append(&mut gumball_machine.try_to_vec().unwrap());
+    let mut struct_data = GumballMachine::DISCRIMINATOR.to_vec();
+    struct_data.append(&mut borsh::to_vec(&gumball_machine).unwrap());
 
     let mut account_data = gumball_machine_account.data.borrow_mut();
     account_data[0..struct_data.len()].copy_from_slice(&struct_data);
@@ -111,7 +116,7 @@ pub fn initialize(ctx: Context<Initialize>, args: InitializeArgs) -> Result<()> 
         BuyBackConfig::default()
     };
     account_data[buy_back_config_position..buy_back_config_position + BuyBackConfig::INIT_SPACE]
-        .copy_from_slice(&final_buy_back_config.try_to_vec().unwrap());
+        .copy_from_slice(&borsh::to_vec(&final_buy_back_config).unwrap());
 
     let buy_back_funds_available_position =
         gumball_machine.get_buy_back_funds_available_position()?;

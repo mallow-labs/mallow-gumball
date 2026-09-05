@@ -1,84 +1,79 @@
+import { none, type Instruction, type OptionOrNullable } from '@solana/kit';
 import {
-  none,
-  Option,
-  OptionOrNullable,
-  publicKey,
-  TransactionBuilder,
-  transactionBuilder,
-} from '@metaplex-foundation/umi';
-import { DefaultGuardSetRouteArgs } from './defaultGuards';
+  DefaultGuardSetRouteArgs,
+  defaultGumballGuardNames,
+} from './defaultGuards';
 import {
-  route as baseRoute,
-  RouteInstructionAccounts,
+  getRouteInstructionAsync,
+  type RouteAsyncInput,
 } from './generated/instructions/route';
+import { findGumballGuardPda } from './generated/pdas';
 import { MachineType } from './generated/types';
 import {
   GuardRepository,
   GuardSetRouteArgs,
-  GumballGuardProgram,
   parseGuardRemainingAccounts,
   parseRouteArgs,
   RouteContext,
 } from './guards';
-import { findGumballGuardPda } from './hooked';
+import { getDefaultGuardRepository } from './plugin';
 
-export { RouteInstructionAccounts };
-
-export type RouteInstructionData<
+export type RouteBuilderInput<
   G extends keyof RA & string,
-  RA extends GuardSetRouteArgs,
-> = {
-  discriminator: Array<number>;
-  guard: G;
-  routeArgs: RA[G];
-  group: Option<string>;
-};
-
-export type RouteInstructionDataArgs<
-  G extends keyof RA & string,
-  RA extends GuardSetRouteArgs,
-> = {
+  RA extends GuardSetRouteArgs = DefaultGuardSetRouteArgs,
+> = Omit<RouteAsyncInput, 'guard' | 'data' | 'group'> & {
   guard: G;
   routeArgs: RA[G];
   group?: OptionOrNullable<string>;
+  machineType?: MachineType;
+  /** Override the guard repository (defaults to the built-in default guards). */
+  guards?: GuardRepository;
 };
 
-export function route<
+/**
+ * High-level `route` builder: runs the selected guard's route parser to produce
+ * the instruction data + remaining accounts.
+ */
+export async function route<
   G extends keyof RA & string,
   RA extends GuardSetRouteArgs = DefaultGuardSetRouteArgs,
->(
-  context: Parameters<typeof baseRoute>[0] & {
-    guards: GuardRepository;
-  },
-  input: RouteInstructionAccounts &
-    RouteInstructionDataArgs<
-      G,
-      RA extends undefined ? DefaultGuardSetRouteArgs : RA
-    > & { machineType?: MachineType }
-): TransactionBuilder {
-  const { routeArgs = {}, group = none(), ...rest } = input;
-  const program = context.programs.get<GumballGuardProgram>('gumballGuard');
-  const machine = publicKey(input.machine, false);
-  const machineType = input.machineType ?? MachineType.Gumball;
+>(input: RouteBuilderInput<G, RA>): Promise<Instruction> {
+  const {
+    routeArgs,
+    guard,
+    group = none(),
+    machineType = MachineType.Gumball,
+    guards = getDefaultGuardRepository(),
+    ...rest
+  } = input;
+  const manifests = guards.forProgram(defaultGumballGuardNames);
+  const gumballGuard =
+    input.gumballGuard ??
+    (await findGumballGuardPda({ base: input.machine }))[0];
   const routeContext: RouteContext = {
-    payer: input.payer ?? context.payer,
-    machine,
-    gumballGuard: publicKey(
-      input.gumballGuard ?? findGumballGuardPda(context, { base: machine }),
-      false
-    ),
+    payer: input.payer,
+    machine: input.machine,
+    gumballGuard,
     machineType,
   };
-  const { data, remainingAccounts, guardIndex } = parseRouteArgs<
-    G,
-    RA extends undefined ? DefaultGuardSetRouteArgs : RA
-  >(context, program, routeContext, input.guard, input.routeArgs);
-  const ix = baseRoute(context, { ...rest, guard: guardIndex, data, group })
-    .items[0];
-
-  const [keys, signers] = parseGuardRemainingAccounts(remainingAccounts);
-  ix.instruction.keys.push(...keys);
-  ix.signers.push(...signers);
-
-  return transactionBuilder([ix]);
+  const { data, remainingAccounts, guardIndex } = await parseRouteArgs<G, RA>(
+    manifests,
+    routeContext,
+    guard,
+    routeArgs
+  );
+  const instruction = await getRouteInstructionAsync({
+    ...rest,
+    gumballGuard,
+    guard: guardIndex,
+    data,
+    group,
+  });
+  return {
+    ...instruction,
+    accounts: [
+      ...(instruction.accounts ?? []),
+      ...parseGuardRemainingAccounts(remainingAccounts),
+    ],
+  };
 }

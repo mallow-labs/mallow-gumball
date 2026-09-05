@@ -4,11 +4,10 @@ use crate::{
     try_from,
 };
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::system_instruction;
 use mallow_gumball::{GumballMachine, GumballState};
-use mallow_jellybean_sdk::{accounts::JellybeanMachine, types::JellybeanState};
-use solana_program::{
-    entrypoint::MAX_PERMITTED_DATA_INCREASE, program::invoke, system_instruction,
-};
+use mallow_jellybean_client::{accounts::JellybeanMachine, types::JellybeanState};
+use solana_program::{entrypoint::MAX_PERMITTED_DATA_INCREASE, program::invoke};
 use utils::assert_keys_equal;
 
 pub fn update(ctx: Context<Update>, data: Vec<u8>) -> Result<()> {
@@ -98,7 +97,7 @@ pub fn update(ctx: Context<Update>, data: Vec<u8>) -> Result<()> {
         msg!("Account realloc by {} bytes", difference);
         // changes the account size to fit the size required by the guards
         // this means that the size can grow or shrink
-        account_info.realloc(data.account_size(), false)?;
+        account_info.resize(data.account_size())?;
     }
 
     // save the guards information to the account data and stores

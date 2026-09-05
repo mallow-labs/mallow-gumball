@@ -1,6 +1,6 @@
-import { Signer } from '@metaplex-foundation/umi';
+import { type TransactionSigner } from '@solana/kit';
 import {
-  getThirdPartySignerSerializer,
+  getThirdPartySignerCodec,
   ThirdPartySigner,
   ThirdPartySignerArgs,
 } from '../generated';
@@ -20,8 +20,8 @@ export const thirdPartySignerGuardManifest: GuardManifest<
   ThirdPartySignerMintArgs
 > = {
   name: 'thirdPartySigner',
-  serializer: getThirdPartySignerSerializer,
-  mintParser: (context, mintContext, args) => ({
+  codec: getThirdPartySignerCodec,
+  mintParser: async (mintContext, args) => ({
     data: new Uint8Array(),
     remainingAccounts: [{ signer: args.signer, isWritable: true }],
   }),
@@ -29,5 +29,5 @@ export const thirdPartySignerGuardManifest: GuardManifest<
 };
 
 export type ThirdPartySignerMintArgs = {
-  signer: Signer;
+  signer: TransactionSigner;
 };

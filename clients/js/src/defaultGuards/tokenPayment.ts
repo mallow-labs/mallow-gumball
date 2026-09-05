@@ -1,13 +1,15 @@
-import { findAssociatedTokenPda } from '@metaplex-foundation/mpl-toolbox';
-import { PublicKey } from '@metaplex-foundation/umi';
+import { type Address } from '@solana/kit';
 import {
-  getTokenPaymentSerializer,
+  getTokenPaymentCodec,
   MachineType,
   TokenPayment,
   TokenPaymentArgs,
 } from '../generated';
 import { GuardManifest, noopParser } from '../guards';
-import { findGumballMachineAuthorityPda } from '../hooked';
+import {
+  findAssociatedTokenPda,
+  findGumballMachineAuthorityPda,
+} from '../hooked';
 
 /**
  * The tokenPayment guard allows minting by charging the
@@ -24,19 +26,21 @@ export const tokenPaymentGuardManifest: GuardManifest<
   TokenPaymentMintArgs
 > = {
   name: 'tokenPayment',
-  serializer: getTokenPaymentSerializer,
-  mintParser: (context, mintContext, args) => {
-    const [sourceAta] = findAssociatedTokenPda(context, {
+  codec: getTokenPaymentCodec,
+  mintParser: async (mintContext, args) => {
+    const [sourceAta] = await findAssociatedTokenPda({
       mint: args.mint,
-      owner: mintContext.payer.publicKey,
+      owner: mintContext.payer.address,
     });
 
-    const feeAccounts: PublicKey[] = [];
+    const feeAccounts: Address[] = [];
     if (mintContext.machineType === MachineType.Gumball) {
       feeAccounts.push(
-        findGumballMachineAuthorityPda(context, {
-          gumballMachine: mintContext.machine,
-        })[0]
+        (
+          await findGumballMachineAuthorityPda({
+            gumballMachine: mintContext.machine,
+          })
+        )[0]
       );
     }
 
@@ -44,23 +48,26 @@ export const tokenPaymentGuardManifest: GuardManifest<
       feeAccounts.push(...args.feeAccounts);
     }
 
-    return {
-      data: new Uint8Array(),
-      remainingAccounts: [
-        { publicKey: sourceAta, isWritable: true },
-        ...feeAccounts.map((feeAccount) => ({
-          publicKey: findAssociatedTokenPda(context, {
+    const feeAtas = await Promise.all(
+      feeAccounts.map(async (feeAccount) => ({
+        address: (
+          await findAssociatedTokenPda({
             mint: args.mint,
             owner: feeAccount,
-          })[0],
-          isWritable: true,
-        })),
-      ],
+          })
+        )[0],
+        isWritable: true,
+      }))
+    );
+
+    return {
+      data: new Uint8Array(),
+      remainingAccounts: [{ address: sourceAta, isWritable: true }, ...feeAtas],
     };
   },
   routeParser: noopParser,
 };
 
 export type TokenPaymentMintArgs = Omit<TokenPaymentArgs, 'amount'> & {
-  feeAccounts?: PublicKey[];
+  feeAccounts?: Address[];
 };

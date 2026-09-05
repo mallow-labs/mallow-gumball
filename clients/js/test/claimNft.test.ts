@@ -1,234 +1,195 @@
-/* eslint-disable no-await-in-loop */
 import {
+  AccountState,
   fetchToken,
   findAssociatedTokenPda,
-  setComputeUnitLimit,
-  TokenState,
-} from '@metaplex-foundation/mpl-toolbox';
-import { none, transactionBuilder } from '@metaplex-foundation/umi';
+  TOKEN_PROGRAM_ADDRESS,
+} from '@solana-program/token';
+import type { Address } from '@solana/kit';
 import test from 'ava';
 import {
-  claimNft,
   draw,
-  fetchGumballMachine,
-  GumballMachine,
-  MPL_TOKEN_AUTH_RULES_PROGRAM_ID,
+  getAddNftInstructionAsync,
+  getClaimNftInstructionAsync,
+  getStartSaleInstruction,
   TokenStandard,
 } from '../src';
+import { createNft, createProgrammableNft } from './_removeClaimSetup';
 import {
-  assertItemBought as assertItemDrawn,
-  create,
-  createNft,
-  createProgrammableNft,
-  createUmi,
+  COMPUTE_UNITS,
+  createClient,
+  createGumballMachine,
+  fetchGumballMachine,
+  generateKeyPairSignerWithSol,
+  sendTransaction,
 } from './_setup';
 
-test('it can claim an nft item', async (t) => {
-  // Given a gumball machine with a gumball guard that has no guards.
-  const umi = await createUmi();
-  const nft = await createNft(umi);
+const MPL_TOKEN_AUTH_RULES_PROGRAM_ID =
+  'auth9SigNpDKz4sJJ1DfCTuZrZNSAgh9sFD3rboVmgg' as Address;
 
-  const gumballMachineSigner = await create(umi, {
-    items: [
-      {
-        id: nft.publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-    ],
-    startSale: true,
+const tokenAccountOf = async (mint: string, owner: string) => {
+  const [ata] = await findAssociatedTokenPda({
+    mint: mint as any,
+    owner: owner as any,
+    tokenProgram: TOKEN_PROGRAM_ADDRESS,
+  });
+  return ata;
+};
+
+test('it can claim an nft item', async (t) => {
+  const client = await createClient();
+  const { gumballMachine } = await createGumballMachine(client, {
+    settings: { itemCapacity: 5 },
     guards: {},
   });
-  const gumballMachine = gumballMachineSigner.publicKey;
+  const { mint } = await createNft(client);
 
-  // When we mint from the gumball guard.
-  const buyerUmi = await createUmi();
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(buyerUmi, {
-        gumballMachine,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
+  await sendTransaction(client.svm, client.payer, [
+    await getAddNftInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint,
+    }),
+    getStartSaleInstruction({ gumballMachine, authority: client.payer }),
+  ]);
 
-  // Then the mint was successful.
-  await assertItemDrawn(t, umi, {
-    gumballMachine,
-    buyer: buyerUmi.identity.publicKey,
+  const buyer = await generateKeyPairSignerWithSol(client.svm);
+  await sendTransaction(client.svm, buyer, [
+    COMPUTE_UNITS,
+    await draw({ gumballMachine, payer: buyer, buyer }),
+  ]);
+
+  await sendTransaction(client.svm, buyer, [
+    COMPUTE_UNITS,
+    await getClaimNftInstructionAsync({
+      payer: buyer,
+      gumballMachine,
+      seller: client.payer.address,
+      buyer: buyer.address,
+      mint,
+      index: 0,
+    }),
+  ]);
+
+  const account = fetchGumballMachine(client.svm, gumballMachine);
+  t.is(account.itemsRedeemed, 1n);
+  t.is(account.itemsSettled, 0n);
+  t.like(account.items[0], {
+    index: 0,
+    isDrawn: true,
+    isClaimed: true,
+    isSettled: false,
+    mint,
+    seller: client.payer.address,
+    buyer: buyer.address,
+    tokenStandard: TokenStandard.NonFungible,
+    amount: 1,
   });
 
-  await transactionBuilder()
-    .add(
-      claimNft(buyerUmi, {
-        gumballMachine,
-        index: 0,
-        seller: umi.identity.publicKey,
-        mint: nft.publicKey,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
-
-  // And the gumball machine was updated.
-  const gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
-  t.like(gumballMachineAccount, <Partial<GumballMachine>>{
-    itemsRedeemed: 1n,
-    itemsSettled: 0n,
-    items: [
-      {
-        index: 0,
-        isDrawn: true,
-        isClaimed: true,
-        isSettled: false,
-        mint: nft.publicKey,
-        seller: umi.identity.publicKey,
-        buyer: buyerUmi.identity.publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-        amount: 1,
-      },
-    ],
-  });
-
-  // Buyer should be the owner
-  // Then nft is unfrozen and revoked
-  const tokenAccount = await fetchToken(
-    umi,
-    findAssociatedTokenPda(umi, {
-      mint: nft.publicKey,
-      owner: buyerUmi.identity.publicKey,
-    })[0]
+  const token = await fetchToken(
+    client.rpc,
+    await tokenAccountOf(mint, buyer.address)
   );
-
-  t.like(tokenAccount, {
-    state: TokenState.Initialized,
-    owner: buyerUmi.identity.publicKey,
-    delegate: none(),
-    amount: 1n,
-  });
+  t.is(token.data.state, AccountState.Initialized);
+  t.is(token.data.owner, buyer.address);
+  t.is(token.data.delegate.__option, 'None');
+  t.is(token.data.amount, 1n);
 });
 
 test('it can claim a pnft item', async (t) => {
-  // Given a gumball machine with a gumball guard that has no guards.
-  const umi = await createUmi();
-  const nft = await createProgrammableNft(umi);
-
-  const gumballMachineSigner = await create(umi, {
-    items: [
-      {
-        id: nft.publicKey,
-        tokenStandard: TokenStandard.ProgrammableNonFungible,
-      },
-    ],
-    startSale: true,
+  const client = await createClient();
+  const { gumballMachine } = await createGumballMachine(client, {
+    settings: { itemCapacity: 5 },
     guards: {},
   });
-  const gumballMachine = gumballMachineSigner.publicKey;
+  const { mint } = await createProgrammableNft(client);
 
-  // When we mint from the gumball guard.
-  const buyerUmi = await createUmi();
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(buyerUmi, {
-        gumballMachine,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
+  await sendTransaction(client.svm, client.payer, [
+    await getAddNftInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint,
+      authRulesProgram: MPL_TOKEN_AUTH_RULES_PROGRAM_ID,
+    }),
+    getStartSaleInstruction({ gumballMachine, authority: client.payer }),
+  ]);
 
-  // Then the mint was successful.
-  await assertItemDrawn(t, umi, {
-    gumballMachine,
-    buyer: buyerUmi.identity.publicKey,
+  const buyer = await generateKeyPairSignerWithSol(client.svm);
+  await sendTransaction(client.svm, buyer, [
+    COMPUTE_UNITS,
+    await draw({ gumballMachine, payer: buyer, buyer }),
+  ]);
+
+  await sendTransaction(client.svm, buyer, [
+    COMPUTE_UNITS,
+    await getClaimNftInstructionAsync({
+      payer: buyer,
+      gumballMachine,
+      seller: client.payer.address,
+      buyer: buyer.address,
+      mint,
+      index: 0,
+      authRulesProgram: MPL_TOKEN_AUTH_RULES_PROGRAM_ID,
+    }),
+  ]);
+
+  const account = fetchGumballMachine(client.svm, gumballMachine);
+  t.is(account.itemsRedeemed, 1n);
+  t.like(account.items[0], {
+    index: 0,
+    isDrawn: true,
+    isClaimed: true,
+    isSettled: false,
+    mint,
+    seller: client.payer.address,
+    buyer: buyer.address,
+    tokenStandard: TokenStandard.ProgrammableNonFungible,
+    amount: 1,
   });
 
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      claimNft(buyerUmi, {
-        gumballMachine,
-        index: 0,
-        seller: umi.identity.publicKey,
-        mint: nft.publicKey,
-        authRulesProgram: MPL_TOKEN_AUTH_RULES_PROGRAM_ID,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
-
-  // And the gumball machine was updated.
-  const gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
-  t.like(gumballMachineAccount, <Partial<GumballMachine>>{
-    itemsRedeemed: 1n,
-    itemsSettled: 0n,
-    items: [
-      {
-        index: 0,
-        isDrawn: true,
-        isClaimed: true,
-        isSettled: false,
-        mint: nft.publicKey,
-        seller: umi.identity.publicKey,
-        buyer: buyerUmi.identity.publicKey,
-        tokenStandard: TokenStandard.ProgrammableNonFungible,
-        amount: 1,
-      },
-    ],
-  });
-
-  // Buyer should be the owner
-  // Then nft is unfrozen and revoked
-  const tokenAccount = await fetchToken(
-    umi,
-    findAssociatedTokenPda(umi, {
-      mint: nft.publicKey,
-      owner: buyerUmi.identity.publicKey,
-    })[0]
+  const token = await fetchToken(
+    client.rpc,
+    await tokenAccountOf(mint, buyer.address)
   );
-
-  t.like(tokenAccount, {
-    state: TokenState.Frozen,
-    owner: buyerUmi.identity.publicKey,
-    delegate: none(),
-    amount: 1n,
-  });
+  t.is(token.data.state, AccountState.Frozen);
+  t.is(token.data.owner, buyer.address);
+  t.is(token.data.amount, 1n);
 });
 
 test('it cannot claim an nft item as another buyer', async (t) => {
-  // Given a gumball machine with a gumball guard that has no guards.
-  const umi = await createUmi();
-  const nft = await createNft(umi);
-
-  const gumballMachineSigner = await create(umi, {
-    items: [
-      {
-        id: nft.publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-    ],
-    startSale: true,
+  const client = await createClient();
+  const { gumballMachine } = await createGumballMachine(client, {
+    settings: { itemCapacity: 5 },
     guards: {},
   });
-  const gumballMachine = gumballMachineSigner.publicKey;
+  const { mint } = await createNft(client);
 
-  // When we mint from the gumball guard.
-  const buyerUmi = await createUmi();
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(buyerUmi, {
-        gumballMachine,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
+  await sendTransaction(client.svm, client.payer, [
+    await getAddNftInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint,
+    }),
+    getStartSaleInstruction({ gumballMachine, authority: client.payer }),
+  ]);
 
-  const promise = transactionBuilder()
-    .add(
-      claimNft(umi, {
+  const buyer = await generateKeyPairSignerWithSol(client.svm);
+  await sendTransaction(client.svm, buyer, [
+    COMPUTE_UNITS,
+    await draw({ gumballMachine, payer: buyer, buyer }),
+  ]);
+
+  await t.throwsAsync(
+    sendTransaction(client.svm, client.payer, [
+      COMPUTE_UNITS,
+      await getClaimNftInstructionAsync({
+        payer: client.payer,
         gumballMachine,
+        seller: client.payer.address,
+        buyer: client.payer.address,
+        mint,
         index: 0,
-        seller: umi.identity.publicKey,
-        mint: nft.publicKey,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  await t.throwsAsync(promise, { message: /InvalidBuyer/ });
+      }),
+    ]),
+    { message: /InvalidBuyer/ }
+  );
 });

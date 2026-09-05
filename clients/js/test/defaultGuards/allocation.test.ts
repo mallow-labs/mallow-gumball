@@ -1,301 +1,216 @@
-import { setComputeUnitLimit } from '@metaplex-foundation/mpl-toolbox';
-import {
-  generateSigner,
-  sol,
-  some,
-  transactionBuilder,
-} from '@metaplex-foundation/umi';
+import { some } from '@solana/kit';
 import test from 'ava';
 import {
   draw,
-  fetchAllocationTracker,
   findAllocationTrackerPda,
   findGumballGuardPda,
+  getAllocationTrackerCodec,
   route,
-  TokenStandard,
 } from '../../src';
 import {
-  assertBotTax,
-  assertItemBought,
-  create,
-  createNft,
-  createUmi,
+  COMPUTE_UNITS,
+  createClient,
+  fetchGumballMachine,
+  generateKeyPairSignerWithSol,
+  sendTransaction,
+  sol,
+  type Client,
 } from '../_setup';
+import {
+  assertBotTax,
+  createLoadedGumballMachine,
+  sendForLogs,
+} from './_guardsBSetup';
+
+const fetchTrackerCount = async (
+  client: Client,
+  gumballMachine: string,
+  id: number
+): Promise<number> => {
+  const [gumballGuard] = await findGumballGuardPda({
+    base: gumballMachine as never,
+  });
+  const [tracker] = await findAllocationTrackerPda({
+    id,
+    machine: gumballMachine as never,
+    gumballGuard,
+  });
+  const account = client.svm.getAccount(tracker);
+  if (!account.exists) throw new Error('Allocation tracker not found');
+  return getAllocationTrackerCodec().decode(account.data as Uint8Array).count;
+};
 
 test('it allows minting when the allocation limit is not reached', async (t) => {
-  // Given a loaded Gumball Machine with an allocation limit of 5.
-  const umi = await createUmi();
-
-  const { publicKey: gumballMachine } = await create(umi, {
-    items: [
-      {
-        id: (await createNft(umi)).publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-      {
-        id: (await createNft(umi)).publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-    ],
-    startSale: true,
-    guards: {
-      allocation: some({ id: 1, limit: 5 }),
-    },
+  const client = await createClient();
+  const { gumballMachine } = await createLoadedGumballMachine(client, {
+    itemCount: 2,
+    guards: { allocation: some({ id: 1, limit: 5 }) },
   });
 
-  // And initialize the allocation PDA.
-  await transactionBuilder()
-    .add(
-      route(umi, {
-        machine: gumballMachine,
-        guard: 'allocation',
-        routeArgs: {
-          id: 1,
-          gumballGuardAuthority: umi.identity,
-        },
-      })
-    )
-    .sendAndConfirm(umi);
+  // Initialize the allocation PDA via the route instruction.
+  await sendTransaction(client.svm, client.payer, [
+    await route({
+      machine: gumballMachine,
+      payer: client.payer,
+      guard: 'allocation',
+      routeArgs: { id: 1, gumballGuardAuthority: client.payer },
+    }),
+  ]);
 
-  // When we mint from it.
+  await sendTransaction(client.svm, client.payer, [
+    COMPUTE_UNITS,
+    await draw({
+      gumballMachine,
+      payer: client.payer,
+      buyer: client.payer,
+      mintArgs: { allocation: some({ id: 1 }) },
+    }),
+  ]);
 
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(umi, {
-        gumballMachine,
-        mintArgs: { allocation: some({ id: 1 }) },
-      })
-    )
-    .sendAndConfirm(umi);
+  const account = fetchGumballMachine(client.svm, gumballMachine);
+  t.is(account.items.filter((i) => i.buyer === client.payer.address).length, 1);
 
-  // Then minting was successful.
-  await assertItemBought(t, umi, { gumballMachine });
-
-  // And the mint tracker PDA was incremented.
-  const trackerPda = findAllocationTrackerPda(umi, {
-    id: 1,
-    machine: gumballMachine,
-    gumballGuard: findGumballGuardPda(umi, { base: gumballMachine })[0],
-  });
-  const trackerPdaAccount = await fetchAllocationTracker(umi, trackerPda);
-  t.is(trackerPdaAccount.count, 1);
+  t.is(await fetchTrackerCount(client, gumballMachine, 1), 1);
 });
 
 test('it forbids minting when the allocation limit is reached', async (t) => {
-  // Given a loaded Gumball Machine with an allocation limit of 1.
-  const umi = await createUmi();
-
-  const { publicKey: gumballMachine } = await create(umi, {
-    items: [
-      {
-        id: (await createNft(umi)).publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-      {
-        id: (await createNft(umi)).publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-    ],
-    startSale: true,
-    guards: {
-      allocation: some({ id: 1, limit: 1 }),
-    },
+  const client = await createClient();
+  const { gumballMachine } = await createLoadedGumballMachine(client, {
+    itemCount: 2,
+    guards: { allocation: some({ id: 1, limit: 1 }) },
   });
 
-  // And initialize the allocation PDA.
-  await transactionBuilder()
-    .add(
-      route(umi, {
-        machine: gumballMachine,
-        guard: 'allocation',
-        routeArgs: {
-          id: 1,
-          gumballGuardAuthority: umi.identity,
-        },
-      })
-    )
-    .sendAndConfirm(umi);
+  await sendTransaction(client.svm, client.payer, [
+    await route({
+      machine: gumballMachine,
+      payer: client.payer,
+      guard: 'allocation',
+      routeArgs: { id: 1, gumballGuardAuthority: client.payer },
+    }),
+  ]);
 
-  // And we already minted from it.
+  await sendTransaction(client.svm, client.payer, [
+    COMPUTE_UNITS,
+    await draw({
+      gumballMachine,
+      payer: client.payer,
+      buyer: client.payer,
+      mintArgs: { allocation: some({ id: 1 }) },
+    }),
+  ]);
 
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(umi, {
+  await t.throwsAsync(
+    sendTransaction(client.svm, client.payer, [
+      COMPUTE_UNITS,
+      await draw({
         gumballMachine,
+        payer: client.payer,
+        buyer: client.payer,
         mintArgs: { allocation: some({ id: 1 }) },
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // When we try to mint again.
-  const promise = transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(umi, {
-        gumballMachine,
-        mintArgs: { allocation: some({ id: 1 }) },
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then we expect an error.
-  await t.throwsAsync(promise, { message: /Allocation limit was reached/ });
+      }),
+    ]),
+    { message: /Allocation limit was reached/ }
+  );
 });
 
 test('the allocation limit is local to each id', async (t) => {
-  // Given a loaded Gumball Machine with two allocation limits of 1.
-  const umi = await createUmi();
-
-  const { publicKey: gumballMachine } = await create(umi, {
-    items: [
-      {
-        id: (await createNft(umi)).publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-      {
-        id: (await createNft(umi)).publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-    ],
-    startSale: true,
+  const client = await createClient();
+  const { gumballMachine } = await createLoadedGumballMachine(client, {
+    itemCount: 2,
     guards: {},
     groups: [
-      {
-        label: 'GROUPA',
-        guards: {
-          allocation: some({ id: 1, limit: 1 }),
-        },
-      },
-      {
-        label: 'GROUPB',
-        guards: {
-          allocation: some({ id: 2, limit: 1 }),
-        },
-      },
+      { label: 'GROUPA', guards: { allocation: some({ id: 1, limit: 1 }) } },
+      { label: 'GROUPB', guards: { allocation: some({ id: 2, limit: 1 }) } },
     ],
   });
 
-  // And initialize the allocation PDA.
-  await transactionBuilder()
-    .add(
-      route(umi, {
-        machine: gumballMachine,
-        guard: 'allocation',
-        routeArgs: {
-          id: 1,
-          gumballGuardAuthority: umi.identity,
-        },
-        group: some('GROUPA'),
-      })
-    )
-    .add(
-      route(umi, {
-        machine: gumballMachine,
-        guard: 'allocation',
-        routeArgs: {
-          id: 2,
-          gumballGuardAuthority: umi.identity,
-        },
-        group: some('GROUPB'),
-      })
-    )
-    .sendAndConfirm(umi);
+  // Initialize both allocation PDAs.
+  await sendTransaction(client.svm, client.payer, [
+    await route({
+      machine: gumballMachine,
+      payer: client.payer,
+      guard: 'allocation',
+      routeArgs: { id: 1, gumballGuardAuthority: client.payer },
+      group: some('GROUPA'),
+    }),
+    await route({
+      machine: gumballMachine,
+      payer: client.payer,
+      guard: 'allocation',
+      routeArgs: { id: 2, gumballGuardAuthority: client.payer },
+      group: some('GROUPB'),
+    }),
+  ]);
 
-  // And buyer A already minted their NFT.
-  const buyerA = generateSigner(umi);
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(umi, {
-        gumballMachine,
-        buyer: buyerA,
-        mintArgs: { allocation: some({ id: 1 }) },
-        group: some('GROUPA'),
-      })
-    )
-    .sendAndConfirm(umi);
-  await assertItemBought(t, umi, { gumballMachine, buyer: buyerA.publicKey });
+  // Buyer A mints from GROUPA.
+  const buyerA = await generateKeyPairSignerWithSol(client.svm, sol(10));
+  await sendTransaction(client.svm, client.payer, [
+    COMPUTE_UNITS,
+    await draw({
+      gumballMachine,
+      payer: client.payer,
+      buyer: buyerA,
+      mintArgs: { allocation: some({ id: 1 }) },
+      group: some('GROUPA'),
+    }),
+  ]);
+  let account = fetchGumballMachine(client.svm, gumballMachine);
+  t.is(account.items.filter((i) => i.buyer === buyerA.address).length, 1);
 
-  // When buyer B mints from the same Gumball Machine but from a different group.
-  const buyerB = generateSigner(umi);
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(umi, {
-        gumballMachine,
-        buyer: buyerB,
-        mintArgs: { allocation: some({ id: 2 }) },
-        group: some('GROUPB'),
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then minting was successful as the limit is per id.
-  await assertItemBought(t, umi, { gumballMachine, buyer: buyerB.publicKey });
+  // Buyer B mints from GROUPB — succeeds because the limit is per id.
+  const buyerB = await generateKeyPairSignerWithSol(client.svm, sol(10));
+  await sendTransaction(client.svm, client.payer, [
+    COMPUTE_UNITS,
+    await draw({
+      gumballMachine,
+      payer: client.payer,
+      buyer: buyerB,
+      mintArgs: { allocation: some({ id: 2 }) },
+      group: some('GROUPB'),
+    }),
+  ]);
+  account = fetchGumballMachine(client.svm, gumballMachine);
+  t.is(account.items.filter((i) => i.buyer === buyerB.address).length, 1);
 });
 
 test('it charges a bot tax when trying to mint after the limit', async (t) => {
-  // Given a loaded Gumball Machine with an allocation limit of 1 and a bot tax guard.
-  const umi = await createUmi();
-
-  const { publicKey: gumballMachine } = await create(umi, {
-    items: [
-      {
-        id: (await createNft(umi)).publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-      {
-        id: (await createNft(umi)).publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-    ],
-    startSale: true,
+  const client = await createClient();
+  const { gumballMachine } = await createLoadedGumballMachine(client, {
+    itemCount: 2,
     guards: {
       botTax: some({ lamports: sol(0.1), lastInstruction: true }),
       allocation: some({ id: 1, limit: 1 }),
     },
   });
 
-  // And initialize the allocation PDA.
-  await transactionBuilder()
-    .add(
-      route(umi, {
-        machine: gumballMachine,
-        guard: 'allocation',
-        routeArgs: {
-          id: 1,
-          gumballGuardAuthority: umi.identity,
-        },
-      })
-    )
-    .sendAndConfirm(umi);
+  await sendTransaction(client.svm, client.payer, [
+    await route({
+      machine: gumballMachine,
+      payer: client.payer,
+      guard: 'allocation',
+      routeArgs: { id: 1, gumballGuardAuthority: client.payer },
+    }),
+  ]);
 
-  // And the identity already minted their NFT.
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(umi, {
-        gumballMachine,
+  await sendTransaction(client.svm, client.payer, [
+    COMPUTE_UNITS,
+    await draw({
+      gumballMachine,
+      payer: client.payer,
+      buyer: client.payer,
+      mintArgs: { allocation: some({ id: 1 }) },
+    }),
+  ]);
 
-        mintArgs: { allocation: some({ id: 1 }) },
-      })
-    )
-    .sendAndConfirm(umi);
+  const logs = await sendForLogs(client, client.payer, [
+    COMPUTE_UNITS,
+    await draw({
+      gumballMachine,
+      payer: client.payer,
+      buyer: client.payer,
+      mintArgs: { allocation: some({ id: 1 }) },
+    }),
+  ]);
 
-  // When the identity tries to mint from the same Gumball Machine again.
-  const { signature } = await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(umi, {
-        gumballMachine,
-
-        mintArgs: { allocation: some({ id: 1 }) },
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then we expect a bot tax error.
-  await assertBotTax(t, umi, signature, /Allocation limit was reached/);
+  assertBotTax(t, logs, /Allocation limit was reached/);
 });

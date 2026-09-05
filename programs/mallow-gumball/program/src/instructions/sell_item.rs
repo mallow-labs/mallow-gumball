@@ -15,7 +15,7 @@ use mpl_core::{
     types::{FreezeDelegate, Plugin},
 };
 use mpl_token_metadata::accounts::Metadata;
-use utils::{get_bps_of, is_native_mint, transfer_from_pda};
+use utils::{get_bps_of, is_native_mint, resolve_currency_token_program, transfer_from_pda};
 
 /// Settles a legacy NFT sale
 #[event_cpi]
@@ -143,7 +143,7 @@ pub struct SellItem<'info> {
     /// CHECK: Safe due to token metadata program check
     pub auth_rules: Option<UncheckedAccount<'info>>,
     /// CHECK: Safe due to address check
-    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    #[account(address = solana_program::sysvar::instructions::id())]
     pub instructions: Option<UncheckedAccount<'info>>,
     /// CHECK: Safe due to address check
     #[account(address = MPL_TOKEN_AUTH_RULES_PROGRAM)]
@@ -151,7 +151,7 @@ pub struct SellItem<'info> {
 }
 
 pub fn sell_item<'info>(
-    ctx: Context<'_, '_, '_, 'info, SellItem<'info>>,
+    ctx: Context<'info, SellItem<'info>>,
     index: u32,
     amount: u64,
     buy_price: u64,
@@ -252,7 +252,7 @@ pub fn sell_item<'info>(
                 transfer_and_close_if_empty(
                     payer,
                     authority_pda,
-                    authority_pda_token_account,
+                    &authority_pda_token_account.to_account_info(),
                     buyer,
                     &ctx.accounts
                         .buyer_token_account
@@ -343,6 +343,11 @@ pub fn sell_item<'info>(
                     Some(seller),
                 )?;
             }
+            // Buy-back is out of scope for compressed NFTs (would need a fresh
+            // merkle proof and Bubblegum CPI). Reject explicitly.
+            TokenStandard::Compressed => {
+                return err!(GumballError::NotImplemented);
+            }
         }
     }
 
@@ -378,6 +383,14 @@ pub fn sell_item<'info>(
         );
     }
 
+    // §D5 slot 0 — this instruction takes no remaining accounts today, so the
+    // Token-2022 program is the first (and only) one when the payment mint is T22.
+    let currency_token_program = resolve_currency_token_program(
+        payment_mint_info,
+        ctx.remaining_accounts.first(),
+        token_program,
+    )?;
+
     // Pay the seller from the buy back funds
     transfer_from_pda(
         authority_pda,
@@ -387,7 +400,7 @@ pub fn sell_item<'info>(
         payment_mint_info,
         Some(payer),
         Some(associated_token_program),
-        Some(token_program),
+        Some(currency_token_program),
         system_program,
         &auth_seeds,
         None,
@@ -405,7 +418,9 @@ pub fn sell_item<'info>(
             .map(|a| a.to_account_info());
         let fee_payment_account_info = fee_payment_account.as_ref();
 
-        // Pay the marketplace fee from the buy back funds
+        // Pay the marketplace fee from the buy back funds. Same currency mint as
+        // the seller payout above, so it needs the same resolved program — the
+        // named classic one fails §D6 for a Token-2022 payment mint.
         transfer_from_pda(
             authority_pda,
             fee_account,
@@ -414,7 +429,7 @@ pub fn sell_item<'info>(
             payment_mint_info,
             Some(payer),
             Some(associated_token_program),
-            Some(token_program),
+            Some(currency_token_program),
             system_program,
             &auth_seeds,
             None,

@@ -1,15 +1,28 @@
+//! Payment movement for both token programs (TOKEN22_PLAN §D4, §D5).
+//!
+//! A Token-2022 payment mint needs its program account passed in. Rather than
+//! add a named account to a shipped instruction, the program branches on
+//! `payment_mint.owner` — which the runtime sets and no caller controls — and
+//! reads **one extra remaining account** only when that owner is Token-2022.
+//! For the settle family the slot is at index **0**, before the creator pairs;
+//! for `close_gumball_machine` it is at index **4**, after the existing
+//! `mint, to_token_account, ata_program, system_program` block.
+//!
+//! Transfers always use `transfer_checked` (§D4), with decimals read from the
+//! unpacked mint. §D6 binds the mint to the program being invoked.
+
 use std::collections::HashMap;
 
-use crate::{assert_is_ata, error::Error, is_native_mint};
+use crate::token22::{assert_mint_matches_token_program, unpack_currency_mint_decimals};
+use crate::{assert_is_ata_for_program, error::Error, is_native_mint};
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::{create, Create};
-use anchor_spl::token;
-use anchor_spl::token::Transfer;
+use anchor_spl::token_2022::{transfer_checked, TransferChecked};
 use mpl_token_metadata::accounts::Metadata;
 use mpl_token_metadata::instructions::TransferV1CpiBuilder;
 use mpl_token_metadata::types::{Payload, PayloadType, ProgrammableConfig, TokenStandard};
+use solana_program::account_info::AccountInfo;
 use solana_program::program::{invoke, invoke_signed};
-use solana_program::{account_info::AccountInfo, system_instruction};
 
 /// Transfers SOL or SPL tokens from a program owned account to another account.
 pub fn transfer<'a>(
@@ -157,6 +170,15 @@ pub fn transfer_spl<'a>(
         return Ok(());
     }
 
+    // §D6 anti-spoof: the mint must be owned by the program we are about to CPI
+    // into, so a Token-2022 mint can never be moved by the classic program (or
+    // the reverse).
+    assert_mint_matches_token_program(mint, token_program)?;
+    // Decimals from the unpacked mint, never a stored constant; the unpack must
+    // not hardcode a size because a Token-2022 mint with extensions is larger
+    // than the classic 82 bytes.
+    let decimals = unpack_currency_mint_decimals(mint)?;
+
     ensure_ata(
         to_token_account,
         to,
@@ -169,9 +191,10 @@ pub fn transfer_spl<'a>(
     )?;
 
     let transfer_cpi = CpiContext::new(
-        token_program.to_account_info(),
-        Transfer {
+        *token_program.key,
+        TransferChecked {
             from: from_token_account.to_account_info(),
+            mint: mint.to_account_info(),
             to: to_token_account.to_account_info(),
             authority: if from_authority.is_some() {
                 from_authority.unwrap().to_account_info()
@@ -182,9 +205,13 @@ pub fn transfer_spl<'a>(
     );
 
     if signer_seeds.is_none() {
-        token::transfer(transfer_cpi, amount)?;
+        transfer_checked(transfer_cpi, amount, decimals)?;
     } else {
-        token::transfer(transfer_cpi.with_signer(&[signer_seeds.unwrap()]), amount)?;
+        transfer_checked(
+            transfer_cpi.with_signer(&[signer_seeds.unwrap()]),
+            amount,
+            decimals,
+        )?;
     }
 
     Ok(())
@@ -212,7 +239,9 @@ pub fn ensure_ata<'b>(
             fee_payer_seeds,
         )?;
     } else {
-        assert_is_ata(to_token_account, to.key, &mint.key())?;
+        // Program-aware derivation: the two-argument `get_associated_token_address`
+        // silently returns the classic address for a Token-2022 mint.
+        assert_is_ata_for_program(to_token_account, to.key, &mint.key(), token_program.key)?;
     }
 
     Ok(())
@@ -240,12 +269,12 @@ pub fn make_ata<'a>(
     if fee_payer_seeds.is_some() {
         let seeds = &[fee_payer_seeds.unwrap()];
         create(CpiContext::new_with_signer(
-            ata_program.to_account_info(),
+            *ata_program.key,
             accounts,
             seeds,
         ))?;
     } else {
-        create(CpiContext::new(ata_program.to_account_info(), accounts))?;
+        create(CpiContext::new(*ata_program.key, accounts))?;
     }
 
     Ok(())

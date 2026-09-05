@@ -17,7 +17,7 @@ pub struct IncrementTotalRevenue<'info> {
 }
 
 pub fn increment_total_revenue<'info>(
-    ctx: Context<'_, '_, '_, 'info, IncrementTotalRevenue<'info>>,
+    ctx: Context<'info, IncrementTotalRevenue<'info>>,
     revenue: u64,
 ) -> Result<()> {
     ctx.accounts.gumball_machine.total_revenue = ctx

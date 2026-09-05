@@ -1,62 +1,33 @@
-import {
-  ACCOUNT_HEADER_SIZE,
-  transactionBuilder,
-  TransactionBuilder,
-} from '@metaplex-foundation/umi';
-import { GUMBALL_GUARD_DATA } from './constants';
+import { type Instruction } from '@solana/kit';
 import { DefaultGuardSetArgs } from './defaultGuards';
 import {
-  initializeGumballGuard,
-  InitializeGumballGuardInstructionAccounts,
+  getInitializeGumballGuardInstructionAsync,
+  type InitializeGumballGuardAsyncInput,
 } from './generated/instructions/initializeGumballGuard';
+import { GuardSetArgs } from './guards';
 import {
-  GuardRepository,
-  GuardSet,
-  GuardSetArgs,
-  GumballGuardProgram,
-} from './guards';
-import {
-  getGumballGuardDataSerializer,
-  GumballGuardData,
-  GumballGuardDataArgs,
+  getGumballGuardDataEncoder,
+  type GumballGuardDataArgs,
 } from './hooked';
 
-export { InitializeGumballGuardInstructionAccounts };
-
-export type CreateGumballGuardInstructionData<D extends GuardSet> = {
-  discriminator: Array<number>;
-} & GumballGuardData<D>;
-
-export type CreateGumballGuardInstructionDataArgs<DA extends GuardSetArgs> =
+export type CreateGumballGuardInput<
+  DA extends GuardSetArgs = DefaultGuardSetArgs,
+> = Omit<InitializeGumballGuardAsyncInput, 'data'> &
   Partial<GumballGuardDataArgs<DA>>;
 
-export function createGumballGuard<
+/**
+ * High-level `createGumballGuard` builder: serializes the provided guards +
+ * groups into the initialize instruction data.
+ */
+export async function createGumballGuard<
   DA extends GuardSetArgs = DefaultGuardSetArgs,
->(
-  context: Parameters<typeof initializeGumballGuard>[0] & {
-    guards: GuardRepository;
-  },
-  input: InitializeGumballGuardInstructionAccounts &
-    CreateGumballGuardInstructionDataArgs<
-      DA extends undefined ? DefaultGuardSetArgs : DA
-    >
-): TransactionBuilder {
+>(input: CreateGumballGuardInput<DA>): Promise<Instruction> {
   const { guards, groups, ...rest } = input;
-  const program = context.programs.get<GumballGuardProgram>('gumballGuard');
-  const serializer = getGumballGuardDataSerializer<
-    DA extends undefined ? DefaultGuardSetArgs : DA,
-    any
-  >(context, program);
-  const data = serializer.serialize({
-    guards: guards ?? {},
-    groups: groups ?? [],
-  });
-
-  return transactionBuilder([
-    {
-      ...initializeGumballGuard(context, { ...rest, data }).items[0],
-      bytesCreatedOnChain:
-        ACCOUNT_HEADER_SIZE + GUMBALL_GUARD_DATA + data.length,
-    },
-  ]);
+  const data = new Uint8Array(
+    getGumballGuardDataEncoder<DA>().encode({
+      guards: guards ?? {},
+      groups: groups ?? [],
+    })
+  );
+  return await getInitializeGumballGuardInstructionAsync({ ...rest, data });
 }

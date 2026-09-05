@@ -101,7 +101,7 @@ pub fn remove_tokens(ctx: Context<RemoveTokens>, indices: Vec<u8>, amount: u64) 
     transfer_and_close_if_empty(
         authority,
         authority_pda,
-        authority_pda_token_account,
+        &authority_pda_token_account.to_account_info(),
         seller,
         seller_token_account,
         mint,
@@ -166,7 +166,7 @@ pub fn remove_tokens_span(
     transfer_and_close_if_empty(
         authority,
         authority_pda,
-        authority_pda_token_account,
+        &authority_pda_token_account.to_account_info(),
         seller,
         seller_token_account,
         mint,

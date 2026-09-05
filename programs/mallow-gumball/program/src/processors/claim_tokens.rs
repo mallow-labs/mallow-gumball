@@ -27,7 +27,7 @@ pub fn claim_tokens<'a, 'b>(
     transfer_and_close_if_empty(
         payer,
         authority_pda,
-        authority_pda_token_account,
+        &authority_pda_token_account.to_account_info(),
         to,
         to_token_account,
         mint,

@@ -1,5 +1,5 @@
 use mallow_gumball::{constants::AUTHORITY_SEED, GumballMachine};
-use mallow_jellybean_sdk::accounts::JellybeanMachine;
+use mallow_jellybean_client::accounts::JellybeanMachine;
 
 use super::*;
 
@@ -239,6 +239,9 @@ impl TokenPayment {
             &mut ctx.accounts.payer,
             Some(&source_token_account_info),
             Some(self.mint),
+            // Classic SPL: this guard's layout carries no mint account, so the
+            // legacy unchecked transfer is kept and the account list is unchanged.
+            None,
             &jellybean_machine.fee_accounts,
             remaining_accounts,
             Some(&ctx.accounts.spl_token_program),
@@ -251,15 +254,18 @@ impl TokenPayment {
             .checked_sub(amount_transferred)
             .ok_or(GumballGuardError::NumericalOverflowError)?;
 
-        // Any remaining dust goes to first fee account
-        spl_token_transfer(TokenTransferParams {
-            source: source_token_account_info.to_account_info(),
-            destination: remaining_accounts[0].to_account_info(),
-            authority: ctx.accounts.payer.to_account_info(),
-            authority_signer_seeds: &[],
-            token_program: ctx.accounts.spl_token_program.to_account_info(),
-            amount: remaining_tokens,
-        })?;
+        // Any remaining dust goes to first fee account. A machine with no fee
+        // accounts has no destination, so nothing is transferred.
+        if !remaining_accounts.is_empty() {
+            spl_token_transfer(TokenTransferParams {
+                source: source_token_account_info.to_account_info(),
+                destination: remaining_accounts[0].to_account_info(),
+                authority: ctx.accounts.payer.to_account_info(),
+                authority_signer_seeds: &[],
+                token_program: ctx.accounts.spl_token_program.to_account_info(),
+                amount: remaining_tokens,
+            })?;
+        }
 
         Ok(())
     }

@@ -1,9 +1,10 @@
 use super::*;
 
+use anchor_lang::solana_program::system_instruction;
 use anchor_spl::token::spl_token::native_mint;
 use mallow_gumball::{constants::AUTHORITY_SEED, GumballMachine};
-use mallow_jellybean_sdk::accounts::JellybeanMachine;
-use solana_program::{program::invoke, system_instruction};
+use mallow_jellybean_client::accounts::JellybeanMachine;
+use solana_program::program::invoke;
 use utils::{assert_keys_equal, transfer_sol};
 
 use crate::{
@@ -228,6 +229,7 @@ impl SolPayment {
             &mut ctx.accounts.payer,
             None,
             None,
+            None,
             &jellybean_machine.fee_accounts,
             remaining_accounts,
             None,
@@ -240,14 +242,17 @@ impl SolPayment {
             .checked_sub(amount_transferred)
             .ok_or(GumballGuardError::NumericalOverflowError)?;
 
-        // Any remaining dust goes to first fee account
-        transfer_sol(
-            &mut ctx.accounts.payer,
-            &ctx.accounts.remaining[fee_accounts_start],
-            &ctx.accounts.system_program,
-            None,
-            remaining_lamports,
-        )?;
+        // Any remaining dust goes to first fee account. A machine with no fee
+        // accounts has no destination, so nothing is transferred.
+        if !remaining_accounts.is_empty() {
+            transfer_sol(
+                &mut ctx.accounts.payer,
+                &ctx.accounts.remaining[fee_accounts_start],
+                &ctx.accounts.system_program,
+                None,
+                remaining_lamports,
+            )?;
+        }
 
         Ok(())
     }

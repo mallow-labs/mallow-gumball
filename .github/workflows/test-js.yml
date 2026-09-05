@@ -1,4 +1,4 @@
-name: Test JS client
+name: Test JS clients
 
 on:
   workflow_call:
@@ -11,8 +11,14 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        node: ["16.x", "18.x"]
+        # Both the Solana Kit client (clients/js) and the umi client (clients/umi)
+        # run against an in-process LiteSVM.
+        client: [js, umi]
+        # LiteSVM's napi binding corrupts V8's GC and aborts with std::bad_alloc
+        # on linux-x64-gnu under Node 20/22 (LiteSVM#171); Node 24 is unaffected.
+        node: ["24.x"]
     steps:
       - name: Git checkout
         uses: actions/checkout@v3
@@ -20,31 +26,44 @@ jobs:
       - name: Load environment variables
         run: cat .github/.env >> $GITHUB_ENV
 
-      - name: Start validator
-        uses: metaplex-foundation/actions/start-validator@v1
+      - name: Install Node.js
+        uses: metaplex-foundation/actions/install-node-with-pnpm@v1
         with:
-          node: ${{ matrix.node }}
-          solana: ${{ env.SOLANA_VERSION }}
+          version: ${{ matrix.node }}
           cache: ${{ env.CACHE }}
+
+      # The JS tests run against an in-process LiteSVM (no validator). LiteSVM
+      # loads the program `.so` artifacts built by the `build_programs` job — both
+      # the mallow programs and the dumped metaplex/system programs land in
+      # `programs/.bin` — so download that artifact into place before testing.
+      - name: Download program builds
+        uses: actions/download-artifact@v4
+        with:
+          name: program-builds
+          path: ./programs/.bin
 
       - name: Install dependencies
         uses: metaplex-foundation/actions/install-node-dependencies@v1
         with:
-          folder: ./clients/js
+          folder: ./clients/${{ matrix.client }}
           cache: ${{ env.CACHE }}
-          key: clients-js
+          key: clients-${{ matrix.client }}
 
       - name: Build
-        working-directory: ./clients/js
+        working-directory: ./clients/${{ matrix.client }}
         run: pnpm build
 
       - name: Test
-        working-directory: ./clients/js
+        working-directory: ./clients/${{ matrix.client }}
         run: pnpm test
 
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        client: [js, umi]
     steps:
       - name: Git checkout
         uses: actions/checkout@v3
@@ -61,14 +80,14 @@ jobs:
       - name: Install dependencies
         uses: metaplex-foundation/actions/install-node-dependencies@v1
         with:
-          folder: ./clients/js
+          folder: ./clients/${{ matrix.client }}
           cache: ${{ env.CACHE }}
-          key: clients-js
+          key: clients-${{ matrix.client }}
 
       - name: Format
-        working-directory: ./clients/js
+        working-directory: ./clients/${{ matrix.client }}
         run: pnpm format
 
       - name: Lint
-        working-directory: ./clients/js
+        working-directory: ./clients/${{ matrix.client }}
         run: pnpm lint
