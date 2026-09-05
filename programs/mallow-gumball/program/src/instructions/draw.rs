@@ -46,7 +46,7 @@ pub(crate) struct DrawAccounts<'info> {
     pub recent_slothashes: AccountInfo<'info>,
 }
 
-pub fn draw<'info>(ctx: Context<'_, '_, '_, 'info, Draw<'info>>) -> Result<()> {
+pub fn draw<'info>(ctx: Context<'info, Draw<'info>>) -> Result<()> {
     let accounts = DrawAccounts {
         buyer: ctx.accounts.buyer.to_account_info(),
         recent_slothashes: ctx.accounts.recent_slothashes.to_account_info(),

@@ -1,1057 +1,664 @@
 import {
-  fetchToken,
+  AccountState,
+  decodeToken,
   findAssociatedTokenPda,
-  setComputeUnitLimit,
-  TokenState,
-} from '@metaplex-foundation/mpl-toolbox';
-import {
-  generateSigner,
-  none,
-  signerIdentity,
-  sol,
-  some,
-  transactionBuilder,
-} from '@metaplex-foundation/umi';
-import { generateSignerWithSol } from '@metaplex-foundation/umi-bundle-tests';
+  TOKEN_PROGRAM_ADDRESS,
+} from '@solana-program/token';
+import { getAddressDecoder, none, some, type Address } from '@solana/kit';
 import test from 'ava';
 import {
-  addNft,
-  addTokens,
   draw,
-  fetchGumballMachine,
-  fetchSellerHistory,
   findGumballMachineAuthorityPda,
-  findSellerHistoryPda,
+  getAddNftInstructionAsync,
+  getAddTokensInstructionAsync,
   getMerkleProof,
   getMerkleRoot,
-  GumballMachine,
-  SellerHistory,
-  settleTokensSale,
+  getSettleTokensSaleInstructionAsync,
+  getStartSaleInstruction,
   TokenStandard,
 } from '../src';
-import { create, createMintWithHolders, createNft, createUmi } from './_setup';
+import {
+  createNft,
+  createTokensForSeller,
+  getSellerHistory,
+} from './_addSetup';
+import {
+  COMPUTE_UNITS,
+  createClient,
+  createGumballMachine,
+  fetchGumballMachine,
+  generateKeyPairSignerWithSol,
+  sendTransaction,
+  sol,
+  type Client,
+} from './_setup';
+
+const tokenAmount = (client: Client, ata: Address) =>
+  decodeToken(client.svm.getAccount(ata) as never).data;
+
+const authorityAta = async (
+  gumballMachine: Address,
+  mint: Address
+): Promise<Address> => {
+  const [authorityPda] = await findGumballMachineAuthorityPda({
+    gumballMachine,
+  });
+  const [ata] = await findAssociatedTokenPda({
+    owner: authorityPda,
+    mint,
+    tokenProgram: TOKEN_PROGRAM_ADDRESS,
+  });
+  return ata as Address;
+};
 
 test('it can add tokens to a gumball machine as the authority', async (t) => {
-  // Given a Gumball Machine with 5 nfts.
-  const umi = await createUmi();
-  const gumballMachine = await create(umi, { settings: { itemCapacity: 5 } });
-
-  const [tokenMint] = await createMintWithHolders(umi, {
-    holders: [{ owner: umi.identity, amount: 100 }],
+  const client = await createClient();
+  const { gumballMachine } = await createGumballMachine(client, {
+    settings: { itemCapacity: 5 },
   });
-
-  // When we add an nft to the Gumball Machine.
-  await transactionBuilder()
-    .add(
-      addTokens(umi, {
-        gumballMachine: gumballMachine.publicKey,
-        mint: tokenMint.publicKey,
-        amount: 100,
-        quantity: 1,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then the Gumball Machine has been updated properly.
-  const gumballMachineAccount = await fetchGumballMachine(
-    umi,
-    gumballMachine.publicKey
+  const { mint, sellerAta } = await createTokensForSeller(
+    client,
+    client.payer,
+    100
   );
 
-  t.like(gumballMachineAccount, <Pick<GumballMachine, 'itemsLoaded' | 'items'>>{
-    itemsLoaded: 1,
-    items: [
-      {
-        index: 0,
-        isDrawn: false,
-        isClaimed: false,
-        isSettled: false,
-        mint: tokenMint.publicKey,
-        seller: umi.identity.publicKey,
-        buyer: undefined,
-        tokenStandard: TokenStandard.Fungible,
-        amount: 100,
-      },
-    ],
+  await sendTransaction(client.svm, client.payer, [
+    await getAddTokensInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint,
+      amount: 100,
+      quantity: 1,
+    }),
+  ]);
+
+  const account = fetchGumballMachine(client.svm, gumballMachine);
+  t.is(account.itemsLoaded, 1);
+  t.like(account.items[0], {
+    index: 0,
+    isDrawn: false,
+    isClaimed: false,
+    isSettled: false,
+    mint,
+    seller: client.payer.address,
+    buyer: undefined,
+    tokenStandard: TokenStandard.Fungible,
+    amount: 100,
   });
 
-  // Then seller's token account is empty
-  const tokenAccount = await fetchToken(
-    umi,
-    findAssociatedTokenPda(umi, {
-      mint: tokenMint.publicKey,
-      owner: umi.identity.publicKey,
-    })[0]
+  const seller = tokenAmount(client, sellerAta);
+  t.is(seller.state, AccountState.Initialized);
+  t.deepEqual(seller.delegate, none());
+  t.is(seller.amount, 0n);
+
+  const authority = tokenAmount(
+    client,
+    await authorityAta(gumballMachine, mint)
   );
-  t.like(tokenAccount, {
-    state: TokenState.Initialized,
-    owner: umi.identity.publicKey,
-    delegate: none(),
-    amount: 0n,
-  });
+  t.is(authority.amount, 100n);
 
-  // Then authority pda's token account is filled
-  const authorityPda = findGumballMachineAuthorityPda(umi, {
-    gumballMachine: gumballMachine.publicKey,
-  })[0];
-  const authorityTokenAccount = await fetchToken(
-    umi,
-    findAssociatedTokenPda(umi, {
-      mint: tokenMint.publicKey,
-      owner: authorityPda,
-    })[0]
+  const sellerHistory = await getSellerHistory(
+    client,
+    gumballMachine,
+    client.payer.address
   );
-  t.like(authorityTokenAccount, {
-    state: TokenState.Initialized,
-    owner: authorityPda,
-    delegate: none(),
-    amount: 100n,
-  });
-
-  // Seller history state is correct
-  const sellerHistoryAccount = await fetchSellerHistory(
-    umi,
-    findSellerHistoryPda(umi, {
-      gumballMachine: gumballMachine.publicKey,
-      seller: umi.identity.publicKey,
-    })[0]
-  );
-
-  t.like(sellerHistoryAccount, <SellerHistory>{
-    gumballMachine: gumballMachine.publicKey,
-    seller: umi.identity.publicKey,
-    itemCount: 1n,
-  });
+  t.is(sellerHistory?.itemCount, 1n);
 });
 
 test('it can add multiple tokens items to a gumball machine as the authority', async (t) => {
   const quantity = 1000;
-  // Given a Gumball Machine with 5 nfts.
-  const umi = await createUmi();
-  const gumballMachine = await create(umi, {
+  const client = await createClient();
+  const { gumballMachine } = await createGumballMachine(client, {
     settings: { itemCapacity: quantity },
   });
-
-  const [tokenMint] = await createMintWithHolders(umi, {
-    holders: [{ owner: umi.identity, amount: quantity }],
-  });
-
-  // When we add an nft to the Gumball Machine.
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 1_400_000 }))
-    .add(
-      addTokens(umi, {
-        gumballMachine: gumballMachine.publicKey,
-        mint: tokenMint.publicKey,
-        amount: 1,
-        quantity,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then the Gumball Machine has been updated properly.
-  const gumballMachineAccount = await fetchGumballMachine(
-    umi,
-    gumballMachine.publicKey
+  const { mint, sellerAta } = await createTokensForSeller(
+    client,
+    client.payer,
+    quantity
   );
 
-  const item = {
-    isDrawn: false,
-    isClaimed: false,
-    isSettled: false,
-    mint: tokenMint.publicKey,
-    seller: umi.identity.publicKey,
-    buyer: undefined,
+  await sendTransaction(client.svm, client.payer, [
+    COMPUTE_UNITS,
+    await getAddTokensInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint,
+      amount: 1,
+      quantity,
+    }),
+  ]);
+
+  const account = fetchGumballMachine(client.svm, gumballMachine);
+  t.is(account.itemsLoaded, quantity);
+  t.is(account.items.length, quantity);
+  t.like(account.items[0], {
+    index: 0,
+    mint,
+    seller: client.payer.address,
     tokenStandard: TokenStandard.Fungible,
     amount: 1,
-  };
-
-  const items = Array.from({ length: quantity }, (_, i) => ({
-    ...item,
-    index: i,
-  }));
-
-  t.like(gumballMachineAccount, <Pick<GumballMachine, 'itemsLoaded' | 'items'>>{
-    itemsLoaded: quantity,
-    items,
   });
+  t.like(account.items[quantity - 1], { index: quantity - 1, amount: 1 });
 
-  // Then seller's token account is empty
-  const tokenAccount = await fetchToken(
-    umi,
-    findAssociatedTokenPda(umi, {
-      mint: tokenMint.publicKey,
-      owner: umi.identity.publicKey,
-    })[0]
-  );
-  t.like(tokenAccount, {
-    state: TokenState.Initialized,
-    owner: umi.identity.publicKey,
-    delegate: none(),
-    amount: 0n,
-  });
-
-  // Then authority pda's token account is filled
-  const authorityPda = findGumballMachineAuthorityPda(umi, {
-    gumballMachine: gumballMachine.publicKey,
-  })[0];
-  const authorityTokenAccount = await fetchToken(
-    umi,
-    findAssociatedTokenPda(umi, {
-      mint: tokenMint.publicKey,
-      owner: authorityPda,
-    })[0]
-  );
-  t.like(authorityTokenAccount, {
-    state: TokenState.Initialized,
-    owner: authorityPda,
-    delegate: none(),
-    amount: BigInt(quantity),
-  });
-
-  // Seller history state is correct
-  const sellerHistoryAccount = await fetchSellerHistory(
-    umi,
-    findSellerHistoryPda(umi, {
-      gumballMachine: gumballMachine.publicKey,
-      seller: umi.identity.publicKey,
-    })[0]
+  t.is(tokenAmount(client, sellerAta).amount, 0n);
+  t.is(
+    tokenAmount(client, await authorityAta(gumballMachine, mint)).amount,
+    BigInt(quantity)
   );
 
-  t.like(sellerHistoryAccount, <SellerHistory>{
-    gumballMachine: gumballMachine.publicKey,
-    seller: umi.identity.publicKey,
-    itemCount: BigInt(quantity),
-  });
+  const sellerHistory = await getSellerHistory(
+    client,
+    gumballMachine,
+    client.payer.address
+  );
+  t.is(sellerHistory?.itemCount, BigInt(quantity));
 });
 
 test('it can add tokens to a gumball machine as allowlisted seller', async (t) => {
-  // Given a Gumball Machine with 5 nfts.
-  const umi = await createUmi();
-  const otherSellerUmi = await createUmi();
-  const sellersMerkleRoot = getMerkleRoot([otherSellerUmi.identity.publicKey]);
-  const gumballMachine = await create(umi, {
+  const client = await createClient();
+  const otherSeller = await generateKeyPairSignerWithSol(client.svm);
+  const sellersMerkleRoot = getMerkleRoot([otherSeller.address]);
+  const { gumballMachine } = await createGumballMachine(client, {
     settings: { itemCapacity: 5, sellersMerkleRoot },
   });
-
-  const [tokenMint] = await createMintWithHolders(otherSellerUmi, {
-    holders: [{ owner: otherSellerUmi.identity, amount: 100 }],
-  });
-
-  // When we add tokens to the Gumball Machine.
-  await transactionBuilder()
-    .add(
-      addTokens(otherSellerUmi, {
-        gumballMachine: gumballMachine.publicKey,
-        mint: tokenMint.publicKey,
-        amount: 100,
-        quantity: 1,
-        args: {
-          sellerProofPath: getMerkleProof(
-            [otherSellerUmi.identity.publicKey],
-            otherSellerUmi.identity.publicKey
-          ),
-        },
-      })
-    )
-    .sendAndConfirm(otherSellerUmi);
-
-  // Then the Gumball Machine has been updated properly.
-  const gumballMachineAccount = await fetchGumballMachine(
-    umi,
-    gumballMachine.publicKey
+  const { mint, sellerAta } = await createTokensForSeller(
+    client,
+    otherSeller,
+    100
   );
 
-  t.like(gumballMachineAccount, <Pick<GumballMachine, 'itemsLoaded' | 'items'>>{
-    itemsLoaded: 1,
-    items: [
-      {
-        index: 0,
-        isDrawn: false,
-        isClaimed: false,
-        isSettled: false,
-        mint: tokenMint.publicKey,
-        seller: otherSellerUmi.identity.publicKey,
-        buyer: undefined,
-        tokenStandard: TokenStandard.Fungible,
-        amount: 100,
+  await sendTransaction(client.svm, otherSeller, [
+    await getAddTokensInstructionAsync({
+      gumballMachine,
+      seller: otherSeller,
+      mint,
+      amount: 100,
+      quantity: 1,
+      args: {
+        sellerProofPath: some(
+          getMerkleProof([otherSeller.address], otherSeller.address)
+        ),
       },
-    ],
+    }),
+  ]);
+
+  const account = fetchGumballMachine(client.svm, gumballMachine);
+  t.is(account.itemsLoaded, 1);
+  t.like(account.items[0], {
+    index: 0,
+    mint,
+    seller: otherSeller.address,
+    tokenStandard: TokenStandard.Fungible,
+    amount: 100,
   });
 
-  // Then seller's token account is empty
-  const tokenAccount = await fetchToken(
-    umi,
-    findAssociatedTokenPda(umi, {
-      mint: tokenMint.publicKey,
-      owner: otherSellerUmi.identity.publicKey,
-    })[0]
-  );
-  t.like(tokenAccount, {
-    state: TokenState.Initialized,
-    owner: otherSellerUmi.identity.publicKey,
-    delegate: none(),
-    amount: 0n,
-  });
-
-  // Then authority pda's token account is filled
-  const authorityPda = findGumballMachineAuthorityPda(umi, {
-    gumballMachine: gumballMachine.publicKey,
-  })[0];
-  const authorityTokenAccount = await fetchToken(
-    umi,
-    findAssociatedTokenPda(umi, {
-      mint: tokenMint.publicKey,
-      owner: authorityPda,
-    })[0]
-  );
-  t.like(authorityTokenAccount, {
-    state: TokenState.Initialized,
-    owner: authorityPda,
-    delegate: none(),
-    amount: 100n,
-  });
-
-  // Seller history state is correct
-  const sellerHistoryAccount = await fetchSellerHistory(
-    umi,
-    findSellerHistoryPda(umi, {
-      gumballMachine: gumballMachine.publicKey,
-      seller: otherSellerUmi.identity.publicKey,
-    })[0]
+  t.is(tokenAmount(client, sellerAta).amount, 0n);
+  t.is(
+    tokenAmount(client, await authorityAta(gumballMachine, mint)).amount,
+    100n
   );
 
-  t.like(sellerHistoryAccount, <SellerHistory>{
-    gumballMachine: gumballMachine.publicKey,
-    seller: otherSellerUmi.identity.publicKey,
-    itemCount: 1n,
-  });
+  const sellerHistory = await getSellerHistory(
+    client,
+    gumballMachine,
+    otherSeller.address
+  );
+  t.is(sellerHistory?.itemCount, 1n);
 });
 
 test('it can add tokens to a gumball machine as allowlisted seller on allowlist of 10K addresses', async (t) => {
-  // Given a Gumball Machine with 5 nfts.
-  const umi = await createUmi();
-  const otherSellerUmi = await createUmi();
-  const addresses = Array.from(
-    { length: 10_000 },
-    (_, i) => generateSigner(umi).publicKey
-  );
-  addresses.push(otherSellerUmi.identity.publicKey);
-  const sellersMerkleRoot = getMerkleRoot(addresses);
-  const gumballMachine = await create(umi, {
+  const client = await createClient();
+  const otherSeller = await generateKeyPairSignerWithSol(client.svm);
+  const addrDecoder = getAddressDecoder();
+  const leaves = Array.from({ length: 10_000 }, () =>
+    addrDecoder.decode(crypto.getRandomValues(new Uint8Array(32)))
+  ) as string[];
+  leaves.push(otherSeller.address);
+  const sellersMerkleRoot = getMerkleRoot(leaves);
+  const { gumballMachine } = await createGumballMachine(client, {
     settings: { itemCapacity: 5, sellersMerkleRoot },
   });
-
-  const [tokenMint] = await createMintWithHolders(otherSellerUmi, {
-    holders: [{ owner: otherSellerUmi.identity, amount: 100 }],
-  });
-
-  // When we add tokens to the Gumball Machine.
-  await transactionBuilder()
-    .add(
-      addTokens(otherSellerUmi, {
-        gumballMachine: gumballMachine.publicKey,
-        mint: tokenMint.publicKey,
-        amount: 100,
-        quantity: 1,
-        args: {
-          sellerProofPath: getMerkleProof(
-            addresses,
-            otherSellerUmi.identity.publicKey
-          ),
-        },
-      })
-    )
-    .sendAndConfirm(otherSellerUmi);
-
-  // Then the Gumball Machine has been updated properly.
-  const gumballMachineAccount = await fetchGumballMachine(
-    umi,
-    gumballMachine.publicKey
+  const { mint, sellerAta } = await createTokensForSeller(
+    client,
+    otherSeller,
+    100
   );
 
-  t.like(gumballMachineAccount, <Pick<GumballMachine, 'itemsLoaded' | 'items'>>{
-    itemsLoaded: 1,
-    items: [
-      {
-        index: 0,
-        isDrawn: false,
-        isClaimed: false,
-        isSettled: false,
-        mint: tokenMint.publicKey,
-        seller: otherSellerUmi.identity.publicKey,
-        buyer: undefined,
-        tokenStandard: TokenStandard.Fungible,
-        amount: 100,
+  await sendTransaction(client.svm, otherSeller, [
+    await getAddTokensInstructionAsync({
+      gumballMachine,
+      seller: otherSeller,
+      mint,
+      amount: 100,
+      quantity: 1,
+      args: {
+        sellerProofPath: some(getMerkleProof(leaves, otherSeller.address)),
       },
-    ],
-  });
+    }),
+  ]);
 
-  // Then seller's token account is empty
-  const tokenAccount = await fetchToken(
-    umi,
-    findAssociatedTokenPda(umi, {
-      mint: tokenMint.publicKey,
-      owner: otherSellerUmi.identity.publicKey,
-    })[0]
+  const account = fetchGumballMachine(client.svm, gumballMachine);
+  t.is(account.itemsLoaded, 1);
+  t.like(account.items[0], {
+    index: 0,
+    mint,
+    seller: otherSeller.address,
+    tokenStandard: TokenStandard.Fungible,
+    amount: 100,
+  });
+  t.is(tokenAmount(client, sellerAta).amount, 0n);
+  t.is(
+    tokenAmount(client, await authorityAta(gumballMachine, mint)).amount,
+    100n
   );
-  t.like(tokenAccount, {
-    state: TokenState.Initialized,
-    owner: otherSellerUmi.identity.publicKey,
-    delegate: none(),
-    amount: 0n,
-  });
-
-  // Then authority pda's token account is filled
-  const authorityPda = findGumballMachineAuthorityPda(umi, {
-    gumballMachine: gumballMachine.publicKey,
-  })[0];
-  const authorityTokenAccount = await fetchToken(
-    umi,
-    findAssociatedTokenPda(umi, {
-      mint: tokenMint.publicKey,
-      owner: authorityPda,
-    })[0]
-  );
-  t.like(authorityTokenAccount, {
-    state: TokenState.Initialized,
-    owner: authorityPda,
-    delegate: none(),
-    amount: 100n,
-  });
-
-  // Seller history state is correct
-  const sellerHistoryAccount = await fetchSellerHistory(
-    umi,
-    findSellerHistoryPda(umi, {
-      gumballMachine: gumballMachine.publicKey,
-      seller: otherSellerUmi.identity.publicKey,
-    })[0]
-  );
-
-  t.like(sellerHistoryAccount, <SellerHistory>{
-    gumballMachine: gumballMachine.publicKey,
-    seller: otherSellerUmi.identity.publicKey,
-    itemCount: 1n,
-  });
 });
 
 test('it cannot add tokens as non gumball authority when there is no seller allowlist set', async (t) => {
-  // Given a Gumball Machine with 5 nfts.
-  const umi = await createUmi();
-  const otherSellerUmi = await createUmi();
-  const gumballMachine = await create(umi, { settings: { itemCapacity: 5 } });
-
-  const [tokenMint] = await createMintWithHolders(otherSellerUmi, {
-    holders: [{ owner: otherSellerUmi.identity, amount: 100 }],
+  const client = await createClient();
+  const otherSeller = await generateKeyPairSignerWithSol(client.svm);
+  const { gumballMachine } = await createGumballMachine(client, {
+    settings: { itemCapacity: 5 },
   });
+  const { mint } = await createTokensForSeller(client, otherSeller, 100);
 
-  // When we add tokens to the Gumball Machine.
-  const promise = transactionBuilder()
-    .add(
-      addTokens(otherSellerUmi, {
-        gumballMachine: gumballMachine.publicKey,
-        mint: tokenMint.publicKey,
+  await t.throwsAsync(
+    sendTransaction(client.svm, otherSeller, [
+      await getAddTokensInstructionAsync({
+        gumballMachine,
+        seller: otherSeller,
+        mint,
         amount: 100,
         quantity: 1,
-      })
-    )
-    .sendAndConfirm(otherSellerUmi);
-
-  await t.throwsAsync(promise, { message: /InvalidProofPath/ });
+      }),
+    ]),
+    { message: /InvalidProofPath/ }
+  );
 });
 
 test('it cannot add tokens as non-allowlisted seller when there is a seller allowlist set', async (t) => {
-  // Given a Gumball Machine with 5 nfts.
-  const umi = await createUmi();
-  const otherSellerUmi = await createUmi();
-  const gumballMachine = await create(umi, {
+  const client = await createClient();
+  const otherSeller = await generateKeyPairSignerWithSol(client.svm);
+  const { gumballMachine } = await createGumballMachine(client, {
     settings: {
       itemCapacity: 5,
-      sellersMerkleRoot: getMerkleRoot([umi.identity.publicKey]),
+      sellersMerkleRoot: getMerkleRoot([client.payer.address]),
     },
   });
+  const { mint } = await createTokensForSeller(client, otherSeller, 100);
 
-  const [tokenMint] = await createMintWithHolders(otherSellerUmi, {
-    holders: [{ owner: otherSellerUmi.identity, amount: 100 }],
-  });
-
-  // When we add tokens to the Gumball Machine.
-  const promise = transactionBuilder()
-    .add(
-      addTokens(otherSellerUmi, {
-        gumballMachine: gumballMachine.publicKey,
-        mint: tokenMint.publicKey,
+  await t.throwsAsync(
+    sendTransaction(client.svm, otherSeller, [
+      await getAddTokensInstructionAsync({
+        gumballMachine,
+        seller: otherSeller,
+        mint,
         amount: 100,
         quantity: 1,
-      })
-    )
-    .sendAndConfirm(otherSellerUmi);
-
-  await t.throwsAsync(promise, { message: /InvalidProofPath/ });
+      }),
+    ]),
+    { message: /InvalidProofPath/ }
+  );
 });
 
 test('it can append additional tokens to a gumball machine', async (t) => {
-  // Given a Gumball Machine with capacity for 2 tokens
-  const umi = await createUmi();
-  const gumballMachine = await create(umi, { settings: { itemCapacity: 2 } });
-
-  const [tokenMint] = await createMintWithHolders(umi, {
-    holders: [{ owner: umi.identity, amount: 200 }],
+  const client = await createClient();
+  const { gumballMachine } = await createGumballMachine(client, {
+    settings: { itemCapacity: 2 },
   });
-
-  // When we add tokens to the Gumball Machine in two steps
-  await transactionBuilder()
-    .add(
-      addTokens(umi, {
-        gumballMachine: gumballMachine.publicKey,
-        mint: tokenMint.publicKey,
-        amount: 100,
-        quantity: 1,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  await transactionBuilder()
-    .add(
-      addTokens(umi, {
-        gumballMachine: gumballMachine.publicKey,
-        mint: tokenMint.publicKey,
-        amount: 100,
-        quantity: 1,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then the Gumball Machine has been updated properly
-  const gumballMachineAccount = await fetchGumballMachine(
-    umi,
-    gumballMachine.publicKey
+  const { mint, sellerAta } = await createTokensForSeller(
+    client,
+    client.payer,
+    200
   );
 
-  t.like(gumballMachineAccount, <Pick<GumballMachine, 'itemsLoaded' | 'items'>>{
-    itemsLoaded: 2,
-    items: [
-      {
-        index: 0,
-        isDrawn: false,
-        isClaimed: false,
-        isSettled: false,
-        mint: tokenMint.publicKey,
-        seller: umi.identity.publicKey,
-        buyer: undefined,
-        tokenStandard: TokenStandard.Fungible,
-        amount: 100,
-      },
-      {
-        index: 1,
-        isDrawn: false,
-        isClaimed: false,
-        isSettled: false,
-        mint: tokenMint.publicKey,
-        seller: umi.identity.publicKey,
-        buyer: undefined,
-        tokenStandard: TokenStandard.Fungible,
-        amount: 100,
-      },
-    ],
+  await sendTransaction(client.svm, client.payer, [
+    await getAddTokensInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint,
+      amount: 100,
+      quantity: 1,
+    }),
+  ]);
+  await sendTransaction(client.svm, client.payer, [
+    await getAddTokensInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint,
+      amount: 100,
+      quantity: 1,
+    }),
+  ]);
+
+  const account = fetchGumballMachine(client.svm, gumballMachine);
+  t.is(account.itemsLoaded, 2);
+  t.like(account.items[0], {
+    index: 0,
+    mint,
+    amount: 100,
+    tokenStandard: TokenStandard.Fungible,
+  });
+  t.like(account.items[1], {
+    index: 1,
+    mint,
+    amount: 100,
+    tokenStandard: TokenStandard.Fungible,
   });
 
-  // Then seller's token account is empty
-  const tokenAccount = await fetchToken(
-    umi,
-    findAssociatedTokenPda(umi, {
-      mint: tokenMint.publicKey,
-      owner: umi.identity.publicKey,
-    })[0]
-  );
-  t.like(tokenAccount, {
-    state: TokenState.Initialized,
-    owner: umi.identity.publicKey,
-    delegate: none(),
-    amount: 0n,
-  });
-
-  // Then authority pda's token account is filled
-  const authorityPda = findGumballMachineAuthorityPda(umi, {
-    gumballMachine: gumballMachine.publicKey,
-  })[0];
-  const authorityTokenAccount = await fetchToken(
-    umi,
-    findAssociatedTokenPda(umi, {
-      mint: tokenMint.publicKey,
-      owner: authorityPda,
-    })[0]
-  );
-  t.like(authorityTokenAccount, {
-    state: TokenState.Initialized,
-    owner: authorityPda,
-    delegate: none(),
-    amount: 200n,
-  });
-
-  // Seller history state is correct
-  const sellerHistoryAccount = await fetchSellerHistory(
-    umi,
-    findSellerHistoryPda(umi, {
-      gumballMachine: gumballMachine.publicKey,
-      seller: umi.identity.publicKey,
-    })[0]
+  t.is(tokenAmount(client, sellerAta).amount, 0n);
+  t.is(
+    tokenAmount(client, await authorityAta(gumballMachine, mint)).amount,
+    200n
   );
 
-  t.like(sellerHistoryAccount, <SellerHistory>{
-    gumballMachine: gumballMachine.publicKey,
-    seller: umi.identity.publicKey,
-    itemCount: 2n,
-  });
+  const sellerHistory = await getSellerHistory(
+    client,
+    gumballMachine,
+    client.payer.address
+  );
+  t.is(sellerHistory?.itemCount, 2n);
 });
 
 test('it cannot add tokens that would make the gumball machine exceed the maximum capacity', async (t) => {
-  // Given an existing Gumball Machine with a capacity of 1 item.
-  const umi = await createUmi();
-  const gumballMachine = await create(umi, { settings: { itemCapacity: 1 } });
-
-  const [tokenMint] = await createMintWithHolders(umi, {
-    holders: [{ owner: umi.identity, amount: 200 }],
+  const client = await createClient();
+  const { gumballMachine } = await createGumballMachine(client, {
+    settings: { itemCapacity: 1 },
   });
+  const { mint, sellerAta } = await createTokensForSeller(
+    client,
+    client.payer,
+    200
+  );
 
-  // When we try to add 2 token entries to the Gumball Machine.
-  const promise = transactionBuilder()
-    .add(
-      addTokens(umi, {
-        gumballMachine: gumballMachine.publicKey,
-        mint: tokenMint.publicKey,
+  await t.throwsAsync(
+    sendTransaction(client.svm, client.payer, [
+      await getAddTokensInstructionAsync({
+        gumballMachine,
+        seller: client.payer,
+        mint,
         amount: 100,
         quantity: 2,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then we expect an error to be thrown.
-  await t.throwsAsync(promise, {
-    message: /IndexGreaterThanLength/,
-  });
-
-  // Then seller's token account should remain unchanged
-  const tokenAccount = await fetchToken(
-    umi,
-    findAssociatedTokenPda(umi, {
-      mint: tokenMint.publicKey,
-      owner: umi.identity.publicKey,
-    })[0]
+      }),
+    ]),
+    { message: /IndexGreaterThanLength/ }
   );
-  t.like(tokenAccount, {
-    state: TokenState.Initialized,
-    owner: umi.identity.publicKey,
-    delegate: none(),
-    amount: 200n,
-  });
+
+  t.is(tokenAmount(client, sellerAta).amount, 200n);
 });
 
 test('it cannot add tokens once the gumball machine is fully loaded', async (t) => {
-  // Given a Gumball Machine with capacity for 1 token
-  const umi = await createUmi();
-  const gumballMachine = await create(umi, { settings: { itemCapacity: 1 } });
-
-  const [tokenMint] = await createMintWithHolders(umi, {
-    holders: [{ owner: umi.identity, amount: 200 }],
+  const client = await createClient();
+  const { gumballMachine } = await createGumballMachine(client, {
+    settings: { itemCapacity: 1 },
   });
+  const { mint } = await createTokensForSeller(client, client.payer, 200);
 
-  // When we add the first token to fill the machine
-  await transactionBuilder()
-    .add(
-      addTokens(umi, {
-        gumballMachine: gumballMachine.publicKey,
-        mint: tokenMint.publicKey,
+  await sendTransaction(client.svm, client.payer, [
+    await getAddTokensInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint,
+      amount: 100,
+      quantity: 1,
+    }),
+  ]);
+
+  await t.throwsAsync(
+    sendTransaction(client.svm, client.payer, [
+      await getAddTokensInstructionAsync({
+        gumballMachine,
+        seller: client.payer,
+        mint,
         amount: 100,
         quantity: 1,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then when we try to add another token, it should fail
-  const promise = transactionBuilder()
-    .add(
-      addTokens(umi, {
-        gumballMachine: gumballMachine.publicKey,
-        mint: tokenMint.publicKey,
-        amount: 100,
-        quantity: 1,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then we expect an error to be thrown
-  await t.throwsAsync(promise, {
-    message: /IndexGreaterThanLength/,
-  });
-
-  // Then the Gumball Machine state should remain unchanged
-  const gumballMachineAccount = await fetchGumballMachine(
-    umi,
-    gumballMachine.publicKey
+      }),
+    ]),
+    { message: /IndexGreaterThanLength/ }
   );
 
-  t.like(gumballMachineAccount, <Pick<GumballMachine, 'itemsLoaded' | 'items'>>{
-    itemsLoaded: 1,
-    items: [
-      {
-        index: 0,
-        isDrawn: false,
-        isClaimed: false,
-        isSettled: false,
-        mint: tokenMint.publicKey,
-        seller: umi.identity.publicKey,
-        buyer: undefined,
-        tokenStandard: TokenStandard.Fungible,
-        amount: 100,
-      },
-    ],
-  });
+  const account = fetchGumballMachine(client.svm, gumballMachine);
+  t.is(account.itemsLoaded, 1);
+  t.like(account.items[0], { index: 0, mint, amount: 100 });
 });
 
 test('it cannot add more tokens than allowed per seller', async (t) => {
-  // Given a Gumball Machine with 5 nfts.
-  const umi = await createUmi();
-  const otherSellerUmi = await createUmi();
-  const sellersMerkleRoot = getMerkleRoot([otherSellerUmi.identity.publicKey]);
-  const gumballMachine = await create(umi, {
+  const client = await createClient();
+  const otherSeller = await generateKeyPairSignerWithSol(client.svm);
+  const sellersMerkleRoot = getMerkleRoot([otherSeller.address]);
+  const { gumballMachine } = await createGumballMachine(client, {
     settings: { itemCapacity: 2, itemsPerSeller: 1, sellersMerkleRoot },
   });
-  const nfts = await Promise.all([
-    createNft(otherSellerUmi),
-    createNft(otherSellerUmi),
+  const { mint: mint0 } = await createNft(client, otherSeller);
+  const { mint: mint1 } = await createNft(client, otherSeller);
+  const proof = some(
+    getMerkleProof([otherSeller.address], otherSeller.address)
+  );
+
+  await sendTransaction(client.svm, otherSeller, [
+    await getAddNftInstructionAsync({
+      gumballMachine,
+      seller: otherSeller,
+      mint: mint0,
+      args: { sellerProofPath: proof },
+    }),
   ]);
 
-  // When we add an nft to the Gumball Machine.
-  await transactionBuilder()
-    .add(
-      addNft(otherSellerUmi, {
-        gumballMachine: gumballMachine.publicKey,
-        mint: nfts[0].publicKey,
-        args: {
-          sellerProofPath: getMerkleProof(
-            [otherSellerUmi.identity.publicKey],
-            otherSellerUmi.identity.publicKey
-          ),
-        },
-      })
-    )
-    .sendAndConfirm(otherSellerUmi);
-
-  const promise = transactionBuilder()
-    .add(
-      addNft(otherSellerUmi, {
-        gumballMachine: gumballMachine.publicKey,
-        mint: nfts[1].publicKey,
-        args: {
-          sellerProofPath: getMerkleProof(
-            [otherSellerUmi.identity.publicKey],
-            otherSellerUmi.identity.publicKey
-          ),
-        },
-      })
-    )
-    .sendAndConfirm(otherSellerUmi);
-
-  await t.throwsAsync(promise, { message: /SellerTooManyItems/ });
+  await t.throwsAsync(
+    sendTransaction(client.svm, otherSeller, [
+      await getAddNftInstructionAsync({
+        gumballMachine,
+        seller: otherSeller,
+        mint: mint1,
+        args: { sellerProofPath: proof },
+      }),
+    ]),
+    { message: /SellerTooManyItems/ }
+  );
 });
 
 test('it can re-add tokens to a gumball machine as the authority', async (t) => {
-  // Given a Gumball Machine with 5 nfts.
-  const umi = await createUmi();
-  const [tokenMint1, tokenMint2] = await Promise.all([
-    createMintWithHolders(umi, {
-      holders: [{ owner: umi.identity, amount: 100 }],
+  const client = await createClient();
+  const { mint: mint0 } = await createTokensForSeller(
+    client,
+    client.payer,
+    100
+  );
+  const { mint: mint1 } = await createTokensForSeller(
+    client,
+    client.payer,
+    100
+  );
+  const mints = [mint0, mint1];
+
+  const { gumballMachine } = await createGumballMachine(client, {
+    settings: { itemCapacity: 5 },
+    guards: { solPayment: some({ lamports: sol(1) }) },
+  });
+
+  await sendTransaction(client.svm, client.payer, [
+    await getAddTokensInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint: mint0,
+      amount: 1,
+      quantity: 1,
     }),
-    createMintWithHolders(umi, {
-      holders: [{ owner: umi.identity, amount: 100 }],
+    await getAddTokensInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint: mint1,
+      amount: 1,
+      quantity: 1,
+    }),
+    getStartSaleInstruction({ gumballMachine, authority: client.payer }),
+  ]);
+
+  const buyer = await generateKeyPairSignerWithSol(client.svm, sol(10));
+  await sendTransaction(client.svm, buyer, [
+    COMPUTE_UNITS,
+    await draw({
+      gumballMachine,
+      payer: buyer,
+      buyer,
+      mintArgs: { solPayment: some(true) },
     }),
   ]);
-  const tokenMints = [tokenMint1[0], tokenMint2[0]];
 
-  const gumballMachineSigner = generateSigner(umi);
-  const gumballMachine = gumballMachineSigner.publicKey;
+  let account = fetchGumballMachine(client.svm, gumballMachine);
+  const drawnIndex = account.items.findIndex((i) => i.isDrawn);
 
-  await create(umi, {
-    gumballMachine: gumballMachineSigner,
-    items: [
-      {
-        id: tokenMints[0].publicKey,
-        tokenStandard: TokenStandard.Fungible,
-      },
-      {
-        id: tokenMints[1].publicKey,
-        tokenStandard: TokenStandard.Fungible,
-      },
-    ],
-    startSale: true,
-    guards: {
-      solPayment: some({ lamports: sol(1) }),
-    },
+  const [receiverTokenAccount] = await findAssociatedTokenPda({
+    owner: buyer.address,
+    mint: mints[drawnIndex],
+    tokenProgram: TOKEN_PROGRAM_ADDRESS,
   });
-
-  const buyer = await generateSignerWithSol(umi, sol(10));
-  const buyerUmi = await createUmi();
-  buyerUmi.use(signerIdentity(buyer));
-
-  // When we draw the nft from the Gumball Machine.
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(umi, {
-        gumballMachine,
-        buyer,
-        mintArgs: { solPayment: some(true) },
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Figure out which was drawn
-  let gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
-  const drawnIndex = gumballMachineAccount.items.findIndex(
-    (item) => item.isDrawn
-  );
-
-  // Then settle the sale
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      settleTokensSale(umi, {
-        index: drawnIndex,
-        gumballMachine,
-        authority: umi.identity.publicKey,
-        buyer: buyerUmi.identity.publicKey,
-        seller: umi.identity.publicKey,
-        mint: tokenMints[drawnIndex].publicKey,
-        receiverTokenAccount: findAssociatedTokenPda(umi, {
-          mint: tokenMints[drawnIndex].publicKey,
-          owner: buyerUmi.identity.publicKey,
-        })[0],
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // When we re-add the tokens to the Gumball Machine.
-  await transactionBuilder()
-    .add(
-      addTokens(umi, {
-        gumballMachine,
-        mint: tokenMints[drawnIndex].publicKey,
-        amount: 1,
-        quantity: 1,
-        args: {
-          index: drawnIndex,
-        },
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then the Gumball Machine has been updated properly.
-  gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
-
-  t.like(gumballMachineAccount, <Pick<GumballMachine, 'itemsLoaded' | 'items'>>{
-    itemsLoaded: 2,
-    itemsRedeemed: 0n,
-    itemsSettled: 0n,
-    // Half of the proceeds were settled since we settled one item
-    totalProceedsSettled: sol(0.5).basisPoints,
-    items: [
-      {
-        index: 0,
-        isDrawn: false,
-        isClaimed: false,
-        isSettled: false,
-        mint: tokenMints[0].publicKey,
-        seller: umi.identity.publicKey,
-        buyer: undefined,
-        tokenStandard: TokenStandard.Fungible,
-        amount: 1,
-      },
-      {
-        index: 1,
-        isDrawn: false,
-        isClaimed: false,
-        isSettled: false,
-        mint: tokenMints[1].publicKey,
-        seller: umi.identity.publicKey,
-        buyer: undefined,
-        tokenStandard: TokenStandard.Fungible,
-        amount: 1,
-      },
-    ],
-  });
-
-  // Then authority pda's token account is filled
-  const authorityPda = findGumballMachineAuthorityPda(umi, {
-    gumballMachine,
-  })[0];
-  const authorityTokenAccount = await fetchToken(
-    umi,
-    findAssociatedTokenPda(umi, {
-      mint: tokenMints[drawnIndex].publicKey,
-      owner: authorityPda,
-    })[0]
-  );
-  t.like(authorityTokenAccount, {
-    state: TokenState.Initialized,
-    owner: authorityPda,
-    delegate: none(),
-    amount: 1n,
-  });
-
-  // Seller history state is correct
-  const sellerHistoryAccount = await fetchSellerHistory(
-    umi,
-    findSellerHistoryPda(umi, {
+  await sendTransaction(client.svm, client.payer, [
+    COMPUTE_UNITS,
+    await getSettleTokensSaleInstructionAsync({
+      index: drawnIndex,
+      payer: client.payer,
       gumballMachine,
-      seller: umi.identity.publicKey,
-    })[0]
+      authority: client.payer.address,
+      seller: client.payer.address,
+      buyer: buyer.address,
+      mint: mints[drawnIndex],
+      receiverTokenAccount,
+    }),
+  ]);
+
+  await sendTransaction(client.svm, client.payer, [
+    await getAddTokensInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint: mints[drawnIndex],
+      amount: 1,
+      quantity: 1,
+      args: { index: some(drawnIndex) },
+    }),
+  ]);
+
+  account = fetchGumballMachine(client.svm, gumballMachine);
+  t.is(account.itemsLoaded, 2);
+  t.is(account.itemsRedeemed, 0n);
+  t.is(account.itemsSettled, 0n);
+  t.is(account.totalProceedsSettled, sol(0.5));
+  t.like(account.items[0], {
+    index: 0,
+    mint: mint0,
+    tokenStandard: TokenStandard.Fungible,
+  });
+  t.like(account.items[1], {
+    index: 1,
+    mint: mint1,
+    tokenStandard: TokenStandard.Fungible,
+  });
+
+  t.is(
+    tokenAmount(client, await authorityAta(gumballMachine, mints[drawnIndex]))
+      .amount,
+    1n
   );
 
-  t.like(sellerHistoryAccount, <SellerHistory>{
+  const sellerHistory = await getSellerHistory(
+    client,
     gumballMachine,
-    seller: umi.identity.publicKey,
-    itemCount: 2n,
-  });
+    client.payer.address
+  );
+  t.is(sellerHistory?.itemCount, 2n);
 });
 
 test('it can re-add a span of tokens to a gumball machine', async (t) => {
-  // Given a Gumball Machine with 5 nfts.
-  const umi = await createUmi();
-  const [tokenMint] = await createMintWithHolders(umi, {
-    holders: [{ owner: umi.identity, amount: 100 }],
-  });
+  const client = await createClient();
+  const { mint, sellerAta } = await createTokensForSeller(
+    client,
+    client.payer,
+    100
+  );
 
-  const gumballMachineSigner = generateSigner(umi);
-  const gumballMachine = gumballMachineSigner.publicKey;
-
-  await create(umi, {
-    gumballMachine: gumballMachineSigner,
-    items: [
-      {
-        id: tokenMint.publicKey,
-        tokenStandard: TokenStandard.Fungible,
-        quantity: 4,
-      },
-    ],
-    startSale: true,
+  const { gumballMachine } = await createGumballMachine(client, {
+    settings: { itemCapacity: 5 },
     guards: {},
   });
 
-  const buyer = await generateSignerWithSol(umi, sol(10));
-  const buyerUmi = await createUmi();
-  buyerUmi.use(signerIdentity(buyer));
+  await sendTransaction(client.svm, client.payer, [
+    COMPUTE_UNITS,
+    await getAddTokensInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint,
+      amount: 1,
+      quantity: 4,
+    }),
+    getStartSaleInstruction({ gumballMachine, authority: client.payer }),
+  ]);
 
-  // When we draw 3 items
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 1_400_000 }))
-    .add(
-      draw(umi, {
-        gumballMachine,
-        buyer,
-      })
-    )
-    .add(
-      draw(umi, {
-        gumballMachine,
-        buyer,
-      })
-    )
-    .add(
-      draw(umi, {
-        gumballMachine,
-        buyer,
-      })
-    )
-    .sendAndConfirm(umi);
+  const buyer = await generateKeyPairSignerWithSol(client.svm, sol(10));
+  await sendTransaction(client.svm, buyer, [
+    COMPUTE_UNITS,
+    await draw({ gumballMachine, payer: buyer, buyer }),
+    await draw({ gumballMachine, payer: buyer, buyer }),
+    await draw({ gumballMachine, payer: buyer, buyer }),
+  ]);
 
-  // Figure out which was drawn
-  let gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
-  // Find a span of 2 consecutive items that are drawn
-  const drawnIndices = gumballMachineAccount.items
-    .filter((item) => item.isDrawn)
-    .map((item) => item.index);
+  let account = fetchGumballMachine(client.svm, gumballMachine);
+  const drawnIndices = account.items
+    .filter((i) => i.isDrawn)
+    .map((i) => i.index);
 
   const getConsecutiveStartIndex = (indices: number[]) => {
-    for (let i = 0; i < indices.length - 1; i++) {
-      if (indices[i] + 1 === indices[i + 1]) {
-        return indices[i];
-      }
+    for (let i = 0; i < indices.length - 1; i += 1) {
+      if (indices[i] + 1 === indices[i + 1]) return indices[i];
     }
+    return undefined;
   };
-
   const startIndex = getConsecutiveStartIndex(drawnIndices)!;
 
-  // Then settle the sale
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 1_400_000 }))
-    .add(
-      settleTokensSale(umi, {
-        index: startIndex,
-        gumballMachine,
-        authority: umi.identity.publicKey,
-        buyer: buyerUmi.identity.publicKey,
-        seller: umi.identity.publicKey,
-        mint: tokenMint.publicKey,
-        receiverTokenAccount: findAssociatedTokenPda(umi, {
-          mint: tokenMint.publicKey,
-          owner: buyerUmi.identity.publicKey,
-        })[0],
-      })
-    )
-    .add(
-      settleTokensSale(umi, {
-        index: startIndex + 1,
-        gumballMachine,
-        authority: umi.identity.publicKey,
-        buyer: buyerUmi.identity.publicKey,
-        seller: umi.identity.publicKey,
-        mint: tokenMint.publicKey,
-        receiverTokenAccount: findAssociatedTokenPda(umi, {
-          mint: tokenMint.publicKey,
-          owner: buyerUmi.identity.publicKey,
-        })[0],
-      })
-    )
-    .sendAndConfirm(umi);
+  const [receiverTokenAccount] = await findAssociatedTokenPda({
+    owner: buyer.address,
+    mint,
+    tokenProgram: TOKEN_PROGRAM_ADDRESS,
+  });
+  await sendTransaction(client.svm, client.payer, [
+    COMPUTE_UNITS,
+    await getSettleTokensSaleInstructionAsync({
+      index: startIndex,
+      payer: client.payer,
+      gumballMachine,
+      authority: client.payer.address,
+      seller: client.payer.address,
+      buyer: buyer.address,
+      mint,
+      receiverTokenAccount,
+    }),
+    await getSettleTokensSaleInstructionAsync({
+      index: startIndex + 1,
+      payer: client.payer,
+      gumballMachine,
+      authority: client.payer.address,
+      seller: client.payer.address,
+      buyer: buyer.address,
+      mint,
+      receiverTokenAccount,
+    }),
+  ]);
 
-  const tokenBalance = await fetchToken(
-    umi,
-    findAssociatedTokenPda(umi, {
-      mint: tokenMint.publicKey,
-      owner: umi.identity.publicKey,
-    })[0]
-  );
+  const balanceBefore = tokenAmount(client, sellerAta).amount;
 
-  // When we re-add the tokens to the Gumball Machine.
-  await transactionBuilder()
-    .add(
-      addTokens(umi, {
-        gumballMachine,
-        mint: tokenMint.publicKey,
-        amount: 1,
-        quantity: 2,
-        args: {
-          index: startIndex,
-        },
-      })
-    )
-    .sendAndConfirm(umi);
+  await sendTransaction(client.svm, client.payer, [
+    await getAddTokensInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint,
+      amount: 1,
+      quantity: 2,
+      args: { index: some(startIndex) },
+    }),
+  ]);
 
-  const tokenBalanceAfter = await fetchToken(
-    umi,
-    findAssociatedTokenPda(umi, {
-      mint: tokenMint.publicKey,
-      owner: umi.identity.publicKey,
-    })[0]
-  );
+  const balanceAfter = tokenAmount(client, sellerAta).amount;
+  t.is(balanceAfter, balanceBefore - 2n);
 
-  t.is(tokenBalanceAfter.amount, tokenBalance.amount - 2n);
-
-  // Then the Gumball Machine has been updated properly.
-  gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
-
-  t.false(gumballMachineAccount.items[startIndex].isDrawn);
-  t.false(gumballMachineAccount.items[startIndex + 1].isDrawn);
+  account = fetchGumballMachine(client.svm, gumballMachine);
+  t.false(account.items[startIndex].isDrawn);
+  t.false(account.items[startIndex + 1].isDrawn);
 });

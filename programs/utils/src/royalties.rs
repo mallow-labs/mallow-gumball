@@ -3,7 +3,11 @@ use mpl_token_metadata::{accounts::Metadata, types::Creator};
 
 use crate::assert_is_metadata_account;
 
-#[derive(AnchorSerialize, AnchorDeserialize, Default)]
+// No `AnchorSerialize`/`AnchorDeserialize`: `RoyaltyInfo` is an in-memory helper
+// (never serialized into an account or instruction). Deriving them would force
+// Anchor's `idl-build` to require `IdlBuild` on the embedded `mpl_token_metadata`
+// `Creator`, which it doesn't implement — breaking `anchor build`.
+#[derive(Default)]
 pub struct RoyaltyInfo {
     /// True if this is the first time the asset is being sold
     pub is_primary_sale: bool,

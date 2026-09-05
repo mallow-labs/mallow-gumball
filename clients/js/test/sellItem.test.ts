@@ -1,1727 +1,1485 @@
-/* eslint-disable no-await-in-loop */
-import { AssetV1, fetchAssetV1 } from '@metaplex-foundation/mpl-core';
 import {
-  fetchToken,
+  AccountState,
   findAssociatedTokenPda,
-  setComputeUnitLimit,
-  TokenState,
-} from '@metaplex-foundation/mpl-toolbox';
+  TOKEN_PROGRAM_ADDRESS,
+} from '@solana-program/token';
+import { TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';
 import {
-  addAmounts,
-  generateSigner,
-  isEqualToAmount,
-  none,
-  sol,
+  AccountRole,
+  generateKeyPairSigner,
+  getAddressDecoder,
+  isNone,
   some,
-  subtractAmounts,
-  transactionBuilder,
-} from '@metaplex-foundation/umi';
-import { LAMPORTS_PER_SOL } from '@solana/web3.js';
-import test from 'ava';
+  type Address,
+  type TransactionSigner,
+} from '@solana/kit';
+import test, { type ExecutionContext } from 'ava';
 import {
-  addNft,
-  closeGumballMachine,
   draw,
-  fetchGumballMachine,
-  findGumballGuardPda,
   findGumballMachineAuthorityPda,
+  getAddCoreAssetInstructionAsync,
+  getAddNftInstructionAsync,
+  getAddTokensInstructionAsync,
+  getCloseGumballMachineInstructionAsync,
   getDefaultBuyBackConfig,
-  GumballMachine,
-  manageBuyBackFunds,
-  sellItem,
-  settleNftSale,
-  settleTokensSaleClaimed,
+  getManageBuyBackFundsInstructionAsync,
+  getSellItemInstructionAsync,
+  getSettleNftSaleInstructionAsync,
+  getSettleTokensSaleClaimedInstructionAsync,
+  getStartSaleInstruction,
   TokenStandard,
+  type BuyBackConfigArgs,
 } from '../src';
+import { createCoreAsset, createNft, createProgrammableNft } from './_nftKit';
 import {
-  create,
-  createCoreAsset,
   createMintWithHolders,
-  createNft,
-  createProgrammableNft,
-  createUmi,
+  fetchTokenAccount,
+  getBalance,
+} from './_settleSetup';
+import {
+  COMPUTE_UNITS,
+  createClient,
+  createGumballMachine,
+  fetchGumballMachine,
+  generateKeyPairSignerWithSol,
+  sendTransaction,
+  sol,
+  type Client,
 } from './_setup';
+import {
+  createMintWithHolders as createMintWithHolders22,
+  fetchTokenAmount as fetchTokenAmount22,
+} from './defaultGuards/_guardsBSetup';
+
+const AUTH_RULES_PROGRAM =
+  'auth9SigNpDKz4sJJ1DfCTuZrZNSAgh9sFD3rboVmgg' as Address;
+
+/** Assert two lamport amounts are within `tol` of one another. */
+const near = (
+  t: ExecutionContext,
+  actual: bigint,
+  expected: bigint,
+  tol: bigint = sol(0.01)
+) => {
+  const diff = actual > expected ? actual - expected : expected - actual;
+  t.true(diff <= tol, `${actual} not within ${tol} of ${expected}`);
+};
+
+const ataFor = async (mint: Address, owner: Address): Promise<Address> => {
+  const [ata] = await findAssociatedTokenPda({
+    owner,
+    mint,
+    tokenProgram: TOKEN_PROGRAM_ADDRESS,
+  });
+  return ata;
+};
+
+/** Build an enabled buy-back config authorised by `oracleSigner`. */
+const buyBack = (
+  oracleSigner: TransactionSigner,
+  overrides: Partial<BuyBackConfigArgs> = {}
+): BuyBackConfigArgs => ({
+  ...getDefaultBuyBackConfig(),
+  oracleSigner: oracleSigner.address,
+  enabled: true,
+  ...overrides,
+});
+
+/** Deposit or withdraw buy-back funds as the machine authority. */
+const manageFunds = async (
+  client: Client,
+  gumballMachine: Address,
+  amount: number | bigint,
+  isWithdraw: boolean,
+  paymentMint?: Address
+) =>
+  sendTransaction(client.svm, client.payer, [
+    await getManageBuyBackFundsInstructionAsync({
+      gumballMachine,
+      authority: client.payer,
+      amount,
+      isWithdraw,
+      paymentMint,
+    }),
+  ]);
+
+type ExpectedItem = {
+  index: number;
+  isDrawn: boolean;
+  isClaimed: boolean;
+  isSettled: boolean;
+  mint: Address;
+  seller: Address;
+  buyer: Address;
+  tokenStandard: TokenStandard;
+  amount: number;
+};
+
+const expectItem = (
+  t: ExecutionContext,
+  item: {
+    index: number;
+    isDrawn: boolean;
+    isClaimed: boolean;
+    isSettled: boolean;
+    mint: string;
+    seller: string;
+    buyer?: string;
+    tokenStandard: TokenStandard;
+    amount: number;
+  },
+  e: ExpectedItem
+) => {
+  t.is(item.index, e.index);
+  t.is(item.isDrawn, e.isDrawn);
+  t.is(item.isClaimed, e.isClaimed);
+  t.is(item.isSettled, e.isSettled);
+  t.is(item.mint, e.mint);
+  t.is(item.seller, e.seller);
+  t.is(item.buyer, e.buyer);
+  t.is(item.tokenStandard, e.tokenStandard);
+  t.is(item.amount, e.amount);
+};
+
+/** Read the on-chain owner of an mpl-core AssetV1 (key(1) + owner(32)). */
+const coreAssetOwner = (client: Client, asset: Address): string => {
+  const account = client.svm.getAccount(asset);
+  if (!account.exists) throw new Error(`Core asset ${asset} not found`);
+  return getAddressDecoder().decode(account.data.slice(1, 33));
+};
 
 test('it can sell an nft item', async (t) => {
-  // Given a gumball machine with a gumball guard that has no guards.
-  const umi = await createUmi();
-  const nft = await createNft(umi);
-  // Oracle signer (authorized to sell on behalf of sellers)
-  const oracleSigner = generateSigner(umi);
+  const client = await createClient();
+  const { mint } = await createNft(client);
+  const oracleSigner = await generateKeyPairSigner();
 
-  // Create gumball machine with buyback enabled
-  const gumballMachineSigner = await create(umi, {
-    items: [
-      {
-        id: nft.publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-    ],
-    startSale: true,
+  const { gumballMachine } = await createGumballMachine(client, {
     guards: {},
-    buyBackConfig: {
-      ...getDefaultBuyBackConfig(),
-      oracleSigner: oracleSigner.publicKey,
-      enabled: true,
-      cutoffPct: 0,
-    },
+    buyBackConfig: buyBack(oracleSigner, { cutoffPct: 0 }),
   });
-  const gumballMachine = gumballMachineSigner.publicKey;
+  await sendTransaction(client.svm, client.payer, [
+    COMPUTE_UNITS,
+    await getAddNftInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint,
+    }),
+    getStartSaleInstruction({ gumballMachine, authority: client.payer }),
+  ]);
+  await manageFunds(client, gumballMachine, sol(1), false);
 
-  // Deposit buy back funds
-  const depositAmount = LAMPORTS_PER_SOL;
-  await transactionBuilder()
-    .add(
-      manageBuyBackFunds(umi, {
-        gumballMachine,
-        amount: depositAmount,
-        isWithdraw: false,
-      })
-    )
-    .sendAndConfirm(umi);
+  const drawer = await generateKeyPairSignerWithSol(client.svm, sol(100));
+  await sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await draw({ gumballMachine, payer: drawer, buyer: drawer, mintArgs: {} }),
+  ]);
 
-  // When we mint from the gumball guard.
-  const buyerUmi = await createUmi();
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(buyerUmi, {
-        gumballMachine,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
+  const preDrawer = getBalance(client, drawer.address);
 
-  const preBuyerTokenAccount = await umi.rpc.getBalance(
-    buyerUmi.identity.publicKey
-  );
+  await sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await getSellItemInstructionAsync({
+      gumballMachine,
+      payer: drawer,
+      oracleSigner,
+      seller: drawer.address,
+      buyer: client.payer.address,
+      index: 0,
+      amount: 1,
+      buyPrice: sol(1),
+      mint,
+      tokenStandard: TokenStandard.NonFungible,
+    }),
+  ]);
 
-  // Buyer can sell back to the seller
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      sellItem(buyerUmi, {
-        gumballMachine,
-        index: 0,
-        amount: 1,
-        buyPrice: LAMPORTS_PER_SOL,
-        oracleSigner,
-        buyer: umi.identity.publicKey,
-        mint: nft.publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
+  // The drawer (current holder) receives the buy price.
+  near(t, getBalance(client, drawer.address), preDrawer + sol(1), sol(0.001));
 
-  const postBuyerTokenAccount = await umi.rpc.getBalance(
-    buyerUmi.identity.publicKey
-  );
-
-  t.true(
-    isEqualToAmount(
-      postBuyerTokenAccount,
-      addAmounts(preBuyerTokenAccount, sol(1)),
-      sol(0.001)
-    )
-  );
-
-  // And the gumball machine was updated.
-  const gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
-  t.like(gumballMachineAccount, <Partial<GumballMachine>>{
-    items: [
-      {
-        index: 0,
-        isDrawn: true,
-        isClaimed: true,
-        isSettled: false,
-        mint: nft.publicKey,
-        seller: umi.identity.publicKey,
-        buyer: buyerUmi.identity.publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-        amount: 1,
-      },
-    ],
+  const account = fetchGumballMachine(client.svm, gumballMachine);
+  expectItem(t, account.items[0], {
+    index: 0,
+    isDrawn: true,
+    isClaimed: true,
+    isSettled: false,
+    mint,
+    seller: client.payer.address,
+    buyer: drawer.address,
+    tokenStandard: TokenStandard.NonFungible,
+    amount: 1,
   });
 
-  // Check that the NFT is now owned by the authority
-  const tokenAccount = await fetchToken(
-    umi,
-    findAssociatedTokenPda(umi, {
-      mint: nft.publicKey,
-      owner: umi.identity.publicKey,
-    })[0]
+  // The NFT is now owned by the authority (the sell-back buyer).
+  const token = fetchTokenAccount(
+    client,
+    await ataFor(mint, client.payer.address)
   );
-
-  t.like(tokenAccount, {
-    state: TokenState.Initialized,
-    owner: umi.identity.publicKey,
-    delegate: none(),
-    amount: 1n,
-  });
+  t.is(token.state, AccountState.Initialized);
+  t.is(token.owner, client.payer.address);
+  t.true(isNone(token.delegate));
+  t.is(token.amount, 1n);
 });
 
 test('it can sell a pnft item', async (t) => {
-  // Given a gumball machine with a gumball guard that has no guards.
-  const umi = await createUmi();
-  const nft = await createProgrammableNft(umi);
-  const oracleSigner = generateSigner(umi);
+  const client = await createClient();
+  const { mint } = await createProgrammableNft(client);
+  const oracleSigner = await generateKeyPairSigner();
 
-  // Create gumball machine with buyback enabled
-  const gumballMachineSigner = await create(umi, {
-    items: [
-      {
-        id: nft.publicKey,
-        tokenStandard: TokenStandard.ProgrammableNonFungible,
-      },
-    ],
-    startSale: true,
+  const { gumballMachine } = await createGumballMachine(client, {
     guards: {},
-    buyBackConfig: {
-      ...getDefaultBuyBackConfig(),
-      oracleSigner: oracleSigner.publicKey,
-      enabled: true,
-    },
+    buyBackConfig: buyBack(oracleSigner),
   });
-  const gumballMachine = gumballMachineSigner.publicKey;
+  await sendTransaction(client.svm, client.payer, [
+    COMPUTE_UNITS,
+    await getAddNftInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint,
+      authRulesProgram: AUTH_RULES_PROGRAM,
+    }),
+    getStartSaleInstruction({ gumballMachine, authority: client.payer }),
+  ]);
+  await manageFunds(client, gumballMachine, sol(1), false);
 
-  // Deposit buy back funds
-  const depositAmount = LAMPORTS_PER_SOL;
-  await transactionBuilder()
-    .add(
-      manageBuyBackFunds(umi, {
-        gumballMachine,
-        amount: depositAmount,
-        isWithdraw: false,
-      })
-    )
-    .sendAndConfirm(umi);
+  const drawer = await generateKeyPairSignerWithSol(client.svm, sol(100));
+  await sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await draw({ gumballMachine, payer: drawer, buyer: drawer, mintArgs: {} }),
+  ]);
 
-  // When we mint from the gumball guard.
-  const buyerUmi = await createUmi();
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(buyerUmi, {
-        gumballMachine,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
+  await sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await getSellItemInstructionAsync({
+      gumballMachine,
+      payer: drawer,
+      oracleSigner,
+      seller: drawer.address,
+      buyer: client.payer.address,
+      index: 0,
+      amount: 1,
+      buyPrice: sol(1),
+      mint,
+      tokenStandard: TokenStandard.ProgrammableNonFungible,
+    }),
+  ]);
 
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      sellItem(buyerUmi, {
-        gumballMachine,
-        index: 0,
-        amount: 1,
-        buyPrice: LAMPORTS_PER_SOL,
-        oracleSigner,
-        buyer: umi.identity.publicKey,
-        mint: nft.publicKey,
-        tokenStandard: TokenStandard.ProgrammableNonFungible,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
-
-  // And the gumball machine was updated.
-  const gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
-  t.like(gumballMachineAccount, <Partial<GumballMachine>>{
-    items: [
-      {
-        index: 0,
-        isDrawn: true,
-        isClaimed: true,
-        isSettled: false,
-        mint: nft.publicKey,
-        seller: umi.identity.publicKey,
-        buyer: buyerUmi.identity.publicKey,
-        tokenStandard: TokenStandard.ProgrammableNonFungible,
-        amount: 1,
-      },
-    ],
+  const account = fetchGumballMachine(client.svm, gumballMachine);
+  expectItem(t, account.items[0], {
+    index: 0,
+    isDrawn: true,
+    isClaimed: true,
+    isSettled: false,
+    mint,
+    seller: client.payer.address,
+    buyer: drawer.address,
+    tokenStandard: TokenStandard.ProgrammableNonFungible,
+    amount: 1,
   });
 
-  // Buyer should be the owner
-  // Then nft is unfrozen and revoked
-  const tokenAccount = await fetchToken(
-    umi,
-    findAssociatedTokenPda(umi, {
-      mint: nft.publicKey,
-      owner: umi.identity.publicKey,
-    })[0]
+  // The pNFT is owned by the authority and stays frozen after sell-back.
+  const token = fetchTokenAccount(
+    client,
+    await ataFor(mint, client.payer.address)
   );
+  t.is(token.state, AccountState.Frozen);
+  t.is(token.owner, client.payer.address);
+  t.true(isNone(token.delegate));
+  t.is(token.amount, 1n);
 
-  t.like(tokenAccount, {
-    state: TokenState.Frozen,
-    owner: umi.identity.publicKey,
-    delegate: none(),
-    amount: 1n,
-  });
-
-  // Should be able to add the asset to a new Gumball
-  await create(umi, {
-    items: [
-      {
-        id: nft.publicKey,
-        tokenStandard: TokenStandard.ProgrammableNonFungible,
-      },
-    ],
-    startSale: true,
+  // The asset can be re-added to a new gumball machine.
+  const { gumballMachine: machine2 } = await createGumballMachine(client, {
     guards: {},
   });
+  await sendTransaction(client.svm, client.payer, [
+    COMPUTE_UNITS,
+    await getAddNftInstructionAsync({
+      gumballMachine: machine2,
+      seller: client.payer,
+      mint,
+      authRulesProgram: AUTH_RULES_PROGRAM,
+    }),
+    getStartSaleInstruction({
+      gumballMachine: machine2,
+      authority: client.payer,
+    }),
+  ]);
+  t.pass();
 });
 
 test('it can sell a tokens item', async (t) => {
-  // Given a gumball machine with a gumball guard that has no guards.
-  const umi = await createUmi();
-  const gumballMachineSigner = generateSigner(umi);
-  const oracleSigner = generateSigner(umi);
+  const client = await createClient();
+  const oracleSigner = await generateKeyPairSigner();
+  const gmSigner = await generateKeyPairSigner();
+  const [authorityPda] = await findGumballMachineAuthorityPda({
+    gumballMachine: gmSigner.address,
+  });
 
-  const [tokenMint] = await createMintWithHolders(umi, {
+  const { mint } = await createMintWithHolders(client, {
     holders: [
-      { owner: umi.identity, amount: 100 },
-      {
-        owner: findGumballMachineAuthorityPda(umi, {
-          gumballMachine: gumballMachineSigner.publicKey,
-        }),
-        amount: 0,
-      },
+      { owner: client.payer.address, amount: 100 },
+      { owner: authorityPda, amount: 0 },
     ],
   });
 
-  // Create gumball machine with buyback enabled
-  await create(umi, {
-    gumballMachine: gumballMachineSigner,
-    items: [
-      {
-        id: tokenMint.publicKey,
-        tokenStandard: TokenStandard.Fungible,
-        amount: 100,
-      },
-    ],
-    startSale: true,
+  const { gumballMachine } = await createGumballMachine(client, {
+    gumballMachine: gmSigner,
     guards: {},
-    buyBackConfig: {
-      ...getDefaultBuyBackConfig(),
-      oracleSigner: oracleSigner.publicKey,
-      enabled: true,
-    },
+    buyBackConfig: buyBack(oracleSigner),
   });
-  const gumballMachine = gumballMachineSigner.publicKey;
+  await sendTransaction(client.svm, client.payer, [
+    await getAddTokensInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint,
+      amount: 100,
+      quantity: 1,
+    }),
+    getStartSaleInstruction({ gumballMachine, authority: client.payer }),
+  ]);
+  await manageFunds(client, gumballMachine, sol(1), false);
 
-  // Deposit buy back funds
-  const depositAmount = LAMPORTS_PER_SOL;
-  await transactionBuilder()
-    .add(
-      manageBuyBackFunds(umi, {
-        gumballMachine,
-        amount: depositAmount,
-        isWithdraw: false,
-      })
-    )
-    .sendAndConfirm(umi);
+  const drawer = await generateKeyPairSignerWithSol(client.svm, sol(100));
+  await sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await draw({ gumballMachine, payer: drawer, buyer: drawer, mintArgs: {} }),
+  ]);
 
-  // When we mint from the gumball guard.
-  const buyerUmi = await createUmi();
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(buyerUmi, {
-        gumballMachine,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
+  await sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await getSellItemInstructionAsync({
+      gumballMachine,
+      payer: drawer,
+      oracleSigner,
+      seller: drawer.address,
+      buyer: client.payer.address,
+      index: 0,
+      amount: 100,
+      buyPrice: sol(1),
+      mint,
+      tokenStandard: TokenStandard.Fungible,
+    }),
+  ]);
 
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      sellItem(buyerUmi, {
-        gumballMachine,
-        index: 0,
-        amount: 100,
-        buyPrice: LAMPORTS_PER_SOL,
-        oracleSigner,
-        buyer: umi.identity.publicKey,
-        mint: tokenMint.publicKey,
-        tokenStandard: TokenStandard.Fungible,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
-
-  // And the gumball machine was updated.
-  const gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
-  t.like(gumballMachineAccount, <Partial<GumballMachine>>{
-    items: [
-      {
-        index: 0,
-        isDrawn: true,
-        isClaimed: true,
-        isSettled: false,
-        mint: tokenMint.publicKey,
-        seller: umi.identity.publicKey,
-        buyer: buyerUmi.identity.publicKey,
-        tokenStandard: TokenStandard.Fungible,
-        amount: 100,
-      },
-    ],
+  const account = fetchGumballMachine(client.svm, gumballMachine);
+  expectItem(t, account.items[0], {
+    index: 0,
+    isDrawn: true,
+    isClaimed: true,
+    isSettled: false,
+    mint,
+    seller: client.payer.address,
+    buyer: drawer.address,
+    tokenStandard: TokenStandard.Fungible,
+    amount: 100,
   });
 
-  // Buyer should be the owner of the tokens
-  const tokenAccount = await fetchToken(
-    umi,
-    findAssociatedTokenPda(umi, {
-      mint: tokenMint.publicKey,
-      owner: umi.identity.publicKey,
-    })[0]
+  // The tokens are owned by the authority (the sell-back buyer).
+  const token = fetchTokenAccount(
+    client,
+    await ataFor(mint, client.payer.address)
   );
+  t.is(token.state, AccountState.Initialized);
+  t.is(token.owner, client.payer.address);
+  t.true(isNone(token.delegate));
+  t.is(token.amount, 100n);
 
-  t.like(tokenAccount, {
-    state: TokenState.Initialized,
-    owner: umi.identity.publicKey,
-    delegate: none(),
-    amount: 100n,
+  // The tokens can be re-added to a new gumball machine.
+  const gm2 = await generateKeyPairSigner();
+  const [authorityPda2] = await findGumballMachineAuthorityPda({
+    gumballMachine: gm2.address,
   });
-
-  // Should be able to add the tokens to a new Gumball
-  await create(umi, {
-    items: [
-      {
-        id: tokenMint.publicKey,
-        tokenStandard: TokenStandard.Fungible,
-        amount: 100,
-      },
-    ],
-    startSale: true,
+  // The authority-pda ATA must exist before add (mirrors umi setup).
+  await createMintWithHolders(client, {
+    holders: [{ owner: authorityPda2, amount: 0 }],
+    mint: await generateKeyPairSigner(),
+  });
+  const { gumballMachine: machine2 } = await createGumballMachine(client, {
+    gumballMachine: gm2,
     guards: {},
   });
+  await sendTransaction(client.svm, client.payer, [
+    await getAddTokensInstructionAsync({
+      gumballMachine: machine2,
+      seller: client.payer,
+      mint,
+      amount: 100,
+      quantity: 1,
+    }),
+    getStartSaleInstruction({
+      gumballMachine: machine2,
+      authority: client.payer,
+    }),
+  ]);
+  t.pass();
 });
 
 test('it can sell a core asset item', async (t) => {
-  // Given a gumball machine with a gumball guard that has no guards.
-  const umi = await createUmi();
-  const asset = await createCoreAsset(umi);
-  const oracleSigner = generateSigner(umi);
+  const client = await createClient();
+  const { asset } = await createCoreAsset(client);
+  const oracleSigner = await generateKeyPairSigner();
 
-  // Create gumball machine with buyback enabled
-  const gumballMachineSigner = await create(umi, {
-    items: [
-      {
-        id: asset.publicKey,
-        tokenStandard: TokenStandard.Core,
-      },
-    ],
-    startSale: true,
+  const { gumballMachine } = await createGumballMachine(client, {
     guards: {},
-    buyBackConfig: {
-      ...getDefaultBuyBackConfig(),
-      oracleSigner: oracleSigner.publicKey,
-      enabled: true,
-    },
+    buyBackConfig: buyBack(oracleSigner),
   });
-  const gumballMachine = gumballMachineSigner.publicKey;
+  await sendTransaction(client.svm, client.payer, [
+    COMPUTE_UNITS,
+    await getAddCoreAssetInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      asset,
+    }),
+    getStartSaleInstruction({ gumballMachine, authority: client.payer }),
+  ]);
+  await manageFunds(client, gumballMachine, sol(1), false);
 
-  // Deposit buy back funds
-  const depositAmount = LAMPORTS_PER_SOL;
-  await transactionBuilder()
-    .add(
-      manageBuyBackFunds(umi, {
-        gumballMachine,
-        amount: depositAmount,
-        isWithdraw: false,
-      })
-    )
-    .sendAndConfirm(umi);
+  const drawer = await generateKeyPairSignerWithSol(client.svm, sol(100));
+  await sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await draw({ gumballMachine, payer: drawer, buyer: drawer, mintArgs: {} }),
+  ]);
 
-  // When we mint from the gumball guard.
-  const buyerUmi = await createUmi();
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(buyerUmi, {
-        gumballMachine,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
+  await sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await getSellItemInstructionAsync({
+      gumballMachine,
+      payer: drawer,
+      oracleSigner,
+      seller: drawer.address,
+      buyer: client.payer.address,
+      index: 0,
+      amount: 1,
+      buyPrice: sol(1),
+      mint: asset,
+      tokenStandard: TokenStandard.Core,
+    }),
+  ]);
 
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      sellItem(buyerUmi, {
-        gumballMachine,
-        index: 0,
-        amount: 1,
-        buyPrice: LAMPORTS_PER_SOL,
-        oracleSigner,
-        buyer: umi.identity.publicKey,
-        mint: asset.publicKey,
-        tokenStandard: TokenStandard.Core,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
-
-  // And the gumball machine was updated.
-  const gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
-  t.like(gumballMachineAccount, <Partial<GumballMachine>>{
-    items: [
-      {
-        index: 0,
-        isDrawn: true,
-        isClaimed: true,
-        isSettled: false,
-        mint: asset.publicKey,
-        seller: umi.identity.publicKey,
-        buyer: buyerUmi.identity.publicKey,
-        tokenStandard: TokenStandard.Core,
-        amount: 1,
-      },
-    ],
+  const account = fetchGumballMachine(client.svm, gumballMachine);
+  expectItem(t, account.items[0], {
+    index: 0,
+    isDrawn: true,
+    isClaimed: true,
+    isSettled: false,
+    mint: asset,
+    seller: client.payer.address,
+    buyer: drawer.address,
+    tokenStandard: TokenStandard.Core,
+    amount: 1,
   });
 
-  // Check that the core asset is now owned by the authority
-  const coreAsset = await fetchAssetV1(umi, asset.publicKey);
-  t.like(coreAsset, <AssetV1>{
-    owner: umi.identity.publicKey,
-    freezeDelegate: {
-      frozen: false,
-      authority: {
-        type: 'Owner',
-      },
-    },
-    transferDelegate: {
-      authority: {
-        type: 'Owner',
-      },
-    },
-  });
+  // The core asset is now owned by the authority (the sell-back buyer).
+  t.is(coreAssetOwner(client, asset), client.payer.address);
 
-  // Should be able to add the asset to a new Gumball
-  await create(umi, {
-    items: [
-      {
-        id: asset.publicKey,
-        tokenStandard: TokenStandard.Core,
-      },
-    ],
-    startSale: true,
+  // The asset can be re-added to a new gumball machine.
+  const { gumballMachine: machine2 } = await createGumballMachine(client, {
     guards: {},
   });
+  await sendTransaction(client.svm, client.payer, [
+    COMPUTE_UNITS,
+    await getAddCoreAssetInstructionAsync({
+      gumballMachine: machine2,
+      seller: client.payer,
+      asset,
+    }),
+    getStartSaleInstruction({
+      gumballMachine: machine2,
+      authority: client.payer,
+    }),
+  ]);
+  t.pass();
 });
 
 test('it can sell an item when cutoff pct has not been reached', async (t) => {
-  // Given a gumball machine with a gumball guard that has no guards.
-  const umi = await createUmi();
-  const gumballMachineSigner = generateSigner(umi);
-  const oracleSigner = generateSigner(umi);
+  const client = await createClient();
+  const oracleSigner = await generateKeyPairSigner();
+  const gmSigner = await generateKeyPairSigner();
+  const [authorityPda] = await findGumballMachineAuthorityPda({
+    gumballMachine: gmSigner.address,
+  });
 
-  const [tokenMint] = await createMintWithHolders(umi, {
+  const { mint } = await createMintWithHolders(client, {
     holders: [
-      { owner: umi.identity, amount: 100 },
-      {
-        owner: findGumballMachineAuthorityPda(umi, {
-          gumballMachine: gumballMachineSigner.publicKey,
-        }),
-        amount: 0,
-      },
+      { owner: client.payer.address, amount: 100 },
+      { owner: authorityPda, amount: 0 },
     ],
   });
 
-  // Create gumball machine with buyback enabled
-  await create(umi, {
-    gumballMachine: gumballMachineSigner,
-    items: [
-      {
-        id: tokenMint.publicKey,
-        tokenStandard: TokenStandard.Fungible,
-        amount: 30,
-        quantity: 3,
-      },
-    ],
-    startSale: true,
+  const { gumballMachine } = await createGumballMachine(client, {
+    gumballMachine: gmSigner,
     guards: {},
-    buyBackConfig: {
-      ...getDefaultBuyBackConfig(),
-      oracleSigner: oracleSigner.publicKey,
-      enabled: true,
-      cutoffPct: 50,
-    },
+    buyBackConfig: buyBack(oracleSigner, { cutoffPct: 50 }),
   });
-  const gumballMachine = gumballMachineSigner.publicKey;
+  await sendTransaction(client.svm, client.payer, [
+    await getAddTokensInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint,
+      amount: 30,
+      quantity: 3,
+    }),
+    getStartSaleInstruction({ gumballMachine, authority: client.payer }),
+  ]);
+  await manageFunds(client, gumballMachine, sol(1), false);
 
-  // Deposit buy back funds
-  const depositAmount = LAMPORTS_PER_SOL;
-  await transactionBuilder()
-    .add(
-      manageBuyBackFunds(umi, {
-        gumballMachine,
-        amount: depositAmount,
-        isWithdraw: false,
-      })
-    )
-    .sendAndConfirm(umi);
+  const drawer = await generateKeyPairSignerWithSol(client.svm, sol(100));
+  await sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await draw({ gumballMachine, payer: drawer, buyer: drawer, mintArgs: {} }),
+  ]);
 
-  // When we mint from the gumball guard.
-  const buyerUmi = await createUmi();
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(buyerUmi, {
-        gumballMachine,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
+  const drawnIndex = fetchGumballMachine(
+    client.svm,
+    gumballMachine
+  ).items.findIndex((item) => item.isDrawn);
 
-  const drawnIndex = await fetchGumballMachine(umi, gumballMachine).then(
-    (gumballMachine) => gumballMachine.items.findIndex((item) => item.isDrawn)
-  );
-
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      sellItem(buyerUmi, {
-        gumballMachine,
-        index: drawnIndex,
-        amount: 30,
-        buyPrice: LAMPORTS_PER_SOL,
-        oracleSigner,
-        buyer: umi.identity.publicKey,
-        mint: tokenMint.publicKey,
-        tokenStandard: TokenStandard.Fungible,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
+  await sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await getSellItemInstructionAsync({
+      gumballMachine,
+      payer: drawer,
+      oracleSigner,
+      seller: drawer.address,
+      buyer: client.payer.address,
+      index: drawnIndex,
+      amount: 30,
+      buyPrice: sol(1),
+      mint,
+      tokenStandard: TokenStandard.Fungible,
+    }),
+  ]);
 
   t.pass();
 });
 
 test('it can sell using spl token buy back funds', async (t) => {
-  // Given a gumball machine with a gumball guard that has no guards.
-  const umi = await createUmi();
-  const nft = await createNft(umi);
-  // Oracle signer (authorized to sell on behalf of sellers)
-  const oracleSigner = generateSigner(umi);
+  const client = await createClient();
+  const { mint: nftMint } = await createNft(client);
+  const oracleSigner = await generateKeyPairSigner();
+  const drawer = await generateKeyPairSignerWithSol(client.svm, sol(100));
 
-  const buyerUmi = await createUmi();
-  const [tokenMint] = await createMintWithHolders(umi, {
+  const { mint: tokenMint } = await createMintWithHolders(client, {
     holders: [
-      { owner: umi.identity, amount: 100 },
-      { owner: buyerUmi.identity, amount: 50 },
+      { owner: client.payer.address, amount: 100 },
+      { owner: drawer.address, amount: 50 },
     ],
   });
 
-  const sellerBalance = await umi.rpc.getBalance(umi.identity.publicKey);
+  const sellerBalance = getBalance(client, client.payer.address);
 
-  // Create gumball machine with buyback enabled
-  const gumballMachineSigner = await create(umi, {
-    items: [
-      {
-        id: nft.publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-    ],
-    startSale: true,
-    buyBackConfig: {
-      ...getDefaultBuyBackConfig(),
-      oracleSigner: oracleSigner.publicKey,
-      enabled: true,
-      cutoffPct: 0,
-    },
-    settings: {
-      paymentMint: tokenMint.publicKey,
-    },
-    guards: {
-      tokenPayment: {
-        mint: tokenMint.publicKey,
-        amount: 50,
-      },
-    },
+  const { gumballMachine, gumballGuard } = await createGumballMachine(client, {
+    settings: { paymentMint: tokenMint },
+    guards: { tokenPayment: { mint: tokenMint, amount: 50 } },
+    buyBackConfig: buyBack(oracleSigner, { cutoffPct: 0 }),
   });
-  const gumballMachine = gumballMachineSigner.publicKey;
+  await sendTransaction(client.svm, client.payer, [
+    COMPUTE_UNITS,
+    await getAddNftInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint: nftMint,
+    }),
+    getStartSaleInstruction({ gumballMachine, authority: client.payer }),
+  ]);
+  await manageFunds(client, gumballMachine, 100, false, tokenMint);
 
-  // Deposit buy back funds
-  await transactionBuilder()
-    .add(
-      manageBuyBackFunds(umi, {
-        gumballMachine,
-        amount: 100,
-        paymentMint: tokenMint.publicKey,
-        isWithdraw: false,
-      })
-    )
-    .sendAndConfirm(umi);
+  await sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await draw({
+      gumballMachine,
+      payer: drawer,
+      buyer: drawer,
+      mintArgs: { tokenPayment: { mint: tokenMint } },
+    }),
+  ]);
 
-  // When we mint from the gumball guard.
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(buyerUmi, {
-        gumballMachine,
-        mintArgs: {
-          tokenPayment: {
-            mint: tokenMint.publicKey,
-          },
-        },
-      })
-    )
-    .sendAndConfirm(buyerUmi);
+  await sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await getSellItemInstructionAsync({
+      gumballMachine,
+      payer: drawer,
+      oracleSigner,
+      seller: drawer.address,
+      buyer: client.payer.address,
+      index: 0,
+      amount: 1,
+      buyPrice: 40,
+      mint: nftMint,
+      paymentMint: tokenMint,
+      tokenStandard: TokenStandard.NonFungible,
+    }),
+  ]);
 
-  // Buyer can sell back to the seller
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      sellItem(buyerUmi, {
-        gumballMachine,
-        index: 0,
-        amount: 1,
-        buyPrice: 40,
-        oracleSigner,
-        buyer: umi.identity.publicKey,
-        mint: nft.publicKey,
-        paymentMint: tokenMint.publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
-
-  const postBuyerTokenAccount = await fetchToken(
-    buyerUmi,
-    findAssociatedTokenPda(buyerUmi, {
-      mint: tokenMint.publicKey,
-      owner: buyerUmi.identity.publicKey,
-    })[0]
+  // The drawer paid 50 for the draw then received 40 for the sell-back.
+  t.is(
+    fetchTokenAccount(client, await ataFor(tokenMint, drawer.address)).amount,
+    40n
   );
-  t.is(postBuyerTokenAccount.amount, 40n);
 
-  // Withdraw buy back funds
-  await transactionBuilder()
-    .add(
-      manageBuyBackFunds(umi, {
-        gumballMachine,
-        amount: 60,
-        paymentMint: tokenMint.publicKey,
-        isWithdraw: true,
-      })
-    )
-    .sendAndConfirm(umi);
+  await manageFunds(client, gumballMachine, 60, true, tokenMint);
 
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      settleNftSale(umi, {
-        gumballMachine,
-        index: 0,
-        authority: umi.identity.publicKey,
-        buyer: buyerUmi.identity.publicKey,
-        seller: umi.identity.publicKey,
-        mint: nft.publicKey,
-        paymentMint: tokenMint.publicKey,
-        creators: [umi.identity.publicKey],
-      })
-    )
-    .sendAndConfirm(umi);
+  await sendTransaction(client.svm, client.payer, [
+    COMPUTE_UNITS,
+    await getSettleNftSaleInstructionAsync({
+      payer: client.payer,
+      gumballMachine,
+      index: 0,
+      authority: client.payer.address,
+      buyer: drawer.address,
+      seller: client.payer.address,
+      mint: nftMint,
+      paymentMint: tokenMint,
+      creators: [client.payer.address],
+    }),
+  ]);
 
-  const gumballGuard = findGumballGuardPda(umi, {
-    base: gumballMachineSigner.publicKey,
-  })[0];
+  const [authorityPda] = await findGumballMachineAuthorityPda({
+    gumballMachine,
+  });
+  await sendTransaction(client.svm, client.payer, [
+    await getCloseGumballMachineInstructionAsync({
+      machine: gumballMachine,
+      gumballGuard,
+      authority: client.payer,
+      paymentMint: tokenMint,
+      authorityPdaPaymentAccount: await ataFor(tokenMint, authorityPda),
+    }),
+  ]);
 
-  const authorityPdaPaymentAccount = findAssociatedTokenPda(umi, {
-    mint: tokenMint.publicKey,
-    owner: findGumballMachineAuthorityPda(umi, {
-      gumballMachine: gumballMachineSigner.publicKey,
-    })[0],
-  })[0];
-
-  // When we delete it.
-  await transactionBuilder()
-    .add(
-      closeGumballMachine(umi, {
-        gumballGuard,
-        machine: gumballMachineSigner.publicKey,
-        paymentMint: tokenMint.publicKey,
-        authorityPdaPaymentAccount,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  const sellerTokenAccount = await fetchToken(
-    umi,
-    findAssociatedTokenPda(umi, {
-      mint: tokenMint.publicKey,
-      owner: umi.identity.publicKey,
-    })[0]
+  // 60 from buy-back funds withdrawn + 50 from the settled sale.
+  t.is(
+    fetchTokenAccount(client, await ataFor(tokenMint, client.payer.address))
+      .amount,
+    110n
   );
-  // 60 from buyback funds, 50 from sale of item
-  t.is(sellerTokenAccount.amount, 110n);
 
-  // Should have all rent returned from token accounts
-  const sellerPostBalance = await umi.rpc.getBalance(umi.identity.publicKey);
-  t.true(isEqualToAmount(sellerBalance, sellerPostBalance, sol(0.001)));
+  // All rent is returned; only tx fees separate the two balances.
+  near(t, getBalance(client, client.payer.address), sellerBalance, sol(0.001));
 });
 
 test('it can settle and close a gumball after selling a token item back', async (t) => {
-  // Given a gumball machine with a gumball guard that has no guards.
-  const umi = await createUmi();
-  const gumballMachineSigner = generateSigner(umi);
-  const oracleSigner = generateSigner(umi);
+  const client = await createClient();
+  const oracleSigner = await generateKeyPairSigner();
+  const gmSigner = await generateKeyPairSigner();
+  const [authorityPda] = await findGumballMachineAuthorityPda({
+    gumballMachine: gmSigner.address,
+  });
 
-  const [tokenMint] = await createMintWithHolders(umi, {
+  const { mint } = await createMintWithHolders(client, {
     holders: [
-      { owner: umi.identity, amount: 100 },
-      {
-        owner: findGumballMachineAuthorityPda(umi, {
-          gumballMachine: gumballMachineSigner.publicKey,
-        }),
-        amount: 0,
-      },
+      { owner: client.payer.address, amount: 100 },
+      { owner: authorityPda, amount: 0 },
     ],
   });
 
-  const sellerBalance = await umi.rpc.getBalance(umi.identity.publicKey);
+  const sellerBalance = getBalance(client, client.payer.address);
 
-  // Create gumball machine with buyback enabled
-  await create(umi, {
-    gumballMachine: gumballMachineSigner,
-    items: [
-      {
-        id: tokenMint.publicKey,
-        tokenStandard: TokenStandard.Fungible,
-        amount: 100,
-      },
-    ],
-    startSale: true,
+  const { gumballMachine, gumballGuard } = await createGumballMachine(client, {
+    gumballMachine: gmSigner,
     guards: {},
-    buyBackConfig: {
-      ...getDefaultBuyBackConfig(),
-      oracleSigner: oracleSigner.publicKey,
-      enabled: true,
-    },
+    buyBackConfig: buyBack(oracleSigner),
   });
-  const gumballMachine = gumballMachineSigner.publicKey;
+  await sendTransaction(client.svm, client.payer, [
+    await getAddTokensInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint,
+      amount: 100,
+      quantity: 1,
+    }),
+    getStartSaleInstruction({ gumballMachine, authority: client.payer }),
+  ]);
+  await manageFunds(client, gumballMachine, sol(1), false);
 
-  // Deposit buy back funds
-  const depositAmount = LAMPORTS_PER_SOL;
-  await transactionBuilder()
-    .add(
-      manageBuyBackFunds(umi, {
-        gumballMachine,
-        amount: depositAmount,
-        isWithdraw: false,
-      })
-    )
-    .sendAndConfirm(umi);
+  const drawer = await generateKeyPairSignerWithSol(client.svm, sol(100));
+  await sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await draw({ gumballMachine, payer: drawer, buyer: drawer, mintArgs: {} }),
+  ]);
 
-  // When we mint from the gumball guard.
-  const buyerUmi = await createUmi();
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(buyerUmi, {
-        gumballMachine,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
+  await sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await getSellItemInstructionAsync({
+      gumballMachine,
+      payer: drawer,
+      oracleSigner,
+      seller: drawer.address,
+      buyer: client.payer.address,
+      index: 0,
+      amount: 100,
+      buyPrice: sol(1),
+      mint,
+      tokenStandard: TokenStandard.Fungible,
+    }),
+  ]);
 
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      sellItem(buyerUmi, {
-        gumballMachine,
-        index: 0,
-        amount: 100,
-        buyPrice: depositAmount,
-        oracleSigner,
-        buyer: umi.identity.publicKey,
-        mint: tokenMint.publicKey,
-        tokenStandard: TokenStandard.Fungible,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
+  await sendTransaction(client.svm, client.payer, [
+    COMPUTE_UNITS,
+    await getSettleTokensSaleClaimedInstructionAsync({
+      startIndex: 0,
+      endIndex: 0,
+      gumballMachine,
+      payer: client.payer,
+      authority: client.payer.address,
+      seller: client.payer.address,
+      mint,
+    }),
+  ]);
 
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      settleTokensSaleClaimed(umi, {
-        startIndex: 0,
-        endIndex: 0,
-        gumballMachine,
-        authority: umi.identity.publicKey,
-        seller: umi.identity.publicKey,
-        mint: tokenMint.publicKey,
-      })
-    )
-    .sendAndConfirm(umi);
+  await sendTransaction(client.svm, client.payer, [
+    await getCloseGumballMachineInstructionAsync({
+      machine: gumballMachine,
+      gumballGuard,
+      authority: client.payer,
+    }),
+  ]);
 
-  const gumballGuard = findGumballGuardPda(umi, {
-    base: gumballMachineSigner.publicKey,
-  })[0];
-
-  // When we delete it.
-  await transactionBuilder()
-    .add(
-      closeGumballMachine(umi, {
-        gumballGuard,
-        machine: gumballMachineSigner.publicKey,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  const sellerTokenAccount = await fetchToken(
-    umi,
-    findAssociatedTokenPda(umi, {
-      mint: tokenMint.publicKey,
-      owner: umi.identity.publicKey,
-    })[0]
+  // 100 tokens bought back land with the seller.
+  t.is(
+    fetchTokenAccount(client, await ataFor(mint, client.payer.address)).amount,
+    100n
   );
-  // 100 from the item bought back
-  t.is(sellerTokenAccount.amount, 100n);
 
-  // Should have all rent returned from token accounts
-  const sellerPostBalance = await umi.rpc.getBalance(umi.identity.publicKey);
-  t.true(
-    isEqualToAmount(
-      sellerBalance,
-      addAmounts(sellerPostBalance, sol(1)),
-      sol(0.002)
-    )
+  // Seller is down the 1 SOL of buy-back funds paid out to the drawer.
+  near(
+    t,
+    sellerBalance,
+    getBalance(client, client.payer.address) + sol(1),
+    sol(0.002)
   );
 });
 
 test('it can sell an item with a marketplace fee', async (t) => {
-  // Given a gumball machine with a gumball guard that has no guards.
-  const umi = await createUmi();
-  const feeAccount = generateSigner(umi);
-  const nft = await createNft(umi);
-  // Oracle signer (authorized to sell on behalf of sellers)
-  const oracleSigner = generateSigner(umi);
+  const client = await createClient();
+  const feeAccount = (await generateKeyPairSigner()).address;
+  const { mint } = await createNft(client);
+  const oracleSigner = await generateKeyPairSigner();
 
-  // Create gumball machine with buyback enabled
-  const gumballMachineSigner = await create(umi, {
-    items: [
-      {
-        id: nft.publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-    ],
-    startSale: true,
+  const { gumballMachine } = await createGumballMachine(client, {
     guards: {},
-    feeConfig: {
-      feeAccount: feeAccount.publicKey,
-      feeBps: 0,
-    },
-    buyBackConfig: {
-      ...getDefaultBuyBackConfig(),
-      oracleSigner: oracleSigner.publicKey,
-      enabled: true,
+    feeConfig: { feeAccount, feeBps: 0 },
+    buyBackConfig: buyBack(oracleSigner, {
       cutoffPct: 0,
       marketplaceFeeBps: 1000,
-    },
+    }),
   });
-  const gumballMachine = gumballMachineSigner.publicKey;
+  await sendTransaction(client.svm, client.payer, [
+    COMPUTE_UNITS,
+    await getAddNftInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint,
+    }),
+    getStartSaleInstruction({ gumballMachine, authority: client.payer }),
+  ]);
+  // Deposit 1.1 SOL: 1 SOL to the drawer + 0.1 SOL marketplace fee.
+  await manageFunds(client, gumballMachine, sol(1.1), false);
 
-  // Deposit buy back funds
-  const depositAmount = LAMPORTS_PER_SOL;
-  await transactionBuilder()
-    .add(
-      manageBuyBackFunds(umi, {
-        gumballMachine,
-        amount: depositAmount * 1.1,
-        isWithdraw: false,
-      })
-    )
-    .sendAndConfirm(umi);
+  const drawer = await generateKeyPairSignerWithSol(client.svm, sol(100));
+  await sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await draw({ gumballMachine, payer: drawer, buyer: drawer, mintArgs: {} }),
+  ]);
 
-  // When we mint from the gumball guard.
-  const buyerUmi = await createUmi();
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(buyerUmi, {
-        gumballMachine,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
+  const preDrawer = getBalance(client, drawer.address);
+  const preFee = getBalance(client, feeAccount);
 
-  const preBuyerBalance = await umi.rpc.getBalance(buyerUmi.identity.publicKey);
-  const preFeeBalance = await umi.rpc.getBalance(feeAccount.publicKey);
+  await sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await getSellItemInstructionAsync({
+      gumballMachine,
+      payer: drawer,
+      oracleSigner,
+      seller: drawer.address,
+      buyer: client.payer.address,
+      index: 0,
+      amount: 1,
+      buyPrice: sol(1),
+      mint,
+      feeAccount,
+      tokenStandard: TokenStandard.NonFungible,
+    }),
+  ]);
 
-  // Buyer can sell back to the seller
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      sellItem(buyerUmi, {
-        gumballMachine,
-        index: 0,
-        amount: 1,
-        buyPrice: depositAmount,
-        oracleSigner,
-        buyer: umi.identity.publicKey,
-        mint: nft.publicKey,
-        feeAccount: feeAccount.publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
+  near(t, getBalance(client, drawer.address), preDrawer + sol(1), sol(0.001));
+  t.is(getBalance(client, feeAccount), preFee + sol(0.1));
 
-  const postBuyerBalance = await umi.rpc.getBalance(
-    buyerUmi.identity.publicKey
-  );
-  const postFeeBalance = await umi.rpc.getBalance(feeAccount.publicKey);
-
-  t.true(
-    isEqualToAmount(
-      postBuyerBalance,
-      addAmounts(preBuyerBalance, sol(1)),
-      sol(0.001)
-    )
-  );
-
-  t.true(isEqualToAmount(postFeeBalance, addAmounts(preFeeBalance, sol(0.1))));
-
-  // And the gumball machine was updated.
-  const gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
-  t.like(gumballMachineAccount, <Partial<GumballMachine>>{
-    items: [
-      {
-        index: 0,
-        isDrawn: true,
-        isClaimed: true,
-        isSettled: false,
-        mint: nft.publicKey,
-        seller: umi.identity.publicKey,
-        buyer: buyerUmi.identity.publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-        amount: 1,
-      },
-    ],
-    // Should be 0 because of the 10% marketplace fee for buy back
-    buyBackFundsAvailable: 0n,
+  const account = fetchGumballMachine(client.svm, gumballMachine);
+  expectItem(t, account.items[0], {
+    index: 0,
+    isDrawn: true,
+    isClaimed: true,
+    isSettled: false,
+    mint,
+    seller: client.payer.address,
+    buyer: drawer.address,
+    tokenStandard: TokenStandard.NonFungible,
+    amount: 1,
   });
+  // All buy-back funds are spent (1 SOL + 10% marketplace fee).
+  t.is(account.buyBackFundsAvailable, 0n);
 });
 
 test('it can sell an item with a marketplace fee using a payment mint', async (t) => {
-  // Given a gumball machine with a gumball guard that has no guards.
-  const umi = await createUmi();
-  const feeAccount = generateSigner(umi);
-  const nft = await createNft(umi);
-  // Oracle signer (authorized to sell on behalf of sellers)
-  const oracleSigner = generateSigner(umi);
-  const buyerUmi = await createUmi();
+  const client = await createClient();
+  const feeAccount = (await generateKeyPairSigner()).address;
+  const { mint: nftMint } = await createNft(client);
+  const oracleSigner = await generateKeyPairSigner();
+  const drawer = await generateKeyPairSignerWithSol(client.svm, sol(100));
 
-  const [paymentMint, buyerTokenAccount, feeTokenAccount] =
-    await createMintWithHolders(umi, {
-      holders: [
-        { owner: buyerUmi.identity.publicKey, amount: 100 },
-        { owner: feeAccount.publicKey, amount: 0 },
-        { owner: umi.identity, amount: 110 },
-      ],
-    });
-
-  // Create gumball machine with buyback enabled
-  const gumballMachineSigner = await create(umi, {
-    items: [
-      {
-        id: nft.publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
+  const { mint: paymentMint, atas } = await createMintWithHolders(client, {
+    holders: [
+      { owner: drawer.address, amount: 100 },
+      { owner: feeAccount, amount: 0 },
+      { owner: client.payer.address, amount: 110 },
     ],
-    startSale: true,
-    guards: {
-      tokenPayment: {
-        mint: paymentMint.publicKey,
-        amount: 100,
-      },
-    },
-    feeConfig: {
-      feeAccount: feeAccount.publicKey,
-      feeBps: 0,
-    },
-    buyBackConfig: {
-      ...getDefaultBuyBackConfig(),
-      oracleSigner: oracleSigner.publicKey,
-      enabled: true,
+  });
+  const [buyerTokenAccount, feeTokenAccount] = atas;
+
+  const { gumballMachine } = await createGumballMachine(client, {
+    guards: { tokenPayment: { mint: paymentMint, amount: 100 } },
+    feeConfig: { feeAccount, feeBps: 0 },
+    buyBackConfig: buyBack(oracleSigner, {
       cutoffPct: 0,
       marketplaceFeeBps: 1000,
-    },
-    settings: {
-      paymentMint: paymentMint.publicKey,
-    },
+    }),
+    settings: { paymentMint },
   });
-  const gumballMachine = gumballMachineSigner.publicKey;
+  await sendTransaction(client.svm, client.payer, [
+    COMPUTE_UNITS,
+    await getAddNftInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint: nftMint,
+    }),
+    getStartSaleInstruction({ gumballMachine, authority: client.payer }),
+  ]);
+  await manageFunds(client, gumballMachine, 110, false, paymentMint);
 
-  // Deposit buy back funds
-  await transactionBuilder()
-    .add(
-      manageBuyBackFunds(umi, {
-        gumballMachine,
-        amount: 110,
-        isWithdraw: false,
-        paymentMint: paymentMint.publicKey,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // When we mint from the gumball guard.
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(buyerUmi, {
-        gumballMachine,
-        mintArgs: {
-          tokenPayment: {
-            mint: paymentMint.publicKey,
-            feeAccounts: [feeAccount.publicKey],
-          },
-        },
-      })
-    )
-    .sendAndConfirm(buyerUmi);
-
-  // Buyer can sell back to the seller
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      sellItem(buyerUmi, {
-        gumballMachine,
-        index: 0,
-        amount: 1,
-        buyPrice: 100,
-        oracleSigner,
-        buyer: umi.identity.publicKey,
-        mint: nft.publicKey,
-        feeAccount: feeAccount.publicKey,
-        paymentMint: paymentMint.publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
-
-  const buyerBalance = await fetchToken(umi, buyerTokenAccount);
-  t.is(buyerBalance.amount, 100n);
-
-  const feeBalance = await fetchToken(umi, feeTokenAccount);
-  t.is(feeBalance.amount, 10n);
-
-  // And the gumball machine was updated.
-  const gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
-  t.like(gumballMachineAccount, <Partial<GumballMachine>>{
-    items: [
-      {
-        index: 0,
-        isDrawn: true,
-        isClaimed: true,
-        isSettled: false,
-        mint: nft.publicKey,
-        seller: umi.identity.publicKey,
-        buyer: buyerUmi.identity.publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-        amount: 1,
+  await sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await draw({
+      gumballMachine,
+      payer: drawer,
+      buyer: drawer,
+      mintArgs: {
+        tokenPayment: { mint: paymentMint, feeAccounts: [feeAccount] },
       },
-    ],
-    // Should be 0 because of the 10% marketplace fee for buy back
-    buyBackFundsAvailable: 0n,
+    }),
+  ]);
+
+  await sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await getSellItemInstructionAsync({
+      gumballMachine,
+      payer: drawer,
+      oracleSigner,
+      seller: drawer.address,
+      buyer: client.payer.address,
+      index: 0,
+      amount: 1,
+      buyPrice: 100,
+      mint: nftMint,
+      feeAccount,
+      paymentMint,
+      tokenStandard: TokenStandard.NonFungible,
+    }),
+  ]);
+
+  t.is(fetchTokenAccount(client, buyerTokenAccount).amount, 100n);
+  t.is(fetchTokenAccount(client, feeTokenAccount).amount, 10n);
+
+  const account = fetchGumballMachine(client.svm, gumballMachine);
+  expectItem(t, account.items[0], {
+    index: 0,
+    isDrawn: true,
+    isClaimed: true,
+    isSettled: false,
+    mint: nftMint,
+    seller: client.payer.address,
+    buyer: drawer.address,
+    tokenStandard: TokenStandard.NonFungible,
+    amount: 1,
   });
+  t.is(account.buyBackFundsAvailable, 0n);
+});
+
+test('it can sell an item with a marketplace fee using a Token-2022 payment mint', async (t) => {
+  // The buy-back payout and the marketplace-fee leg both move the *same*
+  // currency mint. The fee leg used to pass the named classic `token_program`,
+  // which fails §D6 for a Token-2022 mint and reverts the whole sell-back — so
+  // this only reproduces with `marketplaceFeeBps > 0`.
+  const client = await createClient();
+  const feeAccount = (await generateKeyPairSigner()).address;
+  const { mint: nftMint } = await createNft(client);
+  const oracleSigner = await generateKeyPairSigner();
+  const drawer = await generateKeyPairSignerWithSol(client.svm, sol(100));
+
+  const machineSigner = await generateKeyPairSigner();
+  const [authorityPda] = await findGumballMachineAuthorityPda({
+    gumballMachine: machineSigner.address,
+  });
+
+  const [
+    paymentMint,
+    buyerTokenAccount,
+    feeTokenAccount,
+    authorityAta,
+    destinationAta,
+  ] = await createMintWithHolders22(client, {
+    tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+    holders: [
+      { owner: drawer.address, amount: 100 },
+      { owner: feeAccount, amount: 0 },
+      { owner: client.payer.address, amount: 110 },
+      // The guard writes into the machine authority PDA's ATA, so it has to
+      // exist before the draw — the real client prepends an idempotent create.
+      { owner: authorityPda, amount: 0 },
+    ],
+  });
+
+  const { gumballMachine } = await createGumballMachine(client, {
+    gumballMachine: machineSigner,
+    guards: {
+      token2022Payment: { mint: paymentMint, amount: 100, destinationAta },
+    },
+    feeConfig: { feeAccount, feeBps: 0 },
+    buyBackConfig: buyBack(oracleSigner, {
+      cutoffPct: 0,
+      marketplaceFeeBps: 1000,
+    }),
+    settings: { paymentMint },
+  });
+  await sendTransaction(client.svm, client.payer, [
+    COMPUTE_UNITS,
+    await getAddNftInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint: nftMint,
+    }),
+    getStartSaleInstruction({ gumballMachine, authority: client.payer }),
+  ]);
+
+  // `manageBuyBackFunds` has no wrapper, so the Token-2022 ATAs and the §D5
+  // slot-0 program go in by hand here.
+  const fundIx = await getManageBuyBackFundsInstructionAsync({
+    gumballMachine,
+    authority: client.payer,
+    amount: 110,
+    isWithdraw: false,
+    paymentMint,
+    authorityPaymentAccount: authorityAta,
+    authorityPdaPaymentAccount: destinationAta,
+  });
+  await sendTransaction(client.svm, client.payer, [
+    COMPUTE_UNITS,
+    {
+      ...fundIx,
+      accounts: [
+        ...(fundIx.accounts ?? []),
+        { address: TOKEN_2022_PROGRAM_ADDRESS, role: AccountRole.READONLY },
+      ],
+    },
+  ]);
+  t.is(fetchTokenAmount22(client, destinationAta), 110n);
+
+  await sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await draw({
+      gumballMachine,
+      payer: drawer,
+      buyer: drawer,
+      mintArgs: {
+        token2022Payment: some({
+          mint: paymentMint,
+          destinationAta,
+          feeAccount,
+        }),
+      },
+    }),
+  ]);
+
+  await sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await getSellItemInstructionAsync({
+      gumballMachine,
+      payer: drawer,
+      oracleSigner,
+      seller: drawer.address,
+      buyer: client.payer.address,
+      index: 0,
+      amount: 1,
+      buyPrice: 100,
+      mint: nftMint,
+      feeAccount,
+      paymentMint,
+      // Without this the wrapper derives classic-seed payment ATAs and omits
+      // the §D5 slot-0 program account.
+      paymentTokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+      tokenStandard: TokenStandard.NonFungible,
+    }),
+  ]);
+
+  // Seller made whole at the buy price, marketplace took its 10%, and the
+  // escrow is drained — all three legs against the Token-2022 program.
+  t.is(fetchTokenAmount22(client, buyerTokenAccount), 100n);
+  t.is(fetchTokenAmount22(client, feeTokenAccount), 10n);
+  t.is(
+    fetchGumballMachine(client.svm, gumballMachine).buyBackFundsAvailable,
+    0n
+  );
 });
 
 test('it cannot sell an item with invalid oracle signer', async (t) => {
-  // Given a gumball machine with a gumball guard that has no guards.
-  const umi = await createUmi();
-  const nft = await createNft(umi);
+  const client = await createClient();
+  const { mint } = await createNft(client);
 
-  // Create gumball machine with buyback enabled and a specific oracle signer
-  const oracleSigner = umi.identity.publicKey;
-  const gumballMachineSigner = await create(umi, {
-    items: [
-      {
-        id: nft.publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-    ],
-    startSale: true,
+  // The configured oracle is the authority itself.
+  const { gumballMachine } = await createGumballMachine(client, {
     guards: {},
     buyBackConfig: {
       ...getDefaultBuyBackConfig(),
       enabled: true,
-      oracleSigner,
+      oracleSigner: client.payer.address,
     },
   });
-  const gumballMachine = gumballMachineSigner.publicKey;
+  await sendTransaction(client.svm, client.payer, [
+    COMPUTE_UNITS,
+    await getAddNftInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint,
+    }),
+    getStartSaleInstruction({ gumballMachine, authority: client.payer }),
+  ]);
+  await manageFunds(client, gumballMachine, sol(1), false);
 
-  // Deposit buy back funds
-  const depositAmount = LAMPORTS_PER_SOL;
-  await transactionBuilder()
-    .add(
-      manageBuyBackFunds(umi, {
-        gumballMachine,
-        amount: depositAmount,
-        isWithdraw: false,
-      })
-    )
-    .sendAndConfirm(umi);
+  const drawer = await generateKeyPairSignerWithSol(client.svm, sol(100));
+  await sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await draw({ gumballMachine, payer: drawer, buyer: drawer, mintArgs: {} }),
+  ]);
 
-  // When we mint from the gumball guard.
-  const buyerUmi = await createUmi();
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(buyerUmi, {
-        gumballMachine,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
-
-  // Try to sell with a different oracle signer
-  const invalidOracleSigner = generateSigner(umi);
-  const promise = transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      sellItem(buyerUmi, {
-        gumballMachine,
-        index: 0,
-        amount: 1,
-        buyPrice: LAMPORTS_PER_SOL,
-        oracleSigner: invalidOracleSigner,
-        buyer: umi.identity.publicKey,
-        mint: nft.publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      })
-    )
-    .sendAndConfirm(umi);
+  const invalidOracleSigner = await generateKeyPairSigner();
+  const promise = sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await getSellItemInstructionAsync({
+      gumballMachine,
+      payer: drawer,
+      oracleSigner: invalidOracleSigner,
+      seller: drawer.address,
+      buyer: client.payer.address,
+      index: 0,
+      amount: 1,
+      buyPrice: sol(1),
+      mint,
+      tokenStandard: TokenStandard.NonFungible,
+    }),
+  ]);
 
   await t.throwsAsync(promise, { message: /InvalidOracleSigner/ });
 });
 
 test('it cannot sell an item with insufficient buy back funds', async (t) => {
-  // Given a gumball machine with a gumball guard that has no guards.
-  const umi = await createUmi();
-  const nft = await createNft(umi);
-  const oracleSigner = generateSigner(umi);
+  const client = await createClient();
+  const { mint } = await createNft(client);
+  const oracleSigner = await generateKeyPairSigner();
 
-  // Create gumball machine with buyback enabled but limited funds
-  const gumballMachineSigner = await create(umi, {
-    items: [
-      {
-        id: nft.publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-    ],
-    startSale: true,
+  const { gumballMachine } = await createGumballMachine(client, {
     guards: {},
-    buyBackConfig: {
-      ...getDefaultBuyBackConfig(),
-      enabled: true,
-      oracleSigner: oracleSigner.publicKey,
-    },
+    buyBackConfig: buyBack(oracleSigner),
   });
-  const gumballMachine = gumballMachineSigner.publicKey;
+  await sendTransaction(client.svm, client.payer, [
+    COMPUTE_UNITS,
+    await getAddNftInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint,
+    }),
+    getStartSaleInstruction({ gumballMachine, authority: client.payer }),
+  ]);
+  // Deposit one lamport less than the buy price.
+  await manageFunds(client, gumballMachine, sol(1) - 1n, false);
 
-  // Deposit limited buy back funds
-  const depositAmount = LAMPORTS_PER_SOL - 1;
-  await transactionBuilder()
-    .add(
-      manageBuyBackFunds(umi, {
-        gumballMachine,
-        amount: depositAmount,
-        isWithdraw: false,
-      })
-    )
-    .sendAndConfirm(umi);
+  const drawer = await generateKeyPairSignerWithSol(client.svm, sol(100));
+  await sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await draw({ gumballMachine, payer: drawer, buyer: drawer, mintArgs: {} }),
+  ]);
 
-  // When we mint from the gumball guard.
-  const buyerUmi = await createUmi();
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(buyerUmi, {
-        gumballMachine,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
-
-  // Try to sell with a price higher than available funds
-  const promise = transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      sellItem(buyerUmi, {
-        gumballMachine,
-        index: 0,
-        amount: 1,
-        buyPrice: LAMPORTS_PER_SOL,
-        oracleSigner,
-        buyer: umi.identity.publicKey,
-        mint: nft.publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
+  const promise = sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await getSellItemInstructionAsync({
+      gumballMachine,
+      payer: drawer,
+      oracleSigner,
+      seller: drawer.address,
+      buyer: client.payer.address,
+      index: 0,
+      amount: 1,
+      buyPrice: sol(1),
+      mint,
+      tokenStandard: TokenStandard.NonFungible,
+    }),
+  ]);
 
   await t.throwsAsync(promise, { message: /InsufficientFunds/ });
 });
 
 test('it cannot sell to a gumball without buyback enabled', async (t) => {
-  // Given a gumball machine with a gumball guard that has no guards.
-  const umi = await createUmi();
-  const nft = await createNft(umi);
-  // Oracle signer (authorized to sell on behalf of sellers)
-  const oracleSigner = generateSigner(umi);
+  const client = await createClient();
+  const { mint } = await createNft(client);
+  const oracleSigner = await generateKeyPairSigner();
 
-  // Create gumball machine with buyback enabled
-  const gumballMachineSigner = await create(umi, {
-    items: [
-      {
-        id: nft.publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-    ],
-    startSale: true,
-    guards: {},
-  });
-  const gumballMachine = gumballMachineSigner.publicKey;
+  const { gumballMachine } = await createGumballMachine(client, { guards: {} });
+  await sendTransaction(client.svm, client.payer, [
+    COMPUTE_UNITS,
+    await getAddNftInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint,
+    }),
+    getStartSaleInstruction({ gumballMachine, authority: client.payer }),
+  ]);
 
-  // When we mint from the gumball guard.
-  const buyerUmi = await createUmi();
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(buyerUmi, {
-        gumballMachine,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
+  const drawer = await generateKeyPairSignerWithSol(client.svm, sol(100));
+  await sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await draw({ gumballMachine, payer: drawer, buyer: drawer, mintArgs: {} }),
+  ]);
 
-  const preBuyerTokenAccount = await umi.rpc.getBalance(
-    buyerUmi.identity.publicKey
-  );
-
-  // Buyer cannot sell back to the seller
-  const promise = transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      sellItem(buyerUmi, {
-        gumballMachine,
-        index: 0,
-        amount: 1,
-        buyPrice: LAMPORTS_PER_SOL,
-        oracleSigner,
-        buyer: umi.identity.publicKey,
-        mint: nft.publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
+  const promise = sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await getSellItemInstructionAsync({
+      gumballMachine,
+      payer: drawer,
+      oracleSigner,
+      seller: drawer.address,
+      buyer: client.payer.address,
+      index: 0,
+      amount: 1,
+      buyPrice: sol(1),
+      mint,
+      tokenStandard: TokenStandard.NonFungible,
+    }),
+  ]);
 
   await t.throwsAsync(promise, { message: /BuyBackNotEnabled/ });
 });
 
 test('it cannot sell to a gumball with cutoff pct reached', async (t) => {
-  const umi = await createUmi();
-  const gumballMachineSigner = generateSigner(umi);
-  const oracleSigner = generateSigner(umi);
+  const client = await createClient();
+  const oracleSigner = await generateKeyPairSigner();
+  const gmSigner = await generateKeyPairSigner();
+  const [authorityPda] = await findGumballMachineAuthorityPda({
+    gumballMachine: gmSigner.address,
+  });
 
-  const [tokenMint] = await createMintWithHolders(umi, {
+  const { mint } = await createMintWithHolders(client, {
     holders: [
-      { owner: umi.identity, amount: 100 },
-      {
-        owner: findGumballMachineAuthorityPda(umi, {
-          gumballMachine: gumballMachineSigner.publicKey,
-        }),
-        amount: 0,
-      },
+      { owner: client.payer.address, amount: 100 },
+      { owner: authorityPda, amount: 0 },
     ],
   });
 
-  // Create gumball machine with buyback enabled
-  await create(umi, {
-    gumballMachine: gumballMachineSigner,
-    items: [
-      {
-        id: tokenMint.publicKey,
-        tokenStandard: TokenStandard.Fungible,
-        amount: 50,
-        quantity: 2,
-      },
-    ],
-    startSale: true,
+  const { gumballMachine } = await createGumballMachine(client, {
+    gumballMachine: gmSigner,
     guards: {},
-    buyBackConfig: {
-      ...getDefaultBuyBackConfig(),
-      oracleSigner: oracleSigner.publicKey,
-      enabled: true,
-      cutoffPct: 50,
-    },
+    buyBackConfig: buyBack(oracleSigner, { cutoffPct: 50 }),
   });
-  const gumballMachine = gumballMachineSigner.publicKey;
+  await sendTransaction(client.svm, client.payer, [
+    await getAddTokensInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint,
+      amount: 50,
+      quantity: 2,
+    }),
+    getStartSaleInstruction({ gumballMachine, authority: client.payer }),
+  ]);
+  await manageFunds(client, gumballMachine, sol(1), false);
 
-  // Deposit buy back funds
-  const depositAmount = LAMPORTS_PER_SOL;
-  await transactionBuilder()
-    .add(
-      manageBuyBackFunds(umi, {
-        gumballMachine: gumballMachineSigner.publicKey,
-        amount: depositAmount,
-        isWithdraw: false,
-      })
-    )
-    .sendAndConfirm(umi);
+  // Draw both items so 100% >= the 50% cutoff.
+  const drawer = await generateKeyPairSignerWithSol(client.svm, sol(100));
+  await sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await draw({ gumballMachine, payer: drawer, buyer: drawer, mintArgs: {} }),
+  ]);
+  await sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await draw({ gumballMachine, payer: drawer, buyer: drawer, mintArgs: {} }),
+  ]);
 
-  // When we mint from the gumball guard.
-  const buyerUmi = await createUmi();
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(buyerUmi, {
-        gumballMachine,
-      })
-    )
-    .add(
-      draw(buyerUmi, {
-        gumballMachine,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
-
-  const promise = transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      sellItem(buyerUmi, {
-        gumballMachine,
-        index: 0,
-        amount: 100,
-        buyPrice: LAMPORTS_PER_SOL,
-        oracleSigner,
-        buyer: umi.identity.publicKey,
-        mint: tokenMint.publicKey,
-        tokenStandard: TokenStandard.Fungible,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
+  const promise = sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await getSellItemInstructionAsync({
+      gumballMachine,
+      payer: drawer,
+      oracleSigner,
+      seller: drawer.address,
+      buyer: client.payer.address,
+      index: 0,
+      amount: 100,
+      buyPrice: sol(1),
+      mint,
+      tokenStandard: TokenStandard.Fungible,
+    }),
+  ]);
 
   await t.throwsAsync(promise, { message: /BuyBackCutoffReached/ });
 });
 
 test('it cannot sell a tokens item with a different amount', async (t) => {
-  // Given a gumball machine with a gumball guard that has no guards.
-  const umi = await createUmi();
-  const gumballMachineSigner = generateSigner(umi);
-  const oracleSigner = generateSigner(umi);
+  const client = await createClient();
+  const oracleSigner = await generateKeyPairSigner();
+  const gmSigner = await generateKeyPairSigner();
+  const [authorityPda] = await findGumballMachineAuthorityPda({
+    gumballMachine: gmSigner.address,
+  });
 
-  const [tokenMint] = await createMintWithHolders(umi, {
+  const { mint } = await createMintWithHolders(client, {
     holders: [
-      { owner: umi.identity, amount: 100 },
-      {
-        owner: findGumballMachineAuthorityPda(umi, {
-          gumballMachine: gumballMachineSigner.publicKey,
-        }),
-        amount: 0,
-      },
+      { owner: client.payer.address, amount: 100 },
+      { owner: authorityPda, amount: 0 },
     ],
   });
 
-  // Create gumball machine with buyback enabled
-  await create(umi, {
-    gumballMachine: gumballMachineSigner,
-    items: [
-      {
-        id: tokenMint.publicKey,
-        tokenStandard: TokenStandard.Fungible,
-        amount: 100,
-      },
-    ],
-    startSale: true,
+  const { gumballMachine } = await createGumballMachine(client, {
+    gumballMachine: gmSigner,
     guards: {},
-    buyBackConfig: {
-      ...getDefaultBuyBackConfig(),
-      oracleSigner: oracleSigner.publicKey,
-      enabled: true,
-    },
+    buyBackConfig: buyBack(oracleSigner),
   });
-  const gumballMachine = gumballMachineSigner.publicKey;
+  await sendTransaction(client.svm, client.payer, [
+    await getAddTokensInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint,
+      amount: 100,
+      quantity: 1,
+    }),
+    getStartSaleInstruction({ gumballMachine, authority: client.payer }),
+  ]);
+  await manageFunds(client, gumballMachine, sol(1), false);
 
-  // Deposit buy back funds
-  const depositAmount = LAMPORTS_PER_SOL;
-  await transactionBuilder()
-    .add(
-      manageBuyBackFunds(umi, {
-        gumballMachine,
-        amount: depositAmount,
-        isWithdraw: false,
-      })
-    )
-    .sendAndConfirm(umi);
+  const drawer = await generateKeyPairSignerWithSol(client.svm, sol(100));
+  await sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await draw({ gumballMachine, payer: drawer, buyer: drawer, mintArgs: {} }),
+  ]);
 
-  // When we mint from the gumball guard.
-  const buyerUmi = await createUmi();
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(buyerUmi, {
-        gumballMachine,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
-
-  const promise = transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      sellItem(buyerUmi, {
-        gumballMachine,
-        index: 0,
-        amount: 1000,
-        buyPrice: LAMPORTS_PER_SOL,
-        oracleSigner,
-        buyer: umi.identity.publicKey,
-        mint: tokenMint.publicKey,
-        tokenStandard: TokenStandard.Fungible,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
+  const promise = sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await getSellItemInstructionAsync({
+      gumballMachine,
+      payer: drawer,
+      oracleSigner,
+      seller: drawer.address,
+      buyer: client.payer.address,
+      index: 0,
+      amount: 1000,
+      buyPrice: sol(1),
+      mint,
+      tokenStandard: TokenStandard.Fungible,
+    }),
+  ]);
 
   await t.throwsAsync(promise, { message: /InvalidAmount/ });
 });
 
 test('it can sell an nft item, re-add it, and sell it again', async (t) => {
-  // Given a gumball machine with a gumball guard that has no guards.
-  const umi = await createUmi();
-  const nfts = await Promise.all([createNft(umi), createNft(umi)]);
-  // Oracle signer (authorized to sell on behalf of sellers)
-  const oracleSigner = generateSigner(umi);
+  const client = await createClient();
+  const nfts = [await createNft(client), await createNft(client)];
+  const oracleSigner = await generateKeyPairSigner();
 
-  const gumballMachineSigner = generateSigner(umi);
-  const machine = gumballMachineSigner.publicKey;
+  const { gumballMachine, gumballGuard } = await createGumballMachine(client, {
+    guards: { solPayment: some({ lamports: sol(1) }) },
+    buyBackConfig: buyBack(oracleSigner, { cutoffPct: 0 }),
+  });
+  await sendTransaction(client.svm, client.payer, [
+    COMPUTE_UNITS,
+    await getAddNftInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint: nfts[0].mint,
+    }),
+    await getAddNftInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint: nfts[1].mint,
+    }),
+    getStartSaleInstruction({ gumballMachine, authority: client.payer }),
+  ]);
+  await manageFunds(client, gumballMachine, sol(1), false);
 
-  await create(umi, {
-    gumballMachine: gumballMachineSigner,
-    items: [
-      {
-        id: nfts[0].publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-      {
-        id: nfts[1].publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-    ],
-    startSale: true,
-    guards: {
-      solPayment: some({ lamports: sol(1) }),
-    },
-    buyBackConfig: {
-      ...getDefaultBuyBackConfig(),
-      oracleSigner: oracleSigner.publicKey,
-      enabled: true,
-      cutoffPct: 0,
-    },
+  const drawer = await generateKeyPairSignerWithSol(client.svm, sol(100));
+  const preBuyer = getBalance(client, drawer.address);
+  const preSeller = getBalance(client, client.payer.address);
+
+  await sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await draw({
+      gumballMachine,
+      payer: drawer,
+      buyer: drawer,
+      mintArgs: { solPayment: some(true) },
+    }),
+  ]);
+
+  const drawnIndex = fetchGumballMachine(
+    client.svm,
+    gumballMachine
+  ).items.findIndex((item) => item.isDrawn);
+
+  await sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await getSellItemInstructionAsync({
+      gumballMachine,
+      payer: drawer,
+      oracleSigner,
+      seller: drawer.address,
+      buyer: client.payer.address,
+      index: drawnIndex,
+      amount: 1,
+      buyPrice: sol(0.5),
+      mint: nfts[drawnIndex].mint,
+      tokenStandard: TokenStandard.NonFungible,
+    }),
+  ]);
+
+  await sendTransaction(client.svm, client.payer, [
+    COMPUTE_UNITS,
+    await getSettleNftSaleInstructionAsync({
+      payer: client.payer,
+      index: drawnIndex,
+      gumballMachine,
+      authority: client.payer.address,
+      buyer: drawer.address,
+      seller: client.payer.address,
+      mint: nfts[drawnIndex].mint,
+      creators: [client.payer.address],
+    }),
+  ]);
+
+  // Re-add the settled NFT back into its slot.
+  await sendTransaction(client.svm, client.payer, [
+    COMPUTE_UNITS,
+    await getAddNftInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint: nfts[drawnIndex].mint,
+      args: { index: some(drawnIndex) },
+    }),
+  ]);
+
+  // Draw all items.
+  await sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await draw({
+      gumballMachine,
+      payer: drawer,
+      buyer: drawer,
+      mintArgs: { solPayment: some(true) },
+    }),
+  ]);
+  await sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await draw({
+      gumballMachine,
+      payer: drawer,
+      buyer: drawer,
+      mintArgs: { solPayment: some(true) },
+    }),
+  ]);
+
+  await sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await getSellItemInstructionAsync({
+      gumballMachine,
+      payer: drawer,
+      oracleSigner,
+      seller: drawer.address,
+      buyer: client.payer.address,
+      index: 0,
+      amount: 1,
+      buyPrice: sol(0.5),
+      mint: nfts[0].mint,
+      tokenStandard: TokenStandard.NonFungible,
+    }),
+  ]);
+
+  // 3 draws @ 1 SOL, 2 sell-backs @ 0.5 SOL => 2 SOL spent by the drawer.
+  near(t, getBalance(client, drawer.address), preBuyer - sol(2), sol(0.001));
+
+  await sendTransaction(client.svm, client.payer, [
+    COMPUTE_UNITS,
+    await getSettleNftSaleInstructionAsync({
+      payer: client.payer,
+      index: 0,
+      gumballMachine,
+      authority: client.payer.address,
+      buyer: drawer.address,
+      seller: client.payer.address,
+      mint: nfts[0].mint,
+      creators: [client.payer.address],
+    }),
+  ]);
+  await sendTransaction(client.svm, client.payer, [
+    COMPUTE_UNITS,
+    await getSettleNftSaleInstructionAsync({
+      payer: client.payer,
+      index: 1,
+      gumballMachine,
+      authority: client.payer.address,
+      buyer: drawer.address,
+      seller: client.payer.address,
+      mint: nfts[1].mint,
+      creators: [client.payer.address],
+    }),
+  ]);
+
+  // 3 draws @ 1 SOL all settle to the seller.
+  near(
+    t,
+    getBalance(client, client.payer.address),
+    preSeller + sol(3),
+    sol(0.001)
+  );
+
+  const account = fetchGumballMachine(client.svm, gumballMachine);
+  t.is(account.itemsLoaded, 2);
+  t.is(account.itemsRedeemed, 2n);
+  t.is(account.itemsSettled, 2n);
+  t.is(account.totalProceedsSettled, sol(3));
+  t.is(account.buyBackFundsAvailable, 0n);
+  expectItem(t, account.items[0], {
+    index: 0,
+    isDrawn: true,
+    isClaimed: true,
+    isSettled: true,
+    mint: nfts[0].mint,
+    seller: client.payer.address,
+    buyer: drawer.address,
+    tokenStandard: TokenStandard.NonFungible,
+    amount: 1,
+  });
+  expectItem(t, account.items[1], {
+    index: 1,
+    isDrawn: true,
+    isClaimed: true,
+    isSettled: true,
+    mint: nfts[1].mint,
+    seller: client.payer.address,
+    buyer: drawer.address,
+    tokenStandard: TokenStandard.NonFungible,
+    amount: 1,
   });
 
-  // Deposit buy back funds
-  const depositAmount = LAMPORTS_PER_SOL;
-  await transactionBuilder()
-    .add(
-      manageBuyBackFunds(umi, {
-        gumballMachine: machine,
-        amount: depositAmount,
-        isWithdraw: false,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // When we mint from the gumball guard.
-  const buyerUmi = await createUmi();
-  const preBuyerBalance = await umi.rpc.getBalance(buyerUmi.identity.publicKey);
-  const preSellerBalance = await umi.rpc.getBalance(umi.identity.publicKey);
-
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(buyerUmi, {
-        gumballMachine: machine,
-        mintArgs: { solPayment: some(true) },
-      })
-    )
-    .sendAndConfirm(buyerUmi);
-
-  // Figure out which was drawn
-  let gumballMachineAccount = await fetchGumballMachine(umi, machine);
-  const drawnIndex = gumballMachineAccount.items.findIndex(
-    (item) => item.isDrawn
-  );
-
-  // Buyer can sell back to the seller
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      sellItem(buyerUmi, {
-        gumballMachine: machine,
-        index: drawnIndex,
-        amount: 1,
-        buyPrice: LAMPORTS_PER_SOL / 2,
-        oracleSigner,
-        buyer: umi.identity.publicKey,
-        mint: nfts[drawnIndex].publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
-
-  // Then settle the sale
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      settleNftSale(umi, {
-        index: drawnIndex,
-        gumballMachine: machine,
-        authority: umi.identity.publicKey,
-        buyer: buyerUmi.identity.publicKey,
-        seller: umi.identity.publicKey,
-        mint: nfts[drawnIndex].publicKey,
-        creators: [umi.identity.publicKey],
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // When we re-add the nft to the Gumball Machine.
-  await transactionBuilder()
-    .add(
-      addNft(umi, {
-        gumballMachine: machine,
-        mint: nfts[drawnIndex].publicKey,
-        args: {
-          index: drawnIndex,
-        },
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Draw all items
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(buyerUmi, {
-        gumballMachine: machine,
-        mintArgs: { solPayment: some(true) },
-      })
-    )
-    .add(
-      draw(buyerUmi, {
-        gumballMachine: machine,
-        mintArgs: { solPayment: some(true) },
-      })
-    )
-    .sendAndConfirm(buyerUmi);
-
-  // Buyer can sell back again to the seller
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      sellItem(buyerUmi, {
-        gumballMachine: machine,
-        index: 0,
-        amount: 1,
-        buyPrice: LAMPORTS_PER_SOL / 2,
-        oracleSigner,
-        buyer: umi.identity.publicKey,
-        mint: nfts[0].publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
-
-  const postBuyerBalance = await umi.rpc.getBalance(
-    buyerUmi.identity.publicKey
-  );
-
-  // 3 draws @ 1 SOL + 2 sells @ .5 SOL means 2 SOL were spent
-  t.true(
-    isEqualToAmount(
-      postBuyerBalance,
-      subtractAmounts(preBuyerBalance, sol(2)),
-      sol(0.001)
-    )
-  );
-
-  // Then settle all sales
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      settleNftSale(umi, {
-        index: 0,
-        gumballMachine: machine,
-        authority: umi.identity.publicKey,
-        buyer: buyerUmi.identity.publicKey,
-        seller: umi.identity.publicKey,
-        mint: nfts[0].publicKey,
-        creators: [umi.identity.publicKey],
-      })
-    )
-    .sendAndConfirm(umi);
-
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      settleNftSale(umi, {
-        index: 1,
-        gumballMachine: machine,
-        authority: umi.identity.publicKey,
-        buyer: buyerUmi.identity.publicKey,
-        seller: umi.identity.publicKey,
-        mint: nfts[1].publicKey,
-        creators: [umi.identity.publicKey],
-      })
-    )
-    .sendAndConfirm(umi);
-
-  const postSellerBalance = await umi.rpc.getBalance(umi.identity.publicKey);
-
-  // 3 draws @ 1 SOL
-  t.true(
-    isEqualToAmount(
-      postSellerBalance,
-      addAmounts(preSellerBalance, sol(3)),
-      sol(0.001)
-    )
-  );
-
-  // Then the Gumball Machine has been updated properly.
-  gumballMachineAccount = await fetchGumballMachine(umi, machine);
-
-  t.like(gumballMachineAccount, <Pick<GumballMachine, 'itemsLoaded' | 'items'>>{
-    itemsLoaded: 2,
-    itemsRedeemed: 2n,
-    itemsSettled: 2n,
-    // All proceeds were settled
-    totalProceedsSettled: sol(3).basisPoints,
-    buyBackFundsAvailable: 0n,
-    items: [
-      {
-        index: 0,
-        isDrawn: true,
-        isClaimed: true,
-        isSettled: true,
-        mint: nfts[0].publicKey,
-        seller: umi.identity.publicKey,
-        buyer: buyerUmi.identity.publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-        amount: 1,
-      },
-      {
-        index: 1,
-        isDrawn: true,
-        isClaimed: true,
-        isSettled: true,
-        mint: nfts[1].publicKey,
-        seller: umi.identity.publicKey,
-        buyer: buyerUmi.identity.publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-        amount: 1,
-      },
-    ],
-  });
-
-  // Seller can close the gumball machine
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      closeGumballMachine(umi, {
-        machine,
-        gumballGuard: findGumballGuardPda(umi, { base: machine }),
-      })
-    )
-    .sendAndConfirm(umi);
+  await sendTransaction(client.svm, client.payer, [
+    COMPUTE_UNITS,
+    await getCloseGumballMachineInstructionAsync({
+      machine: gumballMachine,
+      gumballGuard,
+      authority: client.payer,
+    }),
+  ]);
+  t.pass();
 });

@@ -103,7 +103,7 @@ pub struct SettleCoreAssetSale<'info> {
 }
 
 pub fn settle_core_asset_sale<'info>(
-    ctx: Context<'_, '_, '_, 'info, SettleCoreAssetSale<'info>>,
+    ctx: Context<'info, SettleCoreAssetSale<'info>>,
     index: u32,
 ) -> Result<()> {
     let gumball_machine = &mut ctx.accounts.gumball_machine;

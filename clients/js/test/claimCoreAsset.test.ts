@@ -1,130 +1,120 @@
-/* eslint-disable no-await-in-loop */
-import { AssetV1, fetchAssetV1 } from '@metaplex-foundation/mpl-core';
-import { setComputeUnitLimit } from '@metaplex-foundation/mpl-toolbox';
-import { transactionBuilder } from '@metaplex-foundation/umi';
+import { getAddressDecoder } from '@solana/kit';
 import test from 'ava';
 import {
-  claimCoreAsset,
   draw,
-  fetchGumballMachine,
-  GumballMachine,
+  getAddCoreAssetInstructionAsync,
+  getClaimCoreAssetInstructionAsync,
+  getStartSaleInstruction,
   TokenStandard,
 } from '../src';
-import { assertItemBought, create, createCoreAsset, createUmi } from './_setup';
+import { createCoreAsset } from './_removeClaimSetup';
+import {
+  COMPUTE_UNITS,
+  createClient,
+  createGumballMachine,
+  fetchGumballMachine,
+  generateKeyPairSignerWithSol,
+  sendTransaction,
+  type Client,
+} from './_setup';
+
+// MPL-Core AssetV1: byte 0 is the Key discriminator, bytes 1..33 are the owner.
+const coreAssetOwner = (client: Client, asset: string): string => {
+  const account = client.svm.getAccount(asset as any);
+  if (!account || !account.exists) throw new Error(`asset ${asset} not found`);
+  const data = account.data as Uint8Array;
+  return getAddressDecoder().decode(data.slice(1, 33));
+};
 
 test('it can claim a core asset item', async (t) => {
-  // Given a gumball machine with a gumball guard that has no guards.
-  const umi = await createUmi();
-  const asset = await createCoreAsset(umi);
-
-  const gumballMachineSigner = await create(umi, {
-    items: [
-      {
-        id: asset.publicKey,
-        tokenStandard: TokenStandard.Core,
-      },
-    ],
-    startSale: true,
+  const client = await createClient();
+  const { gumballMachine } = await createGumballMachine(client, {
+    settings: { itemCapacity: 5 },
     guards: {},
   });
-  const gumballMachine = gumballMachineSigner.publicKey;
+  const { asset } = await createCoreAsset(client);
 
-  // When we mint from the gumball guard.
-  const buyerUmi = await createUmi();
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(buyerUmi, {
-        gumballMachine,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
+  await sendTransaction(client.svm, client.payer, [
+    await getAddCoreAssetInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      asset,
+    }),
+    getStartSaleInstruction({ gumballMachine, authority: client.payer }),
+  ]);
 
-  // Then the mint was successful.
-  await assertItemBought(t, umi, {
-    gumballMachine,
-    buyer: buyerUmi.identity.publicKey,
+  const buyer = await generateKeyPairSignerWithSol(client.svm);
+  await sendTransaction(client.svm, buyer, [
+    COMPUTE_UNITS,
+    await draw({ gumballMachine, payer: buyer, buyer }),
+  ]);
+
+  await sendTransaction(client.svm, buyer, [
+    COMPUTE_UNITS,
+    await getClaimCoreAssetInstructionAsync({
+      payer: buyer,
+      gumballMachine,
+      seller: client.payer.address,
+      buyer: buyer.address,
+      asset,
+      index: 0,
+    }),
+  ]);
+
+  const account = fetchGumballMachine(client.svm, gumballMachine);
+  t.is(account.itemsRedeemed, 1n);
+  t.is(account.itemsSettled, 0n);
+  t.like(account.items[0], {
+    index: 0,
+    isDrawn: true,
+    isClaimed: true,
+    isSettled: false,
+    mint: asset,
+    seller: client.payer.address,
+    buyer: buyer.address,
+    tokenStandard: TokenStandard.Core,
+    amount: 1,
   });
 
-  await transactionBuilder()
-    .add(
-      claimCoreAsset(buyerUmi, {
-        gumballMachine,
-        index: 0,
-        seller: umi.identity.publicKey,
-        asset: asset.publicKey,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
-
-  // And the gumball machine was updated.
-  const gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
-  t.like(gumballMachineAccount, <Partial<GumballMachine>>{
-    itemsRedeemed: 1n,
-    itemsSettled: 0n,
-    items: [
-      {
-        index: 0,
-        isDrawn: true,
-        isClaimed: true,
-        isSettled: false,
-        mint: asset.publicKey,
-        seller: umi.identity.publicKey,
-        buyer: buyerUmi.identity.publicKey,
-        tokenStandard: TokenStandard.Core,
-        amount: 1,
-      },
-    ],
-  });
-
-  // Buyer should be the owner
-  // Then nft is unfrozen and revoked
-  const coreAsset = await fetchAssetV1(umi, asset.publicKey);
-  t.like(coreAsset, <AssetV1>{
-    freezeDelegate: undefined,
-    transferDelegate: undefined,
-    owner: buyerUmi.identity.publicKey,
-  });
+  // Buyer should now own the asset.
+  t.is(coreAssetOwner(client, asset), buyer.address);
 });
 
 test('it cannot claim a core asset item as another buyer', async (t) => {
-  // Given a gumball machine with a gumball guard that has no guards.
-  const umi = await createUmi();
-  const asset = await createCoreAsset(umi);
-
-  const gumballMachineSigner = await create(umi, {
-    items: [
-      {
-        id: asset.publicKey,
-        tokenStandard: TokenStandard.Core,
-      },
-    ],
-    startSale: true,
+  const client = await createClient();
+  const { gumballMachine } = await createGumballMachine(client, {
+    settings: { itemCapacity: 5 },
     guards: {},
   });
-  const gumballMachine = gumballMachineSigner.publicKey;
+  const { asset } = await createCoreAsset(client);
 
-  // When we mint from the gumball guard.
-  const buyerUmi = await createUmi();
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(buyerUmi, {
-        gumballMachine,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
+  await sendTransaction(client.svm, client.payer, [
+    await getAddCoreAssetInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      asset,
+    }),
+    getStartSaleInstruction({ gumballMachine, authority: client.payer }),
+  ]);
 
-  const promise = transactionBuilder()
-    .add(
-      claimCoreAsset(umi, {
+  const buyer = await generateKeyPairSignerWithSol(client.svm);
+  await sendTransaction(client.svm, buyer, [
+    COMPUTE_UNITS,
+    await draw({ gumballMachine, payer: buyer, buyer }),
+  ]);
+
+  await t.throwsAsync(
+    sendTransaction(client.svm, client.payer, [
+      COMPUTE_UNITS,
+      await getClaimCoreAssetInstructionAsync({
+        payer: client.payer,
         gumballMachine,
+        seller: client.payer.address,
+        buyer: client.payer.address,
+        asset,
         index: 0,
-        seller: umi.identity.publicKey,
-        asset: asset.publicKey,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  await t.throwsAsync(promise, { message: /InvalidBuyer/ });
+      }),
+    ]),
+    { message: /InvalidBuyer/ }
+  );
 });

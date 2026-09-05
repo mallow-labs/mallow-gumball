@@ -1,13 +1,22 @@
 import {
-  mapSerializer,
-  Serializer,
-  string,
-  struct,
-} from '@metaplex-foundation/umi/serializers';
+  combineCodec,
+  createDecoder,
+  createEncoder,
+  getUtf8Decoder,
+  getUtf8Encoder,
+  type Codec,
+  type Decoder,
+  type Encoder,
+} from '@solana/kit';
 import { GUMBALL_GUARD_LABEL_SIZE } from '../constants';
 import { GuardGroupLabelTooLongError } from '../errors';
-import { GuardRepository, GumballGuardProgram } from './guardRepository';
-import { getGuardSetSerializer, GuardSet, GuardSetArgs } from './guardSet';
+import { AnyGuardManifest } from './guardRepository';
+import {
+  getGuardSetDecoder,
+  getGuardSetEncoder,
+  GuardSet,
+  GuardSetArgs,
+} from './guardSet';
 
 /**
  * A group represent a specific set of guards. When groups are used, transactions
@@ -23,29 +32,66 @@ export type GuardGroupArgs<DA extends GuardSetArgs> = {
   guards: Partial<DA>;
 };
 
-export function getGuardGroupSerializer<
+const utf8Encoder = getUtf8Encoder();
+const utf8Decoder = getUtf8Decoder();
+
+function encodeLabel(label: string): Uint8Array {
+  if (label.length > GUMBALL_GUARD_LABEL_SIZE) {
+    throw new GuardGroupLabelTooLongError(label);
+  }
+  const bytes = new Uint8Array(GUMBALL_GUARD_LABEL_SIZE);
+  bytes.set(
+    new Uint8Array(utf8Encoder.encode(label)).slice(
+      0,
+      GUMBALL_GUARD_LABEL_SIZE
+    ),
+    0
+  );
+  return bytes;
+}
+
+export function getGuardGroupEncoder<DA extends GuardSetArgs>(
+  manifests: AnyGuardManifest[]
+): Encoder<GuardGroupArgs<DA>> {
+  const guardsEncoder = getGuardSetEncoder<DA>(manifests);
+  return createEncoder({
+    getSizeFromValue: (group: GuardGroupArgs<DA>) =>
+      GUMBALL_GUARD_LABEL_SIZE + guardsEncoder.encode(group.guards).length,
+    write: (group: GuardGroupArgs<DA>, bytes, offset) => {
+      bytes.set(encodeLabel(group.label), offset);
+      return guardsEncoder.write(
+        group.guards,
+        bytes,
+        offset + GUMBALL_GUARD_LABEL_SIZE
+      );
+    },
+  });
+}
+
+export function getGuardGroupDecoder<D extends GuardSet>(
+  manifests: AnyGuardManifest[]
+): Decoder<GuardGroup<D>> {
+  const guardsDecoder = getGuardSetDecoder<D>(manifests);
+  return createDecoder({
+    read: (bytes, offset) => {
+      const view = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+      const labelBytes = view.slice(offset, offset + GUMBALL_GUARD_LABEL_SIZE);
+      const label = utf8Decoder.decode(labelBytes).replace(/\0+$/, '');
+      const [guards, newOffset] = guardsDecoder.read(
+        bytes,
+        offset + GUMBALL_GUARD_LABEL_SIZE
+      );
+      return [{ label, guards }, newOffset];
+    },
+  });
+}
+
+export function getGuardGroupCodec<
   DA extends GuardSetArgs,
   D extends DA & GuardSet,
->(
-  context: { guards: GuardRepository },
-  program: GumballGuardProgram
-): Serializer<GuardGroupArgs<DA>, GuardGroup<D>> {
-  return struct(
-    [
-      [
-        'label',
-        mapSerializer(
-          string({ size: GUMBALL_GUARD_LABEL_SIZE }),
-          (label: string): string => {
-            if (label.length > GUMBALL_GUARD_LABEL_SIZE) {
-              throw new GuardGroupLabelTooLongError(label);
-            }
-            return label;
-          }
-        ),
-      ],
-      ['guards', getGuardSetSerializer<DA, D>(context, program)],
-    ],
-    { description: 'GuardGroup' }
-  ) as Serializer<GuardGroupArgs<DA>, GuardGroup<D>>;
+>(manifests: AnyGuardManifest[]): Codec<GuardGroupArgs<DA>, GuardGroup<D>> {
+  return combineCodec(
+    getGuardGroupEncoder<DA>(manifests),
+    getGuardGroupDecoder<D>(manifests)
+  );
 }

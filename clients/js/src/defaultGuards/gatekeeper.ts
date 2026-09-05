@@ -1,11 +1,14 @@
-import { PublicKey } from '@metaplex-foundation/umi';
-import { publicKey, string } from '@metaplex-foundation/umi/serializers';
 import {
-  Gatekeeper,
-  GatekeeperArgs,
-  getGatekeeperSerializer,
-} from '../generated';
+  getAddressEncoder,
+  getProgramDerivedAddress,
+  getUtf8Encoder,
+  type Address,
+} from '@solana/kit';
+import { Gatekeeper, GatekeeperArgs, getGatekeeperCodec } from '../generated';
 import { GuardManifest, GuardRemainingAccount, noopParser } from '../guards';
+
+const CIVIC_GATEWAY_PROGRAM_ID =
+  'gatem74V238djXdzWnJf94Wo1DcnuGkfijbf3AuBhfs' as Address;
 
 /**
  * The gatekeeper guard checks whether the minting wallet
@@ -33,34 +36,40 @@ export const gatekeeperGuardManifest: GuardManifest<
   GatekeeperMintArgs
 > = {
   name: 'gatekeeper',
-  serializer: getGatekeeperSerializer,
-  mintParser: (context, mintContext, args) => {
-    const gatewayProgramId = context.programs.getPublicKey(
-      'civicGateway',
-      'gatem74V238djXdzWnJf94Wo1DcnuGkfijbf3AuBhfs'
-    );
+  codec: getGatekeeperCodec,
+  mintParser: async (mintContext, args) => {
+    const addressEncoder = getAddressEncoder();
+    const utf8Encoder = getUtf8Encoder();
     const tokenAccount =
       args?.tokenAccount ??
-      context.eddsa.findPda(gatewayProgramId, [
-        publicKey().serialize(mintContext.buyer),
-        string({ size: 'variable' }).serialize('gateway'),
-        new Uint8Array([0, 0, 0, 0, 0, 0, 0, 0]),
-        publicKey().serialize(args.gatekeeperNetwork),
-      ])[0];
+      (
+        await getProgramDerivedAddress({
+          programAddress: CIVIC_GATEWAY_PROGRAM_ID,
+          seeds: [
+            addressEncoder.encode(mintContext.buyer.address),
+            utf8Encoder.encode('gateway'),
+            new Uint8Array([0, 0, 0, 0, 0, 0, 0, 0]),
+            addressEncoder.encode(args.gatekeeperNetwork),
+          ],
+        })
+      )[0];
     const remainingAccounts: GuardRemainingAccount[] = [
-      { publicKey: tokenAccount, isWritable: true },
+      { address: tokenAccount, isWritable: true },
     ];
     if (args.expireOnUse) {
-      const [expireAccount] = context.eddsa.findPda(gatewayProgramId, [
-        publicKey().serialize(args.gatekeeperNetwork),
-        string({ size: 'variable' }).serialize('expire'),
-      ]);
+      const [expireAccount] = await getProgramDerivedAddress({
+        programAddress: CIVIC_GATEWAY_PROGRAM_ID,
+        seeds: [
+          addressEncoder.encode(args.gatekeeperNetwork),
+          utf8Encoder.encode('expire'),
+        ],
+      });
       remainingAccounts.push({
-        publicKey: gatewayProgramId,
+        address: CIVIC_GATEWAY_PROGRAM_ID,
         isWritable: false,
       });
       remainingAccounts.push({
-        publicKey: expireAccount,
+        address: expireAccount,
         isWritable: false,
       });
     }
@@ -80,5 +89,5 @@ export type GatekeeperMintArgs = GatekeeperArgs & {
    * Gatekeeper Network's public keys as well as the default
    * `seed` value which is `[0, 0, 0, 0, 0, 0, 0, 0]`.
    */
-  tokenAccount?: PublicKey;
+  tokenAccount?: Address;
 };

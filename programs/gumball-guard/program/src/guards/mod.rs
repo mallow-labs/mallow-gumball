@@ -11,7 +11,7 @@ use crate::{
 };
 
 pub use address_gate::AddressGate;
-pub use allocation::Allocation;
+pub use allocation::{Allocation, AllocationTracker};
 pub use allow_list::{AllowList, AllowListProof};
 pub use bot_tax::BotTax;
 pub use end_date::EndDate;
@@ -104,7 +104,7 @@ pub trait Guard: Condition + AnchorSerialize + AnchorDeserialize {
     /// Executes an instruction. This function is called from the `route` instruction
     /// handler.
     fn instruction<'c: 'info, 'info>(
-        _ctx: &Context<'_, '_, 'c, 'info, Route<'info>>,
+        _ctx: &Context<'info, Route<'info>>,
         _route_context: RouteContext<'info>,
         _data: Vec<u8>,
     ) -> Result<()> {
@@ -155,7 +155,7 @@ pub trait Guard: Condition + AnchorSerialize + AnchorDeserialize {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Debug)]
+#[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Eq, Clone, Debug)]
 pub enum MachineType {
     Gumball,
     Jellybean,

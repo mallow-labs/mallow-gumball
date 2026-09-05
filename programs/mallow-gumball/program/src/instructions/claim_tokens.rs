@@ -66,10 +66,7 @@ pub struct ClaimTokens<'info> {
     authority_pda_token_account: Box<Account<'info, TokenAccount>>,
 }
 
-pub fn claim_tokens<'info>(
-    ctx: Context<'_, '_, '_, 'info, ClaimTokens<'info>>,
-    index: u32,
-) -> Result<()> {
+pub fn claim_tokens<'info>(ctx: Context<'info, ClaimTokens<'info>>, index: u32) -> Result<()> {
     let gumball_machine = &mut ctx.accounts.gumball_machine;
     let payer = &ctx.accounts.payer.to_account_info();
     let buyer = &ctx.accounts.buyer.to_account_info();

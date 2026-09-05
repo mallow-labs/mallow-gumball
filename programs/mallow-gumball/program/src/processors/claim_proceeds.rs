@@ -3,7 +3,8 @@ use crate::{
 };
 use anchor_lang::prelude::*;
 use utils::{
-    assert_keys_equal, get_bps_of, is_native_mint, transfer, transfer_from_pda, RoyaltyInfo,
+    assert_keys_equal, expects_token_program_slot, get_bps_of, is_native_mint,
+    resolve_currency_token_program, transfer, transfer_from_pda, RoyaltyInfo,
 };
 
 pub fn claim_proceeds<'a, 'b>(
@@ -36,6 +37,27 @@ pub fn claim_proceeds<'a, 'b>(
             GumballError::InvalidPaymentMint
         );
     }
+
+    // §D5 slot 0: the settle family's remaining accounts are creator pairs from
+    // index 0, so a Token-2022 payment mint puts its program in front of them.
+    // A classic mint consumes nothing, leaving old calls byte-for-byte unchanged.
+    // A native-SOL machine never looks at the mint account, so it never shifts.
+    let currency_mint = if is_native { None } else { payment_mint };
+    let (currency_token_program, creator_accounts) = if expects_token_program_slot(currency_mint) {
+        (
+            resolve_currency_token_program(
+                currency_mint,
+                remaining_accounts.first(),
+                token_program,
+            )?,
+            &remaining_accounts[1..],
+        )
+    } else {
+        (
+            resolve_currency_token_program(currency_mint, None, token_program)?,
+            remaining_accounts,
+        )
+    };
 
     let account_info = gumball_machine.to_account_info();
     let mut account_data = account_info.data.borrow_mut();
@@ -112,13 +134,13 @@ pub fn claim_proceeds<'a, 'b>(
         payment_mint,
         fee_payer,
         associated_token_program,
-        token_program,
+        currency_token_program,
         system_program,
         auth_seeds,
         royalty_info,
         disable_primary_split,
         disable_royalties,
-        remaining_accounts,
+        creator_accounts,
     )?;
 
     seller_history.item_count -= 1;
@@ -170,6 +192,9 @@ pub fn get_total_proceeds<'a>(
     Ok((total_proceeds, marketplace_fee_bps))
 }
 
+/// `token_program` here is the **payment** program, already resolved from the
+/// §D5 slot by `claim_proceeds`, and `remaining_accounts` is the creator
+/// sub-slice with that slot removed.
 pub fn transfer_proceeds<'a, 'b>(
     gumball_machine: &Box<Account<'a, GumballMachine>>,
     total_proceeds: u64,

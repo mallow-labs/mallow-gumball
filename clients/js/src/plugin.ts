@@ -1,11 +1,8 @@
-import { mplTokenMetadata } from '@metaplex-foundation/mpl-token-metadata';
-import { UmiPlugin } from '@metaplex-foundation/umi';
 import {
   addressGateGuardManifest,
   allocationGuardManifest,
   allowListGuardManifest,
   botTaxGuardManifest,
-  defaultGumballGuardNames,
   endDateGuardManifest,
   gatekeeperGuardManifest,
   mintLimitGuardManifest,
@@ -23,63 +20,55 @@ import {
   tokenPaymentGuardManifest,
 } from './defaultGuards';
 import {
-  createGumballGuardProgram,
-  createMallowGumballProgram,
-} from './generated';
-import {
+  AnyGuardManifest,
   DefaultGuardRepository,
   GuardRepository,
-  GumballGuardProgram,
 } from './guards';
-import {
-  createCivicGatewayProgram,
-  createMplTokenAuthRulesProgram,
-} from './programs';
 
-export const mallowGumball = (): UmiPlugin => ({
-  install(umi) {
-    umi.use(mplTokenMetadata());
+/**
+ * The default guard manifests, in the on-chain guard order the Gumball Guard
+ * program expects (this order defines the features-bitset positions).
+ *
+ * Returned from a function so the manifest module-level consts are always fully
+ * initialized by the time it runs (avoids ESM circular-import init pitfalls).
+ */
+export function getDefaultGuardManifests(): AnyGuardManifest[] {
+  return [
+    botTaxGuardManifest,
+    startDateGuardManifest,
+    solPaymentGuardManifest,
+    tokenPaymentGuardManifest,
+    thirdPartySignerGuardManifest,
+    tokenGateGuardManifest,
+    gatekeeperGuardManifest,
+    endDateGuardManifest,
+    allowListGuardManifest,
+    mintLimitGuardManifest,
+    nftPaymentGuardManifest,
+    redeemedAmountGuardManifest,
+    addressGateGuardManifest,
+    nftGateGuardManifest,
+    nftBurnGuardManifest,
+    tokenBurnGuardManifest,
+    programGateGuardManifest,
+    allocationGuardManifest,
+    token2022PaymentGuardManifest,
+  ];
+}
 
-    // Programs.
-    umi.programs.add(createMallowGumballProgram(), false);
-    umi.programs.add(
-      {
-        ...createGumballGuardProgram(),
-        availableGuards: defaultGumballGuardNames,
-      } as GumballGuardProgram,
-      false
-    );
-    umi.programs.add(createCivicGatewayProgram(), false);
-    umi.programs.add(createMplTokenAuthRulesProgram(), false);
+/** Builds a guard repository preloaded with the default guards. */
+export function createDefaultGuardRepository(): GuardRepository {
+  const repository = new DefaultGuardRepository();
+  repository.add(...getDefaultGuardManifests());
+  return repository;
+}
 
-    // Default Guards.
-    umi.guards = new DefaultGuardRepository();
-    umi.guards.add(
-      botTaxGuardManifest,
-      startDateGuardManifest,
-      solPaymentGuardManifest,
-      tokenPaymentGuardManifest,
-      thirdPartySignerGuardManifest,
-      tokenGateGuardManifest,
-      gatekeeperGuardManifest,
-      endDateGuardManifest,
-      allowListGuardManifest,
-      mintLimitGuardManifest,
-      nftPaymentGuardManifest,
-      redeemedAmountGuardManifest,
-      addressGateGuardManifest,
-      nftGateGuardManifest,
-      nftBurnGuardManifest,
-      tokenBurnGuardManifest,
-      programGateGuardManifest,
-      allocationGuardManifest,
-      token2022PaymentGuardManifest
-    );
-  },
-});
+let sharedRepository: GuardRepository | undefined;
 
-declare module '@metaplex-foundation/umi' {
-  interface Umi {
-    guards: GuardRepository;
+/** A lazily-created shared default guard repository (guards are stateless). */
+export function getDefaultGuardRepository(): GuardRepository {
+  if (!sharedRepository) {
+    sharedRepository = createDefaultGuardRepository();
   }
+  return sharedRepository;
 }

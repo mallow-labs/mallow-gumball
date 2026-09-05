@@ -1,228 +1,129 @@
 import {
-  fetchToken,
+  AccountState,
+  decodeToken,
   findAssociatedTokenPda,
-  TokenState,
-} from '@metaplex-foundation/mpl-toolbox';
-import { none, transactionBuilder } from '@metaplex-foundation/umi';
+  TOKEN_PROGRAM_ADDRESS,
+} from '@solana-program/token';
+import { none } from '@solana/kit';
 import test from 'ava';
 import {
-  cancelAddNftRequest,
-  deleteGumballMachine,
   findGumballMachineAuthorityPda,
   findSellerHistoryPda,
-  MPL_TOKEN_AUTH_RULES_PROGRAM_ID,
-  requestAddNft,
-  safeFetchAddItemRequestFromSeeds,
-  safeFetchSellerHistory,
+  getCancelAddNftRequestInstructionAsync,
+  getDeleteGumballMachineInstructionAsync,
+  getRequestAddNftInstructionAsync,
 } from '../src';
-import { create, createNft, createProgrammableNft, createUmi } from './_setup';
+import {
+  createNft,
+  createUnwrappedGumballMachine,
+  getAddItemRequest,
+  getSellerHistory,
+} from './_addSetup';
+import {
+  createClient,
+  createGumballMachine,
+  generateKeyPairSignerWithSol,
+  sendTransaction,
+} from './_setup';
+
+// NOTE: the umi suite includes "it can cancel a request to add a pnft" which
+// requires programmable-NFT creation; omitted here (see report).
 
 test('it can cancel a request to add an nft to a gumball machine', async (t) => {
-  // Given a Gumball Machine with 5 nfts.
-  const umi = await createUmi();
-  const gumballMachine = await create(umi, { settings: { itemCapacity: 5 } });
+  const client = await createClient();
+  const { gumballMachine } = await createGumballMachine(client, {
+    settings: { itemCapacity: 5 },
+  });
+  const seller = await generateKeyPairSignerWithSol(client.svm);
+  const { mint } = await createNft(client, seller);
 
-  const sellerUmi = await createUmi();
-  const nft = await createNft(sellerUmi);
+  await sendTransaction(client.svm, seller, [
+    await getRequestAddNftInstructionAsync({ gumballMachine, seller, mint }),
+  ]);
 
-  // When we create a request to add an nft to the Gumball Machine.
-  await transactionBuilder()
-    .add(
-      requestAddNft(sellerUmi, {
-        gumballMachine: gumballMachine.publicKey,
-        mint: nft.publicKey,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then cancel the request to add an coreAsset to the Gumball Machine.
-  await transactionBuilder()
-    .add(
-      cancelAddNftRequest(sellerUmi, {
-        mint: nft.publicKey,
-        sellerHistory: findSellerHistoryPda(umi, {
-          gumballMachine: gumballMachine.publicKey,
-          seller: sellerUmi.identity.publicKey,
-        }),
-        authorityPda: findGumballMachineAuthorityPda(umi, {
-          gumballMachine: gumballMachine.publicKey,
-        }),
-      })
-    )
-    .sendAndConfirm(sellerUmi);
-
-  // Then the request is closed
-  const addItemRequestAccount = await safeFetchAddItemRequestFromSeeds(umi, {
-    asset: nft.publicKey,
+  const [sellerHistory] = await findSellerHistoryPda({
+    gumballMachine,
+    seller: seller.address,
+  });
+  const [authorityPda] = await findGumballMachineAuthorityPda({
+    gumballMachine,
   });
 
-  t.falsy(addItemRequestAccount);
+  await sendTransaction(client.svm, seller, [
+    await getCancelAddNftRequestInstructionAsync({
+      seller,
+      mint,
+      sellerHistory,
+      authorityPda,
+    }),
+  ]);
 
-  // Then nft is unfrozen and revoked
-  const tokenAccount = await fetchToken(
-    sellerUmi,
-    findAssociatedTokenPda(umi, {
-      mint: nft.publicKey,
-      owner: sellerUmi.identity.publicKey,
-    })[0]
-  );
-  t.like(tokenAccount, {
-    state: TokenState.Initialized,
-    owner: sellerUmi.identity.publicKey,
-    delegate: none(),
+  // The request is closed.
+  t.is(await getAddItemRequest(client, mint), null);
+
+  // The nft is unfrozen and revoked.
+  const [ata] = await findAssociatedTokenPda({
+    owner: seller.address,
+    mint,
+    tokenProgram: TOKEN_PROGRAM_ADDRESS,
   });
+  const tokenAccount = decodeToken(client.svm.getAccount(ata) as never).data;
+  t.is(tokenAccount.state, AccountState.Initialized);
+  t.is(tokenAccount.owner, seller.address);
+  t.deepEqual(tokenAccount.delegate, none());
 
-  // Seller history should no longer exist
-  const sellerHistoryAccount = await safeFetchSellerHistory(
-    sellerUmi,
-    findSellerHistoryPda(sellerUmi, {
-      gumballMachine: gumballMachine.publicKey,
-      seller: sellerUmi.identity.publicKey,
-    })[0]
-  );
-
-  t.falsy(sellerHistoryAccount);
-});
-
-test('it can cancel a request to add a pnft to a gumball machine', async (t) => {
-  // Given a Gumball Machine with 5 nfts.
-  const umi = await createUmi();
-  const gumballMachine = await create(umi, { settings: { itemCapacity: 5 } });
-
-  const sellerUmi = await createUmi();
-  const nft = await createProgrammableNft(sellerUmi);
-
-  // When we create a request to add an nft to the Gumball Machine.
-  await transactionBuilder()
-    .add(
-      requestAddNft(sellerUmi, {
-        gumballMachine: gumballMachine.publicKey,
-        mint: nft.publicKey,
-        authRulesProgram: MPL_TOKEN_AUTH_RULES_PROGRAM_ID,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then cancel the request to add an coreAsset to the Gumball Machine.
-  await transactionBuilder()
-    .add(
-      cancelAddNftRequest(sellerUmi, {
-        mint: nft.publicKey,
-        sellerHistory: findSellerHistoryPda(umi, {
-          gumballMachine: gumballMachine.publicKey,
-          seller: sellerUmi.identity.publicKey,
-        }),
-        authorityPda: findGumballMachineAuthorityPda(umi, {
-          gumballMachine: gumballMachine.publicKey,
-        }),
-        authRulesProgram: MPL_TOKEN_AUTH_RULES_PROGRAM_ID,
-      })
-    )
-    .sendAndConfirm(sellerUmi);
-
-  // Then the request is closed
-  const addItemRequestAccount = await safeFetchAddItemRequestFromSeeds(umi, {
-    asset: nft.publicKey,
-  });
-
-  t.falsy(addItemRequestAccount);
-
-  // Then nft is unfrozen and revoked
-  const tokenAccount = await fetchToken(
-    sellerUmi,
-    findAssociatedTokenPda(umi, {
-      mint: nft.publicKey,
-      owner: sellerUmi.identity.publicKey,
-    })[0]
-  );
-  t.like(tokenAccount, {
-    state: TokenState.Frozen,
-    owner: sellerUmi.identity.publicKey,
-    delegate: none(),
-  });
-
-  // Seller history should no longer exist
-  const sellerHistoryAccount = await safeFetchSellerHistory(
-    sellerUmi,
-    findSellerHistoryPda(sellerUmi, {
-      gumballMachine: gumballMachine.publicKey,
-      seller: sellerUmi.identity.publicKey,
-    })[0]
-  );
-
-  t.falsy(sellerHistoryAccount);
+  // Seller history should no longer exist.
+  t.is(await getSellerHistory(client, gumballMachine, seller.address), null);
 });
 
 test('it can cancel a request to add an nft to a gumball machine after the gumball has closed', async (t) => {
-  // Given a Gumball Machine with 5 nfts.
-  const umi = await createUmi();
-  const gumballMachine = await create(umi, { settings: { itemCapacity: 5 } });
+  const client = await createClient();
+  const { gumballMachine } = await createUnwrappedGumballMachine(client, {
+    itemCapacity: 5,
+  });
+  const seller = await generateKeyPairSignerWithSol(client.svm);
+  const { mint } = await createNft(client, seller);
 
-  const sellerUmi = await createUmi();
-  const nft = await createNft(sellerUmi);
+  await sendTransaction(client.svm, seller, [
+    await getRequestAddNftInstructionAsync({ gumballMachine, seller, mint }),
+  ]);
 
-  // When we create a request to add an nft to the Gumball Machine.
-  await transactionBuilder()
-    .add(
-      requestAddNft(sellerUmi, {
-        gumballMachine: gumballMachine.publicKey,
-        mint: nft.publicKey,
-      })
-    )
-    .sendAndConfirm(umi);
+  // Delete the gumball machine.
+  await sendTransaction(client.svm, client.payer, [
+    await getDeleteGumballMachineInstructionAsync({
+      gumballMachine,
+      authority: client.payer,
+      mintAuthority: client.payer,
+    }),
+  ]);
 
-  // Then delete the gumball machine.
-  await transactionBuilder()
-    .add(
-      deleteGumballMachine(umi, { gumballMachine: gumballMachine.publicKey })
-    )
-    .sendAndConfirm(umi);
-
-  // Then cancel the request to add an coreAsset to the Gumball Machine.
-  await transactionBuilder()
-    .add(
-      cancelAddNftRequest(sellerUmi, {
-        mint: nft.publicKey,
-        sellerHistory: findSellerHistoryPda(umi, {
-          gumballMachine: gumballMachine.publicKey,
-          seller: sellerUmi.identity.publicKey,
-        }),
-        authorityPda: findGumballMachineAuthorityPda(umi, {
-          gumballMachine: gumballMachine.publicKey,
-        }),
-      })
-    )
-    .sendAndConfirm(sellerUmi);
-
-  // Then the request is closed
-  const addItemRequestAccount = await safeFetchAddItemRequestFromSeeds(umi, {
-    asset: nft.publicKey,
+  const [sellerHistory] = await findSellerHistoryPda({
+    gumballMachine,
+    seller: seller.address,
+  });
+  const [authorityPda] = await findGumballMachineAuthorityPda({
+    gumballMachine,
   });
 
-  t.falsy(addItemRequestAccount);
+  await sendTransaction(client.svm, seller, [
+    await getCancelAddNftRequestInstructionAsync({
+      seller,
+      mint,
+      sellerHistory,
+      authorityPda,
+    }),
+  ]);
 
-  // Then nft is unfrozen and revoked
-  const tokenAccount = await fetchToken(
-    sellerUmi,
-    findAssociatedTokenPda(umi, {
-      mint: nft.publicKey,
-      owner: sellerUmi.identity.publicKey,
-    })[0]
-  );
-  t.like(tokenAccount, {
-    state: TokenState.Initialized,
-    owner: sellerUmi.identity.publicKey,
-    delegate: none(),
+  t.is(await getAddItemRequest(client, mint), null);
+
+  const [ata] = await findAssociatedTokenPda({
+    owner: seller.address,
+    mint,
+    tokenProgram: TOKEN_PROGRAM_ADDRESS,
   });
+  const tokenAccount = decodeToken(client.svm.getAccount(ata) as never).data;
+  t.is(tokenAccount.state, AccountState.Initialized);
+  t.deepEqual(tokenAccount.delegate, none());
 
-  // Seller history should no longer exist
-  const sellerHistoryAccount = await safeFetchSellerHistory(
-    sellerUmi,
-    findSellerHistoryPda(sellerUmi, {
-      gumballMachine: gumballMachine.publicKey,
-      seller: sellerUmi.identity.publicKey,
-    })[0]
-  );
-
-  t.falsy(sellerHistoryAccount);
+  t.is(await getSellerHistory(client, gumballMachine, seller.address), null);
 });

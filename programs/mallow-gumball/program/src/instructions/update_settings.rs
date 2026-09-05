@@ -54,7 +54,7 @@ pub fn update_settings(ctx: Context<UpdateSettings>, args: UpdateArgs) -> Result
 
             account_data
                 [buy_back_config_position..buy_back_config_position + BuyBackConfig::INIT_SPACE]
-                .copy_from_slice(&buy_back_config.try_to_vec().unwrap());
+                .copy_from_slice(&borsh::to_vec(&buy_back_config).unwrap());
         }
     }
 

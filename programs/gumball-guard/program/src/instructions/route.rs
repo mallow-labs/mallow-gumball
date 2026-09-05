@@ -4,13 +4,13 @@ use crate::{
 };
 use anchor_lang::prelude::*;
 use mallow_gumball::GumballMachine;
-use mallow_jellybean_sdk::accounts::JellybeanMachine;
+use mallow_jellybean_client::accounts::JellybeanMachine;
 
 /// Route the transaction to the specified guard. This instruction allows the use of
 /// empty gumball guard and gumball machine accounts and it is up to individual guard
 /// instructions to validate whether the instruction can be executed or not.
 pub fn route<'c: 'info, 'info>(
-    ctx: Context<'_, '_, 'c, 'info, Route<'info>>,
+    ctx: Context<'info, Route<'info>>,
     args: RouteArgs,
     label: Option<String>,
 ) -> Result<()> {

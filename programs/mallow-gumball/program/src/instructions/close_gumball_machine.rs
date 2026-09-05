@@ -3,8 +3,8 @@ use crate::{
     GumballError, GumballMachine, Token,
 };
 use anchor_lang::prelude::*;
-use anchor_spl::token::TokenAccount;
-use utils::{assert_is_ata, is_native_mint};
+use anchor_spl::token_interface::TokenAccount as CurrencyTokenAccount;
+use utils::{assert_is_ata_for_program, is_native_mint, resolve_currency_token_program};
 
 /// Withdraw the rent SOL from the gumball machine account.
 #[derive(Accounts)]
@@ -45,9 +45,7 @@ pub struct CloseGumballMachine<'info> {
     token_program: Program<'info, Token>,
 }
 
-pub fn close_gumball_machine<'info>(
-    ctx: Context<'_, '_, '_, 'info, CloseGumballMachine<'info>>,
-) -> Result<()> {
+pub fn close_gumball_machine<'info>(ctx: Context<'info, CloseGumballMachine<'info>>) -> Result<()> {
     let account_info = ctx.accounts.gumball_machine.to_account_info();
     let account_data = account_info.data.borrow();
 
@@ -95,31 +93,40 @@ pub fn close_gumball_machine<'info>(
             .to_account_info();
 
         if !authority_pda_payment_account.data_is_empty() {
-            assert_is_ata(
-                authority_pda_payment_account,
-                authority_pda.key,
-                &payment_mint,
-            )?;
-
-            // Transfer remaining balance to authority if there's any
-            let token_account = &mut Box::new(try_from!(
-                Account::<'info, TokenAccount>,
-                authority_pda_payment_account
-            )?);
             let iter = &mut ctx.remaining_accounts.iter();
             let mint = next_account_info(iter)?;
             let to_token_account = next_account_info(iter)?;
             let ata_program = next_account_info(iter)?;
             let system_program = next_account_info(iter)?;
+            // §D5 slot 4 — after the existing four remaining accounts.
+            let currency_token_program =
+                resolve_currency_token_program(Some(mint), iter.next(), token_program)?;
+
+            // The ATA check and the typed load both have to be program-aware:
+            // the two-argument ATA derivation returns the classic address for a
+            // Token-2022 mint, and `Account::<TokenAccount>` rejects a
+            // Token-2022 account by owner.
+            assert_is_ata_for_program(
+                authority_pda_payment_account,
+                authority_pda.key,
+                &payment_mint,
+                currency_token_program.key,
+            )?;
+
+            // Transfer remaining balance to authority if there's any
+            let token_account = &mut Box::new(try_from!(
+                InterfaceAccount::<'info, CurrencyTokenAccount>,
+                authority_pda_payment_account
+            )?);
 
             transfer_and_close_if_empty(
                 authority,
                 authority_pda,
-                token_account,
+                authority_pda_payment_account,
                 authority,
                 to_token_account,
                 mint,
-                token_program,
+                currency_token_program,
                 ata_program,
                 system_program,
                 authority,

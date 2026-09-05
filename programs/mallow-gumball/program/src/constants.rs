@@ -4,6 +4,17 @@ use solana_program::{pubkey, pubkey::Pubkey};
 pub const MPL_TOKEN_AUTH_RULES_PROGRAM: Pubkey =
     pubkey!("auth9SigNpDKz4sJJ1DfCTuZrZNSAgh9sFD3rboVmgg");
 
+// SPL Account Compression program (holds the concurrent merkle trees for cNFTs).
+pub const SPL_ACCOUNT_COMPRESSION_PROGRAM: Pubkey =
+    pubkey!("cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK");
+
+// SPL No-op (log wrapper) program used by Bubblegum to emit leaf change events.
+pub const SPL_NOOP_PROGRAM: Pubkey = pubkey!("noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV");
+
+// Only Bubblegum V1 leaves are tradable on-chain in this version. V2 leaves
+// require a Solana 2.x toolchain (mpl-account-compression) and are rejected.
+pub const BUBBLEGUM_V1_VERSION: u8 = 1;
+
 // Seed used to derive the authority PDA address.
 pub const AUTHORITY_SEED: &str = "gumball_machine";
 

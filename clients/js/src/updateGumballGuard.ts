@@ -1,48 +1,29 @@
-import { TransactionBuilder } from '@metaplex-foundation/umi';
+import { type Instruction } from '@solana/kit';
 import { DefaultGuardSetArgs } from './defaultGuards';
 import {
-  updateGumballGuard as baseUpdateGumballGuard,
-  UpdateGumballGuardInstructionAccounts,
+  getUpdateGumballGuardInstruction,
+  type UpdateGumballGuardInput as BaseUpdateGumballGuardInput,
 } from './generated/instructions/updateGumballGuard';
+import { GuardSetArgs } from './guards';
 import {
-  GuardRepository,
-  GuardSet,
-  GuardSetArgs,
-  GumballGuardProgram,
-} from './guards';
-import {
-  getGumballGuardDataSerializer,
-  GumballGuardData,
-  GumballGuardDataArgs,
+  getGumballGuardDataEncoder,
+  type GumballGuardDataArgs,
 } from './hooked';
 
-export { UpdateGumballGuardInstructionAccounts };
+export type UpdateGumballGuardBuilderInput<
+  DA extends GuardSetArgs = DefaultGuardSetArgs,
+> = Omit<BaseUpdateGumballGuardInput, 'data'> & GumballGuardDataArgs<DA>;
 
-export type UpdateGumballGuardInstructionData<D extends GuardSet> = {
-  discriminator: Array<number>;
-} & GumballGuardData<D>;
-
-export type UpdateGumballGuardInstructionDataArgs<DA extends GuardSetArgs> =
-  GumballGuardDataArgs<DA>;
-
+/**
+ * High-level `updateGumballGuard` builder: serializes the provided guards +
+ * groups into the update instruction data.
+ */
 export function updateGumballGuard<
   DA extends GuardSetArgs = DefaultGuardSetArgs,
->(
-  context: Parameters<typeof baseUpdateGumballGuard>[0] & {
-    guards: GuardRepository;
-  },
-  input: UpdateGumballGuardInstructionAccounts &
-    UpdateGumballGuardInstructionDataArgs<
-      DA extends undefined ? DefaultGuardSetArgs : DA
-    >
-): TransactionBuilder {
+>(input: UpdateGumballGuardBuilderInput<DA>): Instruction {
   const { guards, groups, ...rest } = input;
-  const program = context.programs.get<GumballGuardProgram>('gumballGuard');
-  const serializer = getGumballGuardDataSerializer<
-    DA extends undefined ? DefaultGuardSetArgs : DA,
-    any
-  >(context, program);
-  const data = serializer.serialize({ guards, groups });
-
-  return baseUpdateGumballGuard(context, { ...rest, data });
+  const data = new Uint8Array(
+    getGumballGuardDataEncoder<DA>().encode({ guards, groups })
+  );
+  return getUpdateGumballGuardInstruction({ ...rest, data });
 }

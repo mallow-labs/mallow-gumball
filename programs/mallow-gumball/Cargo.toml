@@ -1,5 +1,6 @@
 [profile.release]
 overflow-checks = true
+opt-level = "s"
 
 [workspace]
 resolver = "2"

@@ -1,7 +1,7 @@
 use crate::{constants::AUTHORITY_SEED, GumballError, GumballMachine, Token};
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
-use utils::{transfer, transfer_from_pda};
+use utils::{is_native_mint, resolve_currency_token_program, transfer, transfer_from_pda};
 
 /// Manage the buy back funds of the gumball machine.
 #[derive(Accounts)]
@@ -48,7 +48,7 @@ pub struct ManageBuyBackFunds<'info> {
 }
 
 pub fn manage_buy_back_funds<'info>(
-    ctx: Context<'_, '_, '_, 'info, ManageBuyBackFunds<'info>>,
+    ctx: Context<'info, ManageBuyBackFunds<'info>>,
     amount: u64,
     is_withdraw: bool,
 ) -> Result<()> {
@@ -82,6 +82,19 @@ pub fn manage_buy_back_funds<'info>(
         .map(|account| account.to_account_info());
     let authority_payment_account = authority_payment_account_info.as_ref();
 
+    // §D5 slot 0 — this instruction takes no remaining accounts today, so the
+    // Token-2022 program is the first (and only) one when the payment mint is T22.
+    let currency_mint = if is_native_mint(ctx.accounts.gumball_machine.settings.payment_mint) {
+        None
+    } else {
+        payment_mint
+    };
+    let currency_token_program = resolve_currency_token_program(
+        currency_mint,
+        ctx.remaining_accounts.first(),
+        token_program,
+    )?;
+
     let buy_back_config = ctx
         .accounts
         .gumball_machine
@@ -110,7 +123,7 @@ pub fn manage_buy_back_funds<'info>(
             payment_mint,
             None,
             Some(associated_token_program),
-            Some(token_program),
+            Some(currency_token_program),
             system_program,
             &auth_seeds,
             None,
@@ -127,7 +140,7 @@ pub fn manage_buy_back_funds<'info>(
             payment_mint,
             None,
             Some(associated_token_program),
-            Some(token_program),
+            Some(currency_token_program),
             system_program,
             None,
             None,

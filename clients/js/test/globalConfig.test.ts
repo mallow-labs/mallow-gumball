@@ -1,226 +1,186 @@
-import {
-  generateSigner,
-  sol,
-  transactionBuilder,
-} from '@metaplex-foundation/umi';
+import { generateKeyPairSigner } from '@solana/kit';
 import test from 'ava';
 import {
-  createGlobalConfig,
   fetchGlobalConfigFromSeeds,
-  updateGlobalConfig,
+  getCreateGlobalConfigInstructionAsync,
+  getUpdateGlobalConfigInstructionAsync,
 } from '../src';
-import { createUmi, getTestAuthority, setupGlobalConfig } from './_setup';
+import {
+  createClient,
+  generateKeyPairSignerWithSol,
+  sendTransaction,
+  setupGlobalConfig,
+} from './_setup';
 
-// All tests mutate the same GlobalConfig singleton — they must run serially.
+// Each ava test builds its own LiteSVM ledger (fresh GlobalConfig singleton), so
+// unlike the umi suite these do not need to run serially or restore state.
 
 // ---------------------------------------------------------------------------
 // create_global_config
 // ---------------------------------------------------------------------------
 
-test.serial('it creates the global config', async (t) => {
-  const umi = await createUmi();
-  const authority = getTestAuthority(umi);
-  await setupGlobalConfig(umi, authority);
+test('it creates the global config', async (t) => {
+  const client = await createClient();
+  const authority = await generateKeyPairSignerWithSol(client.svm);
+  await setupGlobalConfig(client, authority);
 
-  const config = await fetchGlobalConfigFromSeeds(umi);
-  t.is(config.configAuthority, authority.publicKey);
-  t.is(config.accountFeeAuthority, authority.publicKey);
+  const config = await fetchGlobalConfigFromSeeds(client.rpc);
+  t.is(config.data.configAuthority, authority.address);
+  t.is(config.data.accountFeeAuthority, authority.address);
 });
 
-test.serial(
-  'it fails to create global config when it already exists',
-  async (t) => {
-    const umi = await createUmi();
-    const authority = getTestAuthority(umi);
-    await setupGlobalConfig(umi, authority);
+test('it fails to create global config when it already exists', async (t) => {
+  const client = await createClient();
+  const authority = await generateKeyPairSignerWithSol(client.svm);
+  await setupGlobalConfig(client, authority);
 
-    // Attempting to create again should fail because the PDA is already initialized.
-    const promise = transactionBuilder()
-      .add(
-        createGlobalConfig(umi, {
-          authority,
-          configAuthority: authority.publicKey,
-          accountFeeAuthority: authority.publicKey,
-        })
-      )
-      .sendAndConfirm(umi);
-
-    await t.throwsAsync(promise);
-  }
-);
+  // Attempting to create again should fail because the PDA is already initialized.
+  await t.throwsAsync(
+    sendTransaction(client.svm, client.payer, [
+      await getCreateGlobalConfigInstructionAsync({
+        authority,
+        configAuthority: authority.address,
+        accountFeeAuthority: authority.address,
+      }),
+    ]),
+    { message: /already in use/ }
+  );
+});
 
 // ---------------------------------------------------------------------------
 // update_global_config
 // ---------------------------------------------------------------------------
 
-test.serial(
-  'it updates only account_fee_authority when config_authority is null',
-  async (t) => {
-    const umi = await createUmi();
-    const authority = getTestAuthority(umi);
-    await setupGlobalConfig(umi, authority);
+test('it updates only account_fee_authority when config_authority is null', async (t) => {
+  const client = await createClient();
+  const authority = await generateKeyPairSignerWithSol(client.svm);
+  await setupGlobalConfig(client, authority);
 
-    const newFeeAuthority = generateSigner(umi).publicKey;
-    await updateGlobalConfig(umi, {
+  const newFeeAuthority = (await generateKeyPairSigner()).address;
+  await sendTransaction(client.svm, client.payer, [
+    await getUpdateGlobalConfigInstructionAsync({
       authority,
       newConfigAuthority: null,
       newAccountFeeAuthority: newFeeAuthority,
-    }).sendAndConfirm(umi);
+    }),
+  ]);
 
-    const config = await fetchGlobalConfigFromSeeds(umi);
-    t.is(
-      config.configAuthority,
-      authority.publicKey,
-      'config_authority should be unchanged'
-    );
-    t.is(
-      config.accountFeeAuthority,
-      newFeeAuthority,
-      'account_fee_authority should be updated'
-    );
-
-    // Restore for other tests.
-    await updateGlobalConfig(umi, {
-      authority,
-      newConfigAuthority: null,
-      newAccountFeeAuthority: authority.publicKey,
-    }).sendAndConfirm(umi);
-  }
-);
-
-test.serial(
-  'it updates only config_authority when account_fee_authority is null',
-  async (t) => {
-    const umi = await createUmi();
-    const authority = getTestAuthority(umi);
-    await setupGlobalConfig(umi, authority);
-
-    const newConfigAuth = generateSigner(umi);
-    await umi.rpc.airdrop(newConfigAuth.publicKey, sol(1));
-
-    await updateGlobalConfig(umi, {
-      authority,
-      newConfigAuthority: newConfigAuth.publicKey,
-      newAccountFeeAuthority: null,
-    }).sendAndConfirm(umi);
-
-    const config = await fetchGlobalConfigFromSeeds(umi);
-    t.is(
-      config.configAuthority,
-      newConfigAuth.publicKey,
-      'config_authority should be updated'
-    );
-    t.is(
-      config.accountFeeAuthority,
-      authority.publicKey,
-      'account_fee_authority should be unchanged'
-    );
-
-    // Restore — now the new config authority must sign.
-    await updateGlobalConfig(umi, {
-      authority: newConfigAuth,
-      newConfigAuthority: authority.publicKey,
-      newAccountFeeAuthority: null,
-    }).sendAndConfirm(umi);
-  }
-);
-
-test.serial('it updates both fields at once', async (t) => {
-  const umi = await createUmi();
-  const authority = getTestAuthority(umi);
-  await setupGlobalConfig(umi, authority);
-
-  const newConfigAuth = generateSigner(umi);
-  const newFeeAuth = generateSigner(umi).publicKey;
-  await umi.rpc.airdrop(newConfigAuth.publicKey, sol(1));
-
-  await updateGlobalConfig(umi, {
-    authority,
-    newConfigAuthority: newConfigAuth.publicKey,
-    newAccountFeeAuthority: newFeeAuth,
-  }).sendAndConfirm(umi);
-
-  const config = await fetchGlobalConfigFromSeeds(umi);
-  t.is(config.configAuthority, newConfigAuth.publicKey);
-  t.is(config.accountFeeAuthority, newFeeAuth);
-
-  // Restore.
-  await updateGlobalConfig(umi, {
-    authority: newConfigAuth,
-    newConfigAuthority: authority.publicKey,
-    newAccountFeeAuthority: authority.publicKey,
-  }).sendAndConfirm(umi);
+  const config = await fetchGlobalConfigFromSeeds(client.rpc);
+  t.is(
+    config.data.configAuthority,
+    authority.address,
+    'config_authority should be unchanged'
+  );
+  t.is(
+    config.data.accountFeeAuthority,
+    newFeeAuthority,
+    'account_fee_authority should be updated'
+  );
 });
 
-test.serial(
-  'it fails to update global config when signer is not the config authority',
-  async (t) => {
-    const umi = await createUmi();
-    const authority = getTestAuthority(umi);
-    await setupGlobalConfig(umi, authority);
+test('it updates only config_authority when account_fee_authority is null', async (t) => {
+  const client = await createClient();
+  const authority = await generateKeyPairSignerWithSol(client.svm);
+  await setupGlobalConfig(client, authority);
 
-    const randomSigner = generateSigner(umi);
-
-    const promise = transactionBuilder()
-      .add(
-        updateGlobalConfig(umi, {
-          authority: randomSigner,
-          newConfigAuthority: randomSigner.publicKey,
-          newAccountFeeAuthority: null,
-        })
-      )
-      .sendAndConfirm(umi);
-
-    await t.throwsAsync(promise, { message: /MissingRequiredSignature/ });
-  }
-);
-
-test.serial(
-  'it allows the new config authority to update after transfer',
-  async (t) => {
-    const umi = await createUmi();
-    const authority = getTestAuthority(umi);
-    await setupGlobalConfig(umi, authority);
-
-    // Transfer config_authority to a new keypair.
-    const newConfigAuth = generateSigner(umi);
-    await umi.rpc.airdrop(newConfigAuth.publicKey, sol(1));
-
-    await updateGlobalConfig(umi, {
+  const newConfigAuth = await generateKeyPairSignerWithSol(client.svm);
+  await sendTransaction(client.svm, client.payer, [
+    await getUpdateGlobalConfigInstructionAsync({
       authority,
-      newConfigAuthority: newConfigAuth.publicKey,
+      newConfigAuthority: newConfigAuth.address,
       newAccountFeeAuthority: null,
-    }).sendAndConfirm(umi);
+    }),
+  ]);
 
-    // The old authority should no longer be able to update.
-    const failPromise = transactionBuilder()
-      .add(
-        updateGlobalConfig(umi, {
-          authority,
-          newConfigAuthority: authority.publicKey,
-          newAccountFeeAuthority: null,
-        })
-      )
-      .sendAndConfirm(umi);
-    await t.throwsAsync(failPromise, { message: /MissingRequiredSignature/ });
+  const config = await fetchGlobalConfigFromSeeds(client.rpc);
+  t.is(
+    config.data.configAuthority,
+    newConfigAuth.address,
+    'config_authority should be updated'
+  );
+  t.is(
+    config.data.accountFeeAuthority,
+    authority.address,
+    'account_fee_authority should be unchanged'
+  );
+});
 
-    // The new authority can update.
-    const anotherFeeAuth = generateSigner(umi).publicKey;
-    await updateGlobalConfig(umi, {
+test('it updates both fields at once', async (t) => {
+  const client = await createClient();
+  const authority = await generateKeyPairSignerWithSol(client.svm);
+  await setupGlobalConfig(client, authority);
+
+  const newConfigAuth = await generateKeyPairSignerWithSol(client.svm);
+  const newFeeAuth = (await generateKeyPairSigner()).address;
+  await sendTransaction(client.svm, client.payer, [
+    await getUpdateGlobalConfigInstructionAsync({
+      authority,
+      newConfigAuthority: newConfigAuth.address,
+      newAccountFeeAuthority: newFeeAuth,
+    }),
+  ]);
+
+  const config = await fetchGlobalConfigFromSeeds(client.rpc);
+  t.is(config.data.configAuthority, newConfigAuth.address);
+  t.is(config.data.accountFeeAuthority, newFeeAuth);
+});
+
+test('it fails to update global config when signer is not the config authority', async (t) => {
+  const client = await createClient();
+  const authority = await generateKeyPairSignerWithSol(client.svm);
+  await setupGlobalConfig(client, authority);
+
+  const randomSigner = await generateKeyPairSignerWithSol(client.svm);
+  await t.throwsAsync(
+    sendTransaction(client.svm, client.payer, [
+      await getUpdateGlobalConfigInstructionAsync({
+        authority: randomSigner,
+        newConfigAuthority: randomSigner.address,
+        newAccountFeeAuthority: null,
+      }),
+    ]),
+    { message: /MissingRequiredSignature/ }
+  );
+});
+
+test('it allows the new config authority to update after transfer', async (t) => {
+  const client = await createClient();
+  const authority = await generateKeyPairSignerWithSol(client.svm);
+  await setupGlobalConfig(client, authority);
+
+  // Transfer config_authority to a new keypair.
+  const newConfigAuth = await generateKeyPairSignerWithSol(client.svm);
+  await sendTransaction(client.svm, client.payer, [
+    await getUpdateGlobalConfigInstructionAsync({
+      authority,
+      newConfigAuthority: newConfigAuth.address,
+      newAccountFeeAuthority: null,
+    }),
+  ]);
+
+  // The old authority should no longer be able to update.
+  await t.throwsAsync(
+    sendTransaction(client.svm, client.payer, [
+      await getUpdateGlobalConfigInstructionAsync({
+        authority,
+        newConfigAuthority: authority.address,
+        newAccountFeeAuthority: null,
+      }),
+    ]),
+    { message: /MissingRequiredSignature/ }
+  );
+
+  // The new authority can update.
+  const anotherFeeAuth = (await generateKeyPairSigner()).address;
+  await sendTransaction(client.svm, client.payer, [
+    await getUpdateGlobalConfigInstructionAsync({
       authority: newConfigAuth,
       newConfigAuthority: null,
       newAccountFeeAuthority: anotherFeeAuth,
-    }).sendAndConfirm(umi);
+    }),
+  ]);
 
-    const config = await fetchGlobalConfigFromSeeds(umi);
-    t.is(config.configAuthority, newConfigAuth.publicKey);
-    t.is(config.accountFeeAuthority, anotherFeeAuth);
-
-    // Restore for other tests.
-    await updateGlobalConfig(umi, {
-      authority: newConfigAuth,
-      newConfigAuthority: authority.publicKey,
-      newAccountFeeAuthority: authority.publicKey,
-    }).sendAndConfirm(umi);
-  }
-);
+  const config = await fetchGlobalConfigFromSeeds(client.rpc);
+  t.is(config.data.configAuthority, newConfigAuth.address);
+  t.is(config.data.accountFeeAuthority, anotherFeeAuth);
+});

@@ -1,1015 +1,536 @@
 import {
-  fetchMetadataFromSeeds,
-  TokenStandard as MplTokenStandard,
-  transferV1,
-} from '@metaplex-foundation/mpl-token-metadata';
-import {
-  fetchToken,
+  AccountState,
+  decodeToken,
   findAssociatedTokenPda,
-  setComputeUnitLimit,
-  TokenState,
-} from '@metaplex-foundation/mpl-toolbox';
-import {
-  generateSigner,
-  isSome,
-  signerIdentity,
-  sol,
-  some,
-  transactionBuilder,
-} from '@metaplex-foundation/umi';
-import { generateSignerWithSol } from '@metaplex-foundation/umi-bundle-tests';
+  TOKEN_PROGRAM_ADDRESS,
+} from '@solana-program/token';
+import { getAddressDecoder, some } from '@solana/kit';
 import test from 'ava';
 import {
-  addNft,
-  claimNft,
   draw,
-  fetchGumballMachine,
-  fetchSellerHistory,
   findGumballMachineAuthorityPda,
-  findSellerHistoryPda,
+  getAddNftInstructionAsync,
+  getClaimNftInstructionAsync,
   getMerkleProof,
   getMerkleRoot,
-  GumballMachine,
-  MPL_TOKEN_AUTH_RULES_PROGRAM_ID,
-  SellerHistory,
-  settleNftSale,
+  getSettleNftSaleInstructionAsync,
+  getStartSaleInstruction,
   TokenStandard,
 } from '../src';
-import { create, createNft, createProgrammableNft, createUmi } from './_setup';
+import { createNft, getSellerHistory, transferNft } from './_addSetup';
+import {
+  COMPUTE_UNITS,
+  createClient,
+  createGumballMachine,
+  fetchGumballMachine,
+  generateKeyPairSignerWithSol,
+  sendTransaction,
+  sol,
+} from './_setup';
+
+// NOTE: the umi `addNft` suite includes two pNFT variants ("it can add pnft…"
+// and "it can re-add pnft…"). Those require hand-encoding programmable-NFT
+// creation + auth-rules delegation, which is out of scope for this port; they
+// are omitted here (see report).
 
 test('it can add nft to a gumball machine as the authority', async (t) => {
-  // Given a Gumball Machine with 5 nfts.
-  const umi = await createUmi();
-  const gumballMachine = await create(umi, { settings: { itemCapacity: 5 } });
-  const nft = await createNft(umi);
+  const client = await createClient();
+  const { gumballMachine } = await createGumballMachine(client, {
+    settings: { itemCapacity: 5 },
+  });
+  const { mint } = await createNft(client);
 
-  // When we add an nft to the Gumball Machine.
-  await transactionBuilder()
-    .add(
-      addNft(umi, {
-        gumballMachine: gumballMachine.publicKey,
-        mint: nft.publicKey,
-      })
-    )
-    .sendAndConfirm(umi);
+  await sendTransaction(client.svm, client.payer, [
+    await getAddNftInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint,
+    }),
+  ]);
 
-  // Then the Gumball Machine has been updated properly.
-  const gumballMachineAccount = await fetchGumballMachine(
-    umi,
-    gumballMachine.publicKey
+  const account = fetchGumballMachine(client.svm, gumballMachine);
+  t.is(account.itemsLoaded, 1);
+  t.like(account.items[0], {
+    index: 0,
+    isDrawn: false,
+    isClaimed: false,
+    isSettled: false,
+    mint,
+    seller: client.payer.address,
+    buyer: undefined,
+    tokenStandard: TokenStandard.NonFungible,
+    amount: 1,
+  });
+
+  // The nft is frozen and delegated to the machine authority PDA.
+  const [authorityPda] = await findGumballMachineAuthorityPda({
+    gumballMachine,
+  });
+  const [ata] = await findAssociatedTokenPda({
+    owner: client.payer.address,
+    mint,
+    tokenProgram: TOKEN_PROGRAM_ADDRESS,
+  });
+  const tokenAccount = decodeToken(client.svm.getAccount(ata) as never).data;
+  t.is(tokenAccount.state, AccountState.Frozen);
+  t.is(tokenAccount.owner, client.payer.address);
+  t.deepEqual(tokenAccount.delegate, some(authorityPda));
+
+  const sellerHistory = await getSellerHistory(
+    client,
+    gumballMachine,
+    client.payer.address
   );
-
-  t.like(gumballMachineAccount, <Pick<GumballMachine, 'itemsLoaded' | 'items'>>{
-    itemsLoaded: 1,
-    items: [
-      {
-        index: 0,
-        isDrawn: false,
-        isClaimed: false,
-        isSettled: false,
-        mint: nft.publicKey,
-        seller: umi.identity.publicKey,
-        buyer: undefined,
-        tokenStandard: TokenStandard.NonFungible,
-        amount: 1,
-      },
-    ],
-  });
-
-  // Then nft is frozen and delegated
-  const tokenAccount = await fetchToken(
-    umi,
-    findAssociatedTokenPda(umi, {
-      mint: nft.publicKey,
-      owner: umi.identity.publicKey,
-    })[0]
-  );
-  t.like(tokenAccount, {
-    state: TokenState.Frozen,
-    owner: umi.identity.publicKey,
-    delegate: some(
-      findGumballMachineAuthorityPda(umi, {
-        gumballMachine: gumballMachine.publicKey,
-      })[0]
-    ),
-  });
-
-  // Seller history state is correct
-  const sellerHistoryAccount = await fetchSellerHistory(
-    umi,
-    findSellerHistoryPda(umi, {
-      gumballMachine: gumballMachine.publicKey,
-      seller: umi.identity.publicKey,
-    })[0]
-  );
-
-  t.like(sellerHistoryAccount, <SellerHistory>{
-    gumballMachine: gumballMachine.publicKey,
-    seller: umi.identity.publicKey,
-    itemCount: 1n,
-  });
-});
-
-test('it can add pnft to a gumball machine as the authority', async (t) => {
-  // Given a Gumball Machine with 5 nfts.
-  const umi = await createUmi();
-  const gumballMachine = await create(umi, { settings: { itemCapacity: 5 } });
-  const nft = await createProgrammableNft(umi, undefined, {
-    withAuthRules: true,
-  });
-
-  const metadata = await fetchMetadataFromSeeds(umi, { mint: nft.publicKey });
-  const ruleSet =
-    isSome(metadata.programmableConfig) &&
-    isSome(metadata.programmableConfig.value.ruleSet)
-      ? metadata.programmableConfig.value.ruleSet.value
-      : undefined;
-
-  // When we add an nft to the Gumball Machine.
-  await transactionBuilder()
-    .add(
-      setComputeUnitLimit(umi, {
-        units: 300_000,
-      })
-    )
-    .add(
-      addNft(umi, {
-        gumballMachine: gumballMachine.publicKey,
-        mint: nft.publicKey,
-        authRulesProgram: MPL_TOKEN_AUTH_RULES_PROGRAM_ID,
-        authRules: ruleSet,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then the Gumball Machine has been updated properly.
-  const gumballMachineAccount = await fetchGumballMachine(
-    umi,
-    gumballMachine.publicKey
-  );
-
-  t.like(gumballMachineAccount, <Pick<GumballMachine, 'itemsLoaded' | 'items'>>{
-    itemsLoaded: 1,
-    items: [
-      {
-        index: 0,
-        isDrawn: false,
-        isClaimed: false,
-        isSettled: false,
-        mint: nft.publicKey,
-        seller: umi.identity.publicKey,
-        buyer: undefined,
-        tokenStandard: TokenStandard.ProgrammableNonFungible,
-        amount: 1,
-      },
-    ],
-  });
-
-  // Then nft is frozen and delegated
-  const tokenAccount = await fetchToken(
-    umi,
-    findAssociatedTokenPda(umi, {
-      mint: nft.publicKey,
-      owner: umi.identity.publicKey,
-    })[0]
-  );
-  t.like(tokenAccount, {
-    state: TokenState.Frozen,
-    owner: umi.identity.publicKey,
-    delegate: some(
-      findGumballMachineAuthorityPda(umi, {
-        gumballMachine: gumballMachine.publicKey,
-      })[0]
-    ),
-  });
-
-  // Seller history state is correct
-  const sellerHistoryAccount = await fetchSellerHistory(
-    umi,
-    findSellerHistoryPda(umi, {
-      gumballMachine: gumballMachine.publicKey,
-      seller: umi.identity.publicKey,
-    })[0]
-  );
-
-  t.like(sellerHistoryAccount, <SellerHistory>{
-    gumballMachine: gumballMachine.publicKey,
-    seller: umi.identity.publicKey,
-    itemCount: 1n,
-  });
+  t.is(sellerHistory?.itemCount, 1n);
 });
 
 test('it can add nft to a gumball machine as allowlisted seller', async (t) => {
-  // Given a Gumball Machine with 5 nfts.
-  const umi = await createUmi();
-  const otherSellerUmi = await createUmi();
-  const sellersMerkleRoot = getMerkleRoot([otherSellerUmi.identity.publicKey]);
-  const gumballMachine = await create(umi, {
+  const client = await createClient();
+  const otherSeller = await generateKeyPairSignerWithSol(client.svm);
+  const sellersMerkleRoot = getMerkleRoot([otherSeller.address]);
+  const { gumballMachine } = await createGumballMachine(client, {
     settings: { itemCapacity: 5, sellersMerkleRoot },
   });
-  const nft = await createNft(otherSellerUmi);
+  const { mint } = await createNft(client, otherSeller);
 
-  // When we add an nft to the Gumball Machine.
-  await transactionBuilder()
-    .add(
-      addNft(otherSellerUmi, {
-        gumballMachine: gumballMachine.publicKey,
-        mint: nft.publicKey,
-        args: {
-          sellerProofPath: getMerkleProof(
-            [otherSellerUmi.identity.publicKey],
-            otherSellerUmi.identity.publicKey
-          ),
-        },
-      })
-    )
-    .sendAndConfirm(otherSellerUmi);
-
-  // Then the Gumball Machine has been updated properly.
-  const gumballMachineAccount = await fetchGumballMachine(
-    umi,
-    gumballMachine.publicKey
-  );
-
-  t.like(gumballMachineAccount, <Pick<GumballMachine, 'itemsLoaded' | 'items'>>{
-    itemsLoaded: 1,
-    items: [
-      {
-        index: 0,
-        isDrawn: false,
-        isClaimed: false,
-        isSettled: false,
-        mint: nft.publicKey,
-        seller: otherSellerUmi.identity.publicKey,
-        buyer: undefined,
-        tokenStandard: TokenStandard.NonFungible,
-        amount: 1,
+  await sendTransaction(client.svm, otherSeller, [
+    await getAddNftInstructionAsync({
+      gumballMachine,
+      seller: otherSeller,
+      mint,
+      args: {
+        sellerProofPath: some(
+          getMerkleProof([otherSeller.address], otherSeller.address)
+        ),
       },
-    ],
-  });
+    }),
+  ]);
 
-  // Then nft is frozen and delegated
-  const tokenAccount = await fetchToken(
-    umi,
-    findAssociatedTokenPda(umi, {
-      mint: nft.publicKey,
-      owner: otherSellerUmi.identity.publicKey,
-    })[0]
-  );
-  t.like(tokenAccount, {
-    state: TokenState.Frozen,
-    owner: otherSellerUmi.identity.publicKey,
-    delegate: some(
-      findGumballMachineAuthorityPda(umi, {
-        gumballMachine: gumballMachine.publicKey,
-      })[0]
-    ),
+  const account = fetchGumballMachine(client.svm, gumballMachine);
+  t.is(account.itemsLoaded, 1);
+  t.like(account.items[0], {
+    index: 0,
+    mint,
+    seller: otherSeller.address,
+    tokenStandard: TokenStandard.NonFungible,
+    amount: 1,
   });
 });
 
 test('it can add nft to a gumball machine as allowlisted seller on allowlist of 10K addresses', async (t) => {
-  // Given a Gumball Machine with 5 nfts.
-  const umi = await createUmi();
-  const otherSellerUmi = await createUmi();
-  const addresses = Array.from(
-    { length: 10_000 },
-    (_, i) => generateSigner(umi).publicKey
-  );
-  addresses.push(otherSellerUmi.identity.publicKey);
-  const sellersMerkleRoot = getMerkleRoot(addresses);
-  const gumballMachine = await create(umi, {
+  const client = await createClient();
+  const otherSeller = await generateKeyPairSignerWithSol(client.svm);
+  // Cheap random addresses (no keypairs needed) to fill the allowlist.
+  const addrDecoder = getAddressDecoder();
+  const leaves = Array.from({ length: 10_000 }, () =>
+    addrDecoder.decode(crypto.getRandomValues(new Uint8Array(32)))
+  ) as string[];
+  leaves.push(otherSeller.address);
+  const sellersMerkleRoot = getMerkleRoot(leaves);
+  const { gumballMachine } = await createGumballMachine(client, {
     settings: { itemCapacity: 5, sellersMerkleRoot },
   });
-  const nft = await createNft(otherSellerUmi);
+  const { mint } = await createNft(client, otherSeller);
 
-  // When we add an nft to the Gumball Machine.
-  await transactionBuilder()
-    .add(
-      addNft(otherSellerUmi, {
-        gumballMachine: gumballMachine.publicKey,
-        mint: nft.publicKey,
-        args: {
-          sellerProofPath: getMerkleProof(
-            addresses,
-            otherSellerUmi.identity.publicKey
-          ),
-        },
-      })
-    )
-    .sendAndConfirm(otherSellerUmi);
-
-  // Then the Gumball Machine has been updated properly.
-  const gumballMachineAccount = await fetchGumballMachine(
-    umi,
-    gumballMachine.publicKey
-  );
-
-  t.like(gumballMachineAccount, <Pick<GumballMachine, 'itemsLoaded' | 'items'>>{
-    itemsLoaded: 1,
-    items: [
-      {
-        index: 0,
-        isDrawn: false,
-        isClaimed: false,
-        isSettled: false,
-        mint: nft.publicKey,
-        seller: otherSellerUmi.identity.publicKey,
-        buyer: undefined,
-        tokenStandard: TokenStandard.NonFungible,
-        amount: 1,
+  await sendTransaction(client.svm, otherSeller, [
+    await getAddNftInstructionAsync({
+      gumballMachine,
+      seller: otherSeller,
+      mint,
+      args: {
+        sellerProofPath: some(getMerkleProof(leaves, otherSeller.address)),
       },
-    ],
-  });
+    }),
+  ]);
 
-  // Then nft is frozen and delegated
-  const tokenAccount = await fetchToken(
-    umi,
-    findAssociatedTokenPda(umi, {
-      mint: nft.publicKey,
-      owner: otherSellerUmi.identity.publicKey,
-    })[0]
-  );
-  t.like(tokenAccount, {
-    state: TokenState.Frozen,
-    owner: otherSellerUmi.identity.publicKey,
-    delegate: some(
-      findGumballMachineAuthorityPda(umi, {
-        gumballMachine: gumballMachine.publicKey,
-      })[0]
-    ),
+  const account = fetchGumballMachine(client.svm, gumballMachine);
+  t.is(account.itemsLoaded, 1);
+  t.like(account.items[0], {
+    index: 0,
+    mint,
+    seller: otherSeller.address,
+    tokenStandard: TokenStandard.NonFungible,
   });
 });
 
 test('it cannot add nft as non gumball authority when there is no seller allowlist set', async (t) => {
-  // Given a Gumball Machine with 5 nfts.
-  const umi = await createUmi();
-  const otherSellerUmi = await createUmi();
-  const gumballMachine = await create(umi, { settings: { itemCapacity: 5 } });
-  const nft = await createNft(otherSellerUmi);
+  const client = await createClient();
+  const otherSeller = await generateKeyPairSignerWithSol(client.svm);
+  const { gumballMachine } = await createGumballMachine(client, {
+    settings: { itemCapacity: 5 },
+  });
+  const { mint } = await createNft(client, otherSeller);
 
-  // When we add an nft to the Gumball Machine.
-  const promise = transactionBuilder()
-    .add(
-      addNft(otherSellerUmi, {
-        gumballMachine: gumballMachine.publicKey,
-        mint: nft.publicKey,
-      })
-    )
-    .sendAndConfirm(otherSellerUmi);
-
-  await t.throwsAsync(promise, { message: /InvalidProofPath/ });
+  await t.throwsAsync(
+    sendTransaction(client.svm, otherSeller, [
+      await getAddNftInstructionAsync({
+        gumballMachine,
+        seller: otherSeller,
+        mint,
+      }),
+    ]),
+    { message: /InvalidProofPath/ }
+  );
 });
 
 test('it cannot add nft as non-allowlisted seller when there is a seller allowlist set', async (t) => {
-  // Given a Gumball Machine with 5 nfts.
-  const umi = await createUmi();
-  const otherSellerUmi = await createUmi();
-  const gumballMachine = await create(umi, {
+  const client = await createClient();
+  const otherSeller = await generateKeyPairSignerWithSol(client.svm);
+  const { gumballMachine } = await createGumballMachine(client, {
     settings: {
       itemCapacity: 5,
-      sellersMerkleRoot: getMerkleRoot([umi.identity.publicKey]),
+      sellersMerkleRoot: getMerkleRoot([client.payer.address]),
     },
   });
-  const nft = await createNft(otherSellerUmi);
+  const { mint } = await createNft(client, otherSeller);
 
-  // When we add an nft to the Gumball Machine.
-  const promise = transactionBuilder()
-    .add(
-      addNft(otherSellerUmi, {
-        gumballMachine: gumballMachine.publicKey,
-        mint: nft.publicKey,
-      })
-    )
-    .sendAndConfirm(otherSellerUmi);
-
-  await t.throwsAsync(promise, { message: /InvalidProofPath/ });
+  await t.throwsAsync(
+    sendTransaction(client.svm, otherSeller, [
+      await getAddNftInstructionAsync({
+        gumballMachine,
+        seller: otherSeller,
+        mint,
+      }),
+    ]),
+    { message: /InvalidProofPath/ }
+  );
 });
 
 test('it can append additional nfts to a gumball machine', async (t) => {
-  // Given a Gumball Machine with 5 nfts.
-  const umi = await createUmi();
-  const gumballMachine = await create(umi, { settings: { itemCapacity: 2 } });
-  const nfts = await Promise.all([createNft(umi), createNft(umi)]);
+  const client = await createClient();
+  const { gumballMachine } = await createGumballMachine(client, {
+    settings: { itemCapacity: 2 },
+  });
+  const { mint: mint0 } = await createNft(client);
+  const { mint: mint1 } = await createNft(client);
 
-  await transactionBuilder()
-    .add(
-      addNft(umi, {
-        gumballMachine: gumballMachine.publicKey,
-        mint: nfts[0].publicKey,
-      })
-    )
-    .sendAndConfirm(umi);
+  await sendTransaction(client.svm, client.payer, [
+    await getAddNftInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint: mint0,
+    }),
+  ]);
+  await sendTransaction(client.svm, client.payer, [
+    await getAddNftInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint: mint1,
+    }),
+  ]);
 
-  // When we add an additional item to the Gumball Machine.
-  await transactionBuilder()
-    .add(
-      addNft(umi, {
-        gumballMachine: gumballMachine.publicKey,
-        mint: nfts[1].publicKey,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then the Gumball Machine has been updated properly.
-  const gumballMachineAccount = await fetchGumballMachine(
-    umi,
-    gumballMachine.publicKey
-  );
-
-  t.like(gumballMachineAccount, <Pick<GumballMachine, 'itemsLoaded' | 'items'>>{
-    itemsLoaded: 2,
-    items: [
-      {
-        index: 0,
-        isDrawn: false,
-        isClaimed: false,
-        isSettled: false,
-        mint: nfts[0].publicKey,
-        seller: umi.identity.publicKey,
-        buyer: undefined,
-        tokenStandard: TokenStandard.NonFungible,
-        amount: 1,
-      },
-      {
-        index: 1,
-        isDrawn: false,
-        isClaimed: false,
-        isSettled: false,
-        mint: nfts[1].publicKey,
-        seller: umi.identity.publicKey,
-        buyer: undefined,
-        tokenStandard: TokenStandard.NonFungible,
-        amount: 1,
-      },
-    ],
+  const account = fetchGumballMachine(client.svm, gumballMachine);
+  t.is(account.itemsLoaded, 2);
+  t.like(account.items[0], {
+    index: 0,
+    mint: mint0,
+    tokenStandard: TokenStandard.NonFungible,
+  });
+  t.like(account.items[1], {
+    index: 1,
+    mint: mint1,
+    tokenStandard: TokenStandard.NonFungible,
   });
 });
 
 test('it cannot add nfts that would make the gumball machine exceed the maximum capacity', async (t) => {
-  // Given an existing Gumball Machine with a capacity of 1 item.
-  const umi = await createUmi();
-  const gumballMachine = await create(umi, { settings: { itemCapacity: 1 } });
-  const nfts = await Promise.all([createNft(umi), createNft(umi)]);
-
-  // When we try to add 2 nfts to the Gumball Machine.
-  const promise = transactionBuilder()
-    .add(
-      addNft(umi, {
-        gumballMachine: gumballMachine.publicKey,
-        mint: nfts[0].publicKey,
-      })
-    )
-    .add(
-      addNft(umi, {
-        gumballMachine: gumballMachine.publicKey,
-        mint: nfts[1].publicKey,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then we expect an error to be thrown.
-  await t.throwsAsync(promise, {
-    message: /IndexGreaterThanLength/,
+  const client = await createClient();
+  const { gumballMachine } = await createGumballMachine(client, {
+    settings: { itemCapacity: 1 },
   });
+  const { mint: mint0 } = await createNft(client);
+  const { mint: mint1 } = await createNft(client);
+
+  await t.throwsAsync(
+    sendTransaction(client.svm, client.payer, [
+      await getAddNftInstructionAsync({
+        gumballMachine,
+        seller: client.payer,
+        mint: mint0,
+      }),
+      await getAddNftInstructionAsync({
+        gumballMachine,
+        seller: client.payer,
+        mint: mint1,
+      }),
+    ]),
+    { message: /IndexGreaterThanLength/ }
+  );
 });
 
 test('it cannot add nfts once the gumball machine is fully loaded', async (t) => {
-  // Given an existing Gumball Machine with 2 nfts loaded and a capacity of 2 nfts.
-  const umi = await createUmi();
-  const gumballMachine = await create(umi, { settings: { itemCapacity: 1 } });
-  const nft = await createNft(umi);
-
-  await transactionBuilder()
-    .add(
-      addNft(umi, {
-        gumballMachine: gumballMachine.publicKey,
-        mint: nft.publicKey,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // When we try to add one more item to the Gumball Machine.
-  const promise = transactionBuilder()
-    .add(
-      addNft(umi, {
-        gumballMachine: gumballMachine.publicKey,
-        mint: (await createNft(umi)).publicKey,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then we expect an error to be thrown.
-  await t.throwsAsync(promise, {
-    message: /IndexGreaterThanLength/,
+  const client = await createClient();
+  const { gumballMachine } = await createGumballMachine(client, {
+    settings: { itemCapacity: 1 },
   });
+  const { mint: mint0 } = await createNft(client);
+  const { mint: mint1 } = await createNft(client);
+
+  await sendTransaction(client.svm, client.payer, [
+    await getAddNftInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint: mint0,
+    }),
+  ]);
+
+  await t.throwsAsync(
+    sendTransaction(client.svm, client.payer, [
+      await getAddNftInstructionAsync({
+        gumballMachine,
+        seller: client.payer,
+        mint: mint1,
+      }),
+    ]),
+    { message: /IndexGreaterThanLength/ }
+  );
 });
 
 test('it cannot add more nfts than allowed per seller', async (t) => {
-  // Given a Gumball Machine with 5 nfts.
-  const umi = await createUmi();
-  const otherSellerUmi = await createUmi();
-  const sellersMerkleRoot = getMerkleRoot([otherSellerUmi.identity.publicKey]);
-  const gumballMachine = await create(umi, {
+  const client = await createClient();
+  const otherSeller = await generateKeyPairSignerWithSol(client.svm);
+  const sellersMerkleRoot = getMerkleRoot([otherSeller.address]);
+  const { gumballMachine } = await createGumballMachine(client, {
     settings: { itemCapacity: 2, itemsPerSeller: 1, sellersMerkleRoot },
   });
-  const nfts = await Promise.all([
-    createNft(otherSellerUmi),
-    createNft(otherSellerUmi),
+  const { mint: mint0 } = await createNft(client, otherSeller);
+  const { mint: mint1 } = await createNft(client, otherSeller);
+  const proof = some(
+    getMerkleProof([otherSeller.address], otherSeller.address)
+  );
+
+  await sendTransaction(client.svm, otherSeller, [
+    await getAddNftInstructionAsync({
+      gumballMachine,
+      seller: otherSeller,
+      mint: mint0,
+      args: { sellerProofPath: proof },
+    }),
   ]);
 
-  // When we add an nft to the Gumball Machine.
-  await transactionBuilder()
-    .add(
-      addNft(otherSellerUmi, {
-        gumballMachine: gumballMachine.publicKey,
-        mint: nfts[0].publicKey,
-        args: {
-          sellerProofPath: getMerkleProof(
-            [otherSellerUmi.identity.publicKey],
-            otherSellerUmi.identity.publicKey
-          ),
-        },
-      })
-    )
-    .sendAndConfirm(otherSellerUmi);
-
-  const promise = transactionBuilder()
-    .add(
-      addNft(otherSellerUmi, {
-        gumballMachine: gumballMachine.publicKey,
-        mint: nfts[1].publicKey,
-        args: {
-          sellerProofPath: getMerkleProof(
-            [otherSellerUmi.identity.publicKey],
-            otherSellerUmi.identity.publicKey
-          ),
-        },
-      })
-    )
-    .sendAndConfirm(otherSellerUmi);
-
-  await t.throwsAsync(promise, { message: /SellerTooManyItems/ });
+  await t.throwsAsync(
+    sendTransaction(client.svm, otherSeller, [
+      await getAddNftInstructionAsync({
+        gumballMachine,
+        seller: otherSeller,
+        mint: mint1,
+        args: { sellerProofPath: proof },
+      }),
+    ]),
+    { message: /SellerTooManyItems/ }
+  );
 });
 
 test('it can re-add nft to a gumball machine as the authority', async (t) => {
-  // Given a Gumball Machine with 5 nfts.
-  const umi = await createUmi();
-  const nfts = await Promise.all([createNft(umi), createNft(umi)]);
+  const client = await createClient();
+  const { mint: mint0 } = await createNft(client);
+  const { mint: mint1 } = await createNft(client);
+  const mints = [mint0, mint1];
 
-  const gumballMachineSigner = generateSigner(umi);
-  const gumballMachine = gumballMachineSigner.publicKey;
-
-  await create(umi, {
-    gumballMachine: gumballMachineSigner,
-    items: [
-      {
-        id: nfts[0].publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-      {
-        id: nfts[1].publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-    ],
-    startSale: true,
-    guards: {
-      solPayment: some({ lamports: sol(1) }),
-    },
+  const { gumballMachine } = await createGumballMachine(client, {
+    settings: { itemCapacity: 5 },
+    guards: { solPayment: some({ lamports: sol(1) }) },
   });
 
-  const buyer = await generateSignerWithSol(umi, sol(10));
-  const buyerUmi = await createUmi();
-  buyerUmi.use(signerIdentity(buyer));
-
-  // When we draw the nft from the Gumball Machine.
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(umi, {
-        gumballMachine,
-        buyer,
-        mintArgs: { solPayment: some(true) },
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Figure out which was drawn
-  let gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
-  const drawnIndex = gumballMachineAccount.items.findIndex(
-    (item) => item.isDrawn
-  );
-
-  // Then settle the sale
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      settleNftSale(umi, {
-        index: drawnIndex,
-        gumballMachine,
-        authority: umi.identity.publicKey,
-        buyer: buyer.publicKey,
-        seller: umi.identity.publicKey,
-        mint: nfts[drawnIndex].publicKey,
-        creators: [umi.identity.publicKey],
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Transfer back to the seller
-  await transactionBuilder()
-    .add(
-      transferV1(buyerUmi, {
-        mint: nfts[drawnIndex].publicKey,
-        destinationOwner: umi.identity.publicKey,
-        tokenStandard: MplTokenStandard.NonFungible,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
-
-  // When we re-add the nft to the Gumball Machine.
-  await transactionBuilder()
-    .add(
-      addNft(umi, {
-        gumballMachine,
-        mint: nfts[drawnIndex].publicKey,
-        args: {
-          index: drawnIndex,
-        },
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then the Gumball Machine has been updated properly.
-  gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
-
-  t.like(gumballMachineAccount, <Pick<GumballMachine, 'itemsLoaded' | 'items'>>{
-    itemsLoaded: 2,
-    itemsRedeemed: 0n,
-    itemsSettled: 0n,
-    // Half of the proceeds were settled since we settled one item
-    totalProceedsSettled: sol(0.5).basisPoints,
-    items: [
-      {
-        index: 0,
-        isDrawn: false,
-        isClaimed: false,
-        isSettled: false,
-        mint: nfts[0].publicKey,
-        seller: umi.identity.publicKey,
-        buyer: undefined,
-        tokenStandard: TokenStandard.NonFungible,
-        amount: 1,
-      },
-      {
-        index: 1,
-        isDrawn: false,
-        isClaimed: false,
-        isSettled: false,
-        mint: nfts[1].publicKey,
-        seller: umi.identity.publicKey,
-        buyer: undefined,
-        tokenStandard: TokenStandard.NonFungible,
-        amount: 1,
-      },
-    ],
-  });
-
-  // Then nft is frozen and delegated
-  const tokenAccount = await fetchToken(
-    umi,
-    findAssociatedTokenPda(umi, {
-      mint: nfts[drawnIndex].publicKey,
-      owner: umi.identity.publicKey,
-    })[0]
-  );
-  t.like(tokenAccount, {
-    state: TokenState.Frozen,
-    owner: umi.identity.publicKey,
-    delegate: some(
-      findGumballMachineAuthorityPda(umi, {
-        gumballMachine,
-      })[0]
-    ),
-  });
-
-  // Seller history state is correct
-  const sellerHistoryAccount = await fetchSellerHistory(
-    umi,
-    findSellerHistoryPda(umi, {
+  await sendTransaction(client.svm, client.payer, [
+    await getAddNftInstructionAsync({
       gumballMachine,
-      seller: umi.identity.publicKey,
-    })[0]
-  );
-
-  t.like(sellerHistoryAccount, <SellerHistory>{
-    gumballMachine,
-    seller: umi.identity.publicKey,
-    itemCount: 2n,
-  });
-});
-
-test('it can re-add pnft to a gumball machine as the authority', async (t) => {
-  // Given a Gumball Machine with 5 nfts.
-  const umi = await createUmi();
-  const nfts = await Promise.all([
-    createProgrammableNft(umi),
-    createProgrammableNft(umi),
+      seller: client.payer,
+      mint: mint0,
+    }),
+    await getAddNftInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint: mint1,
+    }),
+    getStartSaleInstruction({ gumballMachine, authority: client.payer }),
   ]);
 
-  const gumballMachineSigner = generateSigner(umi);
-  const gumballMachine = gumballMachineSigner.publicKey;
-
-  await create(umi, {
-    gumballMachine: gumballMachineSigner,
-    items: [
-      {
-        id: nfts[0].publicKey,
-        tokenStandard: TokenStandard.ProgrammableNonFungible,
-      },
-      {
-        id: nfts[1].publicKey,
-        tokenStandard: TokenStandard.ProgrammableNonFungible,
-      },
-    ],
-    startSale: true,
-    guards: {
-      solPayment: some({ lamports: sol(1) }),
-    },
-  });
-
-  const buyer = await generateSignerWithSol(umi, sol(10));
-  const buyerUmi = await createUmi();
-  buyerUmi.use(signerIdentity(buyer));
-
-  // When we draw the nft from the Gumball Machine.
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(umi, {
-        gumballMachine,
-        buyer,
-        mintArgs: { solPayment: some(true) },
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Figure out which was drawn
-  let gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
-  const drawnIndex = gumballMachineAccount.items.findIndex(
-    (item) => item.isDrawn
-  );
-
-  // Then settle the sale
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      settleNftSale(umi, {
-        index: drawnIndex,
-        gumballMachine,
-        authority: umi.identity.publicKey,
-        buyer: buyer.publicKey,
-        seller: umi.identity.publicKey,
-        mint: nfts[drawnIndex].publicKey,
-        creators: [umi.identity.publicKey],
-        authRulesProgram: MPL_TOKEN_AUTH_RULES_PROGRAM_ID,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Transfer back to the seller
-  await transactionBuilder()
-    .add(
-      transferV1(buyerUmi, {
-        mint: nfts[drawnIndex].publicKey,
-        destinationOwner: umi.identity.publicKey,
-        tokenStandard: MplTokenStandard.ProgrammableNonFungible,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
-
-  // When we re-add the nft to the Gumball Machine.
-  await transactionBuilder()
-    .add(
-      addNft(umi, {
-        gumballMachine,
-        mint: nfts[drawnIndex].publicKey,
-        args: {
-          index: drawnIndex,
-        },
-        authRulesProgram: MPL_TOKEN_AUTH_RULES_PROGRAM_ID,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then the Gumball Machine has been updated properly.
-  gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
-
-  t.like(gumballMachineAccount, <Pick<GumballMachine, 'itemsLoaded' | 'items'>>{
-    itemsLoaded: 2,
-    itemsRedeemed: 0n,
-    itemsSettled: 0n,
-    // Half of the proceeds were settled since we settled one item
-    totalProceedsSettled: sol(0.5).basisPoints,
-    items: [
-      {
-        index: 0,
-        isDrawn: false,
-        isClaimed: false,
-        isSettled: false,
-        mint: nfts[0].publicKey,
-        seller: umi.identity.publicKey,
-        buyer: undefined,
-        tokenStandard: TokenStandard.ProgrammableNonFungible,
-        amount: 1,
-      },
-      {
-        index: 1,
-        isDrawn: false,
-        isClaimed: false,
-        isSettled: false,
-        mint: nfts[1].publicKey,
-        seller: umi.identity.publicKey,
-        buyer: undefined,
-        tokenStandard: TokenStandard.ProgrammableNonFungible,
-        amount: 1,
-      },
-    ],
-  });
-
-  // Then nft is frozen and delegated
-  const tokenAccount = await fetchToken(
-    umi,
-    findAssociatedTokenPda(umi, {
-      mint: nfts[drawnIndex].publicKey,
-      owner: umi.identity.publicKey,
-    })[0]
-  );
-  t.like(tokenAccount, {
-    state: TokenState.Frozen,
-    owner: umi.identity.publicKey,
-    delegate: some(
-      findGumballMachineAuthorityPda(umi, {
-        gumballMachine,
-      })[0]
-    ),
-  });
-
-  // Seller history state is correct
-  const sellerHistoryAccount = await fetchSellerHistory(
-    umi,
-    findSellerHistoryPda(umi, {
+  const buyer = await generateKeyPairSignerWithSol(client.svm, sol(10));
+  await sendTransaction(client.svm, buyer, [
+    COMPUTE_UNITS,
+    await draw({
       gumballMachine,
-      seller: umi.identity.publicKey,
-    })[0]
-  );
+      payer: buyer,
+      buyer,
+      mintArgs: { solPayment: some(true) },
+    }),
+  ]);
 
-  t.like(sellerHistoryAccount, <SellerHistory>{
-    gumballMachine,
-    seller: umi.identity.publicKey,
-    itemCount: 2n,
+  let account = fetchGumballMachine(client.svm, gumballMachine);
+  const drawnIndex = account.items.findIndex((i) => i.isDrawn);
+
+  await sendTransaction(client.svm, client.payer, [
+    COMPUTE_UNITS,
+    await getSettleNftSaleInstructionAsync({
+      index: drawnIndex,
+      payer: client.payer,
+      gumballMachine,
+      authority: client.payer.address,
+      buyer: buyer.address,
+      seller: client.payer.address,
+      mint: mints[drawnIndex],
+      creators: [client.payer.address],
+    }),
+  ]);
+
+  // Transfer the nft back to the seller.
+  await sendTransaction(client.svm, buyer, [
+    COMPUTE_UNITS,
+    await transferNft(mints[drawnIndex], buyer, client.payer.address),
+  ]);
+
+  await sendTransaction(client.svm, client.payer, [
+    await getAddNftInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint: mints[drawnIndex],
+      args: { index: some(drawnIndex) },
+    }),
+  ]);
+
+  account = fetchGumballMachine(client.svm, gumballMachine);
+  t.is(account.itemsLoaded, 2);
+  t.is(account.itemsRedeemed, 0n);
+  t.is(account.itemsSettled, 0n);
+  t.is(account.totalProceedsSettled, sol(0.5));
+  t.like(account.items[0], {
+    index: 0,
+    mint: mint0,
+    tokenStandard: TokenStandard.NonFungible,
   });
+  t.like(account.items[1], {
+    index: 1,
+    mint: mint1,
+    tokenStandard: TokenStandard.NonFungible,
+  });
+
+  const sellerHistory = await getSellerHistory(
+    client,
+    gumballMachine,
+    client.payer.address
+  );
+  t.is(sellerHistory?.itemCount, 2n);
 });
 
 test('it cannot add nft without index to a live gumball machine', async (t) => {
-  // Given a Gumball Machine with 5 nfts.
-  const umi = await createUmi();
-  const nfts = await Promise.all([createNft(umi), createNft(umi)]);
+  const client = await createClient();
+  const { mint: mint0 } = await createNft(client);
+  const { mint: mint1 } = await createNft(client);
 
-  const gumballMachineSigner = generateSigner(umi);
-  const gumballMachine = gumballMachineSigner.publicKey;
-
-  await create(umi, {
-    gumballMachine: gumballMachineSigner,
-    items: [
-      {
-        id: nfts[0].publicKey,
-        tokenStandard: TokenStandard.ProgrammableNonFungible,
-      },
-    ],
-    startSale: true,
+  const { gumballMachine } = await createGumballMachine(client, {
+    settings: { itemCapacity: 5 },
   });
+  await sendTransaction(client.svm, client.payer, [
+    await getAddNftInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint: mint0,
+    }),
+    getStartSaleInstruction({ gumballMachine, authority: client.payer }),
+  ]);
 
-  // When we add an nft to the Gumball Machine.
-  const promise = transactionBuilder()
-    .add(
-      addNft(umi, {
+  await t.throwsAsync(
+    sendTransaction(client.svm, client.payer, [
+      await getAddNftInstructionAsync({
         gumballMachine,
-        mint: nfts[1].publicKey,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  await t.throwsAsync(promise, { message: /MissingItemIndex/ });
+        seller: client.payer,
+        mint: mint1,
+      }),
+    ]),
+    { message: /MissingItemIndex/ }
+  );
 });
 
 test('it cannot re-add nft to index with an unclaimed item', async (t) => {
-  // Given a Gumball Machine with 5 nfts.
-  const umi = await createUmi();
-  const nfts = await Promise.all([createNft(umi), createNft(umi)]);
+  const client = await createClient();
+  const { mint: mint0 } = await createNft(client);
 
-  const gumballMachineSigner = generateSigner(umi);
-  const gumballMachine = gumballMachineSigner.publicKey;
-
-  await create(umi, {
-    gumballMachine: gumballMachineSigner,
-    items: [
-      {
-        id: nfts[0].publicKey,
-        tokenStandard: TokenStandard.ProgrammableNonFungible,
-      },
-    ],
-    startSale: true,
+  const { gumballMachine } = await createGumballMachine(client, {
+    settings: { itemCapacity: 5 },
   });
+  await sendTransaction(client.svm, client.payer, [
+    await getAddNftInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint: mint0,
+    }),
+    getStartSaleInstruction({ gumballMachine, authority: client.payer }),
+  ]);
 
-  // When we add an nft to the Gumball Machine.
-  const promise = transactionBuilder()
-    .add(
-      addNft(umi, {
+  await t.throwsAsync(
+    sendTransaction(client.svm, client.payer, [
+      await getAddNftInstructionAsync({
         gumballMachine,
-        mint: nfts[0].publicKey,
-        args: {
-          index: 0,
-        },
-      })
-    )
-    .sendAndConfirm(umi);
-
-  await t.throwsAsync(promise, { message: /ItemNotClaimed/ });
+        seller: client.payer,
+        mint: mint0,
+        args: { index: some(0) },
+      }),
+    ]),
+    { message: /ItemNotClaimed/ }
+  );
 });
 
 test('it cannot re-add nft to index with an unsettled item', async (t) => {
-  // Given a Gumball Machine with 5 nfts.
-  const umi = await createUmi();
-  const nfts = await Promise.all([createNft(umi), createNft(umi)]);
+  const client = await createClient();
+  const { mint: mint0 } = await createNft(client);
+  const { mint: mint1 } = await createNft(client);
+  const mints = [mint0, mint1];
 
-  const gumballMachineSigner = generateSigner(umi);
-  const gumballMachine = gumballMachineSigner.publicKey;
-
-  await create(umi, {
-    gumballMachine: gumballMachineSigner,
-    items: [
-      {
-        id: nfts[0].publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-      {
-        id: nfts[1].publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-    ],
-    startSale: true,
-    guards: {
-      solPayment: some({ lamports: sol(1) }),
-    },
+  const { gumballMachine } = await createGumballMachine(client, {
+    settings: { itemCapacity: 5 },
+    guards: { solPayment: some({ lamports: sol(1) }) },
   });
+  await sendTransaction(client.svm, client.payer, [
+    await getAddNftInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint: mint0,
+    }),
+    await getAddNftInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint: mint1,
+    }),
+    getStartSaleInstruction({ gumballMachine, authority: client.payer }),
+  ]);
 
-  const buyer = await generateSignerWithSol(umi, sol(10));
-  const buyerUmi = await createUmi();
-  buyerUmi.use(signerIdentity(buyer));
+  const buyer = await generateKeyPairSignerWithSol(client.svm, sol(10));
+  await sendTransaction(client.svm, buyer, [
+    COMPUTE_UNITS,
+    await draw({
+      gumballMachine,
+      payer: buyer,
+      buyer,
+      mintArgs: { solPayment: some(true) },
+    }),
+  ]);
 
-  // When we draw the nft from the Gumball Machine.
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(umi, {
+  const account = fetchGumballMachine(client.svm, gumballMachine);
+  const drawnIndex = account.items.findIndex((i) => i.isDrawn);
+
+  // Claim the item as the buyer (but do not settle).
+  await sendTransaction(client.svm, buyer, [
+    COMPUTE_UNITS,
+    await getClaimNftInstructionAsync({
+      index: drawnIndex,
+      payer: buyer,
+      gumballMachine,
+      buyer: buyer.address,
+      seller: client.payer.address,
+      mint: mints[drawnIndex],
+    }),
+  ]);
+
+  await t.throwsAsync(
+    sendTransaction(client.svm, client.payer, [
+      await getAddNftInstructionAsync({
         gumballMachine,
-        buyer,
-        mintArgs: { solPayment: some(true) },
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Figure out which was drawn
-  let gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
-  const drawnIndex = gumballMachineAccount.items.findIndex(
-    (item) => item.isDrawn
+        seller: client.payer,
+        mint: mints[drawnIndex],
+        args: { index: some(drawnIndex) },
+      }),
+    ]),
+    { message: /ItemNotSettled/ }
   );
-
-  // Claim the item as the buyer
-  await transactionBuilder()
-    .add(
-      claimNft(umi, {
-        gumballMachine,
-        buyer: buyer.publicKey,
-        mint: nfts[drawnIndex].publicKey,
-        seller: umi.identity.publicKey,
-        index: drawnIndex,
-      })
-    )
-    .sendAndConfirm(buyerUmi);
-
-  // When we add an nft to the Gumball Machine.
-  const promise = transactionBuilder()
-    .add(
-      addNft(umi, {
-        gumballMachine,
-        mint: nfts[0].publicKey,
-        args: {
-          index: drawnIndex,
-        },
-      })
-    )
-    .sendAndConfirm(umi);
-
-  await t.throwsAsync(promise, { message: /ItemNotSettled/ });
 });

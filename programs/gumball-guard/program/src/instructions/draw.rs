@@ -1,7 +1,8 @@
 use std::collections::BTreeMap;
 
-use anchor_lang::{prelude::*, solana_program::sysvar};
+use anchor_lang::prelude::*;
 use mallow_gumball::GumballMachine;
+use solana_program::sysvar;
 
 use crate::{
     guards::{EvaluationContext, MachineType},
@@ -12,7 +13,7 @@ use crate::{
 use super::{DrawAccounts, Token};
 
 pub fn draw<'c: 'info, 'info>(
-    ctx: Context<'_, '_, 'c, 'info, Draw<'info>>,
+    ctx: Context<'info, Draw<'info>>,
     mint_args: Vec<u8>,
     label: Option<String>,
 ) -> Result<()> {

@@ -1,4 +1,4 @@
-import { Program } from '@metaplex-foundation/umi';
+import { isFixedSize } from '@solana/kit';
 import {
   UnregisteredGumballGuardError,
   VariableSizeGuardError,
@@ -6,10 +6,6 @@ import {
 import { GuardManifest } from './guardManifest';
 
 export type AnyGuardManifest = GuardManifest<any, any, any, any>;
-
-export type GumballGuardProgram = Program & {
-  availableGuards: string[];
-};
 
 export interface GuardRepository {
   /** Registers one or many guards by providing their manifest. */
@@ -22,13 +18,13 @@ export interface GuardRepository {
   all(): AnyGuardManifest[];
 
   /**
-   * Gets all guard manifests for a registered Gumball Guard program.
+   * Gets the guard manifests for the provided ordered list of guard names.
    *
-   * It fails if the manifest of any guard expected by the program
-   * is not registered. Manifests are returned in the order in which
-   * they are defined on the `availableGuards` property of the program.
+   * It fails if the manifest of any requested guard is not registered.
+   * Manifests are returned in the order in which the names are provided (which
+   * must match the program's on-chain guard ordering).
    */
-  forProgram(program: GumballGuardProgram): AnyGuardManifest[];
+  forProgram(availableGuards: string[]): AnyGuardManifest[];
 }
 
 export class DefaultGuardRepository implements GuardRepository {
@@ -36,7 +32,7 @@ export class DefaultGuardRepository implements GuardRepository {
 
   add(...manifests: AnyGuardManifest[]): void {
     manifests.forEach((manifest) => {
-      if (manifest.serializer().fixedSize === null) {
+      if (!isFixedSize(manifest.codec())) {
         throw new VariableSizeGuardError(manifest.name);
       }
       this.manifests.set(manifest.name, manifest);
@@ -55,7 +51,7 @@ export class DefaultGuardRepository implements GuardRepository {
     return Array.from(this.manifests.values());
   }
 
-  forProgram(program: GumballGuardProgram): AnyGuardManifest[] {
-    return program.availableGuards.map((name) => this.get(name));
+  forProgram(availableGuards: string[]): AnyGuardManifest[] {
+    return availableGuards.map((name) => this.get(name));
   }
 }

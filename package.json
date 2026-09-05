@@ -6,19 +6,23 @@
 		"programs:build": "./configs/program-scripts/build.sh",
 		"programs:test": "./configs/program-scripts/test.sh",
 		"programs:clean": "rm -rf ./programs/.bin",
-		"generate": "pnpm generate:idls && pnpm generate:clients",
-		"generate:idls": "node ./configs/shank.cjs",
-		"generate:clients": "node ./configs/kinobi.cjs && pnpm --filter @mallow-labs/mallow-gumball format:fix",
-		"test": "pnpm test:js",
+		"generate": "pnpm generate:clients",
+		"generate:clients": "node ./codama.mjs && pnpm --filter @mallow-labs/mallow-gumball format:fix && pnpm --filter @mallow-labs/mallow-gumball-umi format:fix && pnpm clients:rust:format",
+		"clients:rust:format": "cargo fmt --manifest-path clients/rust/Cargo.toml --all",
+		"clients:rust:lint": "cargo clippy --manifest-path clients/rust/Cargo.toml -- -D warnings",
+		"clients:rust:test": "cd clients/rust && cargo test",
+		"test": "pnpm test:js && pnpm test:umi && pnpm clients:rust:test",
 		"test:js": "cd clients/js && pnpm test",
-		"validator": "CI=1 amman start --config ./configs/validator.cjs",
-		"validator:debug": "amman start --config ./configs/validator.cjs",
-		"validator:stop": "amman stop"
+		"test:umi": "cd clients/umi && pnpm test"
 	},
 	"devDependencies": {
-		"@metaplex-foundation/amman": "^0.12.1",
-		"@metaplex-foundation/kinobi": "^0.14.0",
-		"@metaplex-foundation/shank-js": "^0.1.5",
+		"@codama/nodes-from-anchor": "^1.5.0",
+		"@codama/renderers-js": "^2.3.0",
+		"@codama/renderers-js-umi": "^1.1.0",
+		"@codama/renderers-rust": "^3.1.0",
+		"codama": "^1.8.0",
+		"prettier": "^3.5.3",
+		"prettier-plugin-organize-imports": "^4.0.0",
 		"typescript": "^5.8.3"
 	},
 	"packageManager": "pnpm@10.9.0"

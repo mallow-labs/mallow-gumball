@@ -1,13 +1,22 @@
-import { getSplSystemProgramId } from '@metaplex-foundation/mpl-toolbox';
-import { PublicKey, publicKey, Signer } from '@metaplex-foundation/umi';
-import { array, bytes } from '@metaplex-foundation/umi/serializers';
+import {
+  fixEncoderSize,
+  getArrayEncoder,
+  getBytesEncoder,
+  type Address,
+  type TransactionSigner,
+} from '@solana/kit';
 import {
   AllowList,
   AllowListArgs,
   findAllowListProofPda,
-  getAllowListSerializer,
+  getAllowListCodec,
 } from '../generated';
-import { GuardManifest } from '../guards';
+import { GuardManifest, GuardRemainingAccount } from '../guards';
+
+const SYSTEM_PROGRAM_ADDRESS = '11111111111111111111111111111111' as Address;
+
+const toAddress = (value: Address | TransactionSigner): Address =>
+  typeof value === 'string' ? value : value.address;
 
 /**
  * The allowList guard validates the minting wallet against
@@ -48,39 +57,50 @@ export const allowListGuardManifest: GuardManifest<
   AllowListRouteArgs
 > = {
   name: 'allowList',
-  serializer: getAllowListSerializer,
-  mintParser: (context, mintContext, args) => ({
+  codec: getAllowListCodec,
+  mintParser: async (mintContext, args) => ({
     data: new Uint8Array(),
     remainingAccounts: [
       {
         isWritable: false,
-        publicKey: findAllowListProofPda(context, {
-          merkleRoot: args.merkleRoot,
-          user: mintContext.buyer.publicKey,
-          machine: mintContext.machine,
-          gumballGuard: mintContext.gumballGuard,
-        })[0],
+        address: (
+          await findAllowListProofPda({
+            merkleRoot: args.merkleRoot,
+            user: mintContext.buyer.address,
+            machine: mintContext.machine,
+            gumballGuard: mintContext.gumballGuard,
+          })
+        )[0],
       },
     ],
   }),
-  routeParser: (context, routeContext, args) => {
-    return {
-      data: array(bytes({ size: 32 })).serialize(args.merkleProof),
-      remainingAccounts: [
-        {
-          isWritable: true,
-          publicKey: findAllowListProofPda(context, {
+  routeParser: async (routeContext, args) => {
+    const remainingAccounts: GuardRemainingAccount[] = [
+      {
+        isWritable: true,
+        address: (
+          await findAllowListProofPda({
             merkleRoot: args.merkleRoot,
-            user: publicKey(args.buyer ?? routeContext.payer),
+            user: args.buyer
+              ? toAddress(args.buyer)
+              : routeContext.payer.address,
             machine: routeContext.machine,
             gumballGuard: routeContext.gumballGuard,
-          })[0],
-        },
-        { isWritable: false, publicKey: getSplSystemProgramId(context) },
-        ...(args.buyer !== undefined
-          ? [{ isWritable: false, publicKey: publicKey(args.buyer) }]
-          : []),
-      ],
+          })
+        )[0],
+      },
+      { isWritable: false, address: SYSTEM_PROGRAM_ADDRESS },
+      ...(args.buyer !== undefined
+        ? [{ isWritable: false, address: toAddress(args.buyer) }]
+        : []),
+    ];
+    return {
+      data: new Uint8Array(
+        getArrayEncoder(fixEncoderSize(getBytesEncoder(), 32)).encode(
+          args.merkleProof
+        )
+      ),
+      remainingAccounts,
     };
   },
 };
@@ -127,5 +147,5 @@ export type AllowListRouteArgs = AllowListArgs & {
    * Here, we allow it to be a Signer for backwards compatibility
    * but the account will not be used as a signer.
    */
-  buyer?: PublicKey | Signer;
+  buyer?: Address | TransactionSigner;
 };

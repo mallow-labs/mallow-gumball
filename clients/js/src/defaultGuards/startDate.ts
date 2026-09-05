@@ -1,4 +1,4 @@
-import { getStartDateSerializer, StartDate, StartDateArgs } from '../generated';
+import { getStartDateCodec, StartDate, StartDateArgs } from '../generated';
 import { GuardManifest, noopParser } from '../guards';
 
 /**
@@ -7,7 +7,7 @@ import { GuardManifest, noopParser } from '../guards';
  */
 export const startDateGuardManifest: GuardManifest<StartDateArgs, StartDate> = {
   name: 'startDate',
-  serializer: getStartDateSerializer,
+  codec: getStartDateCodec,
   mintParser: noopParser,
   routeParser: noopParser,
 };

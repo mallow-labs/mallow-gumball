@@ -54,7 +54,7 @@ pub struct ClaimCoreAsset<'info> {
 }
 
 pub fn claim_core_asset<'info>(
-    ctx: Context<'_, '_, '_, 'info, ClaimCoreAsset<'info>>,
+    ctx: Context<'info, ClaimCoreAsset<'info>>,
     index: u32,
 ) -> Result<()> {
     let gumball_machine = &mut ctx.accounts.gumball_machine;

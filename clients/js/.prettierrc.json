@@ -6,6 +6,5 @@
   "tabWidth": 2,
   "arrowParens": "always",
   "printWidth": 80,
-  "parser": "typescript",
   "plugins": ["prettier-plugin-organize-imports"]
 }

@@ -1,6 +1,5 @@
-use solana_program::{
-    program::invoke, system_instruction, sysvar::instructions::get_instruction_relative,
-};
+use anchor_lang::solana_program::system_instruction;
+use solana_program::{program::invoke, sysvar::instructions::get_instruction_relative};
 
 use super::{
     program_gate::{verify_programs, DEFAULT_PROGRAMS},

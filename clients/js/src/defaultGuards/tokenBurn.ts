@@ -1,6 +1,6 @@
-import { findAssociatedTokenPda } from '@metaplex-foundation/mpl-toolbox';
-import { getTokenBurnSerializer, TokenBurn, TokenBurnArgs } from '../generated';
+import { getTokenBurnCodec, TokenBurn, TokenBurnArgs } from '../generated';
 import { GuardManifest, noopParser } from '../guards';
+import { findAssociatedTokenPda } from '../hooked';
 
 /**
  * The tokenBurn guard restricts minting to token holders
@@ -17,17 +17,17 @@ export const tokenBurnGuardManifest: GuardManifest<
   TokenBurnMintArgs
 > = {
   name: 'tokenBurn',
-  serializer: getTokenBurnSerializer,
-  mintParser: (context, mintContext, args) => {
-    const [tokenAccount] = findAssociatedTokenPda(context, {
+  codec: getTokenBurnCodec,
+  mintParser: async (mintContext, args) => {
+    const [tokenAccount] = await findAssociatedTokenPda({
       mint: args.mint,
-      owner: mintContext.buyer.publicKey,
+      owner: mintContext.buyer.address,
     });
     return {
       data: new Uint8Array(),
       remainingAccounts: [
-        { publicKey: tokenAccount, isWritable: true },
-        { publicKey: args.mint, isWritable: true },
+        { address: tokenAccount, isWritable: true },
+        { address: args.mint, isWritable: true },
       ],
     };
   },

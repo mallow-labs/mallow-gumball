@@ -31,4 +31,13 @@ pub enum Error {
     ValidListing,
     #[msg("Invalid collection")]
     InvalidCollection,
+
+    /// 7012 — appended for Token-2022 payment support. Append-only: existing
+    /// variants keep their stable codes.
+    #[msg("Token-2022 mint carries an unsupported extension")]
+    UnsupportedTokenExtension,
+    #[msg("Invalid token program for the supplied mint")]
+    InvalidTokenProgram,
+    #[msg("Token-2022 currency requires the Token-2022 program in its remaining-account slot")]
+    MissingTokenProgram,
 }

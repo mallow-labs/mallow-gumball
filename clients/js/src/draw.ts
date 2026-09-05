@@ -1,80 +1,72 @@
-import { TokenStandard } from '@metaplex-foundation/mpl-token-metadata';
+import { none, type Instruction, type OptionOrNullable } from '@solana/kit';
 import {
-  none,
-  Option,
-  OptionOrNullable,
-  publicKey,
-  TransactionBuilder,
-  transactionBuilder,
-} from '@metaplex-foundation/umi';
-import { DefaultGuardSetMintArgs } from './defaultGuards';
+  DefaultGuardSetMintArgs,
+  defaultGumballGuardNames,
+} from './defaultGuards';
 import {
-  draw as baseDraw,
-  DrawInstructionAccounts,
+  getDrawInstructionAsync,
+  type DrawAsyncInput,
 } from './generated/instructions/draw';
+import { findGumballGuardPda } from './generated/pdas';
 import { MachineType } from './generated/types';
 import {
   GuardRepository,
   GuardSetMintArgs,
-  GumballGuardProgram,
   MintContext,
   parseGuardRemainingAccounts,
   parseMintArgs,
 } from './guards';
-import { findGumballGuardPda } from './hooked';
+import { getDefaultGuardRepository } from './plugin';
 
-export { DrawInstructionAccounts };
-
-export type DrawInstructionData<MA extends GuardSetMintArgs> = {
-  discriminator: Array<number>;
-  mintArgs: MA;
-  group: Option<string>;
-};
-
-export type DrawInstructionDataArgs<MA extends GuardSetMintArgs> = {
+export type DrawBuilderInput<
+  MA extends GuardSetMintArgs = DefaultGuardSetMintArgs,
+> = Omit<DrawAsyncInput, 'mintArgs' | 'group'> & {
   mintArgs?: Partial<MA>;
   group?: OptionOrNullable<string>;
-  /** @defaultValue `TokenStandard.NonFungible`. */
-  tokenStandard?: TokenStandard;
+  /** Override the guard repository (defaults to the built-in default guards). */
+  guards?: GuardRepository;
 };
 
-export function draw<MA extends GuardSetMintArgs = DefaultGuardSetMintArgs>(
-  context: Parameters<typeof baseDraw>[0] & {
-    guards: GuardRepository;
-  },
-  input: DrawInstructionAccounts &
-    DrawInstructionDataArgs<MA extends undefined ? DefaultGuardSetMintArgs : MA>
-): TransactionBuilder {
-  const { mintArgs = {}, group = none(), ...rest } = input;
-
-  // Parsing mint data.
-  const program = context.programs.get<GumballGuardProgram>('gumballGuard');
-  const gumballMachine = publicKey(input.gumballMachine, false);
+/**
+ * High-level `draw` builder: serializes the provided guard mint args and appends
+ * each guard's remaining accounts to the low-level draw instruction.
+ */
+export async function draw<
+  MA extends GuardSetMintArgs = DefaultGuardSetMintArgs,
+>(input: DrawBuilderInput<MA>): Promise<Instruction> {
+  const {
+    mintArgs = {},
+    group = none(),
+    guards = getDefaultGuardRepository(),
+    ...rest
+  } = input;
+  const manifests = guards.forProgram(defaultGumballGuardNames);
+  const gumballGuard =
+    input.gumballGuard ??
+    (await findGumballGuardPda({ base: input.gumballMachine }))[0];
   const mintContext: MintContext = {
-    buyer: input.buyer ?? context.identity,
-    payer: input.payer ?? context.payer,
-    machine: gumballMachine,
-    gumballGuard: publicKey(
-      input.gumballGuard ??
-        findGumballGuardPda(context, { base: gumballMachine }),
-      false
-    ),
+    buyer: input.buyer,
+    payer: input.payer,
+    machine: input.gumballMachine,
+    gumballGuard,
     machineType: MachineType.Gumball,
   };
-  const { data, remainingAccounts } = parseMintArgs<
-    MA extends undefined ? DefaultGuardSetMintArgs : MA
-  >(context, program, mintContext, mintArgs);
-
-  const ix = baseDraw(context, {
+  const { data, remainingAccounts } = await parseMintArgs<MA>(
+    manifests,
+    mintContext,
+    mintArgs
+  );
+  const instruction = await getDrawInstructionAsync({
     ...rest,
+    gumballGuard,
     mintArgs: data,
     group,
-  }).items[0];
-
-  const [keys, signers] = parseGuardRemainingAccounts(remainingAccounts);
-  ix.instruction.keys.push(...keys);
-  ix.signers.push(...signers);
-  ix.bytesCreatedOnChain = 0;
-
-  return transactionBuilder([ix]);
+  });
+  return {
+    ...instruction,
+    accounts: [
+      ...(instruction.accounts ?? []),
+      ...parseGuardRemainingAccounts(remainingAccounts),
+    ],
+  };
 }

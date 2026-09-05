@@ -1,120 +1,101 @@
-import { setComputeUnitLimit } from '@metaplex-foundation/mpl-toolbox';
-import {
-  generateSigner,
-  sol,
-  some,
-  transactionBuilder,
-} from '@metaplex-foundation/umi';
+import { generateKeyPairSigner, some } from '@solana/kit';
 import test from 'ava';
-import { draw, TokenStandard } from '../../src';
+import { draw } from '../../src';
 import {
-  assertBotTax,
-  assertItemBought,
-  create,
-  createNft,
-  createUmi,
+  COMPUTE_UNITS,
+  fetchGumballMachine,
+  generateKeyPairSignerWithSol,
+  sendTransaction,
+  sol,
 } from '../_setup';
+import {
+  createClient,
+  createMachineWithGuards,
+  sendAndGetLogs,
+} from './_guardsASetup';
 
 test('it allows minting from a specific address only', async (t) => {
   // Given a loaded Gumball Machine with an addressGate guard.
-  const umi = await createUmi();
-  const allowedAddress = generateSigner(umi);
-  const { publicKey: gumballMachine } = await create(umi, {
-    items: [
-      {
-        id: (await createNft(umi)).publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-    ],
-    startSale: true,
-    guards: {
-      addressGate: some({ address: allowedAddress.publicKey }),
-    },
+  const client = await createClient();
+  const allowedAddress = await generateKeyPairSignerWithSol(
+    client.svm,
+    sol(10)
+  );
+  const { gumballMachine } = await createMachineWithGuards(client, {
+    guards: { addressGate: some({ address: allowedAddress.address }) },
   });
 
-  // When the allowed address mints from it.
-
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(umi, {
-        gumballMachine,
-        buyer: allowedAddress,
-      })
-    )
-    .sendAndConfirm(umi);
+  // When the allowed address draws from it.
+  await sendTransaction(client.svm, allowedAddress, [
+    COMPUTE_UNITS,
+    await draw({
+      gumballMachine,
+      payer: allowedAddress,
+      buyer: allowedAddress,
+    }),
+  ]);
 
   // Then minting was successful.
-  await assertItemBought(t, umi, {
-    gumballMachine,
-    buyer: allowedAddress.publicKey,
-  });
+  const account = fetchGumballMachine(client.svm, gumballMachine);
+  t.is(
+    account.items.filter((i) => i.buyer === allowedAddress.address).length,
+    1
+  );
 });
 
 test('it forbids minting from anyone else', async (t) => {
   // Given a gumball machine with an addressGate guard.
-  const umi = await createUmi();
-
-  const { publicKey: gumballMachine } = await create(umi, {
-    items: [
-      {
-        id: (await createNft(umi)).publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-    ],
-    startSale: true,
-    guards: {
-      addressGate: some({ address: generateSigner(umi).publicKey }),
-    },
+  const client = await createClient();
+  const allowed = await generateKeyPairSigner();
+  const { gumballMachine } = await createMachineWithGuards(client, {
+    guards: { addressGate: some({ address: allowed.address }) },
   });
 
-  // When another wallet tries to mint from it.
-  const unauthorizedMinter = generateSigner(umi);
-  const promise = transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(umi, {
+  // When another wallet tries to draw from it, then we expect a program error.
+  const unauthorizedMinter = await generateKeyPairSignerWithSol(
+    client.svm,
+    sol(10)
+  );
+  await t.throwsAsync(
+    sendTransaction(client.svm, unauthorizedMinter, [
+      COMPUTE_UNITS,
+      await draw({
         gumballMachine,
+        payer: unauthorizedMinter,
         buyer: unauthorizedMinter,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then we expect a program error.
-  await t.throwsAsync(promise, { message: /AddressNotAuthorized/ });
+      }),
+    ]),
+    { message: /AddressNotAuthorized/ }
+  );
 });
 
 test('it charges a bot tax when trying to mint using the wrong address', async (t) => {
   // Given a gumball machine with an addressGate guard and a bot tax.
-  const umi = await createUmi();
-
-  const { publicKey: gumballMachine } = await create(umi, {
-    items: [
-      {
-        id: (await createNft(umi)).publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-    ],
-    startSale: true,
+  const client = await createClient();
+  const allowed = await generateKeyPairSigner();
+  const { gumballMachine } = await createMachineWithGuards(client, {
     guards: {
       botTax: some({ lamports: sol(0.01), lastInstruction: true }),
-      addressGate: some({ address: generateSigner(umi).publicKey }),
+      addressGate: some({ address: allowed.address }),
     },
   });
 
-  // When another wallet tries to mint from it.
+  // When another wallet tries to draw from it.
+  const unauthorizedMinter = await generateKeyPairSignerWithSol(
+    client.svm,
+    sol(10)
+  );
+  const logs = await sendAndGetLogs(client.svm, unauthorizedMinter, [
+    COMPUTE_UNITS,
+    await draw({
+      gumballMachine,
+      payer: unauthorizedMinter,
+      buyer: unauthorizedMinter,
+    }),
+  ]);
 
-  const unauthorizedMinter = generateSigner(umi);
-  const { signature } = await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(umi, {
-        gumballMachine,
-        buyer: unauthorizedMinter,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then we expect a silent bot tax error.
-  await assertBotTax(t, umi, signature, /AddressNotAuthorized/);
+  // Then we expect a silent bot tax error and no item redeemed.
+  t.regex(logs, /Botting is taxed/);
+  t.regex(logs, /AddressNotAuthorized/);
+  t.is(fetchGumballMachine(client.svm, gumballMachine).itemsRedeemed, 0n);
 });

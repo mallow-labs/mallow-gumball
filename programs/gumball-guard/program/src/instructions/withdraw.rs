@@ -9,7 +9,8 @@ use mallow_gumball::{
     cpi::{accounts::CloseGumballMachine, withdraw as withdraw_cpi},
     GumballMachine,
 };
-use mallow_jellybean_sdk::{accounts::JellybeanMachine, instructions::WithdrawCpiBuilder};
+use mallow_jellybean_client::{accounts::JellybeanMachine, instructions::WithdrawCpiBuilder};
+use utils::assert_owned_by;
 
 /// Withdraw the rent SOL from the gumball guard account, ensuring that Gumball Machine can also be closed.
 #[derive(Accounts)]
@@ -35,11 +36,15 @@ pub struct Withdraw<'info> {
     pub token_program: Program<'info, Token>,
 }
 
-pub fn withdraw<'info>(ctx: Context<'_, '_, '_, 'info, Withdraw<'info>>) -> Result<()> {
+pub fn withdraw<'info>(ctx: Context<'info, Withdraw<'info>>) -> Result<()> {
     let gumball_guard = &ctx.accounts.gumball_guard;
     let machine_program = ctx.accounts.machine_program.to_account_info();
     let machine = &ctx.accounts.machine.to_account_info();
     let authority = ctx.accounts.authority.to_account_info();
+
+    // Bind the CPI target program to the machine's owner so an attacker cannot
+    // substitute an arbitrary program to be invoked with the guard PDA's signature.
+    assert_owned_by(machine, ctx.accounts.machine_program.key)?;
 
     // PDA signer for the transaction
     let seeds = [SEED, &gumball_guard.base.to_bytes(), &[gumball_guard.bump]];
@@ -49,7 +54,7 @@ pub fn withdraw<'info>(ctx: Context<'_, '_, '_, 'info, Withdraw<'info>>) -> Resu
     if let Ok(_) = try_from!(Account::<GumballMachine>, machine) {
         withdraw_cpi(
             CpiContext::new_with_signer(
-                machine_program,
+                machine_program.key(),
                 CloseGumballMachine {
                     gumball_machine: machine.to_account_info(),
                     authority,

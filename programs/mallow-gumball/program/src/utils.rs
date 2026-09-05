@@ -4,10 +4,13 @@ use crate::{
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token::approve;
-use anchor_spl::token::close_account;
 use anchor_spl::token::Approve;
-use anchor_spl::token::CloseAccount;
-use anchor_spl::token::TokenAccount;
+use anchor_spl::token_2022::spl_token_2022::{
+    extension::StateWithExtensions, state::Account as SplTokenAccount,
+};
+use anchor_spl::token_interface::{
+    close_account as close_currency_account, CloseAccount as CloseCurrencyAccount,
+};
 use arrayref::array_ref;
 use mpl_core::{
     accounts::BaseAssetV1,
@@ -102,7 +105,7 @@ pub fn assert_can_add_item(
         verify_proof(
             &seller_proof_path.as_ref().unwrap()[..],
             &gumball_machine.settings.sellers_merkle_root.unwrap(),
-            &leaf.0,
+            &leaf.to_bytes(),
         ),
         GumballError::InvalidProofPath
     );
@@ -202,7 +205,9 @@ pub fn get_config_count(data: &[u8]) -> Result<usize> {
 }
 
 pub fn cmp_pubkeys(a: &Pubkey, b: &Pubkey) -> bool {
-    sol_memcmp(a.as_ref(), b.as_ref(), PUBKEY_BYTES) == 0
+    // `sol_memcmp` became an `unsafe` syscall binding in Solana 3.0. The inputs are
+    // fixed-size (`PUBKEY_BYTES`) pubkey slices, so the read is in bounds.
+    unsafe { sol_memcmp(a.as_ref(), b.as_ref(), PUBKEY_BYTES) == 0 }
 }
 
 pub fn get_core_asset_update_authority<'info>(
@@ -480,7 +485,7 @@ pub fn approve_and_freeze_nft_v2<'a>(
     } else {
         approve(
             CpiContext::new(
-                token_program.to_account_info(),
+                token_program.key(),
                 Approve {
                     to: token_account.to_account_info(),
                     delegate: new_authority_info.to_account_info(),
@@ -725,10 +730,21 @@ pub fn thaw_nft<'a>(
     Ok(())
 }
 
+/// Moves `amount` out of `token_account` and closes it when it ends up empty.
+///
+/// `token_account` is an `AccountInfo` rather than a typed account so this works
+/// for both token programs: `Account<'_, TokenAccount>` pins the owner to classic
+/// SPL Token and would reject a Token-2022 payment account. The remaining balance
+/// is re-read from the account data through `StateWithExtensions`, which parses a
+/// Token-2022 account carrying extensions as well as a classic 165-byte one.
+///
+/// `token_program` must be the program that owns `mint` — the caller resolves it
+/// from the §D5 slot on the payment path, and passes the classic program on the
+/// prize path.
 pub fn transfer_and_close_if_empty<'a>(
     payer: &AccountInfo<'a>,
     authority: &AccountInfo<'a>,
-    token_account: &mut Box<Account<'a, TokenAccount>>,
+    token_account: &AccountInfo<'a>,
     recipient: &AccountInfo<'a>,
     recipient_token_account: &AccountInfo<'a>,
     mint: &AccountInfo<'a>,
@@ -743,7 +759,7 @@ pub fn transfer_and_close_if_empty<'a>(
         transfer_spl(
             authority,
             recipient,
-            &token_account.to_account_info(),
+            token_account,
             recipient_token_account,
             mint,
             payer,
@@ -755,14 +771,20 @@ pub fn transfer_and_close_if_empty<'a>(
             None,
             amount,
         )?;
-        token_account.reload()?;
     }
 
+    let remaining_balance = {
+        let data = token_account.try_borrow_data()?;
+        StateWithExtensions::<SplTokenAccount>::unpack(&data)?
+            .base
+            .amount
+    };
+
     // Close the token account back to authority if token account is empty
-    if token_account.amount == 0 {
-        close_account(CpiContext::new_with_signer(
-            token_program.to_account_info(),
-            CloseAccount {
+    if remaining_balance == 0 {
+        close_currency_account(CpiContext::new_with_signer(
+            token_program.key(),
+            CloseCurrencyAccount {
                 account: token_account.to_account_info(),
                 destination: rent_recipient.to_account_info(),
                 authority: authority.to_account_info(),
@@ -770,6 +792,201 @@ pub fn transfer_and_close_if_empty<'a>(
             &[auth_seeds],
         ))?;
     }
+
+    Ok(())
+}
+
+/// Rejects any leaf that is not a Bubblegum V1 leaf.
+///
+/// On-chain trading is V1-only in this build (see §2 of the cNFT/pNFT spec). The
+/// V1 `Transfer` CPI would already fail on a V2 leaf, but we reject explicitly up
+/// front for a clear error and forward-compat: a future Solana 2.x upgrade will
+/// branch to `TransferV2` when `version >= 2`.
+pub fn assert_cnft_v1(version: u8) -> Result<()> {
+    require!(
+        version == crate::constants::BUBBLEGUM_V1_VERSION,
+        GumballError::UnsupportedCnftVersion
+    );
+    Ok(())
+}
+
+/// Recomputes the Bubblegum leaf `data_hash` from the DAS-supplied `meta_hash`.
+///
+/// Mirrors `mpl_bubblegum::hash::hash_metadata`'s trailing step:
+/// `data_hash = keccak(keccak(borsh(MetadataArgs)) ‖ sfbp_le)` where `meta_hash`
+/// is the inner `keccak(borsh(MetadataArgs))`. Because `seller_fee_basis_points`
+/// is folded in here, a lie about it changes `data_hash` and the proof fails.
+pub fn compute_cnft_data_hash(meta_hash: &[u8; 32], seller_fee_basis_points: u16) -> [u8; 32] {
+    solana_program::keccak::hashv(&[meta_hash, &seller_fee_basis_points.to_le_bytes()]).to_bytes()
+}
+
+/// Recomputes the Bubblegum leaf `creator_hash` from the supplied creators.
+///
+/// Delegates to `mpl_bubblegum::hash::hash_creators` after mapping the local
+/// `CnftCreator` type to `mpl_bubblegum::types::Creator` (the local type exists
+/// only so creators can cross the Anchor instruction boundary, which the mpl
+/// borsh types can't). Calling the mpl helper keeps this in lockstep with
+/// Bubblegum's on-chain hashing. A lie about creators changes `creator_hash` and
+/// the proof fails, so royalty payouts driven off these creators are trustless.
+pub fn compute_cnft_creator_hash(creators: &[crate::CnftCreator]) -> [u8; 32] {
+    let creators: Vec<mpl_bubblegum::types::Creator> = creators
+        .iter()
+        .map(|c| mpl_bubblegum::types::Creator {
+            address: c.address,
+            verified: c.verified,
+            share: c.share,
+        })
+        .collect();
+    mpl_bubblegum::hash::hash_creators(&creators)
+}
+
+/// Derives the Bubblegum asset id for a leaf: `PDA(["asset", tree, nonce_le])`.
+pub fn cnft_asset_id(merkle_tree: &Pubkey, nonce: u64) -> Pubkey {
+    mpl_bubblegum::utils::get_asset_id(merkle_tree, nonce)
+}
+
+/// MANDATORY anti-substitution binding for compressed NFTs.
+///
+/// In gumball the merkle tree arrives as an untrusted instruction account and
+/// there is no config-line room to store it — so the ONLY thing binding the
+/// passed tree to the item we stored is this derivation. We re-derive
+/// `asset_id = PDA(["asset", merkle_tree, nonce_le])` and require it equals the
+/// asset id recorded in the config line (`expected_asset_id`). Without this, a
+/// caller could supply a different (cheaper) leaf's tree/nonce/proof and settle
+/// or claim against the wrong asset. Returns the verified asset id.
+pub fn assert_cnft_asset_id(
+    merkle_tree: &Pubkey,
+    nonce: u64,
+    expected_asset_id: &Pubkey,
+) -> Result<Pubkey> {
+    let asset_id = cnft_asset_id(merkle_tree, nonce);
+    require!(
+        asset_id == *expected_asset_id,
+        GumballError::InvalidMerkleTree
+    );
+    Ok(asset_id)
+}
+
+/// Verifies the passed `tree_config` account is the canonical Bubblegum tree
+/// authority PDA for `merkle_tree`. Defense-in-depth: the Bubblegum CPI also
+/// enforces this, but we bind it here so a wrong tree_config fails early.
+pub fn assert_cnft_tree_config(tree_config: &Pubkey, merkle_tree: &Pubkey) -> Result<()> {
+    let (expected, _) = mpl_bubblegum::accounts::TreeConfig::find_pda(merkle_tree);
+    assert_keys_equal(expected, *tree_config, "Invalid tree config PDA")?;
+    Ok(())
+}
+
+/// Executes a Bubblegum V1 `Transfer` CPI moving a leaf `leaf_owner -> new_leaf_owner`.
+///
+/// `leaf_owner`/`leaf_delegate` are the same account here (mallow never sets a
+/// separate leaf delegate): on escrow-in it is the seller (a tx signer); on
+/// escrow-out it is the gumball authority PDA (signed via `signer_seeds`). Proof
+/// nodes are passed as read-only, non-signer remaining accounts. The CPI verifies
+/// leaf ↔ root ↔ proof using `data_hash`/`creator_hash`, which binds sfbp and
+/// creators to the on-chain state.
+#[allow(clippy::too_many_arguments)]
+pub fn transfer_cnft<'a, 'b>(
+    bubblegum_program: &AccountInfo<'a>,
+    tree_config: &AccountInfo<'a>,
+    leaf_owner: &AccountInfo<'a>,
+    new_leaf_owner: &AccountInfo<'a>,
+    merkle_tree: &AccountInfo<'a>,
+    log_wrapper: &AccountInfo<'a>,
+    compression_program: &AccountInfo<'a>,
+    system_program: &AccountInfo<'a>,
+    proof: &'b [AccountInfo<'a>],
+    root: [u8; 32],
+    data_hash: [u8; 32],
+    creator_hash: [u8; 32],
+    nonce: u64,
+    index: u32,
+    signer_seeds: Option<&[&[u8]]>,
+) -> Result<()> {
+    let mut builder = mpl_bubblegum::instructions::TransferCpiBuilder::new(bubblegum_program);
+    builder
+        .tree_config(tree_config)
+        // leaf_owner and leaf_delegate are the same account; it authorizes the
+        // transfer (seller signature on escrow-in, PDA seeds on escrow-out).
+        .leaf_owner(leaf_owner, true)
+        .leaf_delegate(leaf_owner, true)
+        .new_leaf_owner(new_leaf_owner)
+        .merkle_tree(merkle_tree)
+        .log_wrapper(log_wrapper)
+        .compression_program(compression_program)
+        .system_program(system_program)
+        .root(root)
+        .data_hash(data_hash)
+        .creator_hash(creator_hash)
+        .nonce(nonce)
+        .index(index);
+
+    // Proof nodes: untrusted, but only ever read-only non-signers. The CPI hashes
+    // them up to the root, so a bad proof simply fails verification.
+    for node in proof.iter() {
+        builder.add_remaining_account(node, false, false);
+    }
+
+    match signer_seeds {
+        Some(seeds) => builder.invoke_signed(&[seeds])?,
+        None => builder.invoke()?,
+    };
+
+    Ok(())
+}
+
+/// Verifies a Bubblegum leaf against the tree's CURRENT state via the
+/// spl-account-compression `VerifyLeaf` CPI.
+///
+/// Used by `settle_cnft_sale` on the already-claimed path: the leaf left escrow
+/// in a prior `claim_cnft`, so no Transfer CPI runs at settle time to bind
+/// `creators`/`seller_fee_basis_points` to the real asset. Verifying a leaf
+/// reconstructed from those args (plus the caller-supplied current owner and
+/// delegate) restores that binding — a lie about creators or sfbp changes the
+/// leaf hash and the proof fails.
+///
+/// The instruction is hand-encoded because the program doesn't depend on the
+/// spl-account-compression crate (Bubblegum CPIs go through mpl-bubblegum).
+pub fn verify_cnft_leaf<'a, 'b>(
+    compression_program: &AccountInfo<'a>,
+    merkle_tree: &AccountInfo<'a>,
+    proof: &'b [AccountInfo<'a>],
+    root: [u8; 32],
+    leaf: [u8; 32],
+    index: u32,
+) -> Result<()> {
+    // Anchor discriminator: sha256("global:verify_leaf")[..8]. Pinned as a
+    // constant and checked against a runtime hash in `tests::verify_leaf_discriminator`.
+    const VERIFY_LEAF_DISCRIMINATOR: [u8; 8] = [124, 220, 22, 223, 104, 10, 250, 224];
+
+    let mut data = Vec::with_capacity(8 + 32 + 32 + 4);
+    data.extend_from_slice(&VERIFY_LEAF_DISCRIMINATOR);
+    data.extend_from_slice(&root);
+    data.extend_from_slice(&leaf);
+    data.extend_from_slice(&index.to_le_bytes());
+
+    let mut account_metas = Vec::with_capacity(1 + proof.len());
+    let mut account_infos = Vec::with_capacity(1 + proof.len());
+    account_metas.push(solana_program::instruction::AccountMeta::new_readonly(
+        merkle_tree.key(),
+        false,
+    ));
+    account_infos.push(merkle_tree.clone());
+    for node in proof.iter() {
+        account_metas.push(solana_program::instruction::AccountMeta::new_readonly(
+            node.key(),
+            false,
+        ));
+        account_infos.push(node.clone());
+    }
+
+    solana_program::program::invoke(
+        &solana_program::instruction::Instruction {
+            program_id: compression_program.key(),
+            accounts: account_metas,
+            data,
+        },
+        &account_infos,
+    )?;
 
     Ok(())
 }
@@ -784,6 +1001,16 @@ macro_rules! try_from {
 #[cfg(test)]
 pub mod tests {
     use super::*;
+
+    #[test]
+    fn verify_leaf_discriminator() {
+        // The pinned constant in `verify_cnft_leaf` must be the Anchor
+        // discriminator of spl-account-compression's `verify_leaf` — if it
+        // drifts, the CPI silently targets a nonexistent instruction and the
+        // already-claimed settle guard stops working.
+        let hash = solana_program::hash::hash(b"global:verify_leaf");
+        assert_eq!(hash.to_bytes()[..8], [124, 220, 22, 223, 104, 10, 250, 224]);
+    }
 
     #[test]
     fn check_keys_equal() {

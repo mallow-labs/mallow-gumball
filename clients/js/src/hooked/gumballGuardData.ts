@@ -1,18 +1,25 @@
 import {
-  array,
-  Serializer,
-  struct,
-} from '@metaplex-foundation/umi/serializers';
+  combineCodec,
+  getArrayDecoder,
+  getArrayEncoder,
+  getStructDecoder,
+  getStructEncoder,
+  type Codec,
+  type Decoder,
+  type Encoder,
+} from '@solana/kit';
 import {
-  getGuardGroupSerializer,
-  getGuardSetSerializer,
+  AnyGuardManifest,
+  getGuardGroupDecoder,
+  getGuardGroupEncoder,
+  getGuardSetDecoder,
+  getGuardSetEncoder,
   GuardGroup,
   GuardGroupArgs,
-  GuardRepository,
   GuardSet,
   GuardSetArgs,
-  GumballGuardProgram,
 } from '../guards';
+import { getDefaultGuardManifests } from '../plugin';
 
 export type GumballGuardData<D extends GuardSet> = {
   guards: D;
@@ -24,18 +31,32 @@ export type GumballGuardDataArgs<DA extends GuardSetArgs> = {
   groups: Array<GuardGroupArgs<DA>>;
 };
 
-export function getGumballGuardDataSerializer<
+export function getGumballGuardDataEncoder<DA extends GuardSetArgs>(
+  manifests: AnyGuardManifest[] = getDefaultGuardManifests()
+): Encoder<GumballGuardDataArgs<DA>> {
+  return getStructEncoder([
+    ['guards', getGuardSetEncoder<DA>(manifests)],
+    ['groups', getArrayEncoder(getGuardGroupEncoder<DA>(manifests))],
+  ]) as Encoder<GumballGuardDataArgs<DA>>;
+}
+
+export function getGumballGuardDataDecoder<D extends GuardSet>(
+  manifests: AnyGuardManifest[] = getDefaultGuardManifests()
+): Decoder<GumballGuardData<D>> {
+  return getStructDecoder([
+    ['guards', getGuardSetDecoder<D>(manifests)],
+    ['groups', getArrayDecoder(getGuardGroupDecoder<D>(manifests))],
+  ]) as Decoder<GumballGuardData<D>>;
+}
+
+export function getGumballGuardDataCodec<
   DA extends GuardSetArgs,
   D extends DA & GuardSet,
 >(
-  context: { guards: GuardRepository },
-  program: GumballGuardProgram
-): Serializer<GumballGuardDataArgs<DA>, GumballGuardData<D>> {
-  return struct<GumballGuardDataArgs<DA>, GumballGuardData<D>>(
-    [
-      ['guards', getGuardSetSerializer<DA, D>(context, program)],
-      ['groups', array(getGuardGroupSerializer<DA, D>(context, program))],
-    ],
-    { description: 'GumballGuardData' }
+  manifests: AnyGuardManifest[] = getDefaultGuardManifests()
+): Codec<GumballGuardDataArgs<DA>, GumballGuardData<D>> {
+  return combineCodec(
+    getGumballGuardDataEncoder<DA>(manifests),
+    getGumballGuardDataDecoder<D>(manifests)
   );
 }

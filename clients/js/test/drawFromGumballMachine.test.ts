@@ -1,86 +1,95 @@
-import { setComputeUnitLimit } from '@metaplex-foundation/mpl-toolbox';
-import { generateSigner, transactionBuilder } from '@metaplex-foundation/umi';
 import test from 'ava';
 import {
-  drawFromGumballMachine,
-  fetchGumballMachine,
-  GumballMachine,
-  TokenStandard,
+  getAddTokensInstructionAsync,
+  getDrawFromGumballMachineInstructionAsync,
+  getStartSaleInstruction,
 } from '../src';
-import { assertItemBought, create, createNft, createUmi } from './_setup';
+import { createMachineNoGuard } from './_lifecycleSetup';
+import {
+  COMPUTE_UNITS,
+  createClient,
+  createFungibleMint,
+  fetchGumballMachine,
+  generateKeyPairSignerWithSol,
+  sendTransaction,
+} from './_setup';
+
+// The umi test loads NFT items; here we load fungible token items instead (the
+// kit test harness has no NFT scaffolding). The behaviour under test —
+// drawing directly as the machine's mint authority — is identical.
 
 test('it can mint directly from a gumball machine as the mint authority', async (t) => {
-  // Given a loaded gumball machine.
-  const umi = await createUmi();
-  const gumballMachineSigner = await create(umi, {
-    items: [
-      {
-        id: (await createNft(umi)).publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-      {
-        id: (await createNft(umi)).publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-    ],
-    startSale: true,
+  const client = await createClient();
+
+  // Given a loaded gumball machine (no guard → machine is its own mint authority).
+  const { gumballMachine } = await createMachineNoGuard(client, {
+    settings: { itemCapacity: 5 },
   });
-  const gumballMachine = gumballMachineSigner.publicKey;
+  const { mint } = await createFungibleMint(client, { amount: 10 });
+  await sendTransaction(client.svm, client.payer, [
+    await getAddTokensInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint,
+      amount: 1,
+      quantity: 2,
+    }),
+    getStartSaleInstruction({ gumballMachine, authority: client.payer }),
+  ]);
 
-  // When we mint a new NFT directly from the gumball machine as the mint authority.
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 400000 }))
-    .add(
-      drawFromGumballMachine(umi, {
-        gumballMachine,
-        mintAuthority: umi.identity,
-      })
-    )
-    .sendAndConfirm(umi);
+  // When we mint directly from the gumball machine as the mint authority.
+  await sendTransaction(client.svm, client.payer, [
+    COMPUTE_UNITS,
+    await getDrawFromGumballMachineInstructionAsync({
+      gumballMachine,
+      mintAuthority: client.payer,
+      payer: client.payer,
+      buyer: client.payer.address,
+    }),
+  ]);
 
-  // Then the mint was successful.
-  await assertItemBought(t, umi, { gumballMachine });
-
-  // And the gumball machine was updated.
-  const gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
-  t.like(gumballMachineAccount, <GumballMachine>{ itemsRedeemed: 1n });
+  // Then the mint was successful and the gumball machine was updated.
+  const account = fetchGumballMachine(client.svm, gumballMachine);
+  t.is(account.itemsRedeemed, 1n);
+  const bought = account.items.filter((i) => i.buyer === client.payer.address);
+  t.is(bought.length, 1);
 });
 
 test('it cannot mint directly from a gumball machine if we are not the mint authority', async (t) => {
-  // Given a loaded gumball machine with a mint authority A.
-  const umi = await createUmi();
-  const gumballMachineSigner = await create(umi, {
-    items: [
-      {
-        id: (await createNft(umi)).publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-      {
-        id: (await createNft(umi)).publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-    ],
-    startSale: true,
-  });
-  const gumballMachine = gumballMachineSigner.publicKey;
+  const client = await createClient();
 
-  // When we try to mint directly from the gumball machine as mint authority B.
-  const mintAuthorityB = generateSigner(umi);
-  const promise = transactionBuilder()
-    .add(
-      drawFromGumballMachine(umi, {
+  // Given a loaded gumball machine with a mint authority A (the payer).
+  const { gumballMachine } = await createMachineNoGuard(client, {
+    settings: { itemCapacity: 5 },
+  });
+  const { mint } = await createFungibleMint(client, { amount: 10 });
+  await sendTransaction(client.svm, client.payer, [
+    await getAddTokensInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint,
+      amount: 1,
+      quantity: 2,
+    }),
+    getStartSaleInstruction({ gumballMachine, authority: client.payer }),
+  ]);
+
+  // When we try to mint directly as mint authority B.
+  const mintAuthorityB = await generateKeyPairSignerWithSol(client.svm);
+  await t.throwsAsync(
+    sendTransaction(client.svm, client.payer, [
+      COMPUTE_UNITS,
+      await getDrawFromGumballMachineInstructionAsync({
         gumballMachine,
         mintAuthority: mintAuthorityB,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then we expect a program error.
-  await t.throwsAsync(promise, {
-    message: /A has one constraint was violated/,
-  });
+        payer: client.payer,
+        buyer: client.payer.address,
+      }),
+    ]),
+    { message: /has one constraint|has_one|ConstraintHasOne/ }
+  );
 
   // And the gumball machine stayed the same.
-  const gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
-  t.like(gumballMachineAccount, <GumballMachine>{ itemsRedeemed: 0n });
+  const account = fetchGumballMachine(client.svm, gumballMachine);
+  t.is(account.itemsRedeemed, 0n);
 });

@@ -1,12 +1,13 @@
-import { getSplSystemProgramId } from '@metaplex-foundation/mpl-toolbox';
-import { Signer } from '@metaplex-foundation/umi';
+import { type Address, type TransactionSigner } from '@solana/kit';
 import {
   Allocation,
   AllocationArgs,
   findAllocationTrackerPda,
-  getAllocationSerializer,
+  getAllocationCodec,
 } from '../generated';
-import { GuardManifest } from '../guards';
+import { GuardManifest, GuardRemainingAccount } from '../guards';
+
+const SYSTEM_PROGRAM_ADDRESS = '11111111111111111111111111111111' as Address;
 
 /**
  * Guard to specify the maximum number of mints in a guard set.
@@ -19,35 +20,39 @@ export const allocationGuardManifest: GuardManifest<
   AllocationRouteArgs
 > = {
   name: 'allocation',
-  serializer: getAllocationSerializer,
-  mintParser: (context, mintContext, args) => ({
+  codec: getAllocationCodec,
+  mintParser: async (mintContext, args) => ({
     data: new Uint8Array(),
     remainingAccounts: [
       {
-        publicKey: findAllocationTrackerPda(context, {
-          id: args.id,
-          machine: mintContext.machine,
-          gumballGuard: mintContext.gumballGuard,
-        })[0],
+        address: (
+          await findAllocationTrackerPda({
+            id: args.id,
+            machine: mintContext.machine,
+            gumballGuard: mintContext.gumballGuard,
+          })
+        )[0],
         isWritable: true,
       },
     ],
   }),
-  routeParser: (context, routeContext, args) => ({
-    data: new Uint8Array(),
-    remainingAccounts: [
+  routeParser: async (routeContext, args) => {
+    const remainingAccounts: GuardRemainingAccount[] = [
       {
         isWritable: true,
-        publicKey: findAllocationTrackerPda(context, {
-          id: args.id,
-          machine: routeContext.machine,
-          gumballGuard: routeContext.gumballGuard,
-        })[0],
+        address: (
+          await findAllocationTrackerPda({
+            id: args.id,
+            machine: routeContext.machine,
+            gumballGuard: routeContext.gumballGuard,
+          })
+        )[0],
       },
       { isWritable: false, signer: args.gumballGuardAuthority },
-      { isWritable: false, publicKey: getSplSystemProgramId(context) },
-    ],
-  }),
+      { isWritable: false, address: SYSTEM_PROGRAM_ADDRESS },
+    ];
+    return { data: new Uint8Array(), remainingAccounts };
+  },
 };
 
 export type AllocationMintArgs = Omit<AllocationArgs, 'limit'>;
@@ -58,5 +63,5 @@ export type AllocationMintArgs = Omit<AllocationArgs, 'limit'>;
  */
 export type AllocationRouteArgs = Omit<AllocationArgs, 'limit'> & {
   /** The authority of the Gumball Guard as a Signer. */
-  gumballGuardAuthority: Signer;
+  gumballGuardAuthority: TransactionSigner;
 };

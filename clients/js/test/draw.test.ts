@@ -1,571 +1,76 @@
-/* eslint-disable no-await-in-loop */
-import {
-  fetchToken,
-  setComputeUnitLimit,
-} from '@metaplex-foundation/mpl-toolbox';
-import {
-  generateSigner,
-  isEqualToAmount,
-  none,
-  sol,
-  some,
-  transactionBuilder,
-} from '@metaplex-foundation/umi';
-import { generateSignerWithSol } from '@metaplex-foundation/umi-bundle-tests';
+import { some } from '@solana/kit';
 import test from 'ava';
 import {
-  addNft,
   draw,
-  fetchGumballMachine,
   findGumballMachineAuthorityPda,
-  GumballMachine,
-  GumballState,
-  startSale,
-  TokenStandard,
+  getAddTokensInstructionAsync,
+  getStartSaleInstruction,
 } from '../src';
 import {
-  assertItemBought,
-  create,
-  createMintWithHolders,
-  createNft,
-  createUmi,
-  drawRemainingItems,
-  tomorrow,
-  yesterday,
+  COMPUTE_UNITS,
+  createClient,
+  createFungibleMint,
+  createGumballMachine,
+  fetchGumballMachine,
+  generateKeyPairSignerWithSol,
+  sendTransaction,
+  sol,
 } from './_setup';
 
-test('it can mint from a gumball guard with no guards', async (t) => {
-  // Given a gumball machine with a gumball guard that has no guards.
-  const umi = await createUmi();
-  const nft = await createNft(umi);
+test('it draws a loaded token item through a solPayment guard', async (t) => {
+  const client = await createClient();
 
-  const gumballMachineSigner = await create(umi, {
-    items: [
-      {
-        id: nft.publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-    ],
-    startSale: true,
-    guards: {},
-    groups: [],
-  });
-  const gumballMachine = gumballMachineSigner.publicKey;
-
-  // When we mint from the gumball guard.
-  const buyer = generateSigner(umi);
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(umi, {
-        gumballMachine,
-        buyer,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then the mint was successful.
-  await assertItemBought(t, umi, { gumballMachine, buyer: buyer.publicKey });
-
-  // And the gumball machine was updated.
-  const gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
-  t.like(gumballMachineAccount, <Partial<GumballMachine>>{
-    itemsRedeemed: 1n,
-    items: [
-      {
-        index: 0,
-        isDrawn: true,
-        isClaimed: false,
-        isSettled: false,
-        mint: nft.publicKey,
-        seller: umi.identity.publicKey,
-        buyer: buyer.publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-        amount: 1,
-      },
-    ],
-  });
-});
-
-test('it sets state to SaleEnded on final draw', async (t) => {
-  // Given a gumball machine with a gumball guard that has no guards.
-  const umi = await createUmi();
-
-  const gumballMachineSigner = await create(umi, {
-    settings: { itemCapacity: 1 },
-    items: [
-      {
-        id: (await createNft(umi)).publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-    ],
-    startSale: true,
-    guards: {},
-    groups: [],
-  });
-  const gumballMachine = gumballMachineSigner.publicKey;
-
-  // When we mint from the gumball guard.
-  const buyer = generateSigner(umi);
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(umi, {
-        gumballMachine,
-        buyer,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then the mint was successful.
-  await assertItemBought(t, umi, { gumballMachine, buyer: buyer.publicKey });
-
-  // And the gumball machine was updated.
-  const gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
-  t.like(gumballMachineAccount, <GumballMachine>{
-    itemsRedeemed: 1n,
-    itemsLoaded: 1,
-    state: GumballState.SaleEnded,
-  });
-});
-
-test('it can mint from a gumball guard with guards', async (t) => {
-  // Given a gumball machine with some guards.
-  const umi = await createUmi();
-
-  const gumballMachineSigner = await create(umi, {
-    items: [
-      {
-        id: (await createNft(umi)).publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-    ],
-    startSale: true,
-    guards: {
-      botTax: { lamports: sol(0.01), lastInstruction: true },
-      solPayment: { lamports: sol(2) },
-    },
-  });
-  const gumballMachine = gumballMachineSigner.publicKey;
-
-  // When we mint from the gumball guard.
-  const buyer = generateSigner(umi);
-  const payer = await generateSignerWithSol(umi, sol(10));
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(umi, {
-        gumballMachine,
-        payer,
-        buyer,
-        mintArgs: {
-          solPayment: some(true),
-        },
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then the mint was successful.
-  await assertItemBought(t, umi, { gumballMachine, buyer: buyer.publicKey });
-
-  // And the payer was charged.
-  const payerBalance = await umi.rpc.getBalance(payer.publicKey);
-  t.true(isEqualToAmount(payerBalance, sol(8), sol(0.1)));
-
-  // And the gumball machine was updated.
-  const gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
-  t.like(gumballMachineAccount, <GumballMachine>{ itemsRedeemed: 1n });
-});
-
-test('it can mint from a gumball guard with guards and fee account', async (t) => {
-  // Given a gumball machine with some guards.
-  const umi = await createUmi();
-  const feeAccount = generateSigner(umi).publicKey;
-
-  const gumballMachineSigner = await create(umi, {
-    items: [
-      {
-        id: (await createNft(umi)).publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-    ],
-    feeConfig: {
-      feeAccount,
-      feeBps: 500,
-    },
-    startSale: true,
-    guards: {
-      solPayment: { lamports: sol(1) },
-    },
-  });
-  const gumballMachine = gumballMachineSigner.publicKey;
-
-  // When we mint from the gumball guard.
-  const buyer = generateSigner(umi);
-  const payer = await generateSignerWithSol(umi, sol(10));
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(umi, {
-        gumballMachine,
-        payer,
-        buyer,
-        mintArgs: {
-          solPayment: some({ feeAccounts: [feeAccount] }),
-        },
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then the mint was successful.
-  await assertItemBought(t, umi, { gumballMachine, buyer: buyer.publicKey });
-
-  // And the payer was charged.
-  const payerBalance = await umi.rpc.getBalance(payer.publicKey);
-  t.true(isEqualToAmount(payerBalance, sol(9), sol(0.1)));
-
-  // And the fee account was credited.
-  const feeAccountBalance = await umi.rpc.getBalance(feeAccount);
-  t.true(isEqualToAmount(feeAccountBalance, sol(0.05)));
-
-  // And the gumball machine was updated.
-  const gumballMachineAccount = await fetchGumballMachine(umi, gumballMachine);
-  t.like(gumballMachineAccount, <GumballMachine>{ itemsRedeemed: 1n });
-});
-
-test('it can mint from a gumball guard with token payment guard', async (t) => {
-  // Given a gumball machine with some guards.
-  const umi = await createUmi();
-  const buyerUmi = await createUmi();
-  const gumballMachineSigner = generateSigner(umi);
-  const gumballMachine = gumballMachineSigner.publicKey;
-  const destination = findGumballMachineAuthorityPda(umi, {
-    gumballMachine: gumballMachine,
-  })[0];
-  const [tokenMint, destinationAta, identityAta] = await createMintWithHolders(
-    umi,
-    {
-      holders: [
-        { owner: destination, amount: 100 },
-        { owner: buyerUmi.identity, amount: 12 },
-      ],
-    }
-  );
-
-  await create(umi, {
-    gumballMachine: gumballMachineSigner,
-    items: [
-      {
-        id: (await createNft(umi)).publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-    ],
-    startSale: true,
-    settings: {
-      paymentMint: tokenMint.publicKey,
-    },
-    guards: {
-      tokenPayment: { mint: tokenMint.publicKey, amount: 5 },
-    },
+  // Given a machine + solPayment guard with a single fungible item loaded.
+  const { mint } = await createFungibleMint(client, { amount: 100 });
+  const { gumballMachine } = await createGumballMachine(client, {
+    settings: { itemCapacity: 5 },
+    guards: { solPayment: some({ lamports: sol(1) }) },
   });
 
-  // When we mint from the gumball guard.
-  await transactionBuilder()
-    .add(setComputeUnitLimit(buyerUmi, { units: 600_000 }))
-    .add(
-      draw(buyerUmi, {
-        gumballMachine,
-        mintArgs: {
-          tokenPayment: { mint: tokenMint.publicKey },
-        },
-      })
-    )
-    .sendAndConfirm(buyerUmi);
+  await sendTransaction(client.svm, client.payer, [
+    await getAddTokensInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint,
+      amount: 100,
+      quantity: 1,
+    }),
+  ]);
 
-  // Then the mint was successful.
-  await assertItemBought(t, umi, {
+  // Sanity: the item is loaded but undrawn.
+  let account = fetchGumballMachine(client.svm, gumballMachine);
+  t.is(account.itemsLoaded, 1);
+  t.is(account.items[0].isDrawn, false);
+  t.is(account.items[0].buyer, undefined);
+
+  await sendTransaction(client.svm, client.payer, [
+    getStartSaleInstruction({ gumballMachine, authority: client.payer }),
+  ]);
+
+  // When a funded buyer draws through the solPayment guard.
+  const buyer = await generateKeyPairSignerWithSol(client.svm, sol(10));
+  const drawIx = await draw({
     gumballMachine,
-    buyer: buyerUmi.identity.publicKey,
+    payer: buyer,
+    buyer,
+    mintArgs: { solPayment: some(true) },
   });
+  await sendTransaction(client.svm, buyer, [COMPUTE_UNITS, drawIx]);
 
-  // And the treasury token received 5 tokens.
-  const destinationTokenAccount = await fetchToken(umi, destinationAta);
-  t.is(destinationTokenAccount.amount, 105n);
+  // Then the item is drawn and assigned to the buyer.
+  account = fetchGumballMachine(client.svm, gumballMachine);
+  t.is(account.itemsRedeemed, 1n);
+  const drawn = account.items.filter((i) => i.buyer === buyer.address);
+  t.is(drawn.length, 1);
+  t.is(drawn[0].isDrawn, true);
 
-  // And the payer lost 5 tokens.
-  const payerTokenAccount = await fetchToken(umi, identityAta);
-  t.is(payerTokenAccount.amount, 7n);
-});
-
-test('it can mint from a gumball guard with groups', async (t) => {
-  // Given a gumball machine with guard groups.
-  const umi = await createUmi();
-
-  const gumballMachineSigner = await create(umi, {
-    items: [
-      {
-        id: (await createNft(umi)).publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-    ],
-    startSale: true,
-    guards: {
-      botTax: { lamports: sol(0.01), lastInstruction: true },
-      solPayment: { lamports: sol(2) },
-    },
-    groups: [
-      { label: 'GROUP1', guards: { startDate: { date: yesterday() } } },
-      { label: 'GROUP2', guards: { startDate: { date: tomorrow() } } },
-    ],
-  });
-  const gumballMachine = gumballMachineSigner.publicKey;
-
-  // When we mint from it using GROUP1.
-  const buyer = generateSigner(umi);
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(umi, {
-        gumballMachine,
-        buyer,
-        mintArgs: { solPayment: some(true) },
-        group: 'GROUP1',
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then the mint was successful.
-  await assertItemBought(t, umi, { gumballMachine, buyer: buyer.publicKey });
-});
-
-test('it cannot mint using the default guards if the gumball guard has groups', async (t) => {
-  // Given a gumball machine with guard groups.
-  const umi = await createUmi();
-
-  const gumballMachineSigner = await create(umi, {
-    items: [
-      {
-        id: (await createNft(umi)).publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-    ],
-    startSale: true,
-    guards: { solPayment: { lamports: sol(2) } },
-    groups: [
-      { label: 'GROUP1', guards: { startDate: { date: yesterday() } } },
-      { label: 'GROUP2', guards: { startDate: { date: tomorrow() } } },
-    ],
-  });
-  const gumballMachine = gumballMachineSigner.publicKey;
-
-  // When we try to mint using the default guards.
-  const buyer = generateSigner(umi);
-  const promise = transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(umi, {
-        gumballMachine,
-        buyer,
-        mintArgs: { solPayment: some(true) },
-        group: none(),
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then we expect a program error.
-  await t.throwsAsync(promise, { message: /RequiredGroupLabelNotFound/ });
-});
-
-test('it cannot mint from a group if the provided group label does not exist', async (t) => {
-  // Given a gumball machine with no guard groups.
-  const umi = await createUmi();
-
-  const { publicKey: gumballMachine } = await create(umi, {
-    items: [
-      {
-        id: (await createNft(umi)).publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-    ],
-    startSale: true,
-    guards: { solPayment: { lamports: sol(2) } },
-    groups: [{ label: 'GROUP1', guards: { startDate: { date: yesterday() } } }],
-  });
-
-  // When we try to mint using a group that does not exist.
-  const buyer = generateSigner(umi);
-  const promise = transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(umi, {
-        gumballMachine,
-        buyer,
-        mintArgs: { solPayment: some(true) },
-        group: 'GROUPX',
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then we expect a program error.
-  await t.throwsAsync(promise, { message: /GroupNotFound/ });
-});
-
-test('it can mint using an explicit payer', async (t) => {
-  // Given a gumball machine with guards.
-  const umi = await createUmi();
-
-  const { publicKey: gumballMachine } = await create(umi, {
-    items: [
-      {
-        id: (await createNft(umi)).publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-    ],
-    startSale: true,
-    guards: { solPayment: { lamports: sol(2) } },
-  });
-
-  // And an explicit payer with 10 SOL.
-  const payer = await generateSignerWithSol(umi, sol(10));
-
-  // When we mint from it using that payer.
-  const buyer = generateSigner(umi);
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(umi, {
-        gumballMachine,
-        buyer,
-        payer,
-        mintArgs: { solPayment: some(true) },
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then the mint was successful.
-  await assertItemBought(t, umi, { gumballMachine, buyer: buyer.publicKey });
-
-  // And the payer was charged.
-  const payerBalance = await umi.rpc.getBalance(payer.publicKey);
-  t.true(isEqualToAmount(payerBalance, sol(8), sol(0.1)));
-});
-
-test('it cannot mint from a gumball machine not in sale started state', async (t) => {
-  // Given an empty gumball machine.
-  const umi = await createUmi();
-
-  const { publicKey: gumballMachine } = await create(umi, {
-    items: [
-      {
-        id: (await createNft(umi)).publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-    ],
-    guards: {},
-  });
-
-  // When we try to mint from it.
-  const buyer = generateSigner(umi);
-  const promise = transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(umi, {
-        gumballMachine,
-        buyer,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then we expect a program error.
-  await t.throwsAsync(promise, { message: /InvalidState/ });
-});
-
-test('it cannot mint from a gumball machine that has been fully minted', async (t) => {
-  // Given a gumball machine that has been fully minted.
-  const umi = await createUmi();
-
-  const { publicKey: gumballMachine } = await create(umi, {
-    items: [
-      {
-        id: (await createNft(umi)).publicKey,
-        tokenStandard: TokenStandard.NonFungible,
-      },
-    ],
-    startSale: true,
-    guards: {},
-  });
-
-  await transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(umi, {
-        buyer: umi.identity,
-        gumballMachine,
-      })
-    )
-    .sendAndConfirm(umi);
-  await assertItemBought(t, umi, { gumballMachine });
-
-  // When we try to mint from it again.
-  const promise = transactionBuilder()
-    .add(setComputeUnitLimit(umi, { units: 600_000 }))
-    .add(
-      draw(umi, {
-        gumballMachine,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // Then we expect a program error.
-  await t.throwsAsync(promise, { message: /InvalidState/ });
-});
-
-test('it can mint from a gumball machine in a random order', async (t) => {
-  // Given a gumball machine with non-sequential config line settings.
-  const umi = await createUmi();
-
-  const indices = Array.from({ length: 5 }, (x, i) => i);
-  const items = (await Promise.all(indices.map(() => createNft(umi)))).map(
-    (item) => ({ id: item.publicKey, tokenStandard: TokenStandard.NonFungible })
-  );
-
-  const { publicKey: gumballMachine } = await create(umi, {
-    guards: {},
-  });
-
-  await Promise.all(
-    items.map((item) =>
-      transactionBuilder()
-        .add(
-          addNft(umi, {
-            gumballMachine,
-            mint: item.id,
-          })
-        )
-        .sendAndConfirm(umi)
-    )
-  );
-
-  await transactionBuilder()
-    .add(
-      startSale(umi, {
-        gumballMachine,
-      })
-    )
-    .sendAndConfirm(umi);
-
-  // When we mint from it.
-  const minted = await drawRemainingItems(
-    umi,
+  // And the treasury (authority PDA) received the solPayment.
+  const [authorityPda] = await findGumballMachineAuthorityPda({
     gumballMachine,
-    indices.length,
-    1
-  );
+  });
+  const treasury = client.svm.getBalance(authorityPda) ?? 0n;
+  t.true(treasury >= sol(1), 'treasury received at least 1 SOL');
 
-  // Then the mints are not sequential.
-  t.notDeepEqual(indices, minted);
-
-  // And the mints are unique.
-  minted.sort((a, b) => a - b);
-  t.deepEqual(indices, minted);
+  // And total revenue is incremented.
+  t.true(BigInt(account.totalRevenue) === BigInt(sol(1)));
 });

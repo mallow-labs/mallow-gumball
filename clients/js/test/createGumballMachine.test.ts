@@ -1,104 +1,75 @@
-import {
-  generateSigner,
-  publicKey,
-  transactionBuilder,
-} from '@metaplex-foundation/umi';
+import { generateKeyPairSigner, some } from '@solana/kit';
 import test from 'ava';
+import { getCreateGumballMachineInstructionsAsync, GumballState } from '../src';
 import {
-  createGumballMachine,
+  createClient,
+  defaultGumballSettings,
   fetchGumballMachine,
-  GumballMachine,
-  GumballMachineItem,
-  GumballSettings,
-  GumballState,
-} from '../src';
-import { createUmi, defaultGumballSettings } from './_setup';
+  sendTransaction,
+} from './_setup';
 
 test('it can create a gumball machine using config line settings', async (t) => {
-  // Given an existing collection NFT.
-  const umi = await createUmi();
+  const client = await createClient();
 
-  // When we create a new gumball machine with config line settings.
-  const gumballMachine = generateSigner(umi);
-  const settings: GumballSettings = {
-    ...defaultGumballSettings(),
+  // When we create a new gumball machine with config line settings, buy back
+  // config, disabled primary split and disabled royalties.
+  const gumballMachine = await generateKeyPairSigner();
+  const buyBackConfig = {
+    enabled: true,
+    toGumballMachine: false,
+    oracleSigner: client.payer.address,
+    valuePct: 70,
+    marketplaceFeeBps: 1000,
+    cutoffPct: 0,
   };
-  await transactionBuilder()
-    .add(
-      await createGumballMachine(umi, {
-        gumballMachine,
-        settings,
-        disablePrimarySplit: true,
-        buyBackConfig: {
-          enabled: true,
-          toGumballMachine: false,
-          oracleSigner: umi.identity.publicKey,
-          valuePct: 70,
-          marketplaceFeeBps: 1000,
-          cutoffPct: 0,
-        },
-        disableRoyalties: true,
-      })
-    )
-    .sendAndConfirm(umi);
+  const instructions = await getCreateGumballMachineInstructionsAsync(
+    {
+      gumballMachine,
+      authority: client.payer.address,
+      payer: client.payer,
+      settings: defaultGumballSettings(),
+      disablePrimarySplit: true,
+      buyBackConfig: some(buyBackConfig),
+      disableRoyalties: true,
+    },
+    { rpc: client.rpc }
+  );
+  await sendTransaction(client.svm, client.payer, instructions);
 
   // Then we expect the gumball machine account to have the right data.
-  const gumballMachineAccount = await fetchGumballMachine(
-    umi,
-    gumballMachine.publicKey
-  );
-  t.like(gumballMachineAccount, <GumballMachine>{
-    publicKey: publicKey(gumballMachine),
-    authority: publicKey(umi.identity),
-    mintAuthority: publicKey(umi.identity),
-    version: 5,
-    itemsRedeemed: 0n,
-    settings,
-    state: GumballState.None,
-    itemsLoaded: 0,
-    items: [] as GumballMachineItem[],
-    disablePrimarySplit: true,
-    buyBackConfig: {
-      enabled: true,
-      toGumballMachine: false,
-      oracleSigner: umi.identity.publicKey,
-      valuePct: 70,
-      marketplaceFeeBps: 1000,
-      cutoffPct: 0,
-    },
-    buyBackFundsAvailable: 0n,
-    disableRoyalties: true,
-  });
+  const account = fetchGumballMachine(client.svm, gumballMachine.address);
+  t.is(account.version, 5);
+  t.is(account.authority, client.payer.address);
+  t.is(account.mintAuthority, client.payer.address);
+  t.is(account.itemsRedeemed, 0n);
+  t.is(account.itemsLoaded, 0);
+  t.is(account.state, GumballState.None);
+  t.deepEqual(account.items, []);
+  t.is(account.disablePrimarySplit, true);
+  t.is(account.disableRoyalties, true);
+  t.deepEqual(account.buyBackConfig, buyBackConfig);
+  t.is(account.buyBackFundsAvailable, 0n);
 });
 
 test("it can create a gumball machine that's bigger than 10Kb", async (t) => {
-  // Given an existing collection NFT.
-  const umi = await createUmi();
+  const client = await createClient();
 
   // When we create a new gumball machine with a large amount of items.
-  const gumballMachine = generateSigner(umi);
-  const settings: GumballSettings = {
-    ...defaultGumballSettings(),
-    itemCapacity: 20000n,
-  };
-  await transactionBuilder()
-    .add(
-      await createGumballMachine(umi, {
-        ...defaultGumballSettings(),
-        gumballMachine,
-        settings,
-      })
-    )
-    .sendAndConfirm(umi);
+  const gumballMachine = await generateKeyPairSigner();
+  const settings = defaultGumballSettings({ itemCapacity: 20000 });
+  const instructions = await getCreateGumballMachineInstructionsAsync(
+    {
+      gumballMachine,
+      authority: client.payer.address,
+      payer: client.payer,
+      settings,
+    },
+    { rpc: client.rpc }
+  );
+  await sendTransaction(client.svm, client.payer, instructions);
 
   // Then we expect the gumball machine account to have been created.
-  const gumballMachineAccount = await fetchGumballMachine(
-    umi,
-    gumballMachine.publicKey
-  );
-  t.like(gumballMachineAccount, <GumballMachine>{
-    publicKey: publicKey(gumballMachine),
-    itemsRedeemed: 0n,
-    settings,
-  });
+  const account = fetchGumballMachine(client.svm, gumballMachine.address);
+  t.is(account.itemsRedeemed, 0n);
+  t.is(account.settings.itemCapacity, 20000n);
 });

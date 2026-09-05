@@ -1,6 +1,6 @@
 import {
   findMintCounterPda,
-  getMintLimitSerializer,
+  getMintLimitCodec,
   MintLimit,
   MintLimitArgs,
 } from '../generated';
@@ -22,17 +22,19 @@ export const mintLimitGuardManifest: GuardManifest<
   MintLimitMintArgs
 > = {
   name: 'mintLimit',
-  serializer: getMintLimitSerializer,
-  mintParser: (context, mintContext, args) => ({
+  codec: getMintLimitCodec,
+  mintParser: async (mintContext, args) => ({
     data: new Uint8Array(),
     remainingAccounts: [
       {
-        publicKey: findMintCounterPda(context, {
-          id: args.id,
-          user: mintContext.buyer.publicKey,
-          machine: mintContext.machine,
-          gumballGuard: mintContext.gumballGuard,
-        })[0],
+        address: (
+          await findMintCounterPda({
+            id: args.id,
+            user: mintContext.buyer.address,
+            machine: mintContext.machine,
+            gumballGuard: mintContext.gumballGuard,
+          })
+        )[0],
         isWritable: true,
       },
     ],
