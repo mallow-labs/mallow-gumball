@@ -1720,14 +1720,26 @@ export type GumballGuard = {
     {
       name: 'token2022Payment';
       docs: [
-        'Guard that charges an amount in a specified spl-token as payment for the mint.',
+        'Guard that charges an amount in a specified spl-token-2022 as payment for the draw.',
         '',
-        'List of accounts required:',
+        '# Gumball layout',
         '',
-        '0. `[writable]` Token account holding the required amount.',
-        '1. `[writable]` Address of the ATA to receive the tokens.',
-        '2. `[]` Mint account.',
-        '3. `[]` SPL Token-2022 program account.',
+        '```text',
+        '0. [writable] Token account holding the required amount.',
+        '1. [writable] Address of the ATA to receive the tokens.',
+        '2. [        ] Mint account.',
+        '3. [        ] SPL Token-2022 program account.',
+        '4. [writable] Marketplace fee ATA (only with a fee config on a v1+ machine).',
+        '```',
+        '',
+        '# Jellybean layout',
+        '',
+        '```text',
+        "0.    [writable] Payer's Token-2022 token account.",
+        '1.    [        ] Mint account.',
+        '2.    [        ] SPL Token-2022 program account.',
+        '3..N  [writable] One ATA per `JellybeanMachine.fee_accounts` entry.',
+        '```',
       ];
       type: {
         kind: 'struct';
