@@ -36,11 +36,14 @@ jobs:
       # loads the program `.so` artifacts built by the `build_programs` job — both
       # the mallow programs and the dumped metaplex/system programs land in
       # `programs/.bin` — so download that artifact into place before testing.
+      # The artifact already stores its entries as `programs/.bin/*.so` (the
+      # `program*` wildcard in the upload glob keeps that prefix), so it extracts
+      # at the repo root; giving `programs/.bin` here would nest it twice.
       - name: Download program builds
         uses: actions/download-artifact@v8
         with:
           name: program-builds
-          path: ./programs/.bin
+          path: .
 
       - name: Install dependencies
         uses: metaplex-foundation/actions/install-node-dependencies@v1
