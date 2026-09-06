@@ -37,7 +37,7 @@ pub struct Initialize<'info> {
         payer = payer,
         space = 0,
         seeds = [
-            AUTHORITY_SEED.as_bytes(), 
+            AUTHORITY_SEED.as_bytes(),
             gumball_machine.key().as_ref()
         ],
         bump

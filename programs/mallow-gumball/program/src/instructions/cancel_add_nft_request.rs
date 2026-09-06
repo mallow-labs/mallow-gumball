@@ -27,7 +27,7 @@ pub struct CancelAddNftRequest<'info> {
         mut,
         close = seller,
         seeds = [
-            ADD_ITEM_REQUEST_SEED.as_bytes(), 
+            ADD_ITEM_REQUEST_SEED.as_bytes(),
             mint.key().as_ref()
         ],
         bump,
@@ -40,7 +40,7 @@ pub struct CancelAddNftRequest<'info> {
     #[account(
         mut,
         seeds = [
-            AUTHORITY_SEED.as_bytes(), 
+            AUTHORITY_SEED.as_bytes(),
             add_item_request.gumball_machine.key().as_ref()
         ],
         bump

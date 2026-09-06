@@ -10,7 +10,7 @@ use crate::{
 pub struct UpdateSettings<'info> {
     /// Gumball machine account.
     #[account(
-        mut, 
+        mut,
         has_one = authority
     )]
     gumball_machine: Box<Account<'info, GumballMachine>>,
