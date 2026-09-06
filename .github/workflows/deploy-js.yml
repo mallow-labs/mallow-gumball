@@ -58,7 +58,7 @@ jobs:
       contents: write
     steps:
       - name: Git checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
       - name: Load environment variables
         run: cat .github/.env >> $GITHUB_ENV
@@ -101,7 +101,7 @@ jobs:
         run: pnpm publish --no-git-checks --tag ${{ inputs.tag }}
 
       - name: Commit and tag new version
-        uses: stefanzweifel/git-auto-commit-action@v4
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: Deploy ${{ inputs.client }} client v${{ steps.bump.outputs.new_version }}
           tagging_message: ${{ inputs.client }}@v${{ steps.bump.outputs.new_version }}
@@ -121,7 +121,7 @@ jobs:
       url: ${{ steps.deploy.outputs.url }}
     steps:
       - name: Git checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.ref }}
 

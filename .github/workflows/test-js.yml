@@ -21,7 +21,7 @@ jobs:
         node: ["24.x"]
     steps:
       - name: Git checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
       - name: Load environment variables
         run: cat .github/.env >> $GITHUB_ENV
@@ -37,7 +37,7 @@ jobs:
       # the mallow programs and the dumped metaplex/system programs land in
       # `programs/.bin` — so download that artifact into place before testing.
       - name: Download program builds
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: program-builds
           path: ./programs/.bin
@@ -66,7 +66,7 @@ jobs:
         client: [js, umi]
     steps:
       - name: Git checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
       - name: Load environment variables
         run: cat .github/.env >> $GITHUB_ENV

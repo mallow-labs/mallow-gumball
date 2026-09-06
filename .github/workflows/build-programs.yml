@@ -26,10 +26,10 @@ env:
 jobs:
   build_programs:
     name: Build
-    runs-on: ubuntu-latest-16-cores
+    runs-on: ubuntu-latest
     steps:
       - name: Git checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
       - name: Load environment variables
         run: cat .github/.env >> $GITHUB_ENV
@@ -57,7 +57,7 @@ jobs:
           PROGRAMS: ${{ env.PROGRAMS }}
 
       - name: Upload program builds
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: program-builds
           # First wildcard ensures exported paths are consistently under the programs folder.
