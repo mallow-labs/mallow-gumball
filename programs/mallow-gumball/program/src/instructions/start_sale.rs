@@ -7,7 +7,7 @@ use crate::{get_config_count, state::GumballMachine, GumballError, GumballState}
 pub struct StartSale<'info> {
     /// Gumball machine account.
     #[account(
-        mut, 
+        mut,
         constraint = authority.key() == gumball_machine.authority || authority.key() == gumball_machine.mint_authority @ GumballError::InvalidAuthority,
         constraint = gumball_machine.state != GumballState::SaleLive && gumball_machine.state != GumballState::SaleEnded @ GumballError::InvalidState
     )]

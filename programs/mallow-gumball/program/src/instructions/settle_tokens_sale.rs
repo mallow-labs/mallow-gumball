@@ -30,7 +30,7 @@ pub struct SettleTokensSale<'info> {
     #[account(
         mut,
         seeds = [
-            AUTHORITY_SEED.as_bytes(), 
+            AUTHORITY_SEED.as_bytes(),
             gumball_machine.key().as_ref()
         ],
         bump

@@ -6,7 +6,7 @@ use anchor_lang::prelude::*;
 pub struct IncrementTotalRevenue<'info> {
     /// Gumball machine account.
     #[account(
-        mut, 
+        mut,
         has_one = mint_authority,
         constraint = gumball_machine.state == GumballState::SaleLive @ GumballError::InvalidState
     )]

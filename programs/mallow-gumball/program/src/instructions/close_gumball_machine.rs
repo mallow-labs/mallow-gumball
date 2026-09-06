@@ -11,8 +11,8 @@ use utils::{assert_is_ata_for_program, is_native_mint, resolve_currency_token_pr
 pub struct CloseGumballMachine<'info> {
     /// Gumball Machine acccount.
     #[account(
-        mut, 
-        close = authority, 
+        mut,
+        close = authority,
         has_one = authority @ GumballError::InvalidAuthority,
         has_one = mint_authority @ GumballError::InvalidMintAuthority
     )]
@@ -30,7 +30,7 @@ pub struct CloseGumballMachine<'info> {
     #[account(
         mut,
         seeds = [
-            AUTHORITY_SEED.as_bytes(), 
+            AUTHORITY_SEED.as_bytes(),
             gumball_machine.key().as_ref()
         ],
         bump

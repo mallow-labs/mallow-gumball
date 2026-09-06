@@ -12,7 +12,7 @@ use solana_program::sysvar;
 pub struct Draw<'info> {
     /// Gumball machine account.
     #[account(
-        mut, 
+        mut,
         has_one = mint_authority,
         constraint = gumball_machine.state == GumballState::SaleLive @ GumballError::InvalidState
     )]
@@ -147,7 +147,7 @@ pub fn set_config_line_buyer(
         .copy_from_slice(&u32::to_le_bytes(last_value));
 
     // (2) retrieve the config line at the mint_index position
-    let buyer_position = GUMBALL_MACHINE_SIZE + 4 + mint_index * gumball_machine.get_config_line_size() 
+    let buyer_position = GUMBALL_MACHINE_SIZE + 4 + mint_index * gumball_machine.get_config_line_size()
         + 32 // mint
         + 32; // seller
 

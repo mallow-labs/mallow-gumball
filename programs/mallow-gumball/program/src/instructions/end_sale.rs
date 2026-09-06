@@ -7,7 +7,7 @@ use crate::{state::GumballMachine, GumballError, GumballState};
 pub struct EndSale<'info> {
     /// Gumball machine account.
     #[account(
-        mut, 
+        mut,
         has_one = authority,
         constraint = gumball_machine.state != GumballState::SaleEnded @ GumballError::InvalidState
     )]
