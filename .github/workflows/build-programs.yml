@@ -68,4 +68,7 @@ jobs:
           name: program-builds
           # First wildcard ensures exported paths are consistently under the programs folder.
           path: ./program*/.bin/*.so
+          # .bin is a dot-directory, and upload-artifact treats anything under a
+          # folder beginning with `.` as hidden and skips it (since v4.4.0).
+          include-hidden-files: true
           if-no-files-found: error
