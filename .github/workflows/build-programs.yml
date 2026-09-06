@@ -45,6 +45,12 @@ jobs:
           version: ${{ inputs.solana || env.SOLANA_VERSION }}
           cache: ${{ env.CACHE }}
 
+      - name: Install Anchor CLI
+        uses: metaplex-foundation/actions/install-anchor-cli@v1
+        with:
+          version: ${{ env.ANCHOR_VERSION }}
+          cache: ${{ env.CACHE }}
+
       - name: Cache program dependencies
         if: env.CACHE == 'true'
         uses: metaplex-foundation/actions/cache-programs@v1
