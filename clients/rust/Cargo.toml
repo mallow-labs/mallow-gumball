@@ -1,6 +1,6 @@
 [package]
 name = "mallow-gumball-client"
-version = "1.0.0"
+version = "1.1.0"
 description = "A generated Rust library for the Mallow Gumball and Gumball Guard programs"
 repository = "https://github.com/mallow-labs/mallow-gumball"
 edition = "2021"

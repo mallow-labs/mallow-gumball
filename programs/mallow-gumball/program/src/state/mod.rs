@@ -7,3 +7,6 @@ pub mod add_item_request;
 pub mod cnft;
 pub mod gumball_machine;
 pub mod seller_history;
+
+pub mod cnft_recovery;
+pub use cnft_recovery::*;

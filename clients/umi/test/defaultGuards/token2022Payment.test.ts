@@ -8,7 +8,12 @@ import {
   transactionBuilder,
 } from '@metaplex-foundation/umi';
 import test from 'ava';
-import { draw, fetchGumballMachine, TokenStandard } from '../../src';
+import {
+  draw,
+  fetchGumballMachine,
+  findGumballMachineAuthorityPda,
+  TokenStandard,
+} from '../../src';
 import {
   assertItemBought,
   create,
@@ -26,7 +31,10 @@ test('it transfers Token2022 tokens from the payer to the destination', async (t
   // And a mint account such that:
   // - The destination treasury has 100 tokens.
   // - The payer has 12 tokens.
-  const destination = generateSigner(umi).publicKey;
+  const machine = generateSigner(umi);
+  const destination = findGumballMachineAuthorityPda(umi, {
+    gumballMachine: machine.publicKey,
+  })[0];
   const [tokenMint, destinationAta, identityAta] = await createMintWithHolders(
     { ...umi, programs: programsWithToken22 },
     {
@@ -40,6 +48,7 @@ test('it transfers Token2022 tokens from the payer to the destination', async (t
   // And a loaded Gumball Machine with a token2022Payment guard that requires 5 tokens.
 
   const { publicKey: gumballMachine } = await create(umi, {
+    gumballMachine: machine,
     items: [
       {
         id: (await createNft(umi)).publicKey,
@@ -98,7 +107,10 @@ test('it transfers Token2022 tokens from the payer to the fee account', async (t
   // And a mint account such that:
   // - The destination treasury has 100 tokens.
   // - The payer has 12 tokens.
-  const destination = generateSigner(umi).publicKey;
+  const machine = generateSigner(umi);
+  const destination = findGumballMachineAuthorityPda(umi, {
+    gumballMachine: machine.publicKey,
+  })[0];
   const feeAccount = generateSigner(umi).publicKey;
   const [tokenMint, destinationAta, identityAta, feeAccountAta] =
     await createMintWithHolders(
@@ -115,6 +127,7 @@ test('it transfers Token2022 tokens from the payer to the fee account', async (t
   // And a loaded Gumball Machine with a token2022Payment guard that requires 5 tokens.
 
   const { publicKey: gumballMachine } = await create(umi, {
+    gumballMachine: machine,
     items: [
       {
         id: (await createNft(umi)).publicKey,

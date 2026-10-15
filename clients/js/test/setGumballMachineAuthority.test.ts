@@ -20,6 +20,7 @@ test('it can update the authority of a gumball machine', async (t) => {
       gumballMachine,
       authority: authorityA,
       newAuthority: authorityB.address,
+      newAuthoritySigner: authorityB,
     }),
   ]);
 

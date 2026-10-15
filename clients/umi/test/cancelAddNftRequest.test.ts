@@ -14,6 +14,7 @@ import {
   requestAddNft,
   safeFetchAddItemRequestFromSeeds,
   safeFetchSellerHistory,
+  withRequestCancellationMachine,
 } from '../src';
 import { create, createNft, createProgrammableNft, createUmi } from './_setup';
 
@@ -38,16 +39,19 @@ test('it can cancel a request to add an nft to a gumball machine', async (t) => 
   // Then cancel the request to add an coreAsset to the Gumball Machine.
   await transactionBuilder()
     .add(
-      cancelAddNftRequest(sellerUmi, {
-        mint: nft.publicKey,
-        sellerHistory: findSellerHistoryPda(umi, {
-          gumballMachine: gumballMachine.publicKey,
-          seller: sellerUmi.identity.publicKey,
+      withRequestCancellationMachine(
+        cancelAddNftRequest(sellerUmi, {
+          mint: nft.publicKey,
+          sellerHistory: findSellerHistoryPda(umi, {
+            gumballMachine: gumballMachine.publicKey,
+            seller: sellerUmi.identity.publicKey,
+          }),
+          authorityPda: findGumballMachineAuthorityPda(umi, {
+            gumballMachine: gumballMachine.publicKey,
+          }),
         }),
-        authorityPda: findGumballMachineAuthorityPda(umi, {
-          gumballMachine: gumballMachine.publicKey,
-        }),
-      })
+        gumballMachine.publicKey
+      )
     )
     .sendAndConfirm(sellerUmi);
 
@@ -106,17 +110,20 @@ test('it can cancel a request to add a pnft to a gumball machine', async (t) => 
   // Then cancel the request to add an coreAsset to the Gumball Machine.
   await transactionBuilder()
     .add(
-      cancelAddNftRequest(sellerUmi, {
-        mint: nft.publicKey,
-        sellerHistory: findSellerHistoryPda(umi, {
-          gumballMachine: gumballMachine.publicKey,
-          seller: sellerUmi.identity.publicKey,
+      withRequestCancellationMachine(
+        cancelAddNftRequest(sellerUmi, {
+          mint: nft.publicKey,
+          sellerHistory: findSellerHistoryPda(umi, {
+            gumballMachine: gumballMachine.publicKey,
+            seller: sellerUmi.identity.publicKey,
+          }),
+          authorityPda: findGumballMachineAuthorityPda(umi, {
+            gumballMachine: gumballMachine.publicKey,
+          }),
+          authRulesProgram: MPL_TOKEN_AUTH_RULES_PROGRAM_ID,
         }),
-        authorityPda: findGumballMachineAuthorityPda(umi, {
-          gumballMachine: gumballMachine.publicKey,
-        }),
-        authRulesProgram: MPL_TOKEN_AUTH_RULES_PROGRAM_ID,
-      })
+        gumballMachine.publicKey
+      )
     )
     .sendAndConfirm(sellerUmi);
 
@@ -181,16 +188,19 @@ test('it can cancel a request to add an nft to a gumball machine after the gumba
   // Then cancel the request to add an coreAsset to the Gumball Machine.
   await transactionBuilder()
     .add(
-      cancelAddNftRequest(sellerUmi, {
-        mint: nft.publicKey,
-        sellerHistory: findSellerHistoryPda(umi, {
-          gumballMachine: gumballMachine.publicKey,
-          seller: sellerUmi.identity.publicKey,
+      withRequestCancellationMachine(
+        cancelAddNftRequest(sellerUmi, {
+          mint: nft.publicKey,
+          sellerHistory: findSellerHistoryPda(umi, {
+            gumballMachine: gumballMachine.publicKey,
+            seller: sellerUmi.identity.publicKey,
+          }),
+          authorityPda: findGumballMachineAuthorityPda(umi, {
+            gumballMachine: gumballMachine.publicKey,
+          }),
         }),
-        authorityPda: findGumballMachineAuthorityPda(umi, {
-          gumballMachine: gumballMachine.publicKey,
-        }),
-      })
+        gumballMachine.publicKey
+      )
     )
     .sendAndConfirm(sellerUmi);
 

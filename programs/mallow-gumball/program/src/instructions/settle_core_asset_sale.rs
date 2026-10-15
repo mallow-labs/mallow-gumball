@@ -41,7 +41,6 @@ pub struct SettleCoreAssetSale<'info> {
 
     /// Seller of the nft
     /// CHECK: Safe due to gumball machine constraint
-    #[account(mut)]
     authority: UncheckedAccount<'info>,
 
     /// Payment account for authority if using token payment
@@ -126,6 +125,8 @@ pub fn settle_core_asset_sale<'info>(
     let collection = collection_info.as_ref();
     let is_burnt = asset.data_len() <= 1; // burnt assets retain 1 byte or less
 
+    gumball_machine.assert_can_settle_item(buyer.key())?;
+
     assert_config_line(
         gumball_machine,
         index,
@@ -193,10 +194,11 @@ pub fn settle_core_asset_sale<'info>(
     ];
 
     let mut amount = 0;
+    let mut plugin_rent_refund = 0;
     if !is_item_claimed(gumball_machine, index)? {
         amount = 1;
 
-        processors::claim_core_asset(
+        plugin_rent_refund = processors::claim_core_asset(
             gumball_machine,
             index,
             authority_pda,
@@ -212,6 +214,7 @@ pub fn settle_core_asset_sale<'info>(
             mpl_core_program,
             system_program,
             &auth_seeds,
+            true,
         )?;
     }
 
@@ -236,6 +239,44 @@ pub fn settle_core_asset_sale<'info>(
         system_program,
         &auth_seeds,
     )?;
+
+    // Judge the plugin refund after sale proceeds and history rent are credited.
+    if plugin_rent_refund > 0
+        && payer.key != seller.key
+        && utils::can_receive_lamports(seller)
+        && seller.lamports().saturating_add(plugin_rent_refund)
+            >= Rent::get()?.minimum_balance(seller.data_len())
+    {
+        let mut instruction = anchor_lang::solana_program::system_instruction::transfer(
+            payer.key,
+            seller.key,
+            plugin_rent_refund,
+        );
+        let mut accounts = vec![payer.clone(), seller.clone(), system_program.clone()];
+        // Flush the preceding direct native credits before the system CPI.
+        let native_accounts = [
+            authority_pda.clone(),
+            authority.clone(),
+            seller_history.to_account_info(),
+        ];
+        for account in native_accounts
+            .iter()
+            .chain(fee_account_info.iter())
+            .chain(ctx.remaining_accounts)
+        {
+            if !accounts.iter().any(|existing| existing.key == account.key) {
+                instruction
+                    .accounts
+                    .push(solana_program::instruction::AccountMeta {
+                        pubkey: account.key(),
+                        is_signer: account.is_signer,
+                        is_writable: account.is_writable,
+                    });
+                accounts.push(account.clone());
+            }
+        }
+        solana_program::program::invoke(&instruction, &accounts)?;
+    }
 
     emit_cpi!(SettleItemSaleEvent {
         mint: asset.key(),

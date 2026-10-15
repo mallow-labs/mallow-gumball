@@ -1,0 +1,50 @@
+[
+  {
+    "instruction": "withdraw_payout",
+    "scenario": "R15-01: final withdrawal releases obstructed vault; empty; token2022=false",
+    "computeUnits": 28735,
+    "serializedBytes": 581
+  },
+  {
+    "instruction": "withdraw_payout",
+    "scenario": "R15-01: final withdrawal releases obstructed vault; wrong discriminator; token2022=false",
+    "computeUnits": 27269,
+    "serializedBytes": 581
+  },
+  {
+    "instruction": "withdraw_payout",
+    "scenario": "R15-01: final withdrawal releases obstructed vault; empty; token2022=true",
+    "computeUnits": 37717,
+    "serializedBytes": 581
+  },
+  {
+    "instruction": "withdraw_payout",
+    "scenario": "R15-01: final withdrawal releases obstructed vault; wrong discriminator; token2022=true",
+    "computeUnits": 33251,
+    "serializedBytes": 581
+  },
+  {
+    "instruction": "withdraw_payout",
+    "scenario": "R14-03: close sweeps only surplus and final withdrawal closes vault; token2022=false",
+    "computeUnits": 27187,
+    "serializedBytes": 581
+  },
+  {
+    "instruction": "withdraw_payout",
+    "scenario": "R15-01: final withdrawal releases obstructed vault; donation; token2022=false",
+    "computeUnits": 27187,
+    "serializedBytes": 581
+  },
+  {
+    "instruction": "withdraw_payout",
+    "scenario": "R14-03: close sweeps only surplus and final withdrawal closes vault; token2022=true",
+    "computeUnits": 33169,
+    "serializedBytes": 581
+  },
+  {
+    "instruction": "withdraw_payout",
+    "scenario": "R15-01: final withdrawal releases obstructed vault; donation; token2022=true",
+    "computeUnits": 34669,
+    "serializedBytes": 581
+  }
+]

@@ -7,7 +7,7 @@ The new `Gumball Guard` program is designed to take away the **access control** 
 The access control on a Gumball Guard is encapsulated in individuals guards representing a specific rule that needs to be satisfied, which can be enabled or disabled. For example, the live date of the mint is represented as the `LiveDate` guard. This guard is satisfied only if the transaction time is on or after the configured start time on the guard. Other guards can validate different aspects of the access control – e.g., ensuring that the user holds a specific token (token gating).
 
 > **Note**
-> The Gumball Guard program can only be used in combination with `Gumball Machine` accounts. When a Gumball Guard is used in combination with a Gumball Machine, it becomes its mint authority and minting is only possible through the Gumball Guard.
+> Each Gumball Guard serves the gumball or Jellybean machine whose address equals its immutable `base`. Wrap, update, withdraw and draw validate that binding. Guard edits evaluate the bound machine's collaborator custody lock, and guard closure requires closing that same machine. Existing guards use their stored base without changing account layout; mismatched legacy bindings fail closed.
 
 ### How the program works?
 

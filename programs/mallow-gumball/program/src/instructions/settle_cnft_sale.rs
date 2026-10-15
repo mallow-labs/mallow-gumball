@@ -61,7 +61,6 @@ pub struct SettleCnftSale<'info> {
     authority_pda_payment_account: Option<UncheckedAccount<'info>>,
 
     /// CHECK: Safe due to gumball machine constraint.
-    #[account(mut)]
     authority: UncheckedAccount<'info>,
 
     /// Payment account for authority if using token payment.
@@ -140,7 +139,7 @@ pub fn settle_cnft_sale<'info>(
     current_leaf_owner: Pubkey,
     current_leaf_delegate: Pubkey,
 ) -> Result<()> {
-    assert_cnft_v1(args.version)?;
+    assert_cnft_v1(args.version, &ctx.accounts.merkle_tree.to_account_info())?;
 
     let gumball_machine = &mut ctx.accounts.gumball_machine;
     let seller_history = &mut ctx.accounts.seller_history;
@@ -163,6 +162,8 @@ pub fn settle_cnft_sale<'info>(
     // Anti-substitution: derive asset id and bind it to the stored config line.
     let asset_id = cnft_asset_id(&merkle_tree.key(), args.nonce);
     assert_cnft_tree_config(&tree_config.key(), &merkle_tree.key())?;
+
+    gumball_machine.assert_can_settle_item(buyer.key())?;
 
     assert_config_line(
         gumball_machine,

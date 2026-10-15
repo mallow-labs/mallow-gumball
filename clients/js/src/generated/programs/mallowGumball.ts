@@ -36,10 +36,13 @@ import {
 } from '@solana/program-client-core';
 import {
   getAddItemRequestCodec,
+  getCnftRecoveryCodec,
   getGumballMachineCodec,
   getSellerHistoryCodec,
   type AddItemRequest,
   type AddItemRequestArgs,
+  type CnftRecovery,
+  type CnftRecoveryArgs,
   type GumballMachine,
   type GumballMachineArgs,
   type SellerHistory,
@@ -47,157 +50,218 @@ import {
 } from '../accounts';
 import {
   getAddCnftInstructionAsync,
+  getAddCnftV2InstructionAsync,
   getAddCoreAssetInstructionAsync,
   getAddNftInstructionAsync,
   getAddTokensInstructionAsync,
+  getAdminRefundCnftSaleV2InstructionAsync,
   getApproveAddItemInstructionAsync,
   getBaseSettleCoreAssetSaleInstructionAsync,
   getBaseSettleNftSaleInstructionAsync,
   getCancelAddCnftRequestInstructionAsync,
+  getCancelAddCnftRequestV2InstructionAsync,
   getCancelAddCoreAssetRequestInstructionAsync,
   getCancelAddNftRequestInstructionAsync,
   getClaimCnftInstructionAsync,
+  getClaimCnftV2InstructionAsync,
   getClaimCoreAssetInstructionAsync,
   getClaimNftInstructionAsync,
   getClaimTokensInstructionAsync,
+  getCloseMissingCnftRecoveryV2Instruction,
   getDeleteGumballMachineInstructionAsync,
   getDrawFromGumballMachineInstructionAsync,
   getEndSaleInstruction,
   getIncrementTotalRevenueInstruction,
   getInitializeGumballMachineInstructionAsync,
   getManageBuyBackFundsInstructionAsync,
+  getMigrateAddItemRequestsInstructionAsync,
+  getReclaimCnftV2Instruction,
+  getRecoverPayoutRentInstructionAsync,
+  getRefundCnftSaleV2InstructionAsync,
+  getRejectAddItemRequestInstruction,
   getRemoveCnftInstructionAsync,
+  getRemoveCnftV2InstructionAsync,
   getRemoveCoreAssetInstructionAsync,
   getRemoveNftInstructionAsync,
   getRemoveTokensInstructionAsync,
   getRemoveTokensSpanInstructionAsync,
   getRequestAddCnftInstructionAsync,
+  getRequestAddCnftV2InstructionAsync,
   getRequestAddCoreAssetInstructionAsync,
   getRequestAddNftInstructionAsync,
   getSellItemBackInstructionAsync,
   getSetGumballMachineAuthorityInstruction,
   getSetMintAuthorityInstruction,
   getSettleCnftSaleInstructionAsync,
+  getSettleCnftSaleV2InstructionAsync,
   getSettleTokensSaleClaimedInstructionAsync,
   getSettleTokensSaleInstructionAsync,
   getStartSaleInstruction,
   getUpdateSettingsInstruction,
+  getWithdrawPayoutInstructionAsync,
   parseAddCnftInstruction,
+  parseAddCnftV2Instruction,
   parseAddCoreAssetInstruction,
   parseAddNftInstruction,
   parseAddTokensInstruction,
+  parseAdminRefundCnftSaleV2Instruction,
   parseApproveAddItemInstruction,
   parseBaseSettleCoreAssetSaleInstruction,
   parseBaseSettleNftSaleInstruction,
   parseCancelAddCnftRequestInstruction,
+  parseCancelAddCnftRequestV2Instruction,
   parseCancelAddCoreAssetRequestInstruction,
   parseCancelAddNftRequestInstruction,
   parseClaimCnftInstruction,
+  parseClaimCnftV2Instruction,
   parseClaimCoreAssetInstruction,
   parseClaimNftInstruction,
   parseClaimTokensInstruction,
+  parseCloseMissingCnftRecoveryV2Instruction,
   parseDeleteGumballMachineInstruction,
   parseDrawFromGumballMachineInstruction,
   parseEndSaleInstruction,
   parseIncrementTotalRevenueInstruction,
   parseInitializeGumballMachineInstruction,
   parseManageBuyBackFundsInstruction,
+  parseMigrateAddItemRequestsInstruction,
+  parseReclaimCnftV2Instruction,
+  parseRecoverPayoutRentInstruction,
+  parseRefundCnftSaleV2Instruction,
+  parseRejectAddItemRequestInstruction,
   parseRemoveCnftInstruction,
+  parseRemoveCnftV2Instruction,
   parseRemoveCoreAssetInstruction,
   parseRemoveNftInstruction,
   parseRemoveTokensInstruction,
   parseRemoveTokensSpanInstruction,
   parseRequestAddCnftInstruction,
+  parseRequestAddCnftV2Instruction,
   parseRequestAddCoreAssetInstruction,
   parseRequestAddNftInstruction,
   parseSellItemBackInstruction,
   parseSetGumballMachineAuthorityInstruction,
   parseSetMintAuthorityInstruction,
   parseSettleCnftSaleInstruction,
+  parseSettleCnftSaleV2Instruction,
   parseSettleTokensSaleClaimedInstruction,
   parseSettleTokensSaleInstruction,
   parseStartSaleInstruction,
   parseUpdateSettingsInstruction,
+  parseWithdrawPayoutInstruction,
   type AddCnftAsyncInput,
+  type AddCnftV2AsyncInput,
   type AddCoreAssetAsyncInput,
   type AddNftAsyncInput,
   type AddTokensAsyncInput,
+  type AdminRefundCnftSaleV2AsyncInput,
   type ApproveAddItemAsyncInput,
   type BaseSettleCoreAssetSaleAsyncInput,
   type BaseSettleNftSaleAsyncInput,
   type CancelAddCnftRequestAsyncInput,
+  type CancelAddCnftRequestV2AsyncInput,
   type CancelAddCoreAssetRequestAsyncInput,
   type CancelAddNftRequestAsyncInput,
   type ClaimCnftAsyncInput,
+  type ClaimCnftV2AsyncInput,
   type ClaimCoreAssetAsyncInput,
   type ClaimNftAsyncInput,
   type ClaimTokensAsyncInput,
+  type CloseMissingCnftRecoveryV2Input,
   type DeleteGumballMachineAsyncInput,
   type DrawFromGumballMachineAsyncInput,
   type EndSaleInput,
   type IncrementTotalRevenueInput,
   type InitializeGumballMachineAsyncInput,
   type ManageBuyBackFundsAsyncInput,
+  type MigrateAddItemRequestsAsyncInput,
   type ParsedAddCnftInstruction,
+  type ParsedAddCnftV2Instruction,
   type ParsedAddCoreAssetInstruction,
   type ParsedAddNftInstruction,
   type ParsedAddTokensInstruction,
+  type ParsedAdminRefundCnftSaleV2Instruction,
   type ParsedApproveAddItemInstruction,
   type ParsedBaseSettleCoreAssetSaleInstruction,
   type ParsedBaseSettleNftSaleInstruction,
   type ParsedCancelAddCnftRequestInstruction,
+  type ParsedCancelAddCnftRequestV2Instruction,
   type ParsedCancelAddCoreAssetRequestInstruction,
   type ParsedCancelAddNftRequestInstruction,
   type ParsedClaimCnftInstruction,
+  type ParsedClaimCnftV2Instruction,
   type ParsedClaimCoreAssetInstruction,
   type ParsedClaimNftInstruction,
   type ParsedClaimTokensInstruction,
+  type ParsedCloseMissingCnftRecoveryV2Instruction,
   type ParsedDeleteGumballMachineInstruction,
   type ParsedDrawFromGumballMachineInstruction,
   type ParsedEndSaleInstruction,
   type ParsedIncrementTotalRevenueInstruction,
   type ParsedInitializeGumballMachineInstruction,
   type ParsedManageBuyBackFundsInstruction,
+  type ParsedMigrateAddItemRequestsInstruction,
+  type ParsedReclaimCnftV2Instruction,
+  type ParsedRecoverPayoutRentInstruction,
+  type ParsedRefundCnftSaleV2Instruction,
+  type ParsedRejectAddItemRequestInstruction,
   type ParsedRemoveCnftInstruction,
+  type ParsedRemoveCnftV2Instruction,
   type ParsedRemoveCoreAssetInstruction,
   type ParsedRemoveNftInstruction,
   type ParsedRemoveTokensInstruction,
   type ParsedRemoveTokensSpanInstruction,
   type ParsedRequestAddCnftInstruction,
+  type ParsedRequestAddCnftV2Instruction,
   type ParsedRequestAddCoreAssetInstruction,
   type ParsedRequestAddNftInstruction,
   type ParsedSellItemBackInstruction,
   type ParsedSetGumballMachineAuthorityInstruction,
   type ParsedSetMintAuthorityInstruction,
   type ParsedSettleCnftSaleInstruction,
+  type ParsedSettleCnftSaleV2Instruction,
   type ParsedSettleTokensSaleClaimedInstruction,
   type ParsedSettleTokensSaleInstruction,
   type ParsedStartSaleInstruction,
   type ParsedUpdateSettingsInstruction,
+  type ParsedWithdrawPayoutInstruction,
+  type ReclaimCnftV2Input,
+  type RecoverPayoutRentAsyncInput,
+  type RefundCnftSaleV2AsyncInput,
+  type RejectAddItemRequestInput,
   type RemoveCnftAsyncInput,
+  type RemoveCnftV2AsyncInput,
   type RemoveCoreAssetAsyncInput,
   type RemoveNftAsyncInput,
   type RemoveTokensAsyncInput,
   type RemoveTokensSpanAsyncInput,
   type RequestAddCnftAsyncInput,
+  type RequestAddCnftV2AsyncInput,
   type RequestAddCoreAssetAsyncInput,
   type RequestAddNftAsyncInput,
   type SellItemBackAsyncInput,
   type SetGumballMachineAuthorityInput,
   type SetMintAuthorityInput,
   type SettleCnftSaleAsyncInput,
+  type SettleCnftSaleV2AsyncInput,
   type SettleTokensSaleAsyncInput,
   type SettleTokensSaleClaimedAsyncInput,
   type StartSaleInput,
   type UpdateSettingsInput,
+  type WithdrawPayoutAsyncInput,
 } from '../instructions';
-import { findAddItemRequestPda, findSellerHistoryPda } from '../pdas';
+import {
+  findAddItemRequestPda,
+  findCnftRecoveryPda,
+  findSellerHistoryPda,
+} from '../pdas';
 
 export const MALLOW_GUMBALL_PROGRAM_ADDRESS =
   'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa' as Address<'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa'>;
 
 export enum MallowGumballAccount {
   AddItemRequest,
+  CnftRecovery,
   GumballMachine,
   SellerHistory,
 }
@@ -216,6 +280,17 @@ export function identifyMallowGumballAccount(
     )
   ) {
     return MallowGumballAccount.AddItemRequest;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([82, 193, 171, 170, 234, 86, 29, 27])
+      ),
+      0
+    )
+  ) {
+    return MallowGumballAccount.CnftRecovery;
   }
   if (
     containsBytes(
@@ -247,34 +322,47 @@ export function identifyMallowGumballAccount(
 
 export enum MallowGumballInstruction {
   AddCnft,
+  AddCnftV2,
   AddCoreAsset,
   AddNft,
   AddTokens,
+  AdminRefundCnftSaleV2,
   ApproveAddItem,
   CancelAddCnftRequest,
+  CancelAddCnftRequestV2,
   CancelAddCoreAssetRequest,
   CancelAddNftRequest,
   ClaimCnft,
+  ClaimCnftV2,
   ClaimCoreAsset,
   ClaimNft,
   ClaimTokens,
+  CloseMissingCnftRecoveryV2,
   DrawFromGumballMachine,
   EndSale,
   IncrementTotalRevenue,
   InitializeGumballMachine,
   ManageBuyBackFunds,
+  MigrateAddItemRequests,
+  ReclaimCnftV2,
+  RecoverPayoutRent,
+  RefundCnftSaleV2,
+  RejectAddItemRequest,
   RemoveCnft,
+  RemoveCnftV2,
   RemoveCoreAsset,
   RemoveNft,
   RemoveTokens,
   RemoveTokensSpan,
   RequestAddCnft,
+  RequestAddCnftV2,
   RequestAddCoreAsset,
   RequestAddNft,
   SellItemBack,
   SetGumballMachineAuthority,
   SetMintAuthority,
   SettleCnftSale,
+  SettleCnftSaleV2,
   BaseSettleCoreAssetSale,
   BaseSettleNftSale,
   SettleTokensSale,
@@ -282,6 +370,7 @@ export enum MallowGumballInstruction {
   StartSale,
   UpdateSettings,
   DeleteGumballMachine,
+  WithdrawPayout,
 }
 
 export function identifyMallowGumballInstruction(
@@ -298,6 +387,17 @@ export function identifyMallowGumballInstruction(
     )
   ) {
     return MallowGumballInstruction.AddCnft;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([228, 113, 118, 6, 81, 113, 67, 151])
+      ),
+      0
+    )
+  ) {
+    return MallowGumballInstruction.AddCnftV2;
   }
   if (
     containsBytes(
@@ -336,6 +436,17 @@ export function identifyMallowGumballInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([182, 15, 184, 198, 77, 222, 134, 213])
+      ),
+      0
+    )
+  ) {
+    return MallowGumballInstruction.AdminRefundCnftSaleV2;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([135, 250, 51, 252, 70, 171, 19, 48])
       ),
       0
@@ -353,6 +464,17 @@ export function identifyMallowGumballInstruction(
     )
   ) {
     return MallowGumballInstruction.CancelAddCnftRequest;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([187, 113, 115, 159, 171, 137, 21, 127])
+      ),
+      0
+    )
+  ) {
+    return MallowGumballInstruction.CancelAddCnftRequestV2;
   }
   if (
     containsBytes(
@@ -391,6 +513,17 @@ export function identifyMallowGumballInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([166, 214, 122, 178, 215, 9, 254, 43])
+      ),
+      0
+    )
+  ) {
+    return MallowGumballInstruction.ClaimCnftV2;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([63, 249, 255, 80, 180, 15, 173, 59])
       ),
       0
@@ -419,6 +552,17 @@ export function identifyMallowGumballInstruction(
     )
   ) {
     return MallowGumballInstruction.ClaimTokens;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([8, 244, 37, 107, 46, 112, 70, 76])
+      ),
+      0
+    )
+  ) {
+    return MallowGumballInstruction.CloseMissingCnftRecoveryV2;
   }
   if (
     containsBytes(
@@ -479,12 +623,78 @@ export function identifyMallowGumballInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([223, 31, 197, 225, 89, 39, 22, 24])
+      ),
+      0
+    )
+  ) {
+    return MallowGumballInstruction.MigrateAddItemRequests;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([2, 85, 163, 175, 100, 128, 64, 44])
+      ),
+      0
+    )
+  ) {
+    return MallowGumballInstruction.ReclaimCnftV2;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([182, 254, 139, 214, 116, 154, 222, 182])
+      ),
+      0
+    )
+  ) {
+    return MallowGumballInstruction.RecoverPayoutRent;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([152, 132, 12, 132, 87, 135, 251, 144])
+      ),
+      0
+    )
+  ) {
+    return MallowGumballInstruction.RefundCnftSaleV2;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([131, 93, 0, 132, 158, 83, 50, 193])
+      ),
+      0
+    )
+  ) {
+    return MallowGumballInstruction.RejectAddItemRequest;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([24, 204, 40, 184, 195, 73, 136, 210])
       ),
       0
     )
   ) {
     return MallowGumballInstruction.RemoveCnft;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([105, 128, 162, 94, 55, 143, 73, 189])
+      ),
+      0
+    )
+  ) {
+    return MallowGumballInstruction.RemoveCnftV2;
   }
   if (
     containsBytes(
@@ -540,6 +750,17 @@ export function identifyMallowGumballInstruction(
     )
   ) {
     return MallowGumballInstruction.RequestAddCnft;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([218, 46, 98, 124, 63, 115, 190, 27])
+      ),
+      0
+    )
+  ) {
+    return MallowGumballInstruction.RequestAddCnftV2;
   }
   if (
     containsBytes(
@@ -606,6 +827,17 @@ export function identifyMallowGumballInstruction(
     )
   ) {
     return MallowGumballInstruction.SettleCnftSale;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([147, 48, 252, 58, 69, 79, 37, 5])
+      ),
+      0
+    )
+  ) {
+    return MallowGumballInstruction.SettleCnftSaleV2;
   }
   if (
     containsBytes(
@@ -684,6 +916,17 @@ export function identifyMallowGumballInstruction(
   ) {
     return MallowGumballInstruction.DeleteGumballMachine;
   }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([114, 146, 48, 240, 49, 57, 108, 188])
+      ),
+      0
+    )
+  ) {
+    return MallowGumballInstruction.WithdrawPayout;
+  }
   throw new SolanaError(
     SOLANA_ERROR__PROGRAM_CLIENTS__FAILED_TO_IDENTIFY_INSTRUCTION,
     { instructionData: data, programName: 'mallowGumball' }
@@ -697,6 +940,9 @@ export type ParsedMallowGumballInstruction<
       instructionType: MallowGumballInstruction.AddCnft;
     } & ParsedAddCnftInstruction<TProgram>)
   | ({
+      instructionType: MallowGumballInstruction.AddCnftV2;
+    } & ParsedAddCnftV2Instruction<TProgram>)
+  | ({
       instructionType: MallowGumballInstruction.AddCoreAsset;
     } & ParsedAddCoreAssetInstruction<TProgram>)
   | ({
@@ -706,11 +952,17 @@ export type ParsedMallowGumballInstruction<
       instructionType: MallowGumballInstruction.AddTokens;
     } & ParsedAddTokensInstruction<TProgram>)
   | ({
+      instructionType: MallowGumballInstruction.AdminRefundCnftSaleV2;
+    } & ParsedAdminRefundCnftSaleV2Instruction<TProgram>)
+  | ({
       instructionType: MallowGumballInstruction.ApproveAddItem;
     } & ParsedApproveAddItemInstruction<TProgram>)
   | ({
       instructionType: MallowGumballInstruction.CancelAddCnftRequest;
     } & ParsedCancelAddCnftRequestInstruction<TProgram>)
+  | ({
+      instructionType: MallowGumballInstruction.CancelAddCnftRequestV2;
+    } & ParsedCancelAddCnftRequestV2Instruction<TProgram>)
   | ({
       instructionType: MallowGumballInstruction.CancelAddCoreAssetRequest;
     } & ParsedCancelAddCoreAssetRequestInstruction<TProgram>)
@@ -721,6 +973,9 @@ export type ParsedMallowGumballInstruction<
       instructionType: MallowGumballInstruction.ClaimCnft;
     } & ParsedClaimCnftInstruction<TProgram>)
   | ({
+      instructionType: MallowGumballInstruction.ClaimCnftV2;
+    } & ParsedClaimCnftV2Instruction<TProgram>)
+  | ({
       instructionType: MallowGumballInstruction.ClaimCoreAsset;
     } & ParsedClaimCoreAssetInstruction<TProgram>)
   | ({
@@ -729,6 +984,9 @@ export type ParsedMallowGumballInstruction<
   | ({
       instructionType: MallowGumballInstruction.ClaimTokens;
     } & ParsedClaimTokensInstruction<TProgram>)
+  | ({
+      instructionType: MallowGumballInstruction.CloseMissingCnftRecoveryV2;
+    } & ParsedCloseMissingCnftRecoveryV2Instruction<TProgram>)
   | ({
       instructionType: MallowGumballInstruction.DrawFromGumballMachine;
     } & ParsedDrawFromGumballMachineInstruction<TProgram>)
@@ -745,8 +1003,26 @@ export type ParsedMallowGumballInstruction<
       instructionType: MallowGumballInstruction.ManageBuyBackFunds;
     } & ParsedManageBuyBackFundsInstruction<TProgram>)
   | ({
+      instructionType: MallowGumballInstruction.MigrateAddItemRequests;
+    } & ParsedMigrateAddItemRequestsInstruction<TProgram>)
+  | ({
+      instructionType: MallowGumballInstruction.ReclaimCnftV2;
+    } & ParsedReclaimCnftV2Instruction<TProgram>)
+  | ({
+      instructionType: MallowGumballInstruction.RecoverPayoutRent;
+    } & ParsedRecoverPayoutRentInstruction<TProgram>)
+  | ({
+      instructionType: MallowGumballInstruction.RefundCnftSaleV2;
+    } & ParsedRefundCnftSaleV2Instruction<TProgram>)
+  | ({
+      instructionType: MallowGumballInstruction.RejectAddItemRequest;
+    } & ParsedRejectAddItemRequestInstruction<TProgram>)
+  | ({
       instructionType: MallowGumballInstruction.RemoveCnft;
     } & ParsedRemoveCnftInstruction<TProgram>)
+  | ({
+      instructionType: MallowGumballInstruction.RemoveCnftV2;
+    } & ParsedRemoveCnftV2Instruction<TProgram>)
   | ({
       instructionType: MallowGumballInstruction.RemoveCoreAsset;
     } & ParsedRemoveCoreAssetInstruction<TProgram>)
@@ -762,6 +1038,9 @@ export type ParsedMallowGumballInstruction<
   | ({
       instructionType: MallowGumballInstruction.RequestAddCnft;
     } & ParsedRequestAddCnftInstruction<TProgram>)
+  | ({
+      instructionType: MallowGumballInstruction.RequestAddCnftV2;
+    } & ParsedRequestAddCnftV2Instruction<TProgram>)
   | ({
       instructionType: MallowGumballInstruction.RequestAddCoreAsset;
     } & ParsedRequestAddCoreAssetInstruction<TProgram>)
@@ -780,6 +1059,9 @@ export type ParsedMallowGumballInstruction<
   | ({
       instructionType: MallowGumballInstruction.SettleCnftSale;
     } & ParsedSettleCnftSaleInstruction<TProgram>)
+  | ({
+      instructionType: MallowGumballInstruction.SettleCnftSaleV2;
+    } & ParsedSettleCnftSaleV2Instruction<TProgram>)
   | ({
       instructionType: MallowGumballInstruction.BaseSettleCoreAssetSale;
     } & ParsedBaseSettleCoreAssetSaleInstruction<TProgram>)
@@ -800,7 +1082,10 @@ export type ParsedMallowGumballInstruction<
     } & ParsedUpdateSettingsInstruction<TProgram>)
   | ({
       instructionType: MallowGumballInstruction.DeleteGumballMachine;
-    } & ParsedDeleteGumballMachineInstruction<TProgram>);
+    } & ParsedDeleteGumballMachineInstruction<TProgram>)
+  | ({
+      instructionType: MallowGumballInstruction.WithdrawPayout;
+    } & ParsedWithdrawPayoutInstruction<TProgram>);
 
 export function parseMallowGumballInstruction<TProgram extends string>(
   instruction: Instruction<TProgram> & InstructionWithData<ReadonlyUint8Array>
@@ -812,6 +1097,13 @@ export function parseMallowGumballInstruction<TProgram extends string>(
       return {
         instructionType: MallowGumballInstruction.AddCnft,
         ...parseAddCnftInstruction(instruction),
+      };
+    }
+    case MallowGumballInstruction.AddCnftV2: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: MallowGumballInstruction.AddCnftV2,
+        ...parseAddCnftV2Instruction(instruction),
       };
     }
     case MallowGumballInstruction.AddCoreAsset: {
@@ -835,6 +1127,13 @@ export function parseMallowGumballInstruction<TProgram extends string>(
         ...parseAddTokensInstruction(instruction),
       };
     }
+    case MallowGumballInstruction.AdminRefundCnftSaleV2: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: MallowGumballInstruction.AdminRefundCnftSaleV2,
+        ...parseAdminRefundCnftSaleV2Instruction(instruction),
+      };
+    }
     case MallowGumballInstruction.ApproveAddItem: {
       assertIsInstructionWithAccounts(instruction);
       return {
@@ -847,6 +1146,13 @@ export function parseMallowGumballInstruction<TProgram extends string>(
       return {
         instructionType: MallowGumballInstruction.CancelAddCnftRequest,
         ...parseCancelAddCnftRequestInstruction(instruction),
+      };
+    }
+    case MallowGumballInstruction.CancelAddCnftRequestV2: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: MallowGumballInstruction.CancelAddCnftRequestV2,
+        ...parseCancelAddCnftRequestV2Instruction(instruction),
       };
     }
     case MallowGumballInstruction.CancelAddCoreAssetRequest: {
@@ -870,6 +1176,13 @@ export function parseMallowGumballInstruction<TProgram extends string>(
         ...parseClaimCnftInstruction(instruction),
       };
     }
+    case MallowGumballInstruction.ClaimCnftV2: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: MallowGumballInstruction.ClaimCnftV2,
+        ...parseClaimCnftV2Instruction(instruction),
+      };
+    }
     case MallowGumballInstruction.ClaimCoreAsset: {
       assertIsInstructionWithAccounts(instruction);
       return {
@@ -889,6 +1202,13 @@ export function parseMallowGumballInstruction<TProgram extends string>(
       return {
         instructionType: MallowGumballInstruction.ClaimTokens,
         ...parseClaimTokensInstruction(instruction),
+      };
+    }
+    case MallowGumballInstruction.CloseMissingCnftRecoveryV2: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: MallowGumballInstruction.CloseMissingCnftRecoveryV2,
+        ...parseCloseMissingCnftRecoveryV2Instruction(instruction),
       };
     }
     case MallowGumballInstruction.DrawFromGumballMachine: {
@@ -926,11 +1246,53 @@ export function parseMallowGumballInstruction<TProgram extends string>(
         ...parseManageBuyBackFundsInstruction(instruction),
       };
     }
+    case MallowGumballInstruction.MigrateAddItemRequests: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: MallowGumballInstruction.MigrateAddItemRequests,
+        ...parseMigrateAddItemRequestsInstruction(instruction),
+      };
+    }
+    case MallowGumballInstruction.ReclaimCnftV2: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: MallowGumballInstruction.ReclaimCnftV2,
+        ...parseReclaimCnftV2Instruction(instruction),
+      };
+    }
+    case MallowGumballInstruction.RecoverPayoutRent: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: MallowGumballInstruction.RecoverPayoutRent,
+        ...parseRecoverPayoutRentInstruction(instruction),
+      };
+    }
+    case MallowGumballInstruction.RefundCnftSaleV2: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: MallowGumballInstruction.RefundCnftSaleV2,
+        ...parseRefundCnftSaleV2Instruction(instruction),
+      };
+    }
+    case MallowGumballInstruction.RejectAddItemRequest: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: MallowGumballInstruction.RejectAddItemRequest,
+        ...parseRejectAddItemRequestInstruction(instruction),
+      };
+    }
     case MallowGumballInstruction.RemoveCnft: {
       assertIsInstructionWithAccounts(instruction);
       return {
         instructionType: MallowGumballInstruction.RemoveCnft,
         ...parseRemoveCnftInstruction(instruction),
+      };
+    }
+    case MallowGumballInstruction.RemoveCnftV2: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: MallowGumballInstruction.RemoveCnftV2,
+        ...parseRemoveCnftV2Instruction(instruction),
       };
     }
     case MallowGumballInstruction.RemoveCoreAsset: {
@@ -966,6 +1328,13 @@ export function parseMallowGumballInstruction<TProgram extends string>(
       return {
         instructionType: MallowGumballInstruction.RequestAddCnft,
         ...parseRequestAddCnftInstruction(instruction),
+      };
+    }
+    case MallowGumballInstruction.RequestAddCnftV2: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: MallowGumballInstruction.RequestAddCnftV2,
+        ...parseRequestAddCnftV2Instruction(instruction),
       };
     }
     case MallowGumballInstruction.RequestAddCoreAsset: {
@@ -1008,6 +1377,13 @@ export function parseMallowGumballInstruction<TProgram extends string>(
       return {
         instructionType: MallowGumballInstruction.SettleCnftSale,
         ...parseSettleCnftSaleInstruction(instruction),
+      };
+    }
+    case MallowGumballInstruction.SettleCnftSaleV2: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: MallowGumballInstruction.SettleCnftSaleV2,
+        ...parseSettleCnftSaleV2Instruction(instruction),
       };
     }
     case MallowGumballInstruction.BaseSettleCoreAssetSale: {
@@ -1059,6 +1435,13 @@ export function parseMallowGumballInstruction<TProgram extends string>(
         ...parseDeleteGumballMachineInstruction(instruction),
       };
     }
+    case MallowGumballInstruction.WithdrawPayout: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: MallowGumballInstruction.WithdrawPayout,
+        ...parseWithdrawPayoutInstruction(instruction),
+      };
+    }
     default:
       throw new SolanaError(
         SOLANA_ERROR__PROGRAM_CLIENTS__UNRECOGNIZED_INSTRUCTION_TYPE,
@@ -1082,6 +1465,8 @@ export type MallowGumballPlugin = {
 export type MallowGumballPluginAccounts = {
   addItemRequest: ReturnType<typeof getAddItemRequestCodec> &
     SelfFetchFunctions<AddItemRequestArgs, AddItemRequest>;
+  cnftRecovery: ReturnType<typeof getCnftRecoveryCodec> &
+    SelfFetchFunctions<CnftRecoveryArgs, CnftRecovery>;
   gumballMachine: ReturnType<typeof getGumballMachineCodec> &
     SelfFetchFunctions<GumballMachineArgs, GumballMachine>;
   sellerHistory: ReturnType<typeof getSellerHistoryCodec> &
@@ -1092,6 +1477,10 @@ export type MallowGumballPluginInstructions = {
   addCnft: (
     input: AddCnftAsyncInput
   ) => ReturnType<typeof getAddCnftInstructionAsync> & SelfPlanAndSendFunctions;
+  addCnftV2: (
+    input: AddCnftV2AsyncInput
+  ) => ReturnType<typeof getAddCnftV2InstructionAsync> &
+    SelfPlanAndSendFunctions;
   addCoreAsset: (
     input: AddCoreAssetAsyncInput
   ) => ReturnType<typeof getAddCoreAssetInstructionAsync> &
@@ -1103,6 +1492,10 @@ export type MallowGumballPluginInstructions = {
     input: AddTokensAsyncInput
   ) => ReturnType<typeof getAddTokensInstructionAsync> &
     SelfPlanAndSendFunctions;
+  adminRefundCnftSaleV2: (
+    input: MakeOptional<AdminRefundCnftSaleV2AsyncInput, 'payer'>
+  ) => ReturnType<typeof getAdminRefundCnftSaleV2InstructionAsync> &
+    SelfPlanAndSendFunctions;
   approveAddItem: (
     input: ApproveAddItemAsyncInput
   ) => ReturnType<typeof getApproveAddItemInstructionAsync> &
@@ -1110,6 +1503,10 @@ export type MallowGumballPluginInstructions = {
   cancelAddCnftRequest: (
     input: CancelAddCnftRequestAsyncInput
   ) => ReturnType<typeof getCancelAddCnftRequestInstructionAsync> &
+    SelfPlanAndSendFunctions;
+  cancelAddCnftRequestV2: (
+    input: CancelAddCnftRequestV2AsyncInput
+  ) => ReturnType<typeof getCancelAddCnftRequestV2InstructionAsync> &
     SelfPlanAndSendFunctions;
   cancelAddCoreAssetRequest: (
     input: CancelAddCoreAssetRequestAsyncInput
@@ -1123,6 +1520,10 @@ export type MallowGumballPluginInstructions = {
     input: MakeOptional<ClaimCnftAsyncInput, 'payer'>
   ) => ReturnType<typeof getClaimCnftInstructionAsync> &
     SelfPlanAndSendFunctions;
+  claimCnftV2: (
+    input: MakeOptional<ClaimCnftV2AsyncInput, 'payer'>
+  ) => ReturnType<typeof getClaimCnftV2InstructionAsync> &
+    SelfPlanAndSendFunctions;
   claimCoreAsset: (
     input: MakeOptional<ClaimCoreAssetAsyncInput, 'payer'>
   ) => ReturnType<typeof getClaimCoreAssetInstructionAsync> &
@@ -1134,6 +1535,10 @@ export type MallowGumballPluginInstructions = {
   claimTokens: (
     input: MakeOptional<ClaimTokensAsyncInput, 'payer'>
   ) => ReturnType<typeof getClaimTokensInstructionAsync> &
+    SelfPlanAndSendFunctions;
+  closeMissingCnftRecoveryV2: (
+    input: MakeOptional<CloseMissingCnftRecoveryV2Input, 'payer'>
+  ) => ReturnType<typeof getCloseMissingCnftRecoveryV2Instruction> &
     SelfPlanAndSendFunctions;
   drawFromGumballMachine: (
     input: MakeOptional<DrawFromGumballMachineAsyncInput, 'payer'>
@@ -1154,9 +1559,33 @@ export type MallowGumballPluginInstructions = {
     input: ManageBuyBackFundsAsyncInput
   ) => ReturnType<typeof getManageBuyBackFundsInstructionAsync> &
     SelfPlanAndSendFunctions;
+  migrateAddItemRequests: (
+    input: MakeOptional<MigrateAddItemRequestsAsyncInput, 'payer'>
+  ) => ReturnType<typeof getMigrateAddItemRequestsInstructionAsync> &
+    SelfPlanAndSendFunctions;
+  reclaimCnftV2: (
+    input: ReclaimCnftV2Input
+  ) => ReturnType<typeof getReclaimCnftV2Instruction> &
+    SelfPlanAndSendFunctions;
+  recoverPayoutRent: (
+    input: RecoverPayoutRentAsyncInput
+  ) => ReturnType<typeof getRecoverPayoutRentInstructionAsync> &
+    SelfPlanAndSendFunctions;
+  refundCnftSaleV2: (
+    input: MakeOptional<RefundCnftSaleV2AsyncInput, 'payer'>
+  ) => ReturnType<typeof getRefundCnftSaleV2InstructionAsync> &
+    SelfPlanAndSendFunctions;
+  rejectAddItemRequest: (
+    input: RejectAddItemRequestInput
+  ) => ReturnType<typeof getRejectAddItemRequestInstruction> &
+    SelfPlanAndSendFunctions;
   removeCnft: (
     input: RemoveCnftAsyncInput
   ) => ReturnType<typeof getRemoveCnftInstructionAsync> &
+    SelfPlanAndSendFunctions;
+  removeCnftV2: (
+    input: RemoveCnftV2AsyncInput
+  ) => ReturnType<typeof getRemoveCnftV2InstructionAsync> &
     SelfPlanAndSendFunctions;
   removeCoreAsset: (
     input: RemoveCoreAssetAsyncInput
@@ -1177,6 +1606,10 @@ export type MallowGumballPluginInstructions = {
   requestAddCnft: (
     input: RequestAddCnftAsyncInput
   ) => ReturnType<typeof getRequestAddCnftInstructionAsync> &
+    SelfPlanAndSendFunctions;
+  requestAddCnftV2: (
+    input: RequestAddCnftV2AsyncInput
+  ) => ReturnType<typeof getRequestAddCnftV2InstructionAsync> &
     SelfPlanAndSendFunctions;
   requestAddCoreAsset: (
     input: RequestAddCoreAssetAsyncInput
@@ -1201,6 +1634,10 @@ export type MallowGumballPluginInstructions = {
   settleCnftSale: (
     input: MakeOptional<SettleCnftSaleAsyncInput, 'payer'>
   ) => ReturnType<typeof getSettleCnftSaleInstructionAsync> &
+    SelfPlanAndSendFunctions;
+  settleCnftSaleV2: (
+    input: MakeOptional<SettleCnftSaleV2AsyncInput, 'payer'>
+  ) => ReturnType<typeof getSettleCnftSaleV2InstructionAsync> &
     SelfPlanAndSendFunctions;
   baseSettleCoreAssetSale: (
     input: MakeOptional<BaseSettleCoreAssetSaleAsyncInput, 'payer'>
@@ -1229,11 +1666,16 @@ export type MallowGumballPluginInstructions = {
     input: DeleteGumballMachineAsyncInput
   ) => ReturnType<typeof getDeleteGumballMachineInstructionAsync> &
     SelfPlanAndSendFunctions;
+  withdrawPayout: (
+    input: WithdrawPayoutAsyncInput
+  ) => ReturnType<typeof getWithdrawPayoutInstructionAsync> &
+    SelfPlanAndSendFunctions;
 };
 
 export type MallowGumballPluginPdas = {
   sellerHistory: typeof findSellerHistoryPda;
   addItemRequest: typeof findAddItemRequestPda;
+  cnftRecovery: typeof findCnftRecoveryPda;
 };
 
 export type MallowGumballPluginRequirements = ClientWithRpc<
@@ -1254,6 +1696,7 @@ export function mallowGumballProgram() {
             client,
             getAddItemRequestCodec()
           ),
+          cnftRecovery: addSelfFetchFunctions(client, getCnftRecoveryCodec()),
           gumballMachine: addSelfFetchFunctions(
             client,
             getGumballMachineCodec()
@@ -1265,6 +1708,11 @@ export function mallowGumballProgram() {
             addSelfPlanAndSendFunctions(
               client,
               getAddCnftInstructionAsync(input)
+            ),
+          addCnftV2: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getAddCnftV2InstructionAsync(input)
             ),
           addCoreAsset: (input) =>
             addSelfPlanAndSendFunctions(
@@ -1281,6 +1729,14 @@ export function mallowGumballProgram() {
               client,
               getAddTokensInstructionAsync(input)
             ),
+          adminRefundCnftSaleV2: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getAdminRefundCnftSaleV2InstructionAsync({
+                ...input,
+                payer: input.payer ?? client.payer,
+              })
+            ),
           approveAddItem: (input) =>
             addSelfPlanAndSendFunctions(
               client,
@@ -1290,6 +1746,11 @@ export function mallowGumballProgram() {
             addSelfPlanAndSendFunctions(
               client,
               getCancelAddCnftRequestInstructionAsync(input)
+            ),
+          cancelAddCnftRequestV2: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getCancelAddCnftRequestV2InstructionAsync(input)
             ),
           cancelAddCoreAssetRequest: (input) =>
             addSelfPlanAndSendFunctions(
@@ -1305,6 +1766,14 @@ export function mallowGumballProgram() {
             addSelfPlanAndSendFunctions(
               client,
               getClaimCnftInstructionAsync({
+                ...input,
+                payer: input.payer ?? client.payer,
+              })
+            ),
+          claimCnftV2: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getClaimCnftV2InstructionAsync({
                 ...input,
                 payer: input.payer ?? client.payer,
               })
@@ -1329,6 +1798,14 @@ export function mallowGumballProgram() {
             addSelfPlanAndSendFunctions(
               client,
               getClaimTokensInstructionAsync({
+                ...input,
+                payer: input.payer ?? client.payer,
+              })
+            ),
+          closeMissingCnftRecoveryV2: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getCloseMissingCnftRecoveryV2Instruction({
                 ...input,
                 payer: input.payer ?? client.payer,
               })
@@ -1361,10 +1838,46 @@ export function mallowGumballProgram() {
               client,
               getManageBuyBackFundsInstructionAsync(input)
             ),
+          migrateAddItemRequests: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getMigrateAddItemRequestsInstructionAsync({
+                ...input,
+                payer: input.payer ?? client.payer,
+              })
+            ),
+          reclaimCnftV2: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getReclaimCnftV2Instruction(input)
+            ),
+          recoverPayoutRent: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getRecoverPayoutRentInstructionAsync(input)
+            ),
+          refundCnftSaleV2: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getRefundCnftSaleV2InstructionAsync({
+                ...input,
+                payer: input.payer ?? client.payer,
+              })
+            ),
+          rejectAddItemRequest: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getRejectAddItemRequestInstruction(input)
+            ),
           removeCnft: (input) =>
             addSelfPlanAndSendFunctions(
               client,
               getRemoveCnftInstructionAsync(input)
+            ),
+          removeCnftV2: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getRemoveCnftV2InstructionAsync(input)
             ),
           removeCoreAsset: (input) =>
             addSelfPlanAndSendFunctions(
@@ -1390,6 +1903,11 @@ export function mallowGumballProgram() {
             addSelfPlanAndSendFunctions(
               client,
               getRequestAddCnftInstructionAsync(input)
+            ),
+          requestAddCnftV2: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getRequestAddCnftV2InstructionAsync(input)
             ),
           requestAddCoreAsset: (input) =>
             addSelfPlanAndSendFunctions(
@@ -1423,6 +1941,14 @@ export function mallowGumballProgram() {
             addSelfPlanAndSendFunctions(
               client,
               getSettleCnftSaleInstructionAsync({
+                ...input,
+                payer: input.payer ?? client.payer,
+              })
+            ),
+          settleCnftSaleV2: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getSettleCnftSaleV2InstructionAsync({
                 ...input,
                 payer: input.payer ?? client.payer,
               })
@@ -1471,10 +1997,16 @@ export function mallowGumballProgram() {
               client,
               getDeleteGumballMachineInstructionAsync(input)
             ),
+          withdrawPayout: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getWithdrawPayoutInstructionAsync(input)
+            ),
         },
         pdas: {
           sellerHistory: findSellerHistoryPda,
           addItemRequest: findAddItemRequestPda,
+          cnftRecovery: findCnftRecoveryPda,
         },
         identifyAccount: identifyMallowGumballAccount,
         identifyInstruction: identifyMallowGumballInstruction,

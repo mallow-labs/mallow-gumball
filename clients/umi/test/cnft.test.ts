@@ -1,3 +1,4 @@
+import { withRequestCancellationMachine } from '../src';
 /* eslint-disable no-await-in-loop */
 /* eslint-disable import/no-extraneous-dependencies */
 import { setComputeUnitLimit } from '@metaplex-foundation/mpl-toolbox';
@@ -486,19 +487,22 @@ test('it can request, then cancel, adding a compressed nft (collab flow)', async
   await transactionBuilder()
     .add(setComputeUnitLimit(sellerUmi, { units: 800_000 }))
     .add(
-      cancelAddCnftRequest(sellerUmi, {
-        asset: item.assetId,
-        sellerHistory: findSellerHistoryPda(umi, {
-          gumballMachine,
-          seller: sellerUmi.identity.publicKey,
-        })[0],
-        authorityPda: findGumballMachineAuthorityPda(umi, {
-          gumballMachine,
-        })[0],
-        treeConfig: item.treeConfig,
-        merkleTree: item.merkleTree,
-        args: cnftArgs(umi, item),
-      }).addRemainingAccounts(proofAccounts(cancelProof))
+      withRequestCancellationMachine(
+        cancelAddCnftRequest(sellerUmi, {
+          asset: item.assetId,
+          sellerHistory: findSellerHistoryPda(umi, {
+            gumballMachine,
+            seller: sellerUmi.identity.publicKey,
+          })[0],
+          authorityPda: findGumballMachineAuthorityPda(umi, {
+            gumballMachine,
+          })[0],
+          treeConfig: item.treeConfig,
+          merkleTree: item.merkleTree,
+          args: cnftArgs(umi, item),
+        }).addRemainingAccounts(proofAccounts(cancelProof)),
+        gumballMachine
+      )
     )
     .sendAndConfirm(sellerUmi);
 
@@ -511,7 +515,7 @@ test('it can request, then cancel, adding a compressed nft (collab flow)', async
 test('it can request then approve adding a compressed nft (collab flow)', async (t) => {
   const umi = await createCnftUmi(createUmi);
   const gumballMachineSigner = await create(umi, {
-    settings: { itemCapacity: 5 },
+    settings: { itemCapacity: 5, sellersMerkleRoot: some(new Uint8Array(32)) },
   });
   const gumballMachine = gumballMachineSigner.publicKey;
 

@@ -37,7 +37,7 @@ import {
 test('it can approve a request to add core asset to a gumball machine', async (t) => {
   const client = await createClient();
   const { gumballMachine } = await createGumballMachine(client, {
-    settings: { itemCapacity: 5 },
+    settings: { itemCapacity: 5, sellersMerkleRoot: new Uint8Array(32) },
   });
   const seller = await generateKeyPairSignerWithSol(client.svm);
   const { asset } = await createCoreAsset(client, seller);
@@ -88,7 +88,7 @@ test('it can approve a request to add core asset to a gumball machine', async (t
 test('it can approve a request to add an nft to a gumball machine', async (t) => {
   const client = await createClient();
   const { gumballMachine } = await createGumballMachine(client, {
-    settings: { itemCapacity: 5 },
+    settings: { itemCapacity: 5, sellersMerkleRoot: new Uint8Array(32) },
   });
   const seller = await generateKeyPairSignerWithSol(client.svm);
   const { mint } = await createNft(client, seller);
@@ -143,7 +143,7 @@ test('it cannot approve a request to add core asset to a gumball machine after t
   const client = await createClient();
   const { asset: initialAsset } = await createCoreAsset(client);
   const { gumballMachine } = await createGumballMachine(client, {
-    settings: { itemCapacity: 5 },
+    settings: { itemCapacity: 5, sellersMerkleRoot: new Uint8Array(32) },
   });
   await sendTransaction(client.svm, client.payer, [
     await getAddCoreAssetInstructionAsync({

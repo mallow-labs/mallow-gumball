@@ -134,8 +134,8 @@ impl SolPayment {
         let gumball_machine = try_from!(Account::<GumballMachine>, ctx.accounts.machine)?;
 
         let marketplace_fee_bps = if let Some(fee_confg) = gumball_machine.marketplace_fee_config {
-            // Version 0 takes fee on claim, so no fee on draw
-            if gumball_machine.version == 0 {
+            // Version 0 and refund-aware machines retain fees until settlement.
+            if gumball_machine.version == 0 || gumball_machine.version >= 6 {
                 0
             } else {
                 fee_confg.fee_bps

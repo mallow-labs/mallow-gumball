@@ -42,6 +42,12 @@ pub fn withdraw<'info>(ctx: Context<'info, Withdraw<'info>>) -> Result<()> {
     let machine = &ctx.accounts.machine.to_account_info();
     let authority = ctx.accounts.authority.to_account_info();
 
+    require_keys_eq!(
+        ctx.accounts.machine.key(),
+        ctx.accounts.gumball_guard.base,
+        GumballGuardError::InvalidMachine
+    );
+
     // Bind the CPI target program to the machine's owner so an attacker cannot
     // substitute an arbitrary program to be invoked with the guard PDA's signature.
     assert_owned_by(machine, ctx.accounts.machine_program.key)?;

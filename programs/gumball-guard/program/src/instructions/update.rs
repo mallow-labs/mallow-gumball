@@ -13,6 +13,12 @@ use utils::assert_keys_equal;
 pub fn update(ctx: Context<Update>, data: Vec<u8>) -> Result<()> {
     let machine = &ctx.accounts.machine.to_account_info();
 
+    require_keys_eq!(
+        ctx.accounts.machine.key(),
+        ctx.accounts.gumball_guard.base,
+        GumballGuardError::InvalidMachine
+    );
+
     // TODO: Make this less expensive
     if let Ok(machine) = try_from!(Account::<GumballMachine>, machine) {
         assert_keys_equal(
@@ -20,6 +26,7 @@ pub fn update(ctx: Context<Update>, data: Vec<u8>) -> Result<()> {
             machine.mint_authority,
             "Invalid machine mint authority",
         )?;
+        machine.assert_can_change_guard(&machine.to_account_info().try_borrow_data()?)?;
         require!(
             machine.state == GumballState::None || machine.items_redeemed == 0,
             GumballGuardError::InvalidMachineState

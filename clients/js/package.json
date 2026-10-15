@@ -1,6 +1,6 @@
 {
   "name": "@mallow-labs/mallow-gumball",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Solana Kit client library for Gumball Machine related programs",
   "sideEffects": false,
   "module": "./dist/src/index.mjs",
@@ -23,7 +23,7 @@
     "build:docs": "typedoc",
     "dev": "tsup --watch",
     "pretest": "node -e \"if(Number(process.versions.node.split('.')[0])<24)throw new Error('Tests require Node >=24 (LiteSVM aborts with std::bad_alloc on Node 20/22); running '+process.version)\"",
-    "test": "tsup && ava",
+    "test": "pnpm --dir ../umi build && tsup && ava",
     "lint": "eslint --ext js,ts,tsx src",
     "lint:fix": "eslint --fix --ext js,ts,tsx src",
     "format": "prettier --check src test",

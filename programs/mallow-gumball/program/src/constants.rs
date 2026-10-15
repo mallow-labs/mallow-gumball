@@ -11,9 +11,10 @@ pub const SPL_ACCOUNT_COMPRESSION_PROGRAM: Pubkey =
 // SPL No-op (log wrapper) program used by Bubblegum to emit leaf change events.
 pub const SPL_NOOP_PROGRAM: Pubkey = pubkey!("noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV");
 
-// Only Bubblegum V1 leaves are tradable on-chain in this version. V2 leaves
-// require a Solana 2.x toolchain (mpl-account-compression) and are rejected.
+// Leaf version for the original SPL-compression instructions.
 pub const BUBBLEGUM_V1_VERSION: u8 = 1;
+
+pub const GUMBALL_GUARD_PROGRAM: Pubkey = pubkey!("GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF");
 
 // Seed used to derive the authority PDA address.
 pub const AUTHORITY_SEED: &str = "gumball_machine";
@@ -54,3 +55,9 @@ pub const CONFIG_LINE_SIZE: usize = 32// mint
     +1; // token standard
 
 pub const CONFIG_LINE_V2_SIZE: usize = CONFIG_LINE_SIZE + 8; // amount
+
+/// Bubblegum v2 tree owner and log wrapper.
+pub const MPL_ACCOUNT_COMPRESSION_PROGRAM: Pubkey =
+    pubkey!("mcmt6YrQEMKw8Mw43FmpRLmf7BqRnFMKmAcbxE3xkAW");
+pub const MPL_NOOP_PROGRAM: Pubkey = pubkey!("mnoopTCrg4p8ry25e4bcWA9XZjbNjMTfgYVGGEdRsf3");
+pub const BUBBLEGUM_V2_VERSION: u8 = 2;

@@ -9,6 +9,7 @@
 export * from './addItemRequest';
 export * from './allocationTracker';
 export * from './allowListProof';
+export * from './cnftRecovery';
 export * from './globalConfig';
 export * from './gumballMachine';
 export * from './mintCounter';

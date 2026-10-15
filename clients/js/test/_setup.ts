@@ -201,11 +201,12 @@ export const createGumballMachine = async (
 export const createStandaloneGumballGuard = async (
   client: Client,
   input: {
+    base?: TransactionSigner;
     guards?: Partial<DefaultGuardSetArgs>;
     groups?: CreateInput['groups'];
   } = {}
 ): Promise<{ base: Address; gumballGuard: Address }> => {
-  const base = await generateKeyPairSigner();
+  const base = input.base ?? (await generateKeyPairSigner());
   const instruction = await createGumballGuard({
     base,
     authority: client.payer.address,

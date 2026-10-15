@@ -1,0 +1,62 @@
+[
+  {
+    "instruction": "withdraw_payout",
+    "scenario": "R14-03: close sweeps only surplus and final withdrawal closes vault; token2022=false",
+    "computeUnits": 27125,
+    "serializedBytes": 581
+  },
+  {
+    "instruction": "withdraw_payout",
+    "scenario": "R14-03: close sweeps only surplus and final withdrawal closes vault; token2022=true",
+    "computeUnits": 33107,
+    "serializedBytes": 581
+  },
+  {
+    "instruction": "settle_core_asset_sale",
+    "scenario": "R14-01: token folds return rent after payouts; solo, token2022=false",
+    "computeUnits": 82401,
+    "serializedBytes": 817
+  },
+  {
+    "instruction": "settle_core_asset_sale",
+    "scenario": "R14-01: token folds return rent after payouts; solo, token2022=true",
+    "computeUnits": 101108,
+    "serializedBytes": 850
+  },
+  {
+    "instruction": "settle_core_asset_sale",
+    "scenario": "R14-01: token folds return rent after payouts; curator, token2022=false",
+    "computeUnits": 71820,
+    "serializedBytes": 815
+  },
+  {
+    "instruction": "settle_core_asset_sale",
+    "scenario": "R14-01: token folds return rent after payouts; fee, token2022=false",
+    "computeUnits": 80137,
+    "serializedBytes": 879
+  },
+  {
+    "instruction": "settle_core_asset_sale",
+    "scenario": "R14-01: token folds return rent after payouts; curator, token2022=true",
+    "computeUnits": 80141,
+    "serializedBytes": 848
+  },
+  {
+    "instruction": "settle_core_asset_sale",
+    "scenario": "R14-01: token folds return rent after payouts; fee, token2022=true",
+    "computeUnits": 87939,
+    "serializedBytes": 912
+  },
+  {
+    "instruction": "settle_core_asset_sale",
+    "scenario": "R14-01: token folds return rent after payouts; multiple, token2022=false",
+    "computeUnits": 92475,
+    "serializedBytes": 879
+  },
+  {
+    "instruction": "settle_core_asset_sale",
+    "scenario": "R14-01: token folds return rent after payouts; multiple, token2022=true",
+    "computeUnits": 111182,
+    "serializedBytes": 912
+  }
+]

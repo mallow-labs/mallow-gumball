@@ -38,7 +38,7 @@ pub struct RequestAddCoreAsset<'info> {
             asset.key().as_ref()
         ],
         bump,
-        space = AddItemRequest::SPACE,
+        space = AddItemRequest::TRACKED_SPACE,
         payer = seller
     )]
     add_item_request: Box<Account<'info, AddItemRequest>>,
@@ -95,6 +95,10 @@ pub fn request_add_core_asset(ctx: Context<RequestAddCoreAsset>) -> Result<()> {
 
     // Validate the seller
     assert_can_request_add_item(gumball_machine, seller_history)?;
+    crate::track_add_item_request(
+        &add_item_request.to_account_info(),
+        &gumball_machine.to_account_info(),
+    )?;
 
     seller_history.item_count += 1;
 

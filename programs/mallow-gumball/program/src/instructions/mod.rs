@@ -69,3 +69,42 @@ pub use settle_tokens_sale::*;
 pub use settle_tokens_sale_claimed::*;
 pub use start_sale::*;
 pub use update_settings::*;
+
+pub mod add_cnft_v2;
+pub use add_cnft_v2::*;
+
+pub mod request_add_cnft_v2;
+pub use request_add_cnft_v2::*;
+
+pub mod cancel_add_cnft_request_v2;
+pub use cancel_add_cnft_request_v2::*;
+
+pub mod remove_cnft_v2;
+pub use remove_cnft_v2::*;
+
+pub mod claim_cnft_v2;
+pub use claim_cnft_v2::*;
+
+pub mod settle_cnft_sale_v2;
+pub use settle_cnft_sale_v2::*;
+
+pub mod refund_cnft_sale_v2;
+pub use refund_cnft_sale_v2::*;
+
+pub mod reclaim_cnft_v2;
+pub use reclaim_cnft_v2::*;
+
+pub mod close_missing_cnft_recovery_v2;
+pub use close_missing_cnft_recovery_v2::*;
+
+pub mod migrate_add_item_requests;
+pub use migrate_add_item_requests::*;
+
+pub mod reject_add_item_request;
+pub use reject_add_item_request::*;
+
+pub mod withdraw_payout;
+pub use withdraw_payout::*;
+
+pub mod recover_payout_rent;
+pub use recover_payout_rent::*;

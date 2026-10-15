@@ -146,4 +146,37 @@ const machineState = await fetchGumballMachine(umi, gumballMachine);
 
 ## Contributing
 
+For Bubblegum v2 settlement, use the live leaf's current flags, owner, delegate,
+metadata and proof, even when both owner and delegate are default keys. Only a
+claimed, burnt leaf uses `settleCnftSaleV2` with `args.flags = 255`, an empty-slot
+proof and `nonce == index`; that path needs no creator payout accounts. A closed
+recorded tree uses its key with a zero root and no proof nodes instead. See the
+[v2 instruction reference](../../programs/mallow-gumball/README.md#bubblegum-v2-compressed-nfts).
+Missing-tree evidence also covers foreign/uninitialized replacement accounts and
+recorded slots at or beyond a replacement MPL tree's append index or capacity.
+SPL-owned replacements require the marketplace-admin no-leaf refund; burnt
+settlement prefixes remaining accounts with the marketplace fee authority signer
+and canonical guard GlobalConfig before any Token-2022 payment-program slot.
+`prepareAdminRefundCnftSaleV2` checks missing-slot evidence and simulates the same
+claim before building a zero-root/no-proof admin refund. Its absent-slot check
+applies to both MPL and SPL compression trees: a live v1 draw must be claimed
+with `claimCnft`, and v2 claim error 6069 cannot authorize its refund.
+Live v1 trees never qualify as permissionless v2 missing-tree evidence. See the
+[exact recovery rules](../../docs/cnft-v2.md#closed-trees).
+
+Occupied/unprovable MPL replacements require marketplace-authorized exits after
+off-chain verification. For claimed or recovered-unsold settlement, use a zero
+root, `args.flags = 255`, `nonce == index`, and the marketplace signer/canonical
+GlobalConfig prefix before any Token-2022 slot. Receipt cleanup uses no leaf,
+zero root and the same prefix, returning rent to its recorded payer. Normal
+machine close follows settlement. No on-chain permissionless predicate changes.
+`prepareAdminSettleMissingCnftSaleV2` and
+`prepareAdminCloseMissingCnftRecoveryV2` check off-chain replacement evidence and
+simulate the admin exit, returning a builder without sending it. Foreign MPL
+header authority is off-chain admin evidence only; occupied canonical trees and
+live SPL v1 draws are refused automatically. For other unprovable cases, the
+marketplace must verify v2 entry history and actual delivery failure before
+preparing the raw generated admin builder. See the [operator contract](../../docs/cnft-v2.md#m21-marketplace-authorized-tree-exits).
+
+
 Check out the [Contributing Guide](./CONTRIBUTING.md) the learn more about how to contribute to this library.

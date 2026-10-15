@@ -181,6 +181,11 @@ codama.update(
         ),
       ],
     },
+    cnftRecovery: {
+      seeds: [stringSeed("cnft_recovery"), gumballMachineSeed,
+        pubkeySeed("merkleTree", "The original escrow tree"),
+        c.variablePdaSeedNode("nonce", c.numberTypeNode("u64"), "The original leaf nonce")],
+    },
     globalConfig: {
       seeds: [stringSeed("global_config")],
     },
@@ -347,6 +352,29 @@ codama.update(
   ])
 );
 
+const cnftV2Instructions = [
+  "addCnftV2",
+  "requestAddCnftV2",
+  "cancelAddCnftRequestV2",
+  "removeCnftV2",
+  "claimCnftV2",
+  "settleCnftSaleV2",
+  "refundCnftSaleV2",
+  "adminRefundCnftSaleV2",
+  "reclaimCnftV2",
+  "closeMissingCnftRecoveryV2",
+];
+codama.update(
+  c.updateInstructionsVisitor(Object.fromEntries(
+    cnftV2Instructions.map((name) => [name, {
+      accounts: {
+        compressionProgram: { defaultValue: pk("mcmt6YrQEMKw8Mw43FmpRLmf7BqRnFMKmAcbxE3xkAW") },
+        logWrapper: { defaultValue: pk("mnoopTCrg4p8ry25e4bcWA9XZjbNjMTfgYVGGEdRsf3") },
+      },
+    }])
+  ))
+);
+
 // ---------------------------------------------------------------------------
 // pNFT conditional-account defaults (kinobi sellerPnftDefault etc.).
 // ---------------------------------------------------------------------------
@@ -396,6 +424,7 @@ const ataOnPaymentMint = (owner) => ({
   defaultValue: ifPaymentMint(ataPda("paymentMint", owner)),
 });
 const paymentAccountsDefault = () => ({
+  authority: { isWritable: true },
   authorityPdaPaymentAccount: ataOnPaymentMint("authorityPda"),
   authorityPaymentAccount: ataOnPaymentMint("authority"),
   sellerPaymentAccount: ataOnPaymentMint("seller"),
@@ -462,6 +491,12 @@ codama.update(
 
     // --- mallow gumball ---
     "mallowGumball.initialize": { name: "initializeGumballMachine" },
+    "mallowGumball.rejectAddItemRequest": {
+      accounts: { authority: { defaultValue: identity() }, addItemRequest: { defaultValue: null } },
+    },
+    "mallowGumball.migrateAddItemRequests": {
+      accounts: { authority: { defaultValue: identity() }, globalConfig: { defaultValue: globalConfigPda() } },
+    },
     "mallowGumball.addNft": {
       accounts: { seller: { defaultValue: identity() }, ...sellerPnftDefault() },
     },
@@ -542,6 +577,7 @@ codama.update(
     },
     "mallowGumball.claimTokens": {
       accounts: {
+        authority: { isWritable: true },
         buyer: { defaultValue: identity() },
         buyerTokenAccount: { defaultValue: ataPda("mint", "buyer") },
       },
@@ -597,6 +633,13 @@ codama.update(
     },
     "mallowGumball.setAuthority": { name: "setGumballMachineAuthority" },
     "mallowGumball.withdraw": { name: "deleteGumballMachine" },
+    "mallowGumball.withdrawPayout": {
+      accounts: {
+        recipient: { defaultValue: identity() },
+        authorityPdaPaymentAccount: ataOnPaymentMint("authorityPda"),
+        recipientPaymentAccount: ataOnPaymentMint("recipient"),
+      },
+    },
     "mallowGumball.manageBuyBackFunds": {
       accounts: {
         authorityPdaPaymentAccount: ataOnPaymentMint("authorityPda"),
@@ -635,6 +678,62 @@ codama.update(
         ...paymentAccountsDefault(),
       },
     },
+    "mallowGumball.addCnftV2": {
+      accounts: { seller: { defaultValue: identity() } },
+    },
+    "mallowGumball.requestAddCnftV2": {
+      accounts: {
+        seller: { defaultValue: identity() },
+        addItemRequest: { defaultValue: addItemRequestPda("asset") },
+      },
+    },
+    "mallowGumball.cancelAddCnftRequestV2": {
+      accounts: {
+        authorityPda: { defaultValue: null },
+        sellerHistory: { defaultValue: null },
+        seller: { defaultValue: identity() },
+        addItemRequest: { defaultValue: addItemRequestPda("asset") },
+      },
+    },
+    "mallowGumball.removeCnftV2": {
+      accounts: {
+        authority: { defaultValue: identity() },
+        seller: { defaultValue: identity() },
+      },
+    },
+    "mallowGumball.claimCnftV2": {
+      accounts: { buyer: { defaultValue: identity() } },
+    },
+    "mallowGumball.settleCnftSaleV2": {
+      accounts: {
+        buyer: { defaultValue: identity() },
+        ...paymentAccountsDefault(),
+      },
+    },
+    "mallowGumball.refundCnftSaleV2": {
+      accounts: {
+        seller: { defaultValue: identity() },
+        recovery: { defaultValue: c.pdaValueNode("cnftRecovery", [
+          c.pdaSeedValueNode("gumballMachine", account("gumballMachine")),
+          c.pdaSeedValueNode("merkleTree", account("merkleTree")),
+          c.pdaSeedValueNode("nonce", c.argumentValueNode("nonce")),
+        ]) },
+      },
+    },
+    "mallowGumball.adminRefundCnftSaleV2": {
+      accounts: {
+        seller: { defaultValue: identity() },
+        recovery: { defaultValue: c.pdaValueNode("cnftRecovery", [
+          c.pdaSeedValueNode("gumballMachine", account("gumballMachine")),
+          c.pdaSeedValueNode("merkleTree", account("merkleTree")),
+          c.pdaSeedValueNode("nonce", c.argumentValueNode("nonce")),
+        ]) },
+      },
+    },
+    "mallowGumball.reclaimCnftV2": {
+      accounts: { authority: { defaultValue: identity() }, authorityPda: { defaultValue: null } },
+    },
+
   })
 );
 
@@ -678,6 +777,12 @@ codama.update(
     },
     "mallowGumball.updateSettings": {
       arguments: { buyBackConfig: { defaultValue: c.noneValueNode() } },
+    },
+    "mallowGumball.rejectAddItemRequest": {
+      accounts: { authority: { defaultValue: identity() }, addItemRequest: { defaultValue: null } },
+    },
+    "mallowGumball.migrateAddItemRequests": {
+      accounts: { authority: { defaultValue: identity() }, globalConfig: { defaultValue: globalConfigPda() } },
     },
     "mallowGumball.addNft": {
       arguments: { args: { defaultValue: emptyAddItemArgs } },
@@ -924,6 +1029,16 @@ const instructionTraitOverrides = Object.fromEntries(
 );
 
 const rustClient = path.join(__dirname, "clients", "rust");
+// Rust renderer 3.1 formats numeric PDA seeds as decimal text. Use the
+// exact encoded nonce bytes for this finder; JS/Umi above retain u64 codecs.
+codama.update(c.updateAccountsVisitor({
+  cnftRecovery: {
+    seeds: [stringSeed("cnft_recovery"), gumballMachineSeed,
+      pubkeySeed("merkleTree", "The original escrow tree"),
+      c.variablePdaSeedNode("nonce", c.fixedSizeTypeNode(c.bytesTypeNode(), 8),
+        "The original leaf nonce encoded as u64 little-endian bytes")],
+  },
+}));
 await codama.accept(
   renderRustVisitor(rustClient, {
     syncCargoToml: false,
@@ -939,7 +1054,7 @@ await codama.accept(
       // CnftArgs types (no real `use` is emitted). syncCargoToml is off, so these
       // versions are never written; they only satisfy the renderer's used-
       // dependency validation.
-      mpl_bubblegum: { version: "^2.0" },
+      mpl_bubblegum: { version: "^3.0" },
       mpl_token_metadata: { version: "^5.0" },
     },
     traitOptions: {

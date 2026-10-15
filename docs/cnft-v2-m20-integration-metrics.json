@@ -1,0 +1,94 @@
+{
+  "measurements": [
+    {
+      "scenario": "R16-01: live collab sol proof refund preserves later draws, fees and seller shares",
+      "computeUnits": 84504,
+      "serializedBytes": 1078
+    },
+    {
+      "scenario": "R16-01: live collab sol proof refund preserves later draws, fees and seller shares",
+      "computeUnits": 108829,
+      "serializedBytes": 1110
+    },
+    {
+      "scenario": "R16-01: live collab sol proof refund preserves later draws, fees and seller shares",
+      "computeUnits": 105816,
+      "serializedBytes": 1110
+    },
+    {
+      "scenario": "R16-01: live collab sol admin refund preserves later draws, fees and seller shares",
+      "computeUnits": 108504,
+      "serializedBytes": 1078
+    },
+    {
+      "scenario": "R16-01: live collab sol admin refund preserves later draws, fees and seller shares",
+      "computeUnits": 119329,
+      "serializedBytes": 1110
+    },
+    {
+      "scenario": "R16-01: live collab sol admin refund preserves later draws, fees and seller shares",
+      "computeUnits": 132816,
+      "serializedBytes": 1110
+    },
+    {
+      "scenario": "R16-01: live collab spl proof refund preserves later draws, fees and seller shares",
+      "computeUnits": 92327,
+      "serializedBytes": 498
+    },
+    {
+      "scenario": "R16-01: live collab spl proof refund preserves later draws, fees and seller shares",
+      "computeUnits": 146509,
+      "serializedBytes": 499
+    },
+    {
+      "scenario": "R16-01: live collab spl proof refund preserves later draws, fees and seller shares",
+      "computeUnits": 147877,
+      "serializedBytes": 499
+    },
+    {
+      "scenario": "R16-01: live collab token2022 proof refund preserves later draws, fees and seller shares",
+      "computeUnits": 95807,
+      "serializedBytes": 500
+    },
+    {
+      "scenario": "R16-01: live collab token2022 proof refund preserves later draws, fees and seller shares",
+      "computeUnits": 175007,
+      "serializedBytes": 501
+    },
+    {
+      "scenario": "R16-01: live collab token2022 proof refund preserves later draws, fees and seller shares",
+      "computeUnits": 162078,
+      "serializedBytes": 501
+    },
+    {
+      "scenario": "R16-01: live collab spl admin refund preserves later draws, fees and seller shares",
+      "computeUnits": 95327,
+      "serializedBytes": 498
+    },
+    {
+      "scenario": "R16-01: live collab spl admin refund preserves later draws, fees and seller shares",
+      "computeUnits": 154009,
+      "serializedBytes": 499
+    },
+    {
+      "scenario": "R16-01: live collab spl admin refund preserves later draws, fees and seller shares",
+      "computeUnits": 144877,
+      "serializedBytes": 499
+    },
+    {
+      "scenario": "R16-01: live collab token2022 admin refund preserves later draws, fees and seller shares",
+      "computeUnits": 91307,
+      "serializedBytes": 500
+    },
+    {
+      "scenario": "R16-01: live collab token2022 admin refund preserves later draws, fees and seller shares",
+      "computeUnits": 173507,
+      "serializedBytes": 501
+    },
+    {
+      "scenario": "R16-01: live collab token2022 admin refund preserves later draws, fees and seller shares",
+      "computeUnits": 151578,
+      "serializedBytes": 501
+    }
+  ]
+}

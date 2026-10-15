@@ -8,7 +8,7 @@ export type MallowGumball = {
   address: 'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa';
   metadata: {
     name: 'mallowGumball';
-    version: '1.0.0';
+    version: '1.1.0';
     spec: '0.1.0';
     description: 'mallow Gumball: collaborative random sales of existing NFTs.';
     repository: 'https://github.com/mallow-labs/mallow-gumball';
@@ -151,6 +151,142 @@ export type MallowGumball = {
           type: {
             defined: {
               name: 'cnftArgs';
+            };
+          };
+        },
+        {
+          name: 'addItemArgs';
+          type: {
+            defined: {
+              name: 'addItemArgs';
+            };
+          };
+        },
+      ];
+    },
+    {
+      name: 'addCnftV2';
+      docs: ['Escrow a Bubblegum v2 leaf; remaining accounts are proof nodes.'];
+      discriminator: [228, 113, 118, 6, 81, 113, 67, 151];
+      accounts: [
+        {
+          name: 'gumballMachine';
+          docs: ['Gumball Machine account.'];
+          writable: true;
+        },
+        {
+          name: 'sellerHistory';
+          docs: ['Seller history account.'];
+          writable: true;
+          pda: {
+            seeds: [
+              {
+                kind: 'const';
+                value: [
+                  115,
+                  101,
+                  108,
+                  108,
+                  101,
+                  114,
+                  95,
+                  104,
+                  105,
+                  115,
+                  116,
+                  111,
+                  114,
+                  121,
+                ];
+              },
+              {
+                kind: 'account';
+                path: 'gumballMachine';
+              },
+              {
+                kind: 'account';
+                path: 'seller';
+              },
+            ];
+          };
+        },
+        {
+          name: 'authorityPda';
+          writable: true;
+          pda: {
+            seeds: [
+              {
+                kind: 'const';
+                value: [
+                  103,
+                  117,
+                  109,
+                  98,
+                  97,
+                  108,
+                  108,
+                  95,
+                  109,
+                  97,
+                  99,
+                  104,
+                  105,
+                  110,
+                  101,
+                ];
+              },
+              {
+                kind: 'account';
+                path: 'gumballMachine';
+              },
+            ];
+          };
+        },
+        {
+          name: 'seller';
+          docs: ['Seller of the cNFT (current leaf owner).'];
+          writable: true;
+          signer: true;
+        },
+        {
+          name: 'leafDelegate';
+        },
+        {
+          name: 'treeConfig';
+          writable: true;
+        },
+        {
+          name: 'merkleTree';
+          docs: ['id stored in the config line.'];
+          writable: true;
+        },
+        {
+          name: 'coreCollection';
+          optional: true;
+        },
+        {
+          name: 'logWrapper';
+          address: 'mnoopTCrg4p8ry25e4bcWA9XZjbNjMTfgYVGGEdRsf3';
+        },
+        {
+          name: 'compressionProgram';
+          address: 'mcmt6YrQEMKw8Mw43FmpRLmf7BqRnFMKmAcbxE3xkAW';
+        },
+        {
+          name: 'bubblegumProgram';
+          address: 'BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY';
+        },
+        {
+          name: 'systemProgram';
+          address: '11111111111111111111111111111111';
+        },
+      ];
+      args: [
+        {
+          name: 'args';
+          type: {
+            defined: {
+              name: 'cnftArgsV2';
             };
           };
         },
@@ -601,6 +737,210 @@ export type MallowGumball = {
       ];
     },
     {
+      name: 'adminRefundCnftSaleV2';
+      docs: [
+        'Refund an unclaimed v2 item after operator-confirmed claim failure.',
+        'Remaining accounts: marketplace fee authority (signer), guard GlobalConfig, then proof.',
+        'With no leaf, operator-confirmed missing delivery needs no live tree or proof.',
+      ];
+      discriminator: [182, 15, 184, 198, 77, 222, 134, 213];
+      accounts: [
+        {
+          name: 'payer';
+          writable: true;
+          signer: true;
+        },
+        {
+          name: 'gumballMachine';
+          writable: true;
+          relations: ['sellerHistory'];
+        },
+        {
+          name: 'authorityPda';
+          writable: true;
+          pda: {
+            seeds: [
+              {
+                kind: 'const';
+                value: [
+                  103,
+                  117,
+                  109,
+                  98,
+                  97,
+                  108,
+                  108,
+                  95,
+                  109,
+                  97,
+                  99,
+                  104,
+                  105,
+                  110,
+                  101,
+                ];
+              },
+              {
+                kind: 'account';
+                path: 'gumballMachine';
+              },
+            ];
+          };
+        },
+        {
+          name: 'seller';
+          writable: true;
+          relations: ['sellerHistory'];
+        },
+        {
+          name: 'sellerHistory';
+          writable: true;
+          pda: {
+            seeds: [
+              {
+                kind: 'const';
+                value: [
+                  115,
+                  101,
+                  108,
+                  108,
+                  101,
+                  114,
+                  95,
+                  104,
+                  105,
+                  115,
+                  116,
+                  111,
+                  114,
+                  121,
+                ];
+              },
+              {
+                kind: 'account';
+                path: 'gumballMachine';
+              },
+              {
+                kind: 'account';
+                path: 'seller';
+              },
+            ];
+          };
+        },
+        {
+          name: 'buyer';
+          writable: true;
+          optional: true;
+        },
+        {
+          name: 'authorityPdaPaymentAccount';
+          writable: true;
+          optional: true;
+        },
+        {
+          name: 'buyerPaymentAccount';
+          writable: true;
+          optional: true;
+        },
+        {
+          name: 'paymentMint';
+          optional: true;
+        },
+        {
+          name: 'merkleTree';
+        },
+        {
+          name: 'recovery';
+          writable: true;
+          pda: {
+            seeds: [
+              {
+                kind: 'const';
+                value: [
+                  99,
+                  110,
+                  102,
+                  116,
+                  95,
+                  114,
+                  101,
+                  99,
+                  111,
+                  118,
+                  101,
+                  114,
+                  121,
+                ];
+              },
+              {
+                kind: 'account';
+                path: 'gumballMachine';
+              },
+              {
+                kind: 'account';
+                path: 'merkleTree';
+              },
+              {
+                kind: 'arg';
+                path: 'nonce';
+              },
+            ];
+          };
+        },
+        {
+          name: 'compressionProgram';
+          address: 'mcmt6YrQEMKw8Mw43FmpRLmf7BqRnFMKmAcbxE3xkAW';
+        },
+        {
+          name: 'tokenProgram';
+        },
+        {
+          name: 'associatedTokenProgram';
+          address: 'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL';
+        },
+        {
+          name: 'systemProgram';
+          address: '11111111111111111111111111111111';
+        },
+        {
+          name: 'coreCollection';
+          optional: true;
+        },
+        {
+          name: 'eventAuthority';
+        },
+        {
+          name: 'program';
+        },
+      ];
+      args: [
+        {
+          name: 'index';
+          type: 'u32';
+        },
+        {
+          name: 'nonce';
+          type: 'u64';
+        },
+        {
+          name: 'root';
+          type: {
+            array: ['u8', 32];
+          };
+        },
+        {
+          name: 'leaf';
+          type: {
+            option: {
+              defined: {
+                name: 'cnftV2RefundLeaf';
+              };
+            };
+          };
+        },
+      ];
+    },
+    {
       name: 'approveAddItem';
       docs: [
         'Approve adding an item to the gumball machine.',
@@ -695,6 +1035,7 @@ export type MallowGumball = {
           docs: ['Authority of the gumball machine.'];
           writable: true;
           signer: true;
+          relations: ['gumballMachine'];
         },
         {
           name: 'seller';
@@ -883,6 +1224,169 @@ export type MallowGumball = {
           type: {
             defined: {
               name: 'cnftArgs';
+            };
+          };
+        },
+      ];
+    },
+    {
+      name: 'cancelAddCnftRequestV2';
+      docs: ['Return an escrowed Bubblegum v2 leaf and close its request.'];
+      discriminator: [187, 113, 115, 159, 171, 137, 21, 127];
+      accounts: [
+        {
+          name: 'sellerHistory';
+          docs: ['Seller history account.'];
+          writable: true;
+          pda: {
+            seeds: [
+              {
+                kind: 'const';
+                value: [
+                  115,
+                  101,
+                  108,
+                  108,
+                  101,
+                  114,
+                  95,
+                  104,
+                  105,
+                  115,
+                  116,
+                  111,
+                  114,
+                  121,
+                ];
+              },
+              {
+                kind: 'account';
+                path: 'sellerHistory.gumballMachine';
+                account: 'sellerHistory';
+              },
+              {
+                kind: 'account';
+                path: 'seller';
+              },
+            ];
+          };
+        },
+        {
+          name: 'addItemRequest';
+          docs: [
+            'Add item request account (keyed by asset id). Will be closed.',
+          ];
+          writable: true;
+          pda: {
+            seeds: [
+              {
+                kind: 'const';
+                value: [
+                  97,
+                  100,
+                  100,
+                  95,
+                  105,
+                  116,
+                  101,
+                  109,
+                  95,
+                  114,
+                  101,
+                  113,
+                  117,
+                  101,
+                  115,
+                  116,
+                ];
+              },
+              {
+                kind: 'account';
+                path: 'asset';
+              },
+            ];
+          };
+        },
+        {
+          name: 'authorityPda';
+          writable: true;
+          pda: {
+            seeds: [
+              {
+                kind: 'const';
+                value: [
+                  103,
+                  117,
+                  109,
+                  98,
+                  97,
+                  108,
+                  108,
+                  95,
+                  109,
+                  97,
+                  99,
+                  104,
+                  105,
+                  110,
+                  101,
+                ];
+              },
+              {
+                kind: 'account';
+                path: 'addItemRequest.gumballMachine';
+                account: 'addItemRequest';
+              },
+            ];
+          };
+        },
+        {
+          name: 'seller';
+          docs: ['Seller of the cNFT.'];
+          writable: true;
+          signer: true;
+          relations: ['sellerHistory', 'addItemRequest'];
+        },
+        {
+          name: 'asset';
+          docs: ['The cNFT asset id (a Bubblegum PDA; not a real account).'];
+          relations: ['addItemRequest'];
+        },
+        {
+          name: 'treeConfig';
+          writable: true;
+        },
+        {
+          name: 'merkleTree';
+          writable: true;
+        },
+        {
+          name: 'coreCollection';
+          optional: true;
+        },
+        {
+          name: 'logWrapper';
+          address: 'mnoopTCrg4p8ry25e4bcWA9XZjbNjMTfgYVGGEdRsf3';
+        },
+        {
+          name: 'compressionProgram';
+          address: 'mcmt6YrQEMKw8Mw43FmpRLmf7BqRnFMKmAcbxE3xkAW';
+        },
+        {
+          name: 'bubblegumProgram';
+          address: 'BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY';
+        },
+        {
+          name: 'systemProgram';
+          address: '11111111111111111111111111111111';
+        },
+      ];
+      args: [
+        {
+          name: 'args';
+          type: {
+            defined: {
+              name: 'cnftArgsV2';
             };
           };
         },
@@ -1370,6 +1874,117 @@ export type MallowGumball = {
       ];
     },
     {
+      name: 'claimCnftV2';
+      docs: ['Deliver a Bubblegum v2 leaf to the recorded buyer.'];
+      discriminator: [166, 214, 122, 178, 215, 9, 254, 43];
+      accounts: [
+        {
+          name: 'payer';
+          docs: ['Anyone can claim the item for the recorded buyer.'];
+          writable: true;
+          signer: true;
+        },
+        {
+          name: 'gumballMachine';
+          docs: ['Gumball machine account.'];
+          writable: true;
+        },
+        {
+          name: 'authorityPda';
+          writable: true;
+          pda: {
+            seeds: [
+              {
+                kind: 'const';
+                value: [
+                  103,
+                  117,
+                  109,
+                  98,
+                  97,
+                  108,
+                  108,
+                  95,
+                  109,
+                  97,
+                  99,
+                  104,
+                  105,
+                  110,
+                  101,
+                ];
+              },
+              {
+                kind: 'account';
+                path: 'gumballMachine';
+              },
+            ];
+          };
+        },
+        {
+          name: 'seller';
+          docs: ['Seller of the cNFT.'];
+        },
+        {
+          name: 'buyer';
+          docs: ['Buyer of the cNFT (recorded at draw). Receives the leaf.'];
+          writable: true;
+        },
+        {
+          name: 'treeConfig';
+          writable: true;
+        },
+        {
+          name: 'merkleTree';
+          docs: [
+            '`assert_config_line` (which compares the derived asset id to the stored',
+            'config-line mint).',
+          ];
+          writable: true;
+        },
+        {
+          name: 'coreCollection';
+          optional: true;
+        },
+        {
+          name: 'logWrapper';
+          address: 'mnoopTCrg4p8ry25e4bcWA9XZjbNjMTfgYVGGEdRsf3';
+        },
+        {
+          name: 'compressionProgram';
+          address: 'mcmt6YrQEMKw8Mw43FmpRLmf7BqRnFMKmAcbxE3xkAW';
+        },
+        {
+          name: 'bubblegumProgram';
+          address: 'BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY';
+        },
+        {
+          name: 'systemProgram';
+          address: '11111111111111111111111111111111';
+        },
+        {
+          name: 'eventAuthority';
+        },
+        {
+          name: 'program';
+        },
+      ];
+      args: [
+        {
+          name: 'index';
+          type: 'u32';
+        },
+        {
+          name: 'args';
+          type: {
+            defined: {
+              name: 'cnftArgsV2';
+            };
+          };
+        },
+      ];
+    },
+    {
       name: 'claimCoreAsset';
       docs: [
         'Claims a Core asset from the gumball machine for a specific buyer.',
@@ -1713,7 +2328,6 @@ export type MallowGumball = {
         {
           name: 'authority';
           docs: ['Gumball machine authority'];
-          writable: true;
           relations: ['gumballMachine'];
         },
         {
@@ -1763,6 +2377,94 @@ export type MallowGumball = {
         {
           name: 'index';
           type: 'u32';
+        },
+      ];
+    },
+    {
+      name: 'closeMissingCnftRecoveryV2';
+      docs: [
+        'Release a recovery receipt when current proof shows the asset left escrow or burned.',
+        'Provably missing trees accept no leaf and no proof. Otherwise, a no-leaf,',
+        'zero-root exit requires a marketplace fee authority signer and canonical',
+        'guard GlobalConfig prefix after off-chain verification of missing delivery.',
+      ];
+      discriminator: [8, 244, 37, 107, 46, 112, 70, 76];
+      accounts: [
+        {
+          name: 'payer';
+          signer: true;
+        },
+        {
+          name: 'recovery';
+          writable: true;
+          pda: {
+            seeds: [
+              {
+                kind: 'const';
+                value: [
+                  99,
+                  110,
+                  102,
+                  116,
+                  95,
+                  114,
+                  101,
+                  99,
+                  111,
+                  118,
+                  101,
+                  114,
+                  121,
+                ];
+              },
+              {
+                kind: 'account';
+                path: 'recovery.gumballMachine';
+                account: 'cnftRecovery';
+              },
+              {
+                kind: 'account';
+                path: 'recovery.merkleTree';
+                account: 'cnftRecovery';
+              },
+              {
+                kind: 'account';
+                path: 'recovery.nonce';
+                account: 'cnftRecovery';
+              },
+            ];
+          };
+        },
+        {
+          name: 'rentPayer';
+          writable: true;
+          relations: ['recovery'];
+        },
+        {
+          name: 'merkleTree';
+          relations: ['recovery'];
+        },
+        {
+          name: 'compressionProgram';
+          address: 'mcmt6YrQEMKw8Mw43FmpRLmf7BqRnFMKmAcbxE3xkAW';
+        },
+      ];
+      args: [
+        {
+          name: 'root';
+          type: {
+            array: ['u8', 32];
+          };
+        },
+        {
+          name: 'leaf';
+          type: {
+            option: {
+              defined: {
+                name: 'cnftV2RefundLeaf';
+              };
+            };
+          };
         },
       ];
     },
@@ -2086,6 +2788,496 @@ export type MallowGumball = {
       ];
     },
     {
+      name: 'migrateAddItemRequests';
+      docs: [
+        'Backfill request accounting; only the marketplace may attest completeness.',
+      ];
+      discriminator: [223, 31, 197, 225, 89, 39, 22, 24];
+      accounts: [
+        {
+          name: 'gumballMachine';
+          writable: true;
+        },
+        {
+          name: 'authority';
+          signer: true;
+        },
+        {
+          name: 'globalConfig';
+        },
+        {
+          name: 'payer';
+          writable: true;
+          signer: true;
+        },
+        {
+          name: 'systemProgram';
+          address: '11111111111111111111111111111111';
+        },
+      ];
+      args: [
+        {
+          name: 'complete';
+          type: 'bool';
+        },
+      ];
+    },
+    {
+      name: 'reclaimCnftV2';
+      docs: [
+        'Return a recovered escrow asset to its recorded seller, authorized by the marketplace.',
+      ];
+      discriminator: [2, 85, 163, 175, 100, 128, 64, 44];
+      accounts: [
+        {
+          name: 'authority';
+          docs: [
+            'Marketplace fee authority from the canonical guard GlobalConfig.',
+          ];
+          writable: true;
+          signer: true;
+        },
+        {
+          name: 'recovery';
+          writable: true;
+          pda: {
+            seeds: [
+              {
+                kind: 'const';
+                value: [
+                  99,
+                  110,
+                  102,
+                  116,
+                  95,
+                  114,
+                  101,
+                  99,
+                  111,
+                  118,
+                  101,
+                  114,
+                  121,
+                ];
+              },
+              {
+                kind: 'account';
+                path: 'recovery.gumballMachine';
+                account: 'cnftRecovery';
+              },
+              {
+                kind: 'account';
+                path: 'recovery.merkleTree';
+                account: 'cnftRecovery';
+              },
+              {
+                kind: 'account';
+                path: 'recovery.nonce';
+                account: 'cnftRecovery';
+              },
+            ];
+          };
+        },
+        {
+          name: 'authorityPda';
+          pda: {
+            seeds: [
+              {
+                kind: 'const';
+                value: [
+                  103,
+                  117,
+                  109,
+                  98,
+                  97,
+                  108,
+                  108,
+                  95,
+                  109,
+                  97,
+                  99,
+                  104,
+                  105,
+                  110,
+                  101,
+                ];
+              },
+              {
+                kind: 'account';
+                path: 'recovery.gumballMachine';
+                account: 'cnftRecovery';
+              },
+            ];
+          };
+        },
+        {
+          name: 'seller';
+          relations: ['recovery'];
+        },
+        {
+          name: 'rentPayer';
+          writable: true;
+          relations: ['recovery'];
+        },
+        {
+          name: 'treeConfig';
+          writable: true;
+        },
+        {
+          name: 'merkleTree';
+          writable: true;
+          relations: ['recovery'];
+        },
+        {
+          name: 'coreCollection';
+          optional: true;
+        },
+        {
+          name: 'logWrapper';
+          address: 'mnoopTCrg4p8ry25e4bcWA9XZjbNjMTfgYVGGEdRsf3';
+        },
+        {
+          name: 'compressionProgram';
+          address: 'mcmt6YrQEMKw8Mw43FmpRLmf7BqRnFMKmAcbxE3xkAW';
+        },
+        {
+          name: 'bubblegumProgram';
+          address: 'BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY';
+        },
+        {
+          name: 'systemProgram';
+          address: '11111111111111111111111111111111';
+        },
+        {
+          name: 'gumballMachine';
+        },
+      ];
+      args: [
+        {
+          name: 'args';
+          type: {
+            defined: {
+              name: 'cnftArgsV2';
+            };
+          };
+        },
+      ];
+    },
+    {
+      name: 'recoverPayoutRent';
+      docs: ["Recover a paid payout ledger entry's rent deposit."];
+      discriminator: [182, 254, 139, 214, 116, 154, 222, 182];
+      accounts: [
+        {
+          name: 'gumballMachine';
+        },
+        {
+          name: 'authorityPda';
+          writable: true;
+          pda: {
+            seeds: [
+              {
+                kind: 'const';
+                value: [
+                  103,
+                  117,
+                  109,
+                  98,
+                  97,
+                  108,
+                  108,
+                  95,
+                  109,
+                  97,
+                  99,
+                  104,
+                  105,
+                  110,
+                  101,
+                ];
+              },
+              {
+                kind: 'account';
+                path: 'gumballMachine';
+              },
+            ];
+          };
+        },
+        {
+          name: 'rentPayer';
+          writable: true;
+          signer: true;
+        },
+      ];
+      args: [
+        {
+          name: 'recipient';
+          type: 'pubkey';
+        },
+      ];
+    },
+    {
+      name: 'refundCnftSaleV2';
+      docs: [
+        'Refund an unclaimed, provably undeliverable v2 item from the pooled proceeds.',
+      ];
+      discriminator: [152, 132, 12, 132, 87, 135, 251, 144];
+      accounts: [
+        {
+          name: 'payer';
+          writable: true;
+          signer: true;
+        },
+        {
+          name: 'gumballMachine';
+          writable: true;
+          relations: ['sellerHistory'];
+        },
+        {
+          name: 'authorityPda';
+          writable: true;
+          pda: {
+            seeds: [
+              {
+                kind: 'const';
+                value: [
+                  103,
+                  117,
+                  109,
+                  98,
+                  97,
+                  108,
+                  108,
+                  95,
+                  109,
+                  97,
+                  99,
+                  104,
+                  105,
+                  110,
+                  101,
+                ];
+              },
+              {
+                kind: 'account';
+                path: 'gumballMachine';
+              },
+            ];
+          };
+        },
+        {
+          name: 'seller';
+          writable: true;
+          relations: ['sellerHistory'];
+        },
+        {
+          name: 'sellerHistory';
+          writable: true;
+          pda: {
+            seeds: [
+              {
+                kind: 'const';
+                value: [
+                  115,
+                  101,
+                  108,
+                  108,
+                  101,
+                  114,
+                  95,
+                  104,
+                  105,
+                  115,
+                  116,
+                  111,
+                  114,
+                  121,
+                ];
+              },
+              {
+                kind: 'account';
+                path: 'gumballMachine';
+              },
+              {
+                kind: 'account';
+                path: 'seller';
+              },
+            ];
+          };
+        },
+        {
+          name: 'buyer';
+          writable: true;
+          optional: true;
+        },
+        {
+          name: 'authorityPdaPaymentAccount';
+          writable: true;
+          optional: true;
+        },
+        {
+          name: 'buyerPaymentAccount';
+          writable: true;
+          optional: true;
+        },
+        {
+          name: 'paymentMint';
+          optional: true;
+        },
+        {
+          name: 'merkleTree';
+        },
+        {
+          name: 'recovery';
+          writable: true;
+          pda: {
+            seeds: [
+              {
+                kind: 'const';
+                value: [
+                  99,
+                  110,
+                  102,
+                  116,
+                  95,
+                  114,
+                  101,
+                  99,
+                  111,
+                  118,
+                  101,
+                  114,
+                  121,
+                ];
+              },
+              {
+                kind: 'account';
+                path: 'gumballMachine';
+              },
+              {
+                kind: 'account';
+                path: 'merkleTree';
+              },
+              {
+                kind: 'arg';
+                path: 'nonce';
+              },
+            ];
+          };
+        },
+        {
+          name: 'compressionProgram';
+          address: 'mcmt6YrQEMKw8Mw43FmpRLmf7BqRnFMKmAcbxE3xkAW';
+        },
+        {
+          name: 'tokenProgram';
+        },
+        {
+          name: 'associatedTokenProgram';
+          address: 'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL';
+        },
+        {
+          name: 'systemProgram';
+          address: '11111111111111111111111111111111';
+        },
+        {
+          name: 'coreCollection';
+          optional: true;
+        },
+        {
+          name: 'eventAuthority';
+        },
+        {
+          name: 'program';
+        },
+      ];
+      args: [
+        {
+          name: 'index';
+          type: 'u32';
+        },
+        {
+          name: 'nonce';
+          type: 'u64';
+        },
+        {
+          name: 'root';
+          type: {
+            array: ['u8', 32];
+          };
+        },
+        {
+          name: 'leaf';
+          type: {
+            option: {
+              defined: {
+                name: 'cnftV2RefundLeaf';
+              };
+            };
+          };
+        },
+      ];
+    },
+    {
+      name: 'rejectAddItemRequest';
+      docs: [
+        'Reject an outstanding request; the seller may still cancel its escrow.',
+      ];
+      discriminator: [131, 93, 0, 132, 158, 83, 50, 193];
+      accounts: [
+        {
+          name: 'gumballMachine';
+          writable: true;
+          relations: ['addItemRequest'];
+        },
+        {
+          name: 'addItemRequest';
+          writable: true;
+          pda: {
+            seeds: [
+              {
+                kind: 'const';
+                value: [
+                  97,
+                  100,
+                  100,
+                  95,
+                  105,
+                  116,
+                  101,
+                  109,
+                  95,
+                  114,
+                  101,
+                  113,
+                  117,
+                  101,
+                  115,
+                  116,
+                ];
+              },
+              {
+                kind: 'account';
+                path: 'addItemRequest.asset';
+                account: 'addItemRequest';
+              },
+            ];
+          };
+        },
+        {
+          name: 'authority';
+          writable: true;
+          signer: true;
+          relations: ['gumballMachine'];
+        },
+        {
+          name: 'systemProgram';
+          address: '11111111111111111111111111111111';
+        },
+      ];
+      args: [];
+    },
+    {
       name: 'removeCnft';
       docs: [
         'Remove a compressed NFT from the gumball machine.',
@@ -2230,6 +3422,143 @@ export type MallowGumball = {
           type: {
             defined: {
               name: 'cnftArgs';
+            };
+          };
+        },
+      ];
+    },
+    {
+      name: 'removeCnftV2';
+      docs: ['Return a Bubblegum v2 leaf to its seller.'];
+      discriminator: [105, 128, 162, 94, 55, 143, 73, 189];
+      accounts: [
+        {
+          name: 'gumballMachine';
+          docs: ['Gumball Machine account.'];
+          writable: true;
+          relations: ['sellerHistory'];
+        },
+        {
+          name: 'sellerHistory';
+          docs: ['Seller history account.'];
+          writable: true;
+          pda: {
+            seeds: [
+              {
+                kind: 'const';
+                value: [
+                  115,
+                  101,
+                  108,
+                  108,
+                  101,
+                  114,
+                  95,
+                  104,
+                  105,
+                  115,
+                  116,
+                  111,
+                  114,
+                  121,
+                ];
+              },
+              {
+                kind: 'account';
+                path: 'gumballMachine';
+              },
+              {
+                kind: 'account';
+                path: 'seller';
+              },
+            ];
+          };
+        },
+        {
+          name: 'authorityPda';
+          writable: true;
+          pda: {
+            seeds: [
+              {
+                kind: 'const';
+                value: [
+                  103,
+                  117,
+                  109,
+                  98,
+                  97,
+                  108,
+                  108,
+                  95,
+                  109,
+                  97,
+                  99,
+                  104,
+                  105,
+                  110,
+                  101,
+                ];
+              },
+              {
+                kind: 'account';
+                path: 'gumballMachine';
+              },
+            ];
+          };
+        },
+        {
+          name: 'authority';
+          docs: [
+            'Authority allowed to remove (gumball machine authority or item seller).',
+          ];
+          writable: true;
+          signer: true;
+        },
+        {
+          name: 'seller';
+          writable: true;
+          relations: ['sellerHistory'];
+        },
+        {
+          name: 'treeConfig';
+          writable: true;
+        },
+        {
+          name: 'merkleTree';
+          docs: ['derived asset id passed into `remove_multiple_items_span`.'];
+          writable: true;
+        },
+        {
+          name: 'coreCollection';
+          optional: true;
+        },
+        {
+          name: 'logWrapper';
+          address: 'mnoopTCrg4p8ry25e4bcWA9XZjbNjMTfgYVGGEdRsf3';
+        },
+        {
+          name: 'compressionProgram';
+          address: 'mcmt6YrQEMKw8Mw43FmpRLmf7BqRnFMKmAcbxE3xkAW';
+        },
+        {
+          name: 'bubblegumProgram';
+          address: 'BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY';
+        },
+        {
+          name: 'systemProgram';
+          address: '11111111111111111111111111111111';
+        },
+      ];
+      args: [
+        {
+          name: 'index';
+          type: 'u32';
+        },
+        {
+          name: 'args';
+          type: {
+            defined: {
+              name: 'cnftArgsV2';
             };
           };
         },
@@ -3036,6 +4365,174 @@ export type MallowGumball = {
       ];
     },
     {
+      name: 'requestAddCnftV2';
+      docs: ['Escrow a Bubblegum v2 leaf pending curator approval.'];
+      discriminator: [218, 46, 98, 124, 63, 115, 190, 27];
+      accounts: [
+        {
+          name: 'gumballMachine';
+          docs: ['Gumball Machine account.'];
+          writable: true;
+        },
+        {
+          name: 'sellerHistory';
+          docs: ['Seller history account.'];
+          writable: true;
+          pda: {
+            seeds: [
+              {
+                kind: 'const';
+                value: [
+                  115,
+                  101,
+                  108,
+                  108,
+                  101,
+                  114,
+                  95,
+                  104,
+                  105,
+                  115,
+                  116,
+                  111,
+                  114,
+                  121,
+                ];
+              },
+              {
+                kind: 'account';
+                path: 'gumballMachine';
+              },
+              {
+                kind: 'account';
+                path: 'seller';
+              },
+            ];
+          };
+        },
+        {
+          name: 'addItemRequest';
+          docs: ['Add item request account, keyed by the asset id.'];
+          writable: true;
+          pda: {
+            seeds: [
+              {
+                kind: 'const';
+                value: [
+                  97,
+                  100,
+                  100,
+                  95,
+                  105,
+                  116,
+                  101,
+                  109,
+                  95,
+                  114,
+                  101,
+                  113,
+                  117,
+                  101,
+                  115,
+                  116,
+                ];
+              },
+              {
+                kind: 'account';
+                path: 'asset';
+              },
+            ];
+          };
+        },
+        {
+          name: 'authorityPda';
+          writable: true;
+          pda: {
+            seeds: [
+              {
+                kind: 'const';
+                value: [
+                  103,
+                  117,
+                  109,
+                  98,
+                  97,
+                  108,
+                  108,
+                  95,
+                  109,
+                  97,
+                  99,
+                  104,
+                  105,
+                  110,
+                  101,
+                ];
+              },
+              {
+                kind: 'account';
+                path: 'gumballMachine';
+              },
+            ];
+          };
+        },
+        {
+          name: 'seller';
+          docs: ['Seller of the cNFT (current leaf owner).'];
+          writable: true;
+          signer: true;
+        },
+        {
+          name: 'asset';
+          docs: [
+            'The cNFT asset id (a Bubblegum PDA; not a real account). Used only as the',
+            'request PDA seed and bound to (merkle_tree, nonce) in the handler.',
+          ];
+        },
+        {
+          name: 'leafDelegate';
+        },
+        {
+          name: 'treeConfig';
+          writable: true;
+        },
+        {
+          name: 'merkleTree';
+          writable: true;
+        },
+        {
+          name: 'coreCollection';
+          optional: true;
+        },
+        {
+          name: 'logWrapper';
+          address: 'mnoopTCrg4p8ry25e4bcWA9XZjbNjMTfgYVGGEdRsf3';
+        },
+        {
+          name: 'compressionProgram';
+          address: 'mcmt6YrQEMKw8Mw43FmpRLmf7BqRnFMKmAcbxE3xkAW';
+        },
+        {
+          name: 'bubblegumProgram';
+          address: 'BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY';
+        },
+        {
+          name: 'systemProgram';
+          address: '11111111111111111111111111111111';
+        },
+      ];
+      args: [
+        {
+          name: 'args';
+          type: {
+            defined: {
+              name: 'cnftArgsV2';
+            };
+          };
+        },
+      ];
+    },
+    {
       name: 'requestAddCoreAsset';
       docs: [
         'Request to add a core asset to the gumball machine.',
@@ -3651,14 +5148,20 @@ export type MallowGumball = {
       accounts: [
         {
           name: 'gumballMachine';
-          docs: ['Gumball Machine account.'];
           writable: true;
         },
         {
           name: 'authority';
-          docs: ['Autority of the gumball machine.'];
           signer: true;
           relations: ['gumballMachine'];
+        },
+        {
+          name: 'newAuthoritySigner';
+          docs: [
+            'New authorities must co-sign; appended for legacy idempotent calls.',
+          ];
+          signer: true;
+          optional: true;
         },
       ];
       args: [
@@ -3789,7 +5292,6 @@ export type MallowGumball = {
         },
         {
           name: 'authority';
-          writable: true;
           relations: ['gumballMachine'];
         },
         {
@@ -3938,6 +5440,219 @@ export type MallowGumball = {
       ];
     },
     {
+      name: 'settleCnftSaleV2';
+      docs: [
+        'Settle a Bubblegum v2 sale. Remaining accounts are payout creators then proof nodes.',
+        'For marketplace-authorized missing delivery, use flags = 255 and a zero root,',
+        'prefixing remaining accounts with the marketplace fee authority signer and',
+        'canonical guard GlobalConfig, before any Token-2022 slot. Required for SPL replacements.',
+      ];
+      discriminator: [147, 48, 252, 58, 69, 79, 37, 5];
+      accounts: [
+        {
+          name: 'payer';
+          docs: ['Anyone can settle the sale.'];
+          writable: true;
+          signer: true;
+        },
+        {
+          name: 'gumballMachine';
+          docs: ['Gumball machine account.'];
+          writable: true;
+        },
+        {
+          name: 'authorityPda';
+          writable: true;
+          pda: {
+            seeds: [
+              {
+                kind: 'const';
+                value: [
+                  103,
+                  117,
+                  109,
+                  98,
+                  97,
+                  108,
+                  108,
+                  95,
+                  109,
+                  97,
+                  99,
+                  104,
+                  105,
+                  110,
+                  101,
+                ];
+              },
+              {
+                kind: 'account';
+                path: 'gumballMachine';
+              },
+            ];
+          };
+        },
+        {
+          name: 'authorityPdaPaymentAccount';
+          docs: ['Payment account for authority pda if using token payment.'];
+          writable: true;
+          optional: true;
+        },
+        {
+          name: 'authority';
+          relations: ['gumballMachine'];
+        },
+        {
+          name: 'authorityPaymentAccount';
+          docs: ['Payment account for authority if using token payment.'];
+          writable: true;
+          optional: true;
+        },
+        {
+          name: 'seller';
+          docs: ['Seller of the cNFT.'];
+          writable: true;
+        },
+        {
+          name: 'sellerPaymentAccount';
+          docs: ['Payment account for seller if using token payment.'];
+          writable: true;
+          optional: true;
+        },
+        {
+          name: 'sellerHistory';
+          docs: ['Seller history account.'];
+          writable: true;
+          pda: {
+            seeds: [
+              {
+                kind: 'const';
+                value: [
+                  115,
+                  101,
+                  108,
+                  108,
+                  101,
+                  114,
+                  95,
+                  104,
+                  105,
+                  115,
+                  116,
+                  111,
+                  114,
+                  121,
+                ];
+              },
+              {
+                kind: 'account';
+                path: 'gumballMachine';
+              },
+              {
+                kind: 'account';
+                path: 'seller';
+              },
+            ];
+          };
+        },
+        {
+          name: 'buyer';
+          docs: [
+            'Buyer of the cNFT. Not `mut`: the account is only read (`.key()` /',
+            'leaf-transfer target), never written. Marking it `mut` would break unsold',
+            'settle, where `buyer == Pubkey::default()` (the System Program) cannot be',
+            'a writable account. Mirrors `settle_nft_sale`.',
+          ];
+        },
+        {
+          name: 'feeAccount';
+          docs: ['Fee account for marketplace fee if using fee config.'];
+          writable: true;
+          optional: true;
+        },
+        {
+          name: 'feePaymentAccount';
+          docs: ['Payment account for marketplace fee if using token payment.'];
+          writable: true;
+          optional: true;
+        },
+        {
+          name: 'paymentMint';
+          docs: ['Payment mint if using non-native payment token.'];
+          optional: true;
+        },
+        {
+          name: 'tokenProgram';
+          address: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
+        },
+        {
+          name: 'associatedTokenProgram';
+          address: 'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL';
+        },
+        {
+          name: 'systemProgram';
+          address: '11111111111111111111111111111111';
+        },
+        {
+          name: 'rent';
+          address: 'SysvarRent111111111111111111111111111111111';
+        },
+        {
+          name: 'treeConfig';
+          writable: true;
+        },
+        {
+          name: 'merkleTree';
+          docs: ['`assert_config_line`.'];
+          writable: true;
+        },
+        {
+          name: 'coreCollection';
+          optional: true;
+        },
+        {
+          name: 'logWrapper';
+          address: 'mnoopTCrg4p8ry25e4bcWA9XZjbNjMTfgYVGGEdRsf3';
+        },
+        {
+          name: 'compressionProgram';
+          address: 'mcmt6YrQEMKw8Mw43FmpRLmf7BqRnFMKmAcbxE3xkAW';
+        },
+        {
+          name: 'bubblegumProgram';
+          address: 'BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY';
+        },
+        {
+          name: 'eventAuthority';
+        },
+        {
+          name: 'program';
+        },
+      ];
+      args: [
+        {
+          name: 'index';
+          type: 'u32';
+        },
+        {
+          name: 'args';
+          type: {
+            defined: {
+              name: 'cnftArgsV2';
+            };
+          };
+        },
+        {
+          name: 'currentLeafOwner';
+          type: 'pubkey';
+        },
+        {
+          name: 'currentLeafDelegate';
+          type: 'pubkey';
+        },
+      ];
+    },
+    {
       name: 'settleCoreAssetSale';
       docs: [
         'Settles a Core asset sale',
@@ -4022,7 +5737,6 @@ export type MallowGumball = {
         {
           name: 'authority';
           docs: ['Seller of the nft'];
-          writable: true;
           relations: ['gumballMachine'];
         },
         {
@@ -4236,7 +5950,6 @@ export type MallowGumball = {
         {
           name: 'authority';
           docs: ['Seller of the nft'];
-          writable: true;
           relations: ['gumballMachine'];
         },
         {
@@ -4486,7 +6199,6 @@ export type MallowGumball = {
         {
           name: 'authority';
           docs: ['Seller of the nft'];
-          writable: true;
           relations: ['gumballMachine'];
         },
         {
@@ -4686,7 +6398,6 @@ export type MallowGumball = {
         {
           name: 'authority';
           docs: ['Seller of the tokens'];
-          writable: true;
           relations: ['gumballMachine'];
         },
         {
@@ -4945,11 +6656,102 @@ export type MallowGumball = {
       ];
       args: [];
     },
+    {
+      name: 'withdrawPayout';
+      docs: [
+        "Withdraw a parked payout and return the action payer's ledger rent.",
+      ];
+      discriminator: [114, 146, 48, 240, 49, 57, 108, 188];
+      accounts: [
+        {
+          name: 'gumballMachine';
+          docs: [
+            'final post-close token withdrawal sweeps the vault balance and may close it.',
+          ];
+        },
+        {
+          name: 'authorityPda';
+          writable: true;
+          pda: {
+            seeds: [
+              {
+                kind: 'const';
+                value: [
+                  103,
+                  117,
+                  109,
+                  98,
+                  97,
+                  108,
+                  108,
+                  95,
+                  109,
+                  97,
+                  99,
+                  104,
+                  105,
+                  110,
+                  101,
+                ];
+              },
+              {
+                kind: 'account';
+                path: 'gumballMachine';
+              },
+            ];
+          };
+        },
+        {
+          name: 'recipient';
+          writable: true;
+          signer: true;
+        },
+        {
+          name: 'rentPayer';
+          writable: true;
+        },
+        {
+          name: 'paymentMint';
+          optional: true;
+        },
+        {
+          name: 'authorityPdaPaymentAccount';
+          writable: true;
+          optional: true;
+        },
+        {
+          name: 'recipientPaymentAccount';
+          writable: true;
+          optional: true;
+        },
+        {
+          name: 'tokenProgram';
+        },
+        {
+          name: 'associatedTokenProgram';
+          address: 'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL';
+        },
+        {
+          name: 'systemProgram';
+          address: '11111111111111111111111111111111';
+        },
+      ];
+      args: [
+        {
+          name: 'amount';
+          type: 'u64';
+        },
+      ];
+    },
   ];
   accounts: [
     {
       name: 'addItemRequest';
       discriminator: [234, 140, 142, 7, 121, 224, 48, 173];
+    },
+    {
+      name: 'cnftRecovery';
+      discriminator: [82, 193, 171, 170, 234, 86, 29, 27];
     },
     {
       name: 'gumballMachine';
@@ -4972,6 +6774,10 @@ export type MallowGumball = {
     {
       name: 'idlHints';
       discriminator: [142, 251, 39, 135, 71, 0, 96, 192];
+    },
+    {
+      name: 'refundCnftSaleEvent';
+      discriminator: [181, 62, 6, 7, 55, 141, 26, 185];
     },
     {
       name: 'sellItemEvent';
@@ -5331,7 +7137,7 @@ export type MallowGumball = {
     {
       code: 6069;
       name: 'unsupportedCnftVersion';
-      msg: 'Unsupported Bubblegum version (only V1 compressed NFTs can be traded)';
+      msg: 'Bubblegum leaf version does not match the instruction or tree owner';
     },
     {
       code: 6070;
@@ -5342,6 +7148,46 @@ export type MallowGumball = {
       code: 6071;
       name: 'accountAlreadyInitialized';
       msg: 'Account is already initialized';
+    },
+    {
+      code: 6072;
+      name: 'ineligibleCnftFlags';
+      msg: 'Compressed NFT has non-zero transfer flags';
+    },
+    {
+      code: 6073;
+      name: 'invalidCoreCollection';
+      msg: 'Invalid Core collection';
+    },
+    {
+      code: 6074;
+      name: 'assetDeliverable';
+      msg: 'Compressed NFT is still deliverable from escrow';
+    },
+    {
+      code: 6075;
+      name: 'staleRefundEvidence';
+      msg: 'Refund evidence must use the current tree root';
+    },
+    {
+      code: 6076;
+      name: 'invalidRefundEvidence';
+      msg: 'Invalid current-tree refund evidence';
+    },
+    {
+      code: 6077;
+      name: 'refundReserveOutstanding';
+      msg: 'Outstanding draw reserve prevents final recovery settlement';
+    },
+    {
+      code: 6078;
+      name: 'cnftLedgerGrowthTooLarge';
+      msg: 'cNFT ledger growth exceeds 10240 bytes; recreate with v6 preallocation (unallocated v5 capacity limit: 637)';
+    },
+    {
+      code: 6079;
+      name: 'cnftLedgerRequiresAuthority';
+      msg: 'Machine authority must fund initial cNFT ledger allocation';
     },
   ];
   types: [
@@ -5545,9 +7391,79 @@ export type MallowGumball = {
           {
             name: 'version';
             docs: [
-              'Bubblegum leaf version. Only V1 (`1`) is supported for on-chain trading;',
-              'V2 leaves are rejected (see `assert_cnft_v1`).',
+              'Bubblegum leaf version. Must be V1 (`1`) for the original instructions.',
             ];
+            type: 'u8';
+          },
+        ];
+      };
+    },
+    {
+      name: 'cnftArgsV2';
+      docs: [
+        'Proof-authenticated Bubblegum v2 metadata and leaf fields.',
+        'Proof creators are independent from collection royalty payout creators.',
+      ];
+      type: {
+        kind: 'struct';
+        fields: [
+          {
+            name: 'root';
+            type: {
+              array: ['u8', 32];
+            };
+          },
+          {
+            name: 'metaHash';
+            docs: [
+              'Inner keccak of Borsh MetadataArgsV2; never use the v1 metadata layout.',
+            ];
+            type: {
+              array: ['u8', 32];
+            };
+          },
+          {
+            name: 'sellerFeeBasisPoints';
+            docs: [
+              'Raw leaf rate, including 65535 for collection inheritance.',
+            ];
+            type: 'u16';
+          },
+          {
+            name: 'creators';
+            type: {
+              vec: {
+                defined: {
+                  name: 'cnftCreator';
+                };
+              };
+            };
+          },
+          {
+            name: 'nonce';
+            type: 'u64';
+          },
+          {
+            name: 'index';
+            type: 'u32';
+          },
+          {
+            name: 'version';
+            type: 'u8';
+          },
+          {
+            name: 'assetDataHash';
+            docs: [
+              "None represents Bubblegum's default empty asset-data hash.",
+            ];
+            type: {
+              option: {
+                array: ['u8', 32];
+              };
+            };
+          },
+          {
+            name: 'flags';
             type: 'u8';
           },
         ];
@@ -5581,6 +7497,92 @@ export type MallowGumball = {
           {
             name: 'share';
             docs: ['Royalty share (0-100). Sum across creators must be 100.'];
+            type: 'u8';
+          },
+        ];
+      };
+    },
+    {
+      name: 'cnftRecovery';
+      docs: [
+        'Survives machine closure until an undeliverable escrowed leaf can be returned.',
+      ];
+      type: {
+        kind: 'struct';
+        fields: [
+          {
+            name: 'gumballMachine';
+            type: 'pubkey';
+          },
+          {
+            name: 'authority';
+            type: 'pubkey';
+          },
+          {
+            name: 'seller';
+            type: 'pubkey';
+          },
+          {
+            name: 'asset';
+            type: 'pubkey';
+          },
+          {
+            name: 'merkleTree';
+            type: 'pubkey';
+          },
+          {
+            name: 'nonce';
+            type: 'u64';
+          },
+          {
+            name: 'rentPayer';
+            type: 'pubkey';
+          },
+        ];
+      };
+    },
+    {
+      name: 'cnftV2RefundLeaf';
+      docs: [
+        'Current proof evidence; identity and nonce are bound to the stored item.',
+      ];
+      type: {
+        kind: 'struct';
+        fields: [
+          {
+            name: 'owner';
+            type: 'pubkey';
+          },
+          {
+            name: 'delegate';
+            type: 'pubkey';
+          },
+          {
+            name: 'dataHash';
+            type: {
+              array: ['u8', 32];
+            };
+          },
+          {
+            name: 'creatorHash';
+            type: {
+              array: ['u8', 32];
+            };
+          },
+          {
+            name: 'collectionHash';
+            type: {
+              array: ['u8', 32];
+            };
+          },
+          {
+            name: 'assetDataHash';
+            type: {
+              array: ['u8', 32];
+            };
+          },
+          {
+            name: 'flags';
             type: 'u8';
           },
         ];
@@ -5974,6 +7976,44 @@ export type MallowGumball = {
           {
             name: 'disableRoyalties';
             type: 'bool';
+          },
+        ];
+      };
+    },
+    {
+      name: 'refundCnftSaleEvent';
+      type: {
+        kind: 'struct';
+        fields: [
+          {
+            name: 'gumballMachine';
+            type: 'pubkey';
+          },
+          {
+            name: 'mint';
+            type: 'pubkey';
+          },
+          {
+            name: 'seller';
+            type: 'pubkey';
+          },
+          {
+            name: 'buyer';
+            type: 'pubkey';
+          },
+          {
+            name: 'paymentMint';
+            type: 'pubkey';
+          },
+          {
+            name: 'refundAmount';
+            type: 'u64';
+          },
+          {
+            name: 'recovery';
+            type: {
+              option: 'pubkey';
+            };
           },
         ];
       };

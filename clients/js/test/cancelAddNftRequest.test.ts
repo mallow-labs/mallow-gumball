@@ -12,6 +12,7 @@ import {
   getCancelAddNftRequestInstructionAsync,
   getDeleteGumballMachineInstructionAsync,
   getRequestAddNftInstructionAsync,
+  withRequestCancellationMachine,
 } from '../src';
 import {
   createNft,
@@ -50,12 +51,15 @@ test('it can cancel a request to add an nft to a gumball machine', async (t) => 
   });
 
   await sendTransaction(client.svm, seller, [
-    await getCancelAddNftRequestInstructionAsync({
-      seller,
-      mint,
-      sellerHistory,
-      authorityPda,
-    }),
+    withRequestCancellationMachine(
+      await getCancelAddNftRequestInstructionAsync({
+        seller,
+        mint,
+        sellerHistory,
+        authorityPda,
+      }),
+      gumballMachine
+    ),
   ]);
 
   // The request is closed.
@@ -106,12 +110,15 @@ test('it can cancel a request to add an nft to a gumball machine after the gumba
   });
 
   await sendTransaction(client.svm, seller, [
-    await getCancelAddNftRequestInstructionAsync({
-      seller,
-      mint,
-      sellerHistory,
-      authorityPda,
-    }),
+    withRequestCancellationMachine(
+      await getCancelAddNftRequestInstructionAsync({
+        seller,
+        mint,
+        sellerHistory,
+        authorityPda,
+      }),
+      gumballMachine
+    ),
   ]);
 
   t.is(await getAddItemRequest(client, mint), null);

@@ -19,6 +19,11 @@ pub struct SetMintAuthority<'info> {
 pub fn set_mint_authority(ctx: Context<SetMintAuthority>) -> Result<()> {
     let gumball_machine = &mut ctx.accounts.gumball_machine;
 
+    gumball_machine.assert_can_set_mint_authority(
+        &gumball_machine.to_account_info().try_borrow_data()?,
+        ctx.accounts.mint_authority.key(),
+    )?;
+
     gumball_machine.mint_authority = ctx.accounts.mint_authority.key();
 
     Ok(())

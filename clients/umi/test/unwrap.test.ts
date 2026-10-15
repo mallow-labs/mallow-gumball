@@ -6,8 +6,9 @@ import { create, createGumballGuard, createUmi } from './_setup';
 test('it can unwrap a gumball machine v2 from its gumball guard', async (t) => {
   // Given an existing gumball machine and a gumball guard associated with it.
   const umi = await createUmi();
-  const machine = (await create(umi)).publicKey;
-  const gumballGuard = await createGumballGuard(umi);
+  const base = await create(umi);
+  const machine = base.publicKey;
+  const gumballGuard = await createGumballGuard(umi, { base });
   await transactionBuilder()
     .add(wrap(umi, { machine, gumballGuard }))
     .sendAndConfirm(umi);

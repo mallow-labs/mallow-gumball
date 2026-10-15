@@ -31,7 +31,6 @@ pub struct CnftArgs {
     pub nonce: u64,
     /// Leaf index within the merkle tree.
     pub index: u32,
-    /// Bubblegum leaf version. Only V1 (`1`) is supported for on-chain trading;
-    /// V2 leaves are rejected (see `assert_cnft_v1`).
+    /// Bubblegum leaf version. Must be V1 (`1`) for the original instructions.
     pub version: u8,
 }

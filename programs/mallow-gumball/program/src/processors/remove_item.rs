@@ -1,8 +1,30 @@
 use crate::{
     constants::{CONFIG_LINE_SIZE, GUMBALL_MACHINE_SIZE},
-    get_config_count, GumballError, GumballMachine,
+    get_bit_byte_info, get_config_count, GumballError, GumballMachine,
 };
 use anchor_lang::prelude::*;
+
+fn assert_removable_item(machine: &GumballMachine, data: &[u8], index: u32) -> Result<()> {
+    let position = GUMBALL_MACHINE_SIZE + 4 + index as usize * machine.get_config_line_size();
+    require!(
+        data[position + 64..position + 96] == Pubkey::default().to_bytes(),
+        GumballError::InvalidState
+    );
+    for start in [
+        machine.get_claimed_items_bit_mask_position(),
+        machine.get_settled_items_bit_mask_position()?,
+    ] {
+        let (byte, _, mask) = get_bit_byte_info(start, index as usize)?;
+        require!(data[byte] & mask == 0, GumballError::InvalidState);
+    }
+    if machine.version >= 6 {
+        require!(
+            machine.get_draw_payment(data, index)? == 0,
+            GumballError::InvalidState
+        );
+    }
+    Ok(())
+}
 
 /// DEPRECATED: Use remove_multiple_items_span instead
 pub fn remove_multiple_items(
@@ -33,6 +55,10 @@ pub fn remove_multiple_items(
         sorted_indices.last().unwrap() < &(count),
         GumballError::IndexGreaterThanLength
     );
+
+    for &index in &sorted_indices {
+        assert_removable_item(gumball_machine, &data, index)?;
+    }
 
     // Process each removal in reverse order to handle last line movements correctly
     for &index in indices.iter() {
@@ -149,6 +175,7 @@ pub fn remove_multiple_items_span(
 
     // First, verify all items in the span
     for index in start_index..=end_index {
+        assert_removable_item(gumball_machine, &data, index)?;
         let index_usize = index as usize;
         require!(
             index_usize <= usize::MAX / config_line_size, // Prevent multiplication overflow
@@ -235,4 +262,62 @@ pub fn remove_multiple_items_span(
     drop(data);
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{GumballSettings, GumballState, TokenStandard};
+
+    #[test]
+    fn removal_preserves_processed_items_on_every_version_and_standard() {
+        for version in 0..=6 {
+            let machine = GumballMachine {
+                version,
+                authority: Pubkey::default(),
+                mint_authority: Pubkey::default(),
+                marketplace_fee_config: None,
+                items_redeemed: 0,
+                items_settled: 0,
+                total_revenue: 0,
+                state: GumballState::None,
+                settings: GumballSettings {
+                    uri: String::new(),
+                    item_capacity: 1,
+                    items_per_seller: 1,
+                    sellers_merkle_root: None,
+                    curator_fee_bps: 0,
+                    hide_sold_items: false,
+                    payment_mint: Pubkey::default(),
+                },
+            };
+            for standard in [
+                TokenStandard::NonFungible,
+                TokenStandard::ProgrammableNonFungible,
+                TokenStandard::Core,
+                TokenStandard::Fungible,
+                TokenStandard::Compressed,
+            ] {
+                let mut data = vec![0; GumballMachine::get_size(1, version)];
+                data[GUMBALL_MACHINE_SIZE + 4 + 96] = standard as u8;
+                assert!(assert_removable_item(&machine, &data, 0).is_ok());
+                let mut buyer = data.clone();
+                buyer[GUMBALL_MACHINE_SIZE + 4 + 64] = 1;
+                assert!(assert_removable_item(&machine, &buyer, 0).is_err());
+                for start in [
+                    machine.get_claimed_items_bit_mask_position(),
+                    machine.get_settled_items_bit_mask_position().unwrap(),
+                ] {
+                    let mut processed = data.clone();
+                    let (byte, _, mask) = get_bit_byte_info(start, 0).unwrap();
+                    processed[byte] |= mask;
+                    assert!(assert_removable_item(&machine, &processed, 0).is_err());
+                }
+                if version >= 6 {
+                    data[machine.get_draw_payment_position(0).unwrap()] = 1;
+                    assert!(assert_removable_item(&machine, &data, 0).is_err());
+                }
+            }
+        }
+    }
 }

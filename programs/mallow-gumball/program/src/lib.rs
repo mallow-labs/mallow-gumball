@@ -34,6 +34,16 @@ pub mod mallow_gumball {
         instructions::initialize(ctx, args)
     }
 
+    /// Recover a paid payout ledger entry's rent deposit.
+    pub fn recover_payout_rent(ctx: Context<RecoverPayoutRent>, recipient: Pubkey) -> Result<()> {
+        instructions::recover_payout_rent(ctx, recipient)
+    }
+
+    /// Withdraw a parked payout and return the action payer's ledger rent.
+    pub fn withdraw_payout(ctx: Context<WithdrawPayout>, amount: u64) -> Result<()> {
+        instructions::withdraw_payout(ctx, amount)
+    }
+
     /// Updates gumball machine settings.
     ///
     /// # Accounts
@@ -848,5 +858,123 @@ pub mod mallow_gumball {
         current_leaf_delegate: Pubkey,
     ) -> Result<()> {
         instructions::settle_cnft_sale(ctx, index, args, current_leaf_owner, current_leaf_delegate)
+    }
+
+    /// Escrow a Bubblegum v2 leaf; remaining accounts are proof nodes.
+    pub fn add_cnft_v2<'info>(
+        ctx: Context<'info, AddCnftV2<'info>>,
+        args: CnftArgsV2,
+        add_item_args: AddItemArgs,
+    ) -> Result<()> {
+        instructions::add_cnft_v2(ctx, args, add_item_args)
+    }
+
+    /// Escrow a Bubblegum v2 leaf pending curator approval.
+    pub fn request_add_cnft_v2<'info>(
+        ctx: Context<'info, RequestAddCnftV2<'info>>,
+        args: CnftArgsV2,
+    ) -> Result<()> {
+        instructions::request_add_cnft_v2(ctx, args)
+    }
+
+    /// Return an escrowed Bubblegum v2 leaf and close its request.
+    pub fn cancel_add_cnft_request_v2<'info>(
+        ctx: Context<'info, CancelAddCnftRequestV2<'info>>,
+        args: CnftArgsV2,
+    ) -> Result<()> {
+        instructions::cancel_add_cnft_request_v2(ctx, args)
+    }
+
+    /// Return a Bubblegum v2 leaf to its seller.
+    pub fn remove_cnft_v2<'info>(
+        ctx: Context<'info, RemoveCnftV2<'info>>,
+        index: u32,
+        args: CnftArgsV2,
+    ) -> Result<()> {
+        instructions::remove_cnft_v2(ctx, index, args)
+    }
+
+    /// Deliver a Bubblegum v2 leaf to the recorded buyer.
+    pub fn claim_cnft_v2<'info>(
+        ctx: Context<'info, ClaimCnftV2<'info>>,
+        index: u32,
+        args: CnftArgsV2,
+    ) -> Result<()> {
+        instructions::claim_cnft_v2(ctx, index, args)
+    }
+
+    /// Settle a Bubblegum v2 sale. Remaining accounts are payout creators then proof nodes.
+    /// For marketplace-authorized missing delivery, use flags = 255 and a zero root,
+    /// prefixing remaining accounts with the marketplace fee authority signer and
+    /// canonical guard GlobalConfig, before any Token-2022 slot. Required for SPL replacements.
+    pub fn settle_cnft_sale_v2<'info>(
+        ctx: Context<'info, SettleCnftSaleV2<'info>>,
+        index: u32,
+        args: CnftArgsV2,
+        current_leaf_owner: Pubkey,
+        current_leaf_delegate: Pubkey,
+    ) -> Result<()> {
+        instructions::settle_cnft_sale_v2(
+            ctx,
+            index,
+            args,
+            current_leaf_owner,
+            current_leaf_delegate,
+        )
+    }
+    /// Refund an unclaimed, provably undeliverable v2 item from the pooled proceeds.
+    pub fn refund_cnft_sale_v2<'info>(
+        ctx: Context<'info, RefundCnftSaleV2<'info>>,
+        index: u32,
+        nonce: u64,
+        root: [u8; 32],
+        leaf: Option<CnftV2RefundLeaf>,
+    ) -> Result<()> {
+        instructions::refund_cnft_sale_v2(ctx, index, nonce, root, leaf)
+    }
+
+    /// Refund an unclaimed v2 item after operator-confirmed claim failure.
+    /// Remaining accounts: marketplace fee authority (signer), guard GlobalConfig, then proof.
+    /// With no leaf, operator-confirmed missing delivery needs no live tree or proof.
+    pub fn admin_refund_cnft_sale_v2<'info>(
+        ctx: Context<'info, RefundCnftSaleV2<'info>>,
+        index: u32,
+        nonce: u64,
+        root: [u8; 32],
+        leaf: Option<CnftV2RefundLeaf>,
+    ) -> Result<()> {
+        instructions::admin_refund_cnft_sale_v2(ctx, index, nonce, root, leaf)
+    }
+
+    /// Return a recovered escrow asset to its recorded seller, authorized by the marketplace.
+    pub fn reclaim_cnft_v2<'info>(
+        ctx: Context<'info, ReclaimCnftV2<'info>>,
+        args: CnftArgsV2,
+    ) -> Result<()> {
+        instructions::reclaim_cnft_v2(ctx, args)
+    }
+
+    /// Release a recovery receipt when current proof shows the asset left escrow or burned.
+    /// Provably missing trees accept no leaf and no proof. Otherwise, a no-leaf,
+    /// zero-root exit requires a marketplace fee authority signer and canonical
+    /// guard GlobalConfig prefix after off-chain verification of missing delivery.
+    pub fn close_missing_cnft_recovery_v2<'info>(
+        ctx: Context<'info, CloseMissingCnftRecoveryV2<'info>>,
+        root: [u8; 32],
+        leaf: Option<CnftV2RefundLeaf>,
+    ) -> Result<()> {
+        instructions::close_missing_cnft_recovery_v2(ctx, root, leaf)
+    }
+    /// Reject an outstanding request; the seller may still cancel its escrow.
+    pub fn reject_add_item_request(ctx: Context<RejectAddItemRequest>) -> Result<()> {
+        instructions::reject_add_item_request(ctx)
+    }
+
+    /// Backfill request accounting; only the marketplace may attest completeness.
+    pub fn migrate_add_item_requests<'info>(
+        ctx: Context<'info, MigrateAddItemRequests<'info>>,
+        complete: bool,
+    ) -> Result<()> {
+        instructions::migrate_add_item_requests(ctx, complete)
     }
 }

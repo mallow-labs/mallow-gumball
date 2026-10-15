@@ -43,7 +43,6 @@ pub struct SettleTokensSale<'info> {
 
     /// Seller of the nft
     /// CHECK: Safe due to gumball machine constraint
-    #[account(mut)]
     authority: UncheckedAccount<'info>,
 
     /// Payment account for authority if using token payment
@@ -119,6 +118,8 @@ pub fn settle_tokens_sale<'info>(
     let associated_token_program = &ctx.accounts.associated_token_program.to_account_info();
     let system_program = &ctx.accounts.system_program.to_account_info();
     let mint = &ctx.accounts.mint.to_account_info();
+
+    gumball_machine.assert_can_settle_item(buyer.key())?;
 
     assert_config_line(
         gumball_machine,

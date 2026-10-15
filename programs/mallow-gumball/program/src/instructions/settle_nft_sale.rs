@@ -44,7 +44,6 @@ pub struct SettleNftSale<'info> {
 
     /// Seller of the nft
     /// CHECK: Safe due to gumball machine constraint
-    #[account(mut)]
     authority: UncheckedAccount<'info>,
 
     /// Payment account for authority if using token payment
@@ -176,6 +175,8 @@ pub fn settle_nft_sale<'info>(ctx: Context<'info, SettleNftSale<'info>>, index: 
         let (expected_pda, _) = Metadata::find_pda(mint.key);
         assert_keys_equal(expected_pda, metadata_info.key(), "Invalid metadata PDA")?;
     }
+
+    gumball_machine.assert_can_settle_item(buyer.key())?;
 
     assert_config_line(
         gumball_machine,

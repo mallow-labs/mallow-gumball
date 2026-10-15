@@ -209,7 +209,7 @@ pub enum GumballError {
     #[msg("Missing item index")]
     MissingItemIndex,
 
-    #[msg("Unsupported Bubblegum version (only V1 compressed NFTs can be traded)")]
+    #[msg("Bubblegum leaf version does not match the instruction or tree owner")]
     UnsupportedCnftVersion,
 
     #[msg("Invalid merkle tree for the stored asset id")]
@@ -217,4 +217,27 @@ pub enum GumballError {
 
     #[msg("Account is already initialized")]
     AccountAlreadyInitialized,
+
+    #[msg("Compressed NFT has non-zero transfer flags")]
+    IneligibleCnftFlags,
+
+    #[msg("Invalid Core collection")]
+    InvalidCoreCollection,
+    #[msg("Compressed NFT is still deliverable from escrow")]
+    AssetDeliverable,
+
+    #[msg("Refund evidence must use the current tree root")]
+    StaleRefundEvidence,
+
+    #[msg("Invalid current-tree refund evidence")]
+    InvalidRefundEvidence,
+
+    #[msg("Outstanding draw reserve prevents final recovery settlement")]
+    RefundReserveOutstanding,
+
+    #[msg("cNFT ledger growth exceeds 10240 bytes; recreate with v6 preallocation (unallocated v5 capacity limit: 637)")]
+    CnftLedgerGrowthTooLarge,
+
+    #[msg("Machine authority must fund initial cNFT ledger allocation")]
+    CnftLedgerRequiresAuthority,
 }

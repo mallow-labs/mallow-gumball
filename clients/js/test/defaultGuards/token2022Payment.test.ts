@@ -1,6 +1,6 @@
 import { generateKeyPairSigner, some } from '@solana/kit';
 import test from 'ava';
-import { draw } from '../../src';
+import { draw, findGumballMachineAuthorityPda } from '../../src';
 import {
   COMPUTE_UNITS,
   createClient,
@@ -16,7 +16,10 @@ import {
 
 test('it transfers Token2022 tokens from the payer to the destination', async (t) => {
   const client = await createClient();
-  const destination = (await generateKeyPairSigner()).address;
+  const machine = await generateKeyPairSigner();
+  const [destination] = await findGumballMachineAuthorityPda({
+    gumballMachine: machine.address,
+  });
 
   // A Token-2022 mint: destination treasury has 100 tokens, payer has 12.
   const [mint, destinationAta, identityAta] = await createMintWithHolders(
@@ -31,6 +34,7 @@ test('it transfers Token2022 tokens from the payer to the destination', async (t
   );
 
   const { gumballMachine } = await createLoadedGumballMachine(client, {
+    gumballMachine: machine,
     guards: {
       token2022Payment: { mint, destinationAta, amount: 5 },
     },
@@ -56,7 +60,10 @@ test('it transfers Token2022 tokens from the payer to the destination', async (t
 
 test('it transfers Token2022 tokens from the payer to the fee account', async (t) => {
   const client = await createClient();
-  const destination = (await generateKeyPairSigner()).address;
+  const machine = await generateKeyPairSigner();
+  const [destination] = await findGumballMachineAuthorityPda({
+    gumballMachine: machine.address,
+  });
   const feeAccount = (await generateKeyPairSigner()).address;
 
   const [mint, destinationAta, identityAta, feeAccountAta] =
@@ -70,6 +77,7 @@ test('it transfers Token2022 tokens from the payer to the fee account', async (t
     });
 
   const { gumballMachine } = await createLoadedGumballMachine(client, {
+    gumballMachine: machine,
     guards: {
       token2022Payment: { mint, destinationAta, amount: 10 },
     },

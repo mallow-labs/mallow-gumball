@@ -105,6 +105,10 @@ pub fn cancel_add_nft_request(ctx: Context<CancelAddNftRequest>) -> Result<()> {
     let mint = &ctx.accounts.mint.to_account_info();
     let seller = &ctx.accounts.seller.to_account_info();
     let seller_history = &mut ctx.accounts.seller_history;
+    crate::resolve_cancelled_add_item_request(
+        &ctx.accounts.add_item_request,
+        ctx.remaining_accounts,
+    )?;
 
     let auth_seeds = [
         AUTHORITY_SEED.as_bytes(),

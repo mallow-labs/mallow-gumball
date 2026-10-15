@@ -52,6 +52,7 @@ export type SetGumballMachineAuthorityInstruction<
   TProgram extends string = typeof MALLOW_GUMBALL_PROGRAM_ADDRESS,
   TAccountGumballMachine extends string | AccountMeta<string> = string,
   TAccountAuthority extends string | AccountMeta<string> = string,
+  TAccountNewAuthoritySigner extends string | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -64,6 +65,10 @@ export type SetGumballMachineAuthorityInstruction<
         ? ReadonlySignerAccount<TAccountAuthority> &
             AccountSignerMeta<TAccountAuthority>
         : TAccountAuthority,
+      TAccountNewAuthoritySigner extends string
+        ? ReadonlySignerAccount<TAccountNewAuthoritySigner> &
+            AccountSignerMeta<TAccountNewAuthoritySigner>
+        : TAccountNewAuthoritySigner,
       ...TRemainingAccounts,
     ]
   >;
@@ -110,28 +115,32 @@ export function getSetGumballMachineAuthorityInstructionDataCodec(): FixedSizeCo
 export type SetGumballMachineAuthorityInput<
   TAccountGumballMachine extends string = string,
   TAccountAuthority extends string = string,
+  TAccountNewAuthoritySigner extends string = string,
 > = {
-  /** Gumball Machine account. */
   gumballMachine: Address<TAccountGumballMachine>;
-  /** Autority of the gumball machine. */
   authority: TransactionSigner<TAccountAuthority>;
+  /** New authorities must co-sign; appended for legacy idempotent calls. */
+  newAuthoritySigner?: TransactionSigner<TAccountNewAuthoritySigner>;
   newAuthority: SetGumballMachineAuthorityInstructionDataArgs['newAuthority'];
 };
 
 export function getSetGumballMachineAuthorityInstruction<
   TAccountGumballMachine extends string,
   TAccountAuthority extends string,
+  TAccountNewAuthoritySigner extends string,
   TProgramAddress extends Address = typeof MALLOW_GUMBALL_PROGRAM_ADDRESS,
 >(
   input: SetGumballMachineAuthorityInput<
     TAccountGumballMachine,
-    TAccountAuthority
+    TAccountAuthority,
+    TAccountNewAuthoritySigner
   >,
   config?: { programAddress?: TProgramAddress }
 ): SetGumballMachineAuthorityInstruction<
   TProgramAddress,
   TAccountGumballMachine,
-  TAccountAuthority
+  TAccountAuthority,
+  TAccountNewAuthoritySigner
 > {
   // Program address.
   const programAddress =
@@ -141,6 +150,10 @@ export function getSetGumballMachineAuthorityInstruction<
   const originalAccounts = {
     gumballMachine: { value: input.gumballMachine ?? null, isWritable: true },
     authority: { value: input.authority ?? null, isWritable: false },
+    newAuthoritySigner: {
+      value: input.newAuthoritySigner ?? null,
+      isWritable: false,
+    },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -155,6 +168,7 @@ export function getSetGumballMachineAuthorityInstruction<
     accounts: [
       getAccountMeta('gumballMachine', accounts.gumballMachine),
       getAccountMeta('authority', accounts.authority),
+      getAccountMeta('newAuthoritySigner', accounts.newAuthoritySigner),
     ],
     data: getSetGumballMachineAuthorityInstructionDataEncoder().encode(
       args as SetGumballMachineAuthorityInstructionDataArgs
@@ -163,7 +177,8 @@ export function getSetGumballMachineAuthorityInstruction<
   } as SetGumballMachineAuthorityInstruction<
     TProgramAddress,
     TAccountGumballMachine,
-    TAccountAuthority
+    TAccountAuthority,
+    TAccountNewAuthoritySigner
   >);
 }
 
@@ -173,10 +188,10 @@ export type ParsedSetGumballMachineAuthorityInstruction<
 > = {
   programAddress: Address<TProgram>;
   accounts: {
-    /** Gumball Machine account. */
     gumballMachine: TAccountMetas[0];
-    /** Autority of the gumball machine. */
     authority: TAccountMetas[1];
+    /** New authorities must co-sign; appended for legacy idempotent calls. */
+    newAuthoritySigner?: TAccountMetas[2] | undefined;
   };
   data: SetGumballMachineAuthorityInstructionData;
 };
@@ -189,12 +204,12 @@ export function parseSetGumballMachineAuthorityInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>
 ): ParsedSetGumballMachineAuthorityInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 2) {
+  if (instruction.accounts.length < 3) {
     throw new SolanaError(
       SOLANA_ERROR__PROGRAM_CLIENTS__INSUFFICIENT_ACCOUNT_METAS,
       {
         actualAccountMetas: instruction.accounts.length,
-        expectedAccountMetas: 2,
+        expectedAccountMetas: 3,
       }
     );
   }
@@ -204,9 +219,19 @@ export function parseSetGumballMachineAuthorityInstruction<
     accountIndex += 1;
     return accountMeta;
   };
+  const getNextOptionalAccount = () => {
+    const accountMeta = getNextAccount();
+    return accountMeta.address === MALLOW_GUMBALL_PROGRAM_ADDRESS
+      ? undefined
+      : accountMeta;
+  };
   return {
     programAddress: instruction.programAddress,
-    accounts: { gumballMachine: getNextAccount(), authority: getNextAccount() },
+    accounts: {
+      gumballMachine: getNextAccount(),
+      authority: getNextAccount(),
+      newAuthoritySigner: getNextOptionalAccount(),
+    },
     data: getSetGumballMachineAuthorityInstructionDataDecoder().decode(
       instruction.data
     ),

@@ -52,8 +52,24 @@ jobs:
           cache: ${{ env.CACHE }}
           key: clients-${{ matrix.client }}
 
+      - name: Test operator scripts
+        if: matrix.client == 'umi'
+        run: pnpm test:scripts
+
       - name: Build
         working-directory: ./clients/${{ matrix.client }}
+        run: pnpm build
+
+      # Kit cNFT v2 tests reuse the Umi LiteSVM fixtures. Matrix runners do not
+      # share dependencies or build output, so prepare them on the Kit runner.
+      - name: Install Umi fixtures
+        if: matrix.client == 'js'
+        working-directory: ./clients/umi
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Umi fixtures
+        if: matrix.client == 'js'
+        working-directory: ./clients/umi
         run: pnpm build
 
       - name: Test

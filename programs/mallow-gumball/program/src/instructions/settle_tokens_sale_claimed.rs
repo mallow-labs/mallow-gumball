@@ -2,7 +2,9 @@ use crate::{
     constants::{AUTHORITY_SEED, GUMBALL_MACHINE_SIZE, SELLER_HISTORY_SEED},
     events::SettleItemSaleEvent,
     get_config_count,
-    processors::{get_total_proceeds, transfer_proceeds},
+    processors::{
+        get_total_proceeds, incremental_proceeds_fees, record_item_proceeds, transfer_proceeds,
+    },
     state::GumballMachine,
     transfer_and_close_if_empty, try_from, AssociatedToken, GumballError, SellerHistory, Token,
     TokenStandard,
@@ -10,9 +12,7 @@ use crate::{
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, TokenAccount};
 use arrayref::array_ref;
-use utils::{
-    expects_token_program_slot, is_native_mint, resolve_currency_token_program, RoyaltyInfo,
-};
+use utils::{expects_token_program_slot, resolve_currency_token_program, RoyaltyInfo};
 
 /// Settles a span of token sales that have already been claimed
 #[event_cpi]
@@ -47,7 +47,6 @@ pub struct SettleTokensSaleClaimed<'info> {
 
     /// Seller of the tokens
     /// CHECK: Safe due to gumball machine constraint
-    #[account(mut)]
     authority: UncheckedAccount<'info>,
 
     /// Payment account for authority if using token payment
@@ -132,7 +131,10 @@ pub fn settle_tokens_sale_claimed<'info>(
         .payment_mint
         .as_ref()
         .map(|mint| mint.to_account_info());
-    let payment_mint = payment_mint_info.as_ref();
+    let payment_mint = crate::processors::payment_currency(
+        gumball_machine.settings.payment_mint,
+        payment_mint_info.as_ref(),
+    )?;
 
     let authority_pda_payment_account_info = ctx
         .accounts
@@ -200,6 +202,7 @@ pub fn settle_tokens_sale_claimed<'info>(
             Pubkey::try_from(&account_data[config_line_position + 64..config_line_position + 96])
                 .unwrap();
         let is_unsold = buyer == Pubkey::default();
+        gumball_machine.assert_can_settle_item(buyer)?;
         require!(is_unsold || is_claimed, GumballError::InvalidBuyer);
 
         let token_standard =
@@ -242,28 +245,87 @@ pub fn settle_tokens_sale_claimed<'info>(
         require!(!is_settled, GumballError::ItemAlreadySettled);
 
         // Mark as settled
-        account_data[settled_byte_position] |= settled_mask;
+        if gumball_machine.version < 6 {
+            account_data[settled_byte_position] |= settled_mask;
+        }
     }
 
-    let mut total_proceeds_settled = gumball_machine.get_total_proceeds_settled(&account_data)?;
+    let mut fee_amounts = None;
+    let (total_proceeds, previous_proceeds, finalized_items, marketplace_fee_bps) =
+        if gumball_machine.version >= 6 {
+            let mut amount = 0u64;
+            let mut previous = 0u64;
+            let mut finalized_items = 0u64;
+            let marketplace_bps = gumball_machine
+                .marketplace_fee_config
+                .map_or(0, |f| f.fee_bps);
+            let mut marketplace_fee = 0u64;
+            let mut curator_fee = 0u64;
+            for idx in args.start_index..=args.end_index {
+                let (delta, paid, finalized) =
+                    record_item_proceeds(gumball_machine, &mut account_data, idx, config_count)?;
+                amount = amount
+                    .checked_add(delta)
+                    .ok_or(GumballError::NumericalOverflowError)?;
+                previous = previous
+                    .checked_add(paid)
+                    .ok_or(GumballError::NumericalOverflowError)?;
+                let (marketplace, curator) = incremental_proceeds_fees(
+                    paid,
+                    delta,
+                    marketplace_bps,
+                    gumball_machine.settings.curator_fee_bps,
+                )?;
+                marketplace_fee = marketplace_fee
+                    .checked_add(marketplace)
+                    .ok_or(GumballError::NumericalOverflowError)?;
+                curator_fee = curator_fee
+                    .checked_add(curator)
+                    .ok_or(GumballError::NumericalOverflowError)?;
+                finalized_items += u64::from(finalized);
+            }
+            fee_amounts = Some((marketplace_fee, curator_fee));
+            (
+                amount,
+                previous,
+                finalized_items,
+                gumball_machine
+                    .marketplace_fee_config
+                    .map_or(0, |f| f.fee_bps),
+            )
+        } else {
+            let mut total_proceeds_settled =
+                gumball_machine.get_total_proceeds_settled(&account_data)?;
 
-    let (mut total_proceeds, _) =
-        get_total_proceeds(gumball_machine, total_proceeds_settled, config_count)?;
+            let (mut total_proceeds, marketplace_fee_bps) = get_total_proceeds(
+                gumball_machine,
+                total_proceeds_settled,
+                config_count,
+                gumball_machine.get_refund_reserve(&account_data)?,
+            )?;
 
-    total_proceeds = total_proceeds
-        .checked_mul(total_items_settled as u64)
-        .ok_or(GumballError::NumericalOverflowError)?;
+            total_proceeds = total_proceeds
+                .checked_mul(total_items_settled as u64)
+                .ok_or(GumballError::NumericalOverflowError)?;
 
-    if gumball_machine.version >= 5 {
-        total_proceeds_settled = total_proceeds_settled
-            .checked_add(total_proceeds)
-            .ok_or(GumballError::NumericalOverflowError)?;
-        // Update the total proceeds settled
-        let total_proceeds_settled_position =
-            gumball_machine.get_total_proceeds_settled_position()?;
-        account_data[total_proceeds_settled_position..total_proceeds_settled_position + 8]
-            .copy_from_slice(&total_proceeds_settled.to_le_bytes());
-    }
+            if gumball_machine.version >= 5 {
+                total_proceeds_settled = total_proceeds_settled
+                    .checked_add(total_proceeds)
+                    .ok_or(GumballError::NumericalOverflowError)?;
+                // Update the total proceeds settled
+                let total_proceeds_settled_position =
+                    gumball_machine.get_total_proceeds_settled_position()?;
+                account_data[total_proceeds_settled_position..total_proceeds_settled_position + 8]
+                    .copy_from_slice(&total_proceeds_settled.to_le_bytes());
+            }
+
+            (
+                total_proceeds,
+                0,
+                total_items_settled as u64,
+                marketplace_fee_bps,
+            )
+        };
 
     // Done with the data borrow
     drop(account_data);
@@ -300,11 +362,7 @@ pub fn settle_tokens_sale_claimed<'info>(
     //
     // Royalties are disabled on this path (`RoyaltyInfo::default()` + the
     // disable flags), so the remaining accounts hold nothing but the slot.
-    let currency_mint = if is_native_mint(gumball_machine.settings.payment_mint) {
-        None
-    } else {
-        payment_mint
-    };
+    let currency_mint = payment_mint;
     let currency_token_program = if expects_token_program_slot(currency_mint) {
         resolve_currency_token_program(
             currency_mint,
@@ -315,18 +373,51 @@ pub fn settle_tokens_sale_claimed<'info>(
         resolve_currency_token_program(currency_mint, None, token_program)?
     };
 
+    // Refund-aware machines defer fees. Append payout accounts after the
+    // existing optional Token-2022 program slot, preserving legacy accounts.
+    let fee_offset = usize::from(expects_token_program_slot(currency_mint));
+    let mut fee_account = if gumball_machine.version >= 6 && marketplace_fee_bps > 0 {
+        Some(
+            ctx.remaining_accounts
+                .get(fee_offset)
+                .ok_or(GumballError::InvalidAuthority)?
+                .to_account_info(),
+        )
+    } else {
+        None
+    };
+    let fee_payment_account = if fee_account.is_some() && currency_mint.is_some() {
+        Some(
+            ctx.remaining_accounts
+                .get(fee_offset + 1)
+                .ok_or(GumballError::MissingTokenAccount)?,
+        )
+    } else {
+        None
+    };
     transfer_proceeds(
         gumball_machine,
         total_proceeds,
-        0,
+        previous_proceeds,
+        if seller_history.item_count == finalized_items {
+            seller_history.to_account_info().lamports()
+        } else {
+            0
+        },
+        fee_amounts,
+        if gumball_machine.version >= 6 {
+            marketplace_fee_bps
+        } else {
+            0
+        },
         authority_pda,
         authority,
         authority_pda_payment_account,
         authority_payment_account,
         seller,
         seller_payment_account,
-        None,
-        None,
+        fee_account.as_mut(),
+        fee_payment_account,
         payment_mint,
         payer,
         associated_token_program,
@@ -339,13 +430,15 @@ pub fn settle_tokens_sale_claimed<'info>(
         &[],
     )?;
 
-    seller_history.item_count -= total_items_settled as u64;
+    seller_history.item_count -= finalized_items;
     if seller_history.item_count == 0 {
         seller_history.close(seller.to_account_info())?;
     }
 
     // Update the items_settled counter once for all settled items
-    gumball_machine.items_settled += total_items_settled as u64;
+    if gumball_machine.version < 6 {
+        gumball_machine.items_settled += finalized_items;
+    }
 
     // Emit event for the settled items
     emit_cpi!(SettleItemSaleEvent {

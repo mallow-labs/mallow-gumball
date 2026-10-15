@@ -72,6 +72,10 @@ pub fn cancel_add_core_asset_request(ctx: Context<CancelAddCoreAssetRequest>) ->
     let authority_pda = &ctx.accounts.authority_pda.to_account_info();
     let seller = &ctx.accounts.seller.to_account_info();
     let seller_history = &mut ctx.accounts.seller_history;
+    crate::resolve_cancelled_add_item_request(
+        &ctx.accounts.add_item_request,
+        ctx.remaining_accounts,
+    )?;
 
     let collection_info = ctx
         .accounts

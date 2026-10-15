@@ -1,0 +1,59 @@
+[
+  {
+    "instruction": "settle_core_asset_sale",
+    "scenario": "R13-09: same-wallet curator and seller payouts do not park a sub-rent fee",
+    "computeUnits": 44733,
+    "serializedBytes": 590
+  },
+  {
+    "instruction": "settle_core_asset_sale",
+    "scenario": "R13-09: buyer-settled Core sale returns plugin rent after seller proceeds",
+    "computeUnits": 115337,
+    "serializedBytes": 558
+  },
+  {
+    "instruction": "refund_cnft_sale_v2",
+    "scenario": "R13-03: spl proof refund parks and releases collab proceeds",
+    "computeUnits": 62097,
+    "serializedBytes": 855
+  },
+  {
+    "instruction": "admin_refund_cnft_sale_v2",
+    "scenario": "R13-03: spl admin refund parks and releases collab proceeds",
+    "computeUnits": 60047,
+    "serializedBytes": 985
+  },
+  {
+    "instruction": "refund_cnft_sale_v2",
+    "scenario": "R13-03: token2022 proof refund parks and releases collab proceeds",
+    "computeUnits": 65875,
+    "serializedBytes": 855
+  },
+  {
+    "instruction": "admin_refund_cnft_sale_v2",
+    "scenario": "R13-03: token2022 admin refund parks and releases collab proceeds",
+    "computeUnits": 68273,
+    "serializedBytes": 985
+  },
+  {
+    "instruction": "withdraw_payout",
+    "scenario": "empty-rent-payer-fallback",
+    "bareBytes": 581,
+    "computeUnits": 23664,
+    "serializedBytes": 581
+  },
+  {
+    "instruction": "withdraw_payout",
+    "scenario": "assigned-rent-payer",
+    "bareBytes": 581,
+    "computeUnits": 26225,
+    "serializedBytes": 581
+  },
+  {
+    "instruction": "withdraw_payout",
+    "scenario": "after-close",
+    "bareBytes": 581,
+    "computeUnits": 24725,
+    "serializedBytes": 581
+  }
+]

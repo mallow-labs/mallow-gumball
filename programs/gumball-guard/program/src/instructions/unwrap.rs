@@ -9,6 +9,14 @@ pub fn unwrap(ctx: Context<Unwrap>) -> Result<()> {
     let gumball_machine_program = ctx.accounts.gumball_machine_program.to_account_info();
     let gumball_machine_authority = &ctx.accounts.gumball_machine_authority;
 
+    ctx.accounts.gumball_machine.assert_can_set_mint_authority(
+        &ctx.accounts
+            .gumball_machine
+            .to_account_info()
+            .try_borrow_data()?,
+        gumball_machine_authority.key(),
+    )?;
+
     let update_ix = SetMintAuthority {
         gumball_machine: ctx.accounts.gumball_machine.to_account_info(),
         authority: gumball_machine_authority.to_account_info(),

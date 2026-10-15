@@ -243,3 +243,60 @@ pub fn resolve_currency_token_program_at<'a, 'b>(
 pub fn expects_token_program_slot(currency_mint: Option<&AccountInfo>) -> bool {
     currency_mint.is_some_and(is_token_2022_account)
 }
+
+/// An existing payout account must belong to its recipient and be able to accept
+/// an ordinary CPI transfer. Empty canonical ATAs can be recreated by the payer.
+/// Writability is checked separately, so a caller cannot divert a healthy payout.
+pub fn can_receive_token(
+    account: &AccountInfo,
+    recipient: &Pubkey,
+    mint: &Pubkey,
+    token_program: &Pubkey,
+    allow_create: bool,
+) -> Result<bool> {
+    use anchor_spl::token_2022::spl_token_2022::{
+        extension::{
+            confidential_transfer::ConfidentialTransferAccount, memo_transfer::MemoTransfer,
+        },
+        state::{Account as TokenAccount, AccountState},
+    };
+    if !is_token_program(token_program) || account.executable {
+        return Ok(false);
+    }
+    if account.data_is_empty() {
+        return Ok(allow_create && *account.owner == anchor_lang::system_program::ID);
+    }
+    if account.owner != token_program {
+        return Ok(false);
+    }
+    let data = account.try_borrow_data()?;
+    let Ok(state) = StateWithExtensions::<TokenAccount>::unpack(&data) else {
+        return Ok(false);
+    };
+    if state.base.owner != *recipient
+        || state.base.mint != *mint
+        || state.base.state != AccountState::Initialized
+    {
+        return Ok(false);
+    }
+    let Ok(extensions) = state.get_extension_types() else {
+        return Ok(false);
+    };
+    if extensions.contains(&ExtensionType::MemoTransfer) {
+        let Ok(memo) = state.get_extension::<MemoTransfer>() else {
+            return Ok(false);
+        };
+        if bool::from(memo.require_incoming_transfer_memos) {
+            return Ok(false);
+        }
+    }
+    if extensions.contains(&ExtensionType::ConfidentialTransferAccount) {
+        let Ok(confidential) = state.get_extension::<ConfidentialTransferAccount>() else {
+            return Ok(false);
+        };
+        if !bool::from(confidential.allow_non_confidential_credits) {
+            return Ok(false);
+        }
+    }
+    Ok(true)
+}

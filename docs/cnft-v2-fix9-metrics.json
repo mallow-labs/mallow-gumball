@@ -1,0 +1,50 @@
+[
+  {
+    "instruction": "reject_add_item_request",
+    "scenario": "legacy-rent-top-up",
+    "serializedBytes": 279,
+    "computeUnits": 13003
+  },
+  {
+    "instruction": "migrate_add_item_requests",
+    "scenario": "legacy-rent-top-up",
+    "serializedBytes": 314,
+    "computeUnits": 15808
+  },
+  {
+    "instruction": "reject_add_item_request",
+    "scenario": "Core",
+    "serializedBytes": 279,
+    "computeUnits": 12237
+  },
+  {
+    "instruction": "reject_add_item_request",
+    "scenario": "NFT",
+    "serializedBytes": 279,
+    "computeUnits": 13737
+  },
+  {
+    "instruction": "reject_add_item_request",
+    "scenario": "pNFT",
+    "serializedBytes": 279,
+    "computeUnits": 15237
+  },
+  {
+    "instruction": "migrate_add_item_requests",
+    "scenario": "final-attestation",
+    "serializedBytes": 281,
+    "computeUnits": 9255
+  },
+  {
+    "instruction": "reject_add_item_request",
+    "scenario": "v2",
+    "serializedBytes": 279,
+    "computeUnits": 13737
+  },
+  {
+    "instruction": "reject_add_item_request",
+    "scenario": "v1",
+    "serializedBytes": 279,
+    "computeUnits": 12237
+  }
+]

@@ -24,7 +24,9 @@ import { create, createCoreAsset, createNft, createUmi } from './_setup';
 test('it can approve a request to add core asset to a gumball machine', async (t) => {
   // Given a Gumball Machine with 5 core assets.
   const umi = await createUmi();
-  const gumballMachine = await create(umi, { settings: { itemCapacity: 5 } });
+  const gumballMachine = await create(umi, {
+    settings: { itemCapacity: 5, sellersMerkleRoot: some(new Uint8Array(32)) },
+  });
 
   const sellerUmi = await createUmi();
   const coreAsset = await createCoreAsset(sellerUmi);
@@ -118,7 +120,9 @@ test('it can approve a request to add core asset to a gumball machine', async (t
 test('it can approve a request to add an nft to a gumball machine', async (t) => {
   // Given a Gumball Machine with 5 core assets.
   const umi = await createUmi();
-  const gumballMachine = await create(umi, { settings: { itemCapacity: 5 } });
+  const gumballMachine = await create(umi, {
+    settings: { itemCapacity: 5, sellersMerkleRoot: some(new Uint8Array(32)) },
+  });
 
   const sellerUmi = await createUmi();
   const nft = await createNft(sellerUmi);

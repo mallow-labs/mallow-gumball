@@ -11,7 +11,8 @@
 		"clients:rust:format": "cargo fmt --manifest-path clients/rust/Cargo.toml --all",
 		"clients:rust:lint": "cargo clippy --manifest-path clients/rust/Cargo.toml -- -D warnings",
 		"clients:rust:test": "cd clients/rust && cargo test",
-		"test": "pnpm test:js && pnpm test:umi && pnpm clients:rust:test",
+		"test:scripts": "node --test configs/program-scripts/*.test.cjs",
+		"test": "pnpm test:scripts && pnpm test:js && pnpm test:umi && pnpm clients:rust:test",
 		"test:js": "cd clients/js && pnpm test",
 		"test:umi": "cd clients/umi && pnpm test"
 	},

@@ -63,6 +63,32 @@ pub fn claim_item(gumball_machine: &mut Box<Account<GumballMachine>>, index: u32
         1
     };
 
+    if gumball_machine.version >= 6 {
+        let standard_position =
+            GUMBALL_MACHINE_SIZE + 4 + index as usize * gumball_machine.get_config_line_size() + 96;
+        if data[standard_position] == crate::TokenStandard::Compressed as u8 {
+            let buyer_position = standard_position - 32;
+            if data[buyer_position..buyer_position + 32] != Pubkey::default().to_bytes() {
+                let outstanding_position = gumball_machine.get_outstanding_draws_position()?;
+                let outstanding = gumball_machine.get_outstanding_draws(&data)?;
+                data[outstanding_position..outstanding_position + 8].copy_from_slice(
+                    &outstanding
+                        .checked_sub(1)
+                        .ok_or(GumballError::NumericalOverflowError)?
+                        .to_le_bytes(),
+                );
+            }
+            let reserve = gumball_machine.get_refund_reserve(&data)?;
+            let payment = gumball_machine.get_draw_payment(&data, index)?;
+            let position = gumball_machine.get_refund_reserve_position()?;
+            data[position..position + 8].copy_from_slice(
+                &reserve
+                    .checked_sub(payment)
+                    .ok_or(GumballError::NumericalOverflowError)?
+                    .to_le_bytes(),
+            );
+        }
+    }
     drop(data);
 
     Ok(item_amount)

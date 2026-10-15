@@ -24,6 +24,8 @@ import {
 } from '../generated/types/gumballMachineAccountData';
 
 export type GumballMachineAccountData = BaseGumballMachineAccountData & {
+  pendingAddRequests: bigint;
+  addRequestsMigrated: boolean;
   itemsLoaded: number;
   items: GumballMachineItem[];
   disablePrimarySplit: boolean;
@@ -31,6 +33,13 @@ export type GumballMachineAccountData = BaseGumballMachineAccountData & {
   buyBackConfig: BuyBackConfig;
   buyBackFundsAvailable: number | bigint;
   totalProceedsSettled: number | bigint;
+  pendingDrawPayment?: bigint;
+  refundReserve?: bigint;
+  drawPayments?: bigint[];
+  itemsRefunded?: bigint;
+  outstandingDraws?: bigint;
+  itemProceedsPaid?: bigint[];
+  unfinalizedProceeds?: bigint;
 };
 
 export type GumballMachineAccountDataArgs = BaseGumballMachineAccountDataArgs;
@@ -67,6 +76,8 @@ export type GumballMachineItem = {
   readonly tokenStandard: TokenStandard;
 
   readonly amount: number;
+  readonly drawPayment?: bigint;
+  readonly proceedsPaid?: bigint;
 };
 
 type GumballMachineHiddenSection = {
@@ -109,6 +120,13 @@ type GumballMachineHiddenSectionV4 = GumballMachineHiddenSectionV3 & {
 
 type GumballMachineHiddenSectionV5 = GumballMachineHiddenSectionV4 & {
   totalProceedsSettled: number | bigint;
+  pendingDrawPayment?: bigint;
+  refundReserve?: bigint;
+  drawPayments?: bigint[];
+  itemsRefunded?: bigint;
+  outstandingDraws?: bigint;
+  itemProceedsPaid?: bigint[];
+  unfinalizedProceeds?: bigint;
 };
 
 export function getDefaultBuyBackConfig(): BuyBackConfig {
@@ -200,7 +218,7 @@ function getHiddenSection(
     };
   }
 
-  return getHiddenSectionV5(itemCapacity, slice);
+  return getHiddenSectionV5(itemCapacity, slice, version);
 }
 
 function getHiddenSectionV2(
@@ -318,7 +336,8 @@ function getHiddenSectionV4(
 
 function getHiddenSectionV5(
   itemCapacity: number,
-  slice: Uint8Array
+  slice: Uint8Array,
+  version: number
 ): GumballMachineHiddenSectionV5 {
   const hiddenSectionSerializer: Serializer<GumballMachineHiddenSectionV5> =
     struct<GumballMachineHiddenSectionV5>([
@@ -353,8 +372,18 @@ function getHiddenSectionV5(
       ['totalProceedsSettled', u64()],
     ]);
 
-  const [hiddenSection] = hiddenSectionSerializer.deserialize(slice);
-  return hiddenSection;
+  const [hiddenSection, offset] = hiddenSectionSerializer.deserialize(slice);
+  if (version < 6) return hiddenSection;
+  const [payments] = struct([
+    ['pendingDrawPayment', u64()],
+    ['refundReserve', u64()],
+    ['drawPayments', array(u64(), { size: itemCapacity })],
+    ['itemsRefunded', u64()],
+    ['outstandingDraws', u64()],
+    ['itemProceedsPaid', array(u64(), { size: itemCapacity })],
+    ['unfinalizedProceeds', u64()],
+  ]).deserialize(slice, offset);
+  return { ...hiddenSection, ...payments };
 }
 
 export function getGumballMachineAccountDataSerializer(): Serializer<
@@ -401,12 +430,24 @@ export function getGumballMachineAccountDataSerializer(): Serializer<
             rawItem.buyer === defaultPublicKey() ? undefined : rawItem.buyer,
           tokenStandard: rawItem.tokenStandard,
           amount: Number(rawItem.amount),
+          ...(hiddenSection.drawPayments
+            ? {
+                drawPayment: hiddenSection.drawPayments[index],
+                proceedsPaid: hiddenSection.itemProceedsPaid?.[index],
+              }
+            : {}),
         };
         items.push(item);
       });
 
       return {
         ...base,
+        addRequestsMigrated:
+          bytes[offset + GUMBALL_MACHINE_HIDDEN_SECTION - 9] === 1,
+        pendingAddRequests: u64().deserialize(
+          bytes,
+          offset + GUMBALL_MACHINE_HIDDEN_SECTION - 8
+        )[0],
         items,
         itemsLoaded: hiddenSection.itemsLoaded,
         disablePrimarySplit: hiddenSection.disablePrimarySplit,
@@ -414,6 +455,17 @@ export function getGumballMachineAccountDataSerializer(): Serializer<
         buyBackConfig: hiddenSection.buyBackConfig,
         buyBackFundsAvailable: hiddenSection.buyBackFundsAvailable,
         totalProceedsSettled: hiddenSection.totalProceedsSettled,
+        ...(base.version >= 6
+          ? {
+              pendingDrawPayment: hiddenSection.pendingDrawPayment,
+              refundReserve: hiddenSection.refundReserve,
+              drawPayments: hiddenSection.drawPayments,
+              itemsRefunded: hiddenSection.itemsRefunded,
+              outstandingDraws: hiddenSection.outstandingDraws,
+              itemProceedsPaid: hiddenSection.itemProceedsPaid,
+              unfinalizedProceeds: hiddenSection.unfinalizedProceeds,
+            }
+          : {}),
       };
     }
   );

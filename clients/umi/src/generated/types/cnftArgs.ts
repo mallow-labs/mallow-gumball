@@ -43,10 +43,7 @@ export type CnftArgs = {
   nonce: bigint;
   /** Leaf index within the merkle tree. */
   index: number;
-  /**
-   * Bubblegum leaf version. Only V1 (`1`) is supported for on-chain trading;
-   * V2 leaves are rejected (see `assert_cnft_v1`).
-   */
+  /** Bubblegum leaf version. Must be V1 (`1`) for the original instructions. */
   version: number;
 };
 
@@ -66,10 +63,7 @@ export type CnftArgsArgs = {
   nonce: number | bigint;
   /** Leaf index within the merkle tree. */
   index: number;
-  /**
-   * Bubblegum leaf version. Only V1 (`1`) is supported for on-chain trading;
-   * V2 leaves are rejected (see `assert_cnft_v1`).
-   */
+  /** Bubblegum leaf version. Must be V1 (`1`) for the original instructions. */
   version: number;
 };
 

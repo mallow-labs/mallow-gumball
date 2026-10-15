@@ -29,10 +29,10 @@ import {
 
 // Accounts.
 export type SetGumballMachineAuthorityInstructionAccounts = {
-  /** Gumball Machine account. */
   gumballMachine: PublicKey | Pda;
-  /** Autority of the gumball machine. */
   authority?: Signer;
+  /** New authorities must co-sign; appended for legacy idempotent calls. */
+  newAuthoritySigner?: Signer;
 };
 
 // Data.
@@ -98,6 +98,11 @@ export function setGumballMachineAuthority(
       index: 1,
       isWritable: false as boolean,
       value: input.authority ?? null,
+    },
+    newAuthoritySigner: {
+      index: 2,
+      isWritable: false as boolean,
+      value: input.newAuthoritySigner ?? null,
     },
   } satisfies ResolvedAccountsWithIndices;
 

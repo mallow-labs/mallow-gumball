@@ -97,7 +97,10 @@ const guardScenarios: Record<string, () => Promise<number>> = {
     const umi = await createUmi();
     const programsWithToken22 = umi.programs.clone();
     programsWithToken22.bind('splToken', 'splToken2022');
-    const destination = generateSigner(umi).publicKey;
+    const machine = generateSigner(umi);
+    const destination = findGumballMachineAuthorityPda(umi, {
+      gumballMachine: machine.publicKey,
+    })[0];
     const [tokenMint, destinationAta] = await createMintWithHolders(
       { ...umi, programs: programsWithToken22 },
       {
@@ -108,6 +111,7 @@ const guardScenarios: Record<string, () => Promise<number>> = {
       }
     );
     const { publicKey: gumballMachine } = await create(umi, {
+      gumballMachine: machine,
       items: [await nftItem(umi)],
       startSale: true,
       settings: { paymentMint: tokenMint.publicKey },

@@ -21,7 +21,8 @@ pub fn claim_core_asset<'a, 'b>(
     mpl_core_program: &AccountInfo<'a>,
     system_program: &AccountInfo<'a>,
     auth_seeds: &[&[u8]],
-) -> Result<()> {
+    defer_rent_refund: bool,
+) -> Result<u64> {
     // Reject unsold items: their recorded buyer is the default pubkey, and
     // transferring the asset there would lose it irrecoverably.
     require!(
@@ -72,10 +73,18 @@ pub fn claim_core_asset<'a, 'b>(
         let post_lamports = payer.lamports();
         let rent_amount = post_lamports.checked_sub(pre_lamports).unwrap_or(0);
 
-        if rent_amount > 0 {
+        if defer_rent_refund {
+            return Ok(rent_amount);
+        }
+
+        if rent_amount > 0
+            && utils::can_receive_lamports(from)
+            && from.lamports().saturating_add(rent_amount)
+                >= Rent::get()?.minimum_balance(from.data_len())
+        {
             transfer_sol(to, from, system_program, None, rent_amount)?;
         }
     }
 
-    Ok(())
+    Ok(0)
 }

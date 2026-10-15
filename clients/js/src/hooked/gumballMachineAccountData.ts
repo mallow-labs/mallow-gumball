@@ -30,6 +30,8 @@ import {
 } from '../generated/types/gumballMachineAccountData';
 
 export type GumballMachineAccountData = BaseGumballMachineAccountData & {
+  pendingAddRequests: bigint;
+  addRequestsMigrated: boolean;
   itemsLoaded: number;
   items: GumballMachineItem[];
   disablePrimarySplit: boolean;
@@ -37,6 +39,13 @@ export type GumballMachineAccountData = BaseGumballMachineAccountData & {
   buyBackConfig: BuyBackConfig;
   buyBackFundsAvailable: number | bigint;
   totalProceedsSettled: number | bigint;
+  pendingDrawPayment?: bigint;
+  refundReserve?: bigint;
+  drawPayments?: bigint[];
+  itemsRefunded?: bigint;
+  outstandingDraws?: bigint;
+  itemProceedsPaid?: bigint[];
+  unfinalizedProceeds?: bigint;
 };
 
 export type GumballMachineAccountDataArgs = BaseGumballMachineAccountDataArgs;
@@ -73,6 +82,8 @@ export type GumballMachineItem = {
   readonly tokenStandard: TokenStandard;
 
   readonly amount: number;
+  readonly drawPayment?: bigint;
+  readonly proceedsPaid?: bigint;
 };
 
 type RawConfigLine = {
@@ -95,6 +106,13 @@ type GumballMachineHiddenSectionV5 = {
   buyBackConfig: BuyBackConfig;
   buyBackFundsAvailable: number | bigint;
   totalProceedsSettled: number | bigint;
+  pendingDrawPayment?: bigint;
+  refundReserve?: bigint;
+  drawPayments?: bigint[];
+  itemsRefunded?: bigint;
+  outstandingDraws?: bigint;
+  itemProceedsPaid?: bigint[];
+  unfinalizedProceeds?: bigint;
 };
 
 const DEFAULT_ADDRESS = '11111111111111111111111111111111' as Address;
@@ -216,7 +234,24 @@ function getHiddenSection(
     [totalProceedsSettled, offset] = getU64Decoder().read(slice, offset);
   }
 
+  const payments =
+    version >= 6
+      ? {
+          pendingDrawPayment: read(getU64Decoder()),
+          refundReserve: read(getU64Decoder()),
+          drawPayments: read(
+            getArrayDecoder(getU64Decoder(), { size: itemCapacity })
+          ),
+          itemsRefunded: read(getU64Decoder()),
+          outstandingDraws: read(getU64Decoder()),
+          itemProceedsPaid: read(
+            getArrayDecoder(getU64Decoder(), { size: itemCapacity })
+          ),
+          unfinalizedProceeds: read(getU64Decoder()),
+        }
+      : {};
   return {
+    ...payments,
     itemsLoaded,
     rawConfigLines,
     itemsClaimedMap,
@@ -269,12 +304,24 @@ export function getGumballMachineAccountDataDecoder(): Decoder<GumballMachineAcc
           buyer: rawItem.buyer === DEFAULT_ADDRESS ? undefined : rawItem.buyer,
           tokenStandard: rawItem.tokenStandard,
           amount: Number(rawItem.amount),
+          ...(hiddenSection.drawPayments
+            ? {
+                drawPayment: hiddenSection.drawPayments[index],
+                proceedsPaid: hiddenSection.itemProceedsPaid?.[index],
+              }
+            : {}),
         };
         items.push(item);
       });
 
       const value: GumballMachineAccountData = {
         ...base,
+        addRequestsMigrated:
+          bytes[offset + GUMBALL_MACHINE_HIDDEN_SECTION - 9] === 1,
+        pendingAddRequests: getU64Decoder().decode(
+          bytes,
+          offset + GUMBALL_MACHINE_HIDDEN_SECTION - 8
+        ),
         items,
         itemsLoaded: hiddenSection.itemsLoaded,
         disablePrimarySplit: hiddenSection.disablePrimarySplit,
@@ -282,6 +329,17 @@ export function getGumballMachineAccountDataDecoder(): Decoder<GumballMachineAcc
         buyBackConfig: hiddenSection.buyBackConfig,
         buyBackFundsAvailable: hiddenSection.buyBackFundsAvailable,
         totalProceedsSettled: hiddenSection.totalProceedsSettled,
+        ...(base.version >= 6
+          ? {
+              pendingDrawPayment: hiddenSection.pendingDrawPayment,
+              refundReserve: hiddenSection.refundReserve,
+              drawPayments: hiddenSection.drawPayments,
+              itemsRefunded: hiddenSection.itemsRefunded,
+              outstandingDraws: hiddenSection.outstandingDraws,
+              itemProceedsPaid: hiddenSection.itemProceedsPaid,
+              unfinalizedProceeds: hiddenSection.unfinalizedProceeds,
+            }
+          : {}),
       };
 
       return [value, bytes.length];

@@ -39,7 +39,24 @@ pub struct CnftArgs {
     pub nonce: u64,
     /// Leaf index within the merkle tree.
     pub index: u32,
-    /// Bubblegum leaf version. Only V1 (`1`) is supported for on-chain trading;
-    /// V2 leaves are rejected (see `assert_cnft_v1`).
+    /// Bubblegum leaf version. Must be V1 (`1`) for the original instructions.
     pub version: u8,
+}
+
+/// Proof-authenticated Bubblegum v2 metadata and leaf fields.
+/// Proof creators are independent from collection royalty payout creators.
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct CnftArgsV2 {
+    pub root: [u8; 32],
+    /// Inner keccak of Borsh MetadataArgsV2; never use the v1 metadata layout.
+    pub meta_hash: [u8; 32],
+    /// Raw leaf rate, including 65535 for collection inheritance.
+    pub seller_fee_basis_points: u16,
+    pub creators: Vec<CnftCreator>,
+    pub nonce: u64,
+    pub index: u32,
+    pub version: u8,
+    /// None represents Bubblegum's default empty asset-data hash.
+    pub asset_data_hash: Option<[u8; 32]>,
+    pub flags: u8,
 }

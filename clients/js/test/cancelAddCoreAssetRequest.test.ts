@@ -5,6 +5,7 @@ import {
   getCancelAddCoreAssetRequestInstructionAsync,
   getDeleteGumballMachineInstructionAsync,
   getRequestAddCoreAssetInstructionAsync,
+  withRequestCancellationMachine,
 } from '../src';
 import {
   createCoreAsset,
@@ -50,12 +51,15 @@ test('it can cancel a request to add core asset to a gumball machine', async (t)
   });
 
   await sendTransaction(client.svm, seller, [
-    await getCancelAddCoreAssetRequestInstructionAsync({
-      seller,
-      asset,
-      sellerHistory,
-      authorityPda,
-    }),
+    withRequestCancellationMachine(
+      await getCancelAddCoreAssetRequestInstructionAsync({
+        seller,
+        asset,
+        sellerHistory,
+        authorityPda,
+      }),
+      gumballMachine
+    ),
   ]);
 
   t.is(await getAddItemRequest(client, asset), null);
@@ -95,12 +99,15 @@ test('it can cancel a request to add core asset to a gumball machine after the g
   });
 
   await sendTransaction(client.svm, seller, [
-    await getCancelAddCoreAssetRequestInstructionAsync({
-      seller,
-      asset,
-      sellerHistory,
-      authorityPda,
-    }),
+    withRequestCancellationMachine(
+      await getCancelAddCoreAssetRequestInstructionAsync({
+        seller,
+        asset,
+        sellerHistory,
+        authorityPda,
+      }),
+      gumballMachine
+    ),
   ]);
 
   t.is(await getAddItemRequest(client, asset), null);

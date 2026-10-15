@@ -76,6 +76,16 @@ const PROGRAMS: { id: string; file: string; required: boolean }[] = [
     file: 'programs/.bin/spl_noop.so',
     required: true,
   },
+  {
+    id: 'mcmt6YrQEMKw8Mw43FmpRLmf7BqRnFMKmAcbxE3xkAW',
+    file: 'programs/.bin/mpl_account_compression.so',
+    required: true,
+  },
+  {
+    id: 'mnoopTCrg4p8ry25e4bcWA9XZjbNjMTfgYVGGEdRsf3',
+    file: 'programs/.bin/mpl_noop.so',
+    required: true,
+  },
   // Jellybean Machine program, driven by the gumball-guard `draw_jellybean`
   // flow (drawJellybean.test.ts + _jellybeanSetup.ts).
   {

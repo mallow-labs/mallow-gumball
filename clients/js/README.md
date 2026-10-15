@@ -50,10 +50,36 @@ const drawIx = await draw({
 
 ## Development
 
+`getSettleCnftSaleV2InstructionAsync` uses the live leaf's current flags, owner,
+delegate, metadata and proof, including default owner/delegate keys. For a
+claimed, burnt leaf only, set `args.flags = 255`, supply an empty-slot proof and
+`nonce == index`, and omit creator payout accounts. If the recorded tree was
+closed, pass its key with a zero root and no proof nodes instead. See the
+[v2 instruction reference](../../programs/mallow-gumball/README.md#bubblegum-v2-compressed-nfts).
+Missing-tree evidence also covers foreign/uninitialized replacement accounts and
+recorded slots at or beyond a replacement MPL tree's append index or capacity.
+SPL-owned replacements require the marketplace-admin no-leaf refund; burnt
+settlement prefixes remaining accounts with the marketplace fee authority signer
+and canonical guard GlobalConfig before any Token-2022 payment-program slot.
+Live v1 trees never qualify as permissionless v2 missing-tree evidence. See the
+[exact recovery rules](../../docs/cnft-v2.md#closed-trees).
+
+Occupied/unprovable MPL replacements require marketplace-authorized exits after
+off-chain verification. For claimed or recovered-unsold settlement, use a zero
+root, `args.flags = 255`, `nonce == index`, and the marketplace signer/canonical
+GlobalConfig prefix before any Token-2022 slot. Receipt cleanup uses no leaf,
+zero root and the same prefix, returning rent to its recorded payer. Normal
+machine close follows settlement. No on-chain permissionless predicate changes.
+
+
 ```sh
 pnpm build   # tsup (cjs + esm) + tsc declarations
-pnpm test    # tsup + ava (LiteSVM; requires Node >= 24)
+pnpm test    # builds ../umi fixtures, then tsup + ava (Node >= 24)
 pnpm lint
 ```
+
+Install dependencies in both `clients/js` and `clients/umi` before testing.
+The Kit tests reuse the Umi LiteSVM fixtures; `pnpm test` builds them automatically,
+including when invoked through the root `pnpm test:js` or `pnpm test`.
 
 The generated code is produced from the repo-root `codama.mjs` (`pnpm generate` at the repo root renders both this client and the umi client).

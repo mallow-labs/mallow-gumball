@@ -9,3 +9,8 @@ pub mod hooked;
 pub use generated::programs::MALLOW_GUMBALL_ID as ID;
 pub use generated::*;
 pub use hooked::*;
+
+/// Read the appended request status; legacy requests remain pending.
+pub fn is_add_item_request_rejected(data: &[u8]) -> bool {
+    data.get(106) == Some(&2)
+}

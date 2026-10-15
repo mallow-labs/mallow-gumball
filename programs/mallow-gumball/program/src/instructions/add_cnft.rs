@@ -86,8 +86,7 @@ pub fn add_cnft<'info>(
     args: CnftArgs,
     add_item_args: AddItemArgs,
 ) -> Result<()> {
-    // V2 leaves are not tradable on-chain in this build.
-    assert_cnft_v1(args.version)?;
+    assert_cnft_v1(args.version, &ctx.accounts.merkle_tree.to_account_info())?;
 
     let seller = &ctx.accounts.seller.to_account_info();
     let system_program = &ctx.accounts.system_program.to_account_info();

@@ -80,7 +80,7 @@ pub fn remove_cnft<'info>(
     index: u32,
     args: CnftArgs,
 ) -> Result<()> {
-    assert_cnft_v1(args.version)?;
+    assert_cnft_v1(args.version, &ctx.accounts.merkle_tree.to_account_info())?;
 
     let system_program = &ctx.accounts.system_program.to_account_info();
     let authority = &ctx.accounts.authority.to_account_info();

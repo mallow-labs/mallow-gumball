@@ -37,8 +37,8 @@ importers:
         specifier: 0.1.3
         version: 0.1.3(@noble/hashes@1.8.0)
       '@metaplex-foundation/mpl-bubblegum':
-        specifier: 5.0.2
-        version: 5.0.2(@metaplex-foundation/umi@1.2.0)
+        specifier: 5.1.0
+        version: 5.1.0(@metaplex-foundation/umi@1.2.0)
       '@metaplex-foundation/mpl-token-auth-rules':
         specifier: ^3.0.3
         version: 3.0.3(@metaplex-foundation/umi@1.2.0)
@@ -370,8 +370,8 @@ packages:
     peerDependencies:
       '@metaplex-foundation/umi': '>= 0.8.9 <= 1'
 
-  '@metaplex-foundation/mpl-bubblegum@5.0.2':
-    resolution: {integrity: sha512-VRkXf9FNRo2Dm1wsiNEn9xW039PjHA757z2Q2H4DwwmI5z/+iKVDNPux6NZPgMg8BJZfUq6nlOlOC/Ipcra5oA==}
+  '@metaplex-foundation/mpl-bubblegum@5.1.0':
+    resolution: {integrity: sha512-nr2JAIXV8fIcc04pnnQJWVRr1+XG0eRJkQYcg/iVAgN46waJZrX643PwTBpFx3X/r2iCMOmqBEF8S4l94bV99Q==}
     peerDependencies:
       '@metaplex-foundation/umi': '>= 0.8.9 <= 2.0.0'
 
@@ -3345,7 +3345,7 @@ snapshots:
       '@noble/hashes': 1.8.0
       merkletreejs: 0.3.11
 
-  '@metaplex-foundation/mpl-bubblegum@5.0.2(@metaplex-foundation/umi@1.2.0)':
+  '@metaplex-foundation/mpl-bubblegum@5.1.0(@metaplex-foundation/umi@1.2.0)':
     dependencies:
       '@metaplex-foundation/digital-asset-standard-api': 2.0.0(@metaplex-foundation/umi@1.2.0)
       '@metaplex-foundation/mpl-account-compression': 0.0.1(@metaplex-foundation/umi@1.2.0)

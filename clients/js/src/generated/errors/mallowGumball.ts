@@ -152,15 +152,32 @@ export const MALLOW_GUMBALL_ERROR__ITEM_NOT_CLAIMED = 0x17b2; // 6066
 export const MALLOW_GUMBALL_ERROR__ITEM_NOT_SETTLED = 0x17b3; // 6067
 /** MissingItemIndex: Missing item index */
 export const MALLOW_GUMBALL_ERROR__MISSING_ITEM_INDEX = 0x17b4; // 6068
-/** UnsupportedCnftVersion: Unsupported Bubblegum version (only V1 compressed NFTs can be traded) */
+/** UnsupportedCnftVersion: Bubblegum leaf version does not match the instruction or tree owner */
 export const MALLOW_GUMBALL_ERROR__UNSUPPORTED_CNFT_VERSION = 0x17b5; // 6069
 /** InvalidMerkleTree: Invalid merkle tree for the stored asset id */
 export const MALLOW_GUMBALL_ERROR__INVALID_MERKLE_TREE = 0x17b6; // 6070
 /** AccountAlreadyInitialized: Account is already initialized */
 export const MALLOW_GUMBALL_ERROR__ACCOUNT_ALREADY_INITIALIZED = 0x17b7; // 6071
+/** IneligibleCnftFlags: Compressed NFT has non-zero transfer flags */
+export const MALLOW_GUMBALL_ERROR__INELIGIBLE_CNFT_FLAGS = 0x17b8; // 6072
+/** InvalidCoreCollection: Invalid Core collection */
+export const MALLOW_GUMBALL_ERROR__INVALID_CORE_COLLECTION = 0x17b9; // 6073
+/** AssetDeliverable: Compressed NFT is still deliverable from escrow */
+export const MALLOW_GUMBALL_ERROR__ASSET_DELIVERABLE = 0x17ba; // 6074
+/** StaleRefundEvidence: Refund evidence must use the current tree root */
+export const MALLOW_GUMBALL_ERROR__STALE_REFUND_EVIDENCE = 0x17bb; // 6075
+/** InvalidRefundEvidence: Invalid current-tree refund evidence */
+export const MALLOW_GUMBALL_ERROR__INVALID_REFUND_EVIDENCE = 0x17bc; // 6076
+/** RefundReserveOutstanding: Outstanding draw reserve prevents final recovery settlement */
+export const MALLOW_GUMBALL_ERROR__REFUND_RESERVE_OUTSTANDING = 0x17bd; // 6077
+/** CnftLedgerGrowthTooLarge: cNFT ledger growth exceeds 10240 bytes; recreate with v6 preallocation (unallocated v5 capacity limit: 637) */
+export const MALLOW_GUMBALL_ERROR__CNFT_LEDGER_GROWTH_TOO_LARGE = 0x17be; // 6078
+/** CnftLedgerRequiresAuthority: Machine authority must fund initial cNFT ledger allocation */
+export const MALLOW_GUMBALL_ERROR__CNFT_LEDGER_REQUIRES_AUTHORITY = 0x17bf; // 6079
 
 export type MallowGumballError =
   | typeof MALLOW_GUMBALL_ERROR__ACCOUNT_ALREADY_INITIALIZED
+  | typeof MALLOW_GUMBALL_ERROR__ASSET_DELIVERABLE
   | typeof MALLOW_GUMBALL_ERROR__BUY_BACK_CUTOFF_REACHED
   | typeof MALLOW_GUMBALL_ERROR__BUY_BACK_FUNDS_NOT_ZERO
   | typeof MALLOW_GUMBALL_ERROR__BUY_BACK_NOT_ENABLED
@@ -169,6 +186,8 @@ export type MallowGumballError =
   | typeof MALLOW_GUMBALL_ERROR__CANNOT_INCREASE_LENGTH
   | typeof MALLOW_GUMBALL_ERROR__CANNOT_SWITCH_FROM_HIDDEN_SETTINGS
   | typeof MALLOW_GUMBALL_ERROR__CANNOT_SWITCH_TO_HIDDEN_SETTINGS
+  | typeof MALLOW_GUMBALL_ERROR__CNFT_LEDGER_GROWTH_TOO_LARGE
+  | typeof MALLOW_GUMBALL_ERROR__CNFT_LEDGER_REQUIRES_AUTHORITY
   | typeof MALLOW_GUMBALL_ERROR__COLLECTION_KEY_MISMATCH
   | typeof MALLOW_GUMBALL_ERROR__COULD_NOT_RETRIEVE_CONFIG_LINE_DATA
   | typeof MALLOW_GUMBALL_ERROR__DUPLICATE_INDEX
@@ -179,6 +198,7 @@ export type MallowGumballError =
   | typeof MALLOW_GUMBALL_ERROR__INCORRECT_COLLECTION_AUTHORITY
   | typeof MALLOW_GUMBALL_ERROR__INCORRECT_OWNER
   | typeof MALLOW_GUMBALL_ERROR__INDEX_GREATER_THAN_LENGTH
+  | typeof MALLOW_GUMBALL_ERROR__INELIGIBLE_CNFT_FLAGS
   | typeof MALLOW_GUMBALL_ERROR__INSTRUCTION_BUILDER_FAILED
   | typeof MALLOW_GUMBALL_ERROR__INSUFFICIENT_FUNDS
   | typeof MALLOW_GUMBALL_ERROR__INVALID_ACCOUNT_VERSION
@@ -187,6 +207,7 @@ export type MallowGumballError =
   | typeof MALLOW_GUMBALL_ERROR__INVALID_AUTHORITY
   | typeof MALLOW_GUMBALL_ERROR__INVALID_BUYER
   | typeof MALLOW_GUMBALL_ERROR__INVALID_COLLECTION
+  | typeof MALLOW_GUMBALL_ERROR__INVALID_CORE_COLLECTION
   | typeof MALLOW_GUMBALL_ERROR__INVALID_EDITION_ACCOUNT
   | typeof MALLOW_GUMBALL_ERROR__INVALID_GUMBALL_MACHINE
   | typeof MALLOW_GUMBALL_ERROR__INVALID_INPUT_LENGTH
@@ -198,6 +219,7 @@ export type MallowGumballError =
   | typeof MALLOW_GUMBALL_ERROR__INVALID_PAYER
   | typeof MALLOW_GUMBALL_ERROR__INVALID_PAYMENT_MINT
   | typeof MALLOW_GUMBALL_ERROR__INVALID_PROOF_PATH
+  | typeof MALLOW_GUMBALL_ERROR__INVALID_REFUND_EVIDENCE
   | typeof MALLOW_GUMBALL_ERROR__INVALID_SELLER
   | typeof MALLOW_GUMBALL_ERROR__INVALID_SETTING_UPDATE
   | typeof MALLOW_GUMBALL_ERROR__INVALID_STATE
@@ -226,8 +248,10 @@ export type MallowGumballError =
   | typeof MALLOW_GUMBALL_ERROR__NOT_PRIMARY_SALE
   | typeof MALLOW_GUMBALL_ERROR__NUMERICAL_OVERFLOW_ERROR
   | typeof MALLOW_GUMBALL_ERROR__PUBLIC_KEY_MISMATCH
+  | typeof MALLOW_GUMBALL_ERROR__REFUND_RESERVE_OUTSTANDING
   | typeof MALLOW_GUMBALL_ERROR__SELLER_CANNOT_BE_AUTHORITY
   | typeof MALLOW_GUMBALL_ERROR__SELLER_TOO_MANY_ITEMS
+  | typeof MALLOW_GUMBALL_ERROR__STALE_REFUND_EVIDENCE
   | typeof MALLOW_GUMBALL_ERROR__TOO_MANY_CREATORS
   | typeof MALLOW_GUMBALL_ERROR__UNINITIALIZED
   | typeof MALLOW_GUMBALL_ERROR__UNSUPPORTED_CNFT_VERSION
@@ -237,6 +261,7 @@ let mallowGumballErrorMessages: Record<MallowGumballError, string> | undefined;
 if (process.env['NODE_ENV'] !== 'production') {
   mallowGumballErrorMessages = {
     [MALLOW_GUMBALL_ERROR__ACCOUNT_ALREADY_INITIALIZED]: `Account is already initialized`,
+    [MALLOW_GUMBALL_ERROR__ASSET_DELIVERABLE]: `Compressed NFT is still deliverable from escrow`,
     [MALLOW_GUMBALL_ERROR__BUY_BACK_CUTOFF_REACHED]: `Buy back cutoff reached`,
     [MALLOW_GUMBALL_ERROR__BUY_BACK_FUNDS_NOT_ZERO]: `Buy back funds not zero`,
     [MALLOW_GUMBALL_ERROR__BUY_BACK_NOT_ENABLED]: `Buy back not enabled`,
@@ -245,6 +270,8 @@ if (process.env['NODE_ENV'] !== 'production') {
     [MALLOW_GUMBALL_ERROR__CANNOT_INCREASE_LENGTH]: `Cannot increase the length in config lines settings`,
     [MALLOW_GUMBALL_ERROR__CANNOT_SWITCH_FROM_HIDDEN_SETTINGS]: `Cannot switch from hidden settings`,
     [MALLOW_GUMBALL_ERROR__CANNOT_SWITCH_TO_HIDDEN_SETTINGS]: `Cannot switch to hidden settings after items available is greater than 0`,
+    [MALLOW_GUMBALL_ERROR__CNFT_LEDGER_GROWTH_TOO_LARGE]: `cNFT ledger growth exceeds 10240 bytes; recreate with v6 preallocation (unallocated v5 capacity limit: 637)`,
+    [MALLOW_GUMBALL_ERROR__CNFT_LEDGER_REQUIRES_AUTHORITY]: `Machine authority must fund initial cNFT ledger allocation`,
     [MALLOW_GUMBALL_ERROR__COLLECTION_KEY_MISMATCH]: `Collection public key mismatch`,
     [MALLOW_GUMBALL_ERROR__COULD_NOT_RETRIEVE_CONFIG_LINE_DATA]: `Could not retrive config line data`,
     [MALLOW_GUMBALL_ERROR__DUPLICATE_INDEX]: `Duplicate index`,
@@ -255,6 +282,7 @@ if (process.env['NODE_ENV'] !== 'production') {
     [MALLOW_GUMBALL_ERROR__INCORRECT_COLLECTION_AUTHORITY]: `Incorrect collection NFT authority`,
     [MALLOW_GUMBALL_ERROR__INCORRECT_OWNER]: `Account does not have correct owner`,
     [MALLOW_GUMBALL_ERROR__INDEX_GREATER_THAN_LENGTH]: `Index greater than length`,
+    [MALLOW_GUMBALL_ERROR__INELIGIBLE_CNFT_FLAGS]: `Compressed NFT has non-zero transfer flags`,
     [MALLOW_GUMBALL_ERROR__INSTRUCTION_BUILDER_FAILED]: `Instruction could not be created`,
     [MALLOW_GUMBALL_ERROR__INSUFFICIENT_FUNDS]: `Insufficient funds`,
     [MALLOW_GUMBALL_ERROR__INVALID_ACCOUNT_VERSION]: `Invalid account version`,
@@ -263,6 +291,7 @@ if (process.env['NODE_ENV'] !== 'production') {
     [MALLOW_GUMBALL_ERROR__INVALID_AUTHORITY]: `Invalid authority`,
     [MALLOW_GUMBALL_ERROR__INVALID_BUYER]: `Invalid buyer`,
     [MALLOW_GUMBALL_ERROR__INVALID_COLLECTION]: `Invalid collection`,
+    [MALLOW_GUMBALL_ERROR__INVALID_CORE_COLLECTION]: `Invalid Core collection`,
     [MALLOW_GUMBALL_ERROR__INVALID_EDITION_ACCOUNT]: `Invalid edition account`,
     [MALLOW_GUMBALL_ERROR__INVALID_GUMBALL_MACHINE]: `Invalid gumball machine`,
     [MALLOW_GUMBALL_ERROR__INVALID_INPUT_LENGTH]: `Invalid input length`,
@@ -274,6 +303,7 @@ if (process.env['NODE_ENV'] !== 'production') {
     [MALLOW_GUMBALL_ERROR__INVALID_PAYER]: `Invalid payer`,
     [MALLOW_GUMBALL_ERROR__INVALID_PAYMENT_MINT]: `Invalid payment mint`,
     [MALLOW_GUMBALL_ERROR__INVALID_PROOF_PATH]: `Invalid proof path`,
+    [MALLOW_GUMBALL_ERROR__INVALID_REFUND_EVIDENCE]: `Invalid current-tree refund evidence`,
     [MALLOW_GUMBALL_ERROR__INVALID_SELLER]: `Invalid seller`,
     [MALLOW_GUMBALL_ERROR__INVALID_SETTING_UPDATE]: `Invalid setting update`,
     [MALLOW_GUMBALL_ERROR__INVALID_STATE]: `Invalid state`,
@@ -302,11 +332,13 @@ if (process.env['NODE_ENV'] !== 'production') {
     [MALLOW_GUMBALL_ERROR__NOT_PRIMARY_SALE]: `Not a primary sale asset`,
     [MALLOW_GUMBALL_ERROR__NUMERICAL_OVERFLOW_ERROR]: `Numerical overflow error`,
     [MALLOW_GUMBALL_ERROR__PUBLIC_KEY_MISMATCH]: `Public key mismatch`,
+    [MALLOW_GUMBALL_ERROR__REFUND_RESERVE_OUTSTANDING]: `Outstanding draw reserve prevents final recovery settlement`,
     [MALLOW_GUMBALL_ERROR__SELLER_CANNOT_BE_AUTHORITY]: `Seller cannot be authority`,
     [MALLOW_GUMBALL_ERROR__SELLER_TOO_MANY_ITEMS]: `Seller has too many items`,
+    [MALLOW_GUMBALL_ERROR__STALE_REFUND_EVIDENCE]: `Refund evidence must use the current tree root`,
     [MALLOW_GUMBALL_ERROR__TOO_MANY_CREATORS]: `Can only provide up to 4 creators to gumball machine (because gumball machine is one)`,
     [MALLOW_GUMBALL_ERROR__UNINITIALIZED]: `Account is not initialized`,
-    [MALLOW_GUMBALL_ERROR__UNSUPPORTED_CNFT_VERSION]: `Unsupported Bubblegum version (only V1 compressed NFTs can be traded)`,
+    [MALLOW_GUMBALL_ERROR__UNSUPPORTED_CNFT_VERSION]: `Bubblegum leaf version does not match the instruction or tree owner`,
     [MALLOW_GUMBALL_ERROR__URI_TOO_LONG]: `URI too long`,
   };
 }

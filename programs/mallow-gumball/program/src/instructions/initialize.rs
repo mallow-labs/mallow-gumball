@@ -28,7 +28,7 @@ pub struct Initialize<'info> {
 
     /// Gumball Machine authority. This is the address that controls the upate of the gumball machine.
     ///
-    /// CHECK: authority can be any account and is not written to or read
+    /// CHECK: receivability and signable key checked in processor
     authority: UncheckedAccount<'info>,
 
     /// CHECK: Safe due to seeds constraint
@@ -75,6 +75,12 @@ pub fn initialize(ctx: Context<Initialize>, args: InitializeArgs) -> Result<()> 
         return err!(GumballError::UriTooLong);
     }
 
+    require!(
+        ctx.accounts.authority.key().is_on_curve()
+            && utils::can_receive_lamports(&ctx.accounts.authority.to_account_info()),
+        GumballError::InvalidAuthority
+    );
+
     // Details are considered finalized once sellers are invited
     let state = if settings.sellers_merkle_root.is_some() {
         GumballState::DetailsFinalized
@@ -99,6 +105,8 @@ pub fn initialize(ctx: Context<Initialize>, args: InitializeArgs) -> Result<()> 
 
     let mut account_data = gumball_machine_account.data.borrow_mut();
     account_data[0..struct_data.len()].copy_from_slice(&struct_data);
+    account_data[crate::ADD_REQUESTS_MIGRATED_POSITION] = 1;
+    account_data[crate::PENDING_ADD_REQUESTS_POSITION..GUMBALL_MACHINE_SIZE].fill(0);
     // set the initial number of config lines
     account_data[GUMBALL_MACHINE_SIZE..GUMBALL_MACHINE_SIZE + 4]
         .copy_from_slice(&u32::MIN.to_le_bytes());

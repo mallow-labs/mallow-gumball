@@ -27,6 +27,14 @@ pub fn add_item(
     // 'hidden' section of the data array)
     let mut data = account_info.data.borrow_mut();
 
+    if is_re_add && gumball_machine.version >= 6 {
+        require!(
+            gumball_machine.get_outstanding_draws(&data)? == 0
+                && gumball_machine.get_unfinalized_proceeds(&data)? == 0,
+            GumballError::InvalidState
+        );
+    }
+
     // holds the total number of config lines
     let mut config_count = get_config_count(&data)?;
     let index = if let Some(index) = re_add_index {
@@ -84,6 +92,12 @@ pub fn add_item(
 
         // add the new index to the mint indices vec
         let item_index = index + i as u32;
+        if gumball_machine.version >= 6 {
+            let payment_position = gumball_machine.get_draw_payment_position(item_index)?;
+            data[payment_position..payment_position + 8].fill(0);
+            let proceeds_position = gumball_machine.get_item_proceeds_position(item_index)?;
+            data[proceeds_position..proceeds_position + 8].fill(0);
+        }
 
         let index_position = if is_re_add {
             // Mint indices will be as long as config count - redeemed items and we need to add to the end

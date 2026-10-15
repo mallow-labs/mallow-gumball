@@ -1,5 +1,5 @@
 use anchor_spl::associated_token::get_associated_token_address_with_program_id;
-use mallow_gumball::GumballMachine;
+use mallow_gumball::{constants::AUTHORITY_SEED, GumballMachine};
 use mallow_jellybean_client::accounts::JellybeanMachine;
 use spl_token_2022::{
     extension::StateWithExtensions,
@@ -164,8 +164,27 @@ impl Token2022Payment {
             self.destination_ata,
             "Destination ATA does not match expected ATA",
         )?;
+        let (authority_pda, _) = Pubkey::find_program_address(
+            &[AUTHORITY_SEED.as_bytes(), ctx.accounts.machine.key.as_ref()],
+            &mallow_gumball::ID,
+        );
+        assert_keys_equal(
+            destination_ata.key(),
+            get_associated_token_address_with_program_id(
+                &authority_pda,
+                &self.mint,
+                &spl_token_2022::ID,
+            ),
+            "Payment destination must be the machine escrow ATA",
+        )?;
+        assert_owned_by(destination_ata, &spl_token_2022::ID)?;
         let data = destination_ata.data.borrow();
         let ata_account = StateWithExtensions::<SplToken2022Account>::unpack(&data)?;
+        assert_keys_equal(
+            ata_account.base.owner,
+            authority_pda,
+            "Invalid escrow owner",
+        )?;
         assert_keys_equal(
             ata_account.base.mint,
             self.mint,
@@ -218,8 +237,8 @@ impl Token2022Payment {
         };
 
         let marketplace_fee_bps = if let Some(fee_confg) = gumball_machine.marketplace_fee_config {
-            // Version 0 takes fee on claim, so no fee on draw
-            if gumball_machine.version == 0 {
+            // Version 0 and refund-aware machines retain fees until settlement.
+            if gumball_machine.version == 0 || gumball_machine.version >= 6 {
                 0
             } else {
                 fee_confg.fee_bps

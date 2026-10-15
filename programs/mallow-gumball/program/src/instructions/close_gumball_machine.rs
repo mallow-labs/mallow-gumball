@@ -84,6 +84,8 @@ pub fn close_gumball_machine<'info>(ctx: Context<'info, CloseGumballMachine<'inf
     ];
 
     // Close payment account if using payment token
+    // Parked entitlements and their currency vault survive machine close.
+    // Recipients can recover them using the machine key and authenticated ledger.
     if !is_native_mint(payment_mint) {
         let authority_pda_payment_account = &ctx
             .accounts
@@ -119,6 +121,12 @@ pub fn close_gumball_machine<'info>(ctx: Context<'info, CloseGumballMachine<'inf
                 authority_pda_payment_account
             )?);
 
+            let reserved =
+                crate::processors::parked_amount(&authority_pda.try_borrow_data()?, &payment_mint)?;
+            let surplus = token_account
+                .amount
+                .checked_sub(reserved)
+                .ok_or(GumballError::InsufficientFunds)?;
             transfer_and_close_if_empty(
                 authority,
                 authority_pda,
@@ -131,7 +139,7 @@ pub fn close_gumball_machine<'info>(ctx: Context<'info, CloseGumballMachine<'inf
                 system_program,
                 authority,
                 &auth_seeds,
-                token_account.amount,
+                surplus,
             )?;
         }
     }

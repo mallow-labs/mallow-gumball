@@ -47,6 +47,10 @@ pub(crate) struct DrawAccounts<'info> {
 }
 
 pub fn draw<'info>(ctx: Context<'info, Draw<'info>>) -> Result<()> {
+    crate::assert_refund_mint_authority(
+        &ctx.accounts.gumball_machine,
+        ctx.accounts.mint_authority.as_ref(),
+    )?;
     let accounts = DrawAccounts {
         buyer: ctx.accounts.buyer.to_account_info(),
         recent_slothashes: ctx.accounts.recent_slothashes.to_account_info(),
@@ -74,10 +78,10 @@ pub(crate) fn process_draw(
     gumball_machine: &mut Box<Account<'_, GumballMachine>>,
     accounts: DrawAccounts,
 ) -> Result<u32> {
-    let account_info = gumball_machine.to_account_info();
-    let account_data = account_info.data.borrow();
-    let config_count = get_config_count(&account_data)? as u64;
-    drop(account_data);
+    let config_count = {
+        let account_info: &AccountInfo = gumball_machine.as_ref().as_ref();
+        get_config_count(&account_info.try_borrow_data()?)? as u64
+    };
 
     // are there items to be minted?
     if gumball_machine.items_redeemed >= config_count {
@@ -129,7 +133,7 @@ pub fn set_config_line_buyer(
     index: usize,
     mint_number: u64,
 ) -> Result<u32> {
-    let account_info = gumball_machine.to_account_info();
+    let account_info: &AccountInfo = gumball_machine.as_ref();
     let mut account_data = account_info.data.borrow_mut();
     let config_count = get_config_count(&account_data)? as u64;
 
@@ -160,5 +164,47 @@ pub fn set_config_line_buyer(
     );
     account_data[buyer_position..buyer_position + 32].copy_from_slice(&buyer.to_bytes());
 
+    if gumball_machine.version >= 6 {
+        record_draw_payment(
+            gumball_machine,
+            &mut account_data,
+            mint_index as u32,
+            buyer_position + 32,
+        )?;
+    }
     Ok(mint_index as u32)
+}
+
+#[inline(never)]
+fn record_draw_payment(
+    gumball_machine: &GumballMachine,
+    account_data: &mut [u8],
+    mint_index: u32,
+    standard_position: usize,
+) -> Result<()> {
+    let pending_position = gumball_machine.get_pending_draw_payment_position()?;
+    let payment = GumballMachine::read_amount(&account_data, pending_position)?;
+    account_data[pending_position..pending_position + 8].fill(0);
+    let payment_position = gumball_machine.get_draw_payment_position(mint_index)?;
+    account_data[payment_position..payment_position + 8].copy_from_slice(&payment.to_le_bytes());
+
+    if account_data[standard_position] == crate::TokenStandard::Compressed as u8 {
+        let outstanding_position = gumball_machine.get_outstanding_draws_position()?;
+        let outstanding = gumball_machine.get_outstanding_draws(&account_data)?;
+        account_data[outstanding_position..outstanding_position + 8].copy_from_slice(
+            &outstanding
+                .checked_add(1)
+                .ok_or(GumballError::NumericalOverflowError)?
+                .to_le_bytes(),
+        );
+        let position = gumball_machine.get_refund_reserve_position()?;
+        let reserve = gumball_machine.get_refund_reserve(&account_data)?;
+        account_data[position..position + 8].copy_from_slice(
+            &reserve
+                .checked_add(payment)
+                .ok_or(GumballError::NumericalOverflowError)?
+                .to_le_bytes(),
+        );
+    }
+    Ok(())
 }

@@ -2,6 +2,7 @@ use mallow_gumball::{constants::AUTHORITY_SEED, GumballMachine};
 use mallow_jellybean_client::accounts::JellybeanMachine;
 
 use super::*;
+use utils::assert_keys_equal;
 
 use crate::{
     errors::GumballGuardError,
@@ -109,6 +110,15 @@ impl TokenPayment {
         ];
         let (authority_pda, _) = Pubkey::find_program_address(&seeds, &mallow_gumball::ID);
         assert_is_token_account(destination_ata, authority_pda, self.mint)?;
+        assert_keys_equal(
+            destination_ata.key(),
+            anchor_spl::associated_token::get_associated_token_address_with_program_id(
+                &authority_pda,
+                &self.mint,
+                &anchor_spl::token::ID,
+            ),
+            "Payment destination must be the machine escrow ATA",
+        )?;
 
         let token_account =
             assert_is_token_account(token_account_info, ctx.accounts.payer.key(), self.mint)?;
@@ -136,8 +146,8 @@ impl TokenPayment {
         let gumball_machine = try_from!(Account::<GumballMachine>, ctx.accounts.machine)?;
 
         let marketplace_fee_bps = if let Some(fee_confg) = gumball_machine.marketplace_fee_config {
-            // Version 0 takes fee on claim, so no fee on draw
-            if gumball_machine.version == 0 {
+            // Version 0 and refund-aware machines retain fees until settlement.
+            if gumball_machine.version == 0 || gumball_machine.version >= 6 {
                 0
             } else {
                 fee_confg.fee_bps

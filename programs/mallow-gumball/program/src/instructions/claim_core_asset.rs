@@ -102,6 +102,7 @@ pub fn claim_core_asset<'info>(
         mpl_core_program,
         system_program,
         &auth_seeds,
+        false,
     )?;
 
     emit_cpi!(ClaimItemEvent {

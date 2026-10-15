@@ -17,7 +17,6 @@ import {
   defaultPublicKey,
   generateSigner,
   isEqualToAmount,
-  lamports,
   none,
   publicKey,
   sol,
@@ -2067,7 +2066,7 @@ test('it can settle an nft sale with a marketplace config', async (t) => {
   t.true(isEqualToAmount(authorityPdaPostBalance, sol(0), sol(0.01)));
 });
 
-test('it omits sending proceeds for a creator if the amount is too small to keep the account alive', async (t) => {
+test('it funds a primary creator rent shortfall from the seller creator share', async (t) => {
   const umi = await createUmi();
   const secondCreator = generateSigner(umi).publicKey;
 
@@ -2134,7 +2133,7 @@ test('it omits sending proceeds for a creator if the amount is too small to keep
     .sendAndConfirm(buyerUmi);
 
   const secondCreatorPostBalance = await umi.rpc.getBalance(secondCreator);
-  t.true(isEqualToAmount(secondCreatorPostBalance, lamports(0)));
+  t.true(isEqualToAmount(secondCreatorPostBalance, await umi.rpc.getRent(0)));
 });
 
 test('it can settle an nft sale with disableRoyalties', async (t) => {

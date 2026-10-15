@@ -35,7 +35,6 @@ pub struct ClaimTokens<'info> {
 
     /// Gumball machine authority
     /// CHECK: Safe due to gumball machine authority check
-    #[account(mut)]
     authority: UncheckedAccount<'info>,
 
     /// Seller of the nft

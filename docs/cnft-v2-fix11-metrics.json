@@ -1,0 +1,236 @@
+[
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "reserved-11111111111111111111111111111111-leaf-transfer",
+    "computeUnits": 100101,
+    "serializedBytes": 1006
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "reserved-SysvarRent111111111111111111111111111111111-leaf-transfer",
+    "computeUnits": 101771,
+    "serializedBytes": 1006
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "reserved-NativeLoader1111111111111111111111111111111-leaf-transfer",
+    "computeUnits": 104763,
+    "serializedBytes": 1038
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "reserved-Sysvar1111111111111111111111111111111111111-leaf-transfer",
+    "computeUnits": 116882,
+    "serializedBytes": 1038
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "reserved-LoaderV411111111111111111111111111111111111-leaf-transfer",
+    "computeUnits": 91246,
+    "serializedBytes": 1038
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "reserved-ZkTokenProof1111111111111111111111111111111-leaf-transfer",
+    "computeUnits": 96103,
+    "serializedBytes": 1038
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "reserved-StakeConfig11111111111111111111111111111111-leaf-transfer",
+    "computeUnits": 98814,
+    "serializedBytes": 1038
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "reserved-11111111111111111111111111111111-collection-transfer",
+    "computeUnits": 124443,
+    "serializedBytes": 1004
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "reserved-SysvarRent111111111111111111111111111111111-collection-transfer",
+    "computeUnits": 114113,
+    "serializedBytes": 1004
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "reserved-NativeLoader1111111111111111111111111111111-collection-transfer",
+    "computeUnits": 109605,
+    "serializedBytes": 1036
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "reserved-Sysvar1111111111111111111111111111111111111-collection-transfer",
+    "computeUnits": 108224,
+    "serializedBytes": 1036
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "reserved-LoaderV411111111111111111111111111111111111-collection-transfer",
+    "computeUnits": 106588,
+    "serializedBytes": 1036
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "reserved-ZkTokenProof1111111111111111111111111111111-collection-transfer",
+    "computeUnits": 106945,
+    "serializedBytes": 1036
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "reserved-StakeConfig11111111111111111111111111111111-collection-transfer",
+    "computeUnits": 129156,
+    "serializedBytes": 1036
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "reserved-11111111111111111111111111111111-leaf-claimed",
+    "computeUnits": 64097,
+    "serializedBytes": 1006
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "reserved-SysvarRent111111111111111111111111111111111-leaf-claimed",
+    "computeUnits": 59767,
+    "serializedBytes": 1006
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "reserved-NativeLoader1111111111111111111111111111111-leaf-claimed",
+    "computeUnits": 61259,
+    "serializedBytes": 1038
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "reserved-Sysvar1111111111111111111111111111111111111-leaf-claimed",
+    "computeUnits": 62878,
+    "serializedBytes": 1038
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "reserved-LoaderV411111111111111111111111111111111111-leaf-claimed",
+    "computeUnits": 59742,
+    "serializedBytes": 1038
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "reserved-ZkTokenProof1111111111111111111111111111111-leaf-claimed",
+    "computeUnits": 70599,
+    "serializedBytes": 1038
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "reserved-StakeConfig11111111111111111111111111111111-leaf-claimed",
+    "computeUnits": 62810,
+    "serializedBytes": 1038
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "reserved-11111111111111111111111111111111-collection-claimed",
+    "computeUnits": 58213,
+    "serializedBytes": 1004
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "reserved-SysvarRent111111111111111111111111111111111-collection-claimed",
+    "computeUnits": 67383,
+    "serializedBytes": 1004
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "reserved-NativeLoader1111111111111111111111111111111-collection-claimed",
+    "computeUnits": 65875,
+    "serializedBytes": 1036
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "reserved-Sysvar1111111111111111111111111111111111111-collection-claimed",
+    "computeUnits": 61494,
+    "serializedBytes": 1036
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "reserved-LoaderV411111111111111111111111111111111111-collection-claimed",
+    "computeUnits": 64358,
+    "serializedBytes": 1036
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "reserved-ZkTokenProof1111111111111111111111111111111-collection-claimed",
+    "computeUnits": 64715,
+    "serializedBytes": 1036
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "reserved-StakeConfig11111111111111111111111111111111-collection-claimed",
+    "computeUnits": 62926,
+    "serializedBytes": 1036
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "payable share-transfer",
+    "computeUnits": 109294,
+    "serializedBytes": 1038
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "seller-funded top-up-transfer",
+    "computeUnits": 103282,
+    "serializedBytes": 1038
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "insufficient seller proceeds-transfer",
+    "computeUnits": 107563,
+    "serializedBytes": 1038
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "payable share-claimed",
+    "computeUnits": 62790,
+    "serializedBytes": 1038
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "seller-funded top-up-claimed",
+    "computeUnits": 68778,
+    "serializedBytes": 1038
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "insufficient seller proceeds-claimed",
+    "computeUnits": 61059,
+    "serializedBytes": 1038
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "invited-seller-curator-fee",
+    "computeUnits": 67271,
+    "serializedBytes": 1070
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "invited-seller-marketplace-fee",
+    "computeUnits": 75495,
+    "serializedBytes": 1070
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "skipped-share-no-cross-subsidy",
+    "computeUnits": 65792,
+    "serializedBytes": 1073
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "empty-seller-history-refund-transfer",
+    "computeUnits": 100265,
+    "serializedBytes": 1038
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "empty-seller-history-refund-claimed",
+    "computeUnits": 65761,
+    "serializedBytes": 1038
+  }
+]

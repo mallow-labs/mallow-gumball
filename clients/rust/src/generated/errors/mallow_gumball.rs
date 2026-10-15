@@ -219,8 +219,8 @@ pub enum MallowGumballError {
     /// 6068 - Missing item index
     #[error("Missing item index")]
     MissingItemIndex = 0x17B4,
-    /// 6069 - Unsupported Bubblegum version (only V1 compressed NFTs can be traded)
-    #[error("Unsupported Bubblegum version (only V1 compressed NFTs can be traded)")]
+    /// 6069 - Bubblegum leaf version does not match the instruction or tree owner
+    #[error("Bubblegum leaf version does not match the instruction or tree owner")]
     UnsupportedCnftVersion = 0x17B5,
     /// 6070 - Invalid merkle tree for the stored asset id
     #[error("Invalid merkle tree for the stored asset id")]
@@ -228,6 +228,30 @@ pub enum MallowGumballError {
     /// 6071 - Account is already initialized
     #[error("Account is already initialized")]
     AccountAlreadyInitialized = 0x17B7,
+    /// 6072 - Compressed NFT has non-zero transfer flags
+    #[error("Compressed NFT has non-zero transfer flags")]
+    IneligibleCnftFlags = 0x17B8,
+    /// 6073 - Invalid Core collection
+    #[error("Invalid Core collection")]
+    InvalidCoreCollection = 0x17B9,
+    /// 6074 - Compressed NFT is still deliverable from escrow
+    #[error("Compressed NFT is still deliverable from escrow")]
+    AssetDeliverable = 0x17BA,
+    /// 6075 - Refund evidence must use the current tree root
+    #[error("Refund evidence must use the current tree root")]
+    StaleRefundEvidence = 0x17BB,
+    /// 6076 - Invalid current-tree refund evidence
+    #[error("Invalid current-tree refund evidence")]
+    InvalidRefundEvidence = 0x17BC,
+    /// 6077 - Outstanding draw reserve prevents final recovery settlement
+    #[error("Outstanding draw reserve prevents final recovery settlement")]
+    RefundReserveOutstanding = 0x17BD,
+    /// 6078 - cNFT ledger growth exceeds 10240 bytes; recreate with v6 preallocation (unallocated v5 capacity limit: 637)
+    #[error("cNFT ledger growth exceeds 10240 bytes; recreate with v6 preallocation (unallocated v5 capacity limit: 637)")]
+    CnftLedgerGrowthTooLarge = 0x17BE,
+    /// 6079 - Machine authority must fund initial cNFT ledger allocation
+    #[error("Machine authority must fund initial cNFT ledger allocation")]
+    CnftLedgerRequiresAuthority = 0x17BF,
 }
 
 impl From<MallowGumballError> for solana_program_error::ProgramError {

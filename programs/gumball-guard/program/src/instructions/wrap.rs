@@ -26,6 +26,12 @@ pub fn wrap(ctx: Context<Wrap>) -> Result<()> {
     let machine = &ctx.accounts.machine.to_account_info();
     assert_owned_by(machine, ctx.accounts.machine_program.key)?;
 
+    require_keys_eq!(
+        ctx.accounts.machine.key(),
+        ctx.accounts.gumball_guard.base,
+        GumballGuardError::InvalidMachine
+    );
+
     // TODO: Make this less expensive
     if let Ok(gumball_machine) = try_from!(Account::<GumballMachine>, machine) {
         assert_keys_equal(
@@ -33,6 +39,9 @@ pub fn wrap(ctx: Context<Wrap>) -> Result<()> {
             gumball_machine.authority,
             "Invalid machine authority",
         )?;
+
+        gumball_machine
+            .assert_can_set_mint_authority(&machine.try_borrow_data()?, gumball_guard.key())?;
 
         // gumball machine set_mint_authority CPI
         set_mint_authority(CpiContext::new_with_signer(

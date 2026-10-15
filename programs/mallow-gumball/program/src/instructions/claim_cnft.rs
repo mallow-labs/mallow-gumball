@@ -76,7 +76,7 @@ pub fn claim_cnft<'info>(
     index: u32,
     args: CnftArgs,
 ) -> Result<()> {
-    assert_cnft_v1(args.version)?;
+    assert_cnft_v1(args.version, &ctx.accounts.merkle_tree.to_account_info())?;
 
     let gumball_machine = &mut ctx.accounts.gumball_machine;
     let buyer = &ctx.accounts.buyer.to_account_info();

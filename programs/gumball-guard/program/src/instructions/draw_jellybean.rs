@@ -18,6 +18,12 @@ pub fn draw_jellybean<'c: 'info, 'info>(
     mint_args: Vec<u8>,
     label: Option<String>,
 ) -> Result<()> {
+    require_keys_eq!(
+        ctx.accounts.jellybean_machine.key(),
+        ctx.accounts.gumball_guard.base,
+        crate::errors::GumballGuardError::InvalidMachine
+    );
+
     let accounts = DrawAccounts {
         gumball_guard: &ctx.accounts.gumball_guard,
         machine: ctx.accounts.jellybean_machine.to_account_info(),

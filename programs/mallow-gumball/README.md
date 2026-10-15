@@ -12,7 +12,7 @@ Key features of the mallow Gumball Machine include:
 - Curator fee system: Curators can set and receive a fee for each sale from the Gumball Machine.
 - Marketplace fee system: Marketplaces hosting the Gumball sale can set and receive a fee for each sale from the Gumball Machine.
 - Socialized proceeds: Sellers receive an equal share of the total proceeds per NFT they contributed to the Gumball Machine.
-- Enforced royalties: Royalties are always disbursed according to their definition in the NFT metadata.
+- Enforced royalties: Native creator payouts use actual account rent, with shortfalls funded only from the item's seller proceeds. Unpayable creators or unaffordable shortfalls leave the share with the seller; ordinary payable creators must be writable.
 
 The mallow Gumball Machine is responsible for:
 
@@ -633,6 +633,8 @@ This instruction settles a range of fungible token sales (`start_index` to `end_
 ### 📄 `set_authority`
 
 This instruction sets a new authority for the gumball machine.
+The new authority must accept the rotation by co-signing and must be an
+on-curve, receivable wallet. Legacy idempotent calls may omit the appended signer.
 
 <details>
   <summary>Accounts</summary>
@@ -641,6 +643,7 @@ This instruction sets a new authority for the gumball machine.
 | ----------------- | :------: | :----: | -------------------------------------------- |
 | `gumball_machine` |    ✅    |        | The `GumballMachine` account.                |
 | `authority`       |          |   ✅   | Public key of the gumball machine authority. |
+| `new_authority_signer` |      |   ✅   | Optional signer; required when `new_authority` differs from the current authority. |
 
 </details>
 
@@ -677,7 +680,7 @@ None.
 
 ### 📄 `withdraw`
 
-This instruction closes the `GumballMachine` account and sends its rent lamports to the `authority`. It requires all items to be settled (`items_settled == config_count`). If a non-native `payment_mint` was used, it also closes the `authority_pda_payment_account` and transfers its remaining balance to the `authority`'s associated token account for that mint (which must be provided in remaining accounts). Requires both the `authority` and `mint_authority` to sign.
+This instruction closes the `GumballMachine` account and sends its rent lamports to the `authority`. It requires all items to be settled (`items_settled == config_count`) and all buy-back funds withdrawn. If a non-native `payment_mint` was used, it transfers only the surplus above parked token debt to the `authority`'s associated token account for that mint (provided in remaining accounts). The token vault closes when no unpaid token debt remains; the vault remains open while debt remains. The authority PDA and its payout ledger survive machine close for later withdrawals and rent recovery. Requires both the `authority` and `mint_authority` to sign.
 
 <details>
   <summary>Accounts</summary>
@@ -705,6 +708,25 @@ This instruction closes the `GumballMachine` account and sends its rent lamports
 None.
 
 </details>
+
+### 📄 `withdraw_payout`
+
+Withdraws a positive `amount: u64` of parked proceeds, bounded by the recipient's
+recorded debt. The recipient must sign. Native payouts go to that recipient;
+token payouts go to a receivable account owned by that recipient with the
+recorded mint and token program. Partial withdrawals are supported, including
+after machine close. The final post-close token withdrawal sweeps any remaining
+vault surplus and closes the vault when its rent can be returned. Fully paid
+entries release their recorded rent deposit.
+
+### 📄 `recover_payout_rent`
+
+Recovers the rent deposit of a ledger entry whose debt is zero. The recorded rent
+payer must sign; the recipient need not sign and the machine may already be
+closed. Its argument is `recipient: Pubkey`.
+
+For both instructions' account order, currency validation, vault sweeping and
+rent-return fallback, see [Parked payouts and compatibility](../../docs/cnft-v2.md#parked-payouts-and-compatibility).
 
 ### 📄 `request_add_nft`
 
@@ -893,3 +915,279 @@ This instruction removes fungible token items from the gumball machine within a 
 | `end_index`   | The ending index (inclusive) of the token items to remove.                 |
 
 </details>
+
+## Bubblegum v2 compressed NFTs
+
+Use `add_cnft_v2`, `request_add_cnft_v2`, `cancel_add_cnft_request_v2`,
+`remove_cnft_v2`, `claim_cnft_v2`, and `settle_cnft_sale_v2` for MPL-compression
+owned trees. The original instructions and their serialized argument/account
+layouts remain compatible with SPL-compression owned v1 trees. Both versions
+use `TokenStandard::Compressed` and store the derived Bubblegum asset ID in the
+existing config-line mint field.
+
+`CnftArgsV2` carries `root`, `meta_hash`, raw `seller_fee_basis_points`, proof
+`creators`, `nonce`, `index`, `version` (2), optional `asset_data_hash`, and `flags`.
+`meta_hash` must be the inner keccak of Borsh `MetadataArgsV2`. A missing asset-data
+hash means Bubblegum's default empty-data hash; preserve nondefault hashes.
+Entry accepts only zero flags and refuses Core collections with permanent
+freeze, transfer, or burn delegates. TransferV2 validates deliverability rather
+than applying a collection-size cutoff. Every collected leaf requires its actual
+`core_collection` account, authenticated by the leaf proof. Supply the real
+`leaf_delegate` on add/request; it is a read-only non-signer account. Transfers
+reset the delegate to the new owner, so escrow exits use the authority PDA as
+both owner and delegate. Tree configs are writable for v2 transfers.
+
+The transfer fee payer is the seller for add/request/cancel, the removing
+`authority` for remove, and the instruction `payer` for claim/settle. Bubblegum
+collects its protocol fee from that signing wallet, independently of custody
+funds and sale proceeds. The program never hard-codes that fee.
+
+Settlement uses leaf royalties when the raw rate is not 65535 and leaf creators
+are present. Otherwise it uses the authenticated Core collection Royalties
+plugin, or zero if none exists. It remains a secondary sale. Remaining accounts
+are **payout** creator wallets (wallet and token account for SPL payments),
+preceded by the Token-2022 program slot when applicable, followed by proof nodes.
+For collection inheritance, payout creators can differ from proof creators.
+Collection payout creators are verified only by verified signatures in the
+Core `VerifiedCreators` plugin; update authority equality does not verify them.
+Eligibility and inherited payouts borrow the internal plugin registry in place.
+Inherited payouts read the collection base once and deserialize only Royalties
+and VerifiedCreators. External adapter records and unrelated plugin bodies never
+allocate; claimed settlement supports collections with hundreds of adapters.
+Already-claimed settlement verifies a reconstructed v2 leaf against MPL
+Account Compression using the current owner/delegate, collection hash,
+asset-data hash, flags, root, and proof.
+For a claimed leaf burned by its owner, set `args.flags = 255` (`u8::MAX`),
+use the current empty-node proof, and supply `nonce == index` for that asset.
+If the recorded tree is closed (data-empty and no longer MPL-owned), pass its
+key and canonical tree-config PDA with zero root and no proof nodes instead.
+Owner/delegate arguments are ignored on this path; clients may use
+`Pubkey::default()` for both. Every other flags value verifies a live leaf,
+including when its owner and delegate are both default keys. Live leaves use
+only flags bits 0–2. No creator payout accounts are needed for the burnt path
+(except the Token-2022 program slot for Token-2022 proceeds). The program verifies
+the empty slot against the current tree and settles with zero royalties, as for
+burned Core assets. Undrawn items on every machine version now require
+`SaleEnded` before settlement; drawn items retain live solo settlement.
+
+### Undeliverable escrow recovery
+
+Collection eligibility is a snapshot: a collection/tree authority can change a
+leaf's collection after escrow, then a new permanent delegate may freeze, burn,
+or move it. `refund_cnft_sale_v2` is permissionless and requires MPL compression
+`verify_leaf` evidence of the **current** root that the recorded item is empty,
+owned by someone other than the machine authority PDA, or has nonzero flags.
+Historical roots are rejected even if compression would otherwise accept them.
+The tree and nonce derive the stored asset ID; the proof slot is derived from
+nonce (Bubblegum allocates nonce == index). Before claim, the recorded buyer
+may also sign a refund when the current proof-bound Core collection has any
+Permanent* delegate plugin; ordinary claim and transfer settlement remain available.
+A claimed item cannot be refunded. Collection/tree authorities may change metadata
+or collection membership after delivery, and permanent delegates may then claw back
+or burn the leaf while the seller remains paid; there is no post-claim refund.
+Unsold items can use this exit only after the sale ends, with the recorded
+seller or current machine authority signing as payer. Drawn-item evidence
+refunds remain permissionless.
+
+V2 escrow entry requires a version-5 or newer machine. An authorized direct v2 add
+or authority approval of a v2 request upgrades an unused version-5 machine to
+version 6 and enables a hidden
+payment ledger (`40 + 16 * item_capacity` bytes). Current clients preallocate this
+space; an older small machine grows only with rent paid by the machine authority.
+Invited sellers use authority-approved requests when initial growth is needed.
+Minimal v5 allocations fit through capacity 637 (638 with current clients' nineteen
+padding bytes); larger growth returns 6078, and invited-seller-funded growth
+returns 6079. Recreate larger accounts with v6 space. Both exact u64 ledgers are
+retained for original payment history and O(1) cumulative payout accounting.
+A pending v2 request leaves the machine version and allocation unchanged and
+appends a v2 version marker and a live-accounting marker to its legacy request prefix. Upgrade
+is allowed only before a draw or revenue; historical payments are never guessed.
+Machines needing more than 10,240 extra bytes in one entry must be created with
+preallocated space. Re-adds during a live sale require the ledger to exist.
+
+Each draw stores its actual gross payment, including marketplace fees, in its
+item's ledger slot. Undelivered compressed draws reserve their entire payment.
+The guard retains marketplace fees in escrow on version-6 machines; normal
+settlement pays the configured marketplace fee, then curator fees on the net
+amount, then royalties and seller proceeds. Legacy versions retain their
+existing draw-time fee behavior. On v6, both revenue reporting and direct draws
+require a signing mint authority owned by the canonical gumball-guard program;
+a wallet mint authority cannot add unpaid revenue or draw.
+
+Upgrade **gumball-guard first** and verify it before extending and upgrading
+**mallow-gumball**. Otherwise the old guard deducts marketplace fees on draw
+while the v6 ledger records and reserves the gross payment, underfunding escrow
+and charging settlement fees again. Release the clients, backend and SDK/web
+with the ordered program upgrades behind `MALLOW_PROGRAMS_V2_READY`.
+
+A successful claim releases that item's reserve. V6 settlement pays available
+resolved revenue while retaining the complete pending refund reserve. Per-item
+payout records and an unfinalized-proceeds counter preserve cumulative shares:
+repeated settlement pays only the increase owed. Partial settlements keep seller
+history and their settlement bits open; finalize them after all outstanding draws
+(including zero-price draws) resolve and the sale ends or all inventory is drawn.
+Early solo live payouts also stay open for later-draw refunds. Batch token settlement follows the same
+rule. Unsold inventory settles only after `SaleEnded`. Solo re-adds require no
+outstanding draws or unfinalized partial proceeds. Normal v6 draws cannot refill
+mid-sale: payouts remain provisional while inventory is drawable, and the last
+draw automatically ends the sale. SaleEnded rejects re-add even after payouts
+are finalized. Create a new machine for replacement inventory.
+
+Both refund paths return the recorded buyer's full gross draw payment, remove it
+from revenue, release its reserve and forfeit its pooled share. They mark the item
+claimed and settled, update seller history and emit the same refund event. Unsold
+recovery refunds zero, marks delivery skipped and retains the item's seller
+history and full pooled entitlement. Run ordinary `settle_cnft_sale_v2` afterwards
+with current proof/metadata (empty proof for a burnt leaf, or zero root/no proof
+for its missing recorded tree). It skips TransferV2
+and pays the normal share, before or after other payouts, without changing the
+remaining sellers' divisor.
+
+Permissionless evidence is the current proof-verified leaf: empty,
+owner outside escrow, or nonzero flags. A drawn item's proof-bound Permanent*
+collection plugin also qualifies when the recorded buyer signs. Collection byte
+length and unrelated plugin shapes never authorize a refund.
+`admin_refund_cnft_sale_v2` handles other collection-level
+claim failures; its remaining accounts start with the marketplace fee authority
+signer and canonical guard `GlobalConfig`, then proof nodes. The program checks
+config address/owner/discriminator and requires its `account_fee_authority` to
+sign. Machine creators cannot authorize this path. It shares the existing refund's named accounts
+and argument layout. Operator tooling must simulate the same claim and refuse a
+refund if delivery succeeds. Umi's `prepareAdminRefundCnftSaleV2` performs these
+checks without sending transactions; the backend must enforce the same rule.
+
+The approximate collection-size entry rejection and its exported constant are
+removed. TransferV2 validates deliverability on entry. Shape-specific tests cover
+the review's single-attribute boundary (22,213 bytes transfers, 22,214 fails), a
+fixture with a different base name (22,210 transfers, 22,211 fails), short
+Attributes vectors (170 transfers; 180 fails below 2 KiB), and large AppData
+(30,000/60,000 data bytes transfer). These are measurements, not thresholds.
+
+For all versions, payment mint locks after inventory, finalized details, a live
+add request, or sale start. Pending requests also forbid raising curator fees,
+lowering items per seller or changing hide-sold-items on state-None machines.
+Before sale, roots may be set or replaced, while invited inventory or live
+requests prevent clearing collab mode. A live u64 request count uses header bytes
+411..419 and decreases on approval/cancellation; cancelled uninvited requests
+leave no permanent lock. An authority-signed `reject_add_item_request` resolves
+an unwanted request without growing the machine ledger or transferring assets;
+byte 106 becomes 2, approval is forbidden, and the seller still cancels normally.
+A rejected request must be omitted from pending/approval lists.
+New requests keep the legacy 105-byte prefix and append
+a version byte plus a live-accounting marker (107 bytes total).
+All cancellation paths append the writable machine address after any proof nodes;
+closure or address recreation cannot block returning the requested asset.
+Kit/Umi's `withRequestCancellationMachine` does this without RPC calls. Legacy
+requests without the accounting marker accept the original account list.
+A pre-upgrade machine holds economic and mint-path locks until the marketplace
+attests a complete request scan through `migrate_add_item_requests`. Header byte
+410 is 1 only after reconciliation, or on newly initialized machines. Migration
+counts legacy requests once, preserves their asset version, and sets byte 106 to
+1. Migrated cancellations append the machine; unmigrated and rejected requests
+retain their original cancellation account list. Guard changes, wrap/unwrap to
+another authority, and direct mint-authority changes share the collaborator lock
+for all account versions. Initial wrapping before any custody remains available.
+See the deploy-time legacy-request scan and exact migration interface in the
+[rollout guide](../../docs/cnft-v2.md).
+Shared approval requires collab mode: set the root before approval in the same
+transaction or confirm the root update first. Confirm that transaction before
+sending later approval groups. All existing instruction discriminators, arguments and
+named-account positions remain unchanged. Reclaim binds the receipt's machine
+address only, so recreating that closed address cannot block recovery.
+
+See [the recovery and sync guide](../../docs/cnft-v2.md) for the exact v6 layout,
+partial-payout formula, operator checks, current artifact and allocation bytes.
+
+For an undeliverable leaf still in escrow, refund creates a 208-byte `CnftRecovery`
+receipt at seeds `["cnft_recovery", machine, tree, nonce_le_u64]`. The caller pays
+its rent. The receipt retains the machine address, its authority at refund,
+seller, asset, tree, nonce and rent payer; it survives machine closure.
+`reclaim_cnft_v2` requires the current marketplace fee authority from the
+canonical guard `GlobalConfig` to sign and transfers only to the recorded seller.
+Its first remaining account is that config, then fresh proof nodes. Pass the
+machine address even after closure; machine authority rotation and closure never
+remove the marketplace's ability to recover. The receipt's creator snapshot is
+historical and does not authorize reclaim. Transfer rules
+must permit recovery (for example the collection delegate must thaw its flag).
+The signing authority pays Bubblegum's fee; receipt rent returns to its original
+payer. A seller signature alone cannot recover the refunded item.
+
+No receipt is retained for a burnt or moved leaf. If a retained leaf is later
+burnt or leaves escrow, `close_missing_cnft_recovery_v2` permissionlessly verifies
+current-root evidence or `leaf = None` with its closed recorded tree, and returns
+receipt rent to its original payer. It cannot
+close a receipt while the live leaf remains in escrow, even when flagged.
+Missing-tree evidence includes foreign-owned accounts with data, invalid MPL
+headers and slots outside a replacement tree's append index/capacity. Slots
+below the append index retain ordinary current-root empty-leaf verification.
+SPL-owned replacements use the marketplace-admin no-leaf refund; burnt settlement
+prefixes remaining accounts with the marketplace signer and canonical guard
+GlobalConfig before the Token-2022 slot, if any. This protects live v1 config
+lines. Typed v2 recovery receipts accept SPL replacement evidence without a
+signer. Admin refunds with no leaf are tree-independent, and operator tooling
+must simulate the same claim before authorizing skipped delivery. See the
+[closed-tree rules](../../docs/cnft-v2.md#closed-trees).
+
+Occupied/unprovable MPL replacements require marketplace-authorized exits after
+off-chain verification. For claimed or recovered-unsold settlement, use a zero
+root, `args.flags = 255`, `nonce == index`, and the marketplace signer/canonical
+GlobalConfig prefix before any Token-2022 slot. Receipt cleanup uses no leaf,
+zero root and the same prefix, returning rent to its recorded payer. Normal
+machine close follows settlement. No on-chain permissionless predicate changes.
+
+`RefundCnftSaleEvent` identifies machine, asset, seller, buyer, payment mint,
+refund amount and any retained receipt. V1 instruction layouts and config-line storage remain unchanged. Version 6 adds
+its payment ledger after the version-5 hidden section. See [recovery interfaces](../../docs/cnft-v2.md).
+
+Approval and Gumball Guard draw remain shared between versions: approval moves
+request state into config lines; draw records the buyer and does not move a leaf.
+Neither forwards an asset-transfer instruction.
+
+Generate all clients with `pnpm generate:clients` after the documented program
+build. Run narrow cNFT regression tests using:
+
+```sh
+heavy -c 2 'cd clients/umi && pnpm exec tsup && pnpm exec ava test/cnft.test.ts test/cnftV2.test.ts'
+heavy -c 2 'cd clients/umi && CNFT_V2_METRICS_OUT=../../docs/cnft-v2-metrics.json pnpm exec ava test/cnftV2Budget.test.ts'
+```
+
+The budget fixture uses fixed test keypairs to make PDA bump costs reproducible.
+It measures v0 transactions with one leaf royalty recipient, zero asset flags,
+and the default asset-data hash, at transmitted proof depths 0/5/10/14. It also
+measures inherited collection royalties with two recipients and SOL, SPL Token,
+and Token-2022 payment at depths 5/14. Transfer settlement uses 4 KB Attributes;
+claimed settlement grows the collection to 40 KB after claim. Each measurement
+asserts a CU ceiling (110,000 for the standard leaf/SOL fixture, 135,000 for the
+four leaf `settle_cnft_sale_v2_transfer` rows, and 170,000 for collection
+fixtures) and every LUT transaction must fit the 1232-byte packet limit. Normal
+runs compare every row against the committed JSON: byte sizes and packet-fit
+results must match exactly, and CU may differ by at most 3% (minimum 100 CU).
+An explicit `CNFT_V2_METRICS_OUT` run records a new baseline for review. Depth
+zero uses a depth-five tree with a full canopy. It simulates both
+lookup-table variants and sends the LUT form. Packet-fit results must be checked
+against the 1232-byte transaction limit when adding collection accounts,
+creators, token payments, or extra instructions.
+
+The measured results are in [cnft-v2-metrics.json](../../docs/cnft-v2-metrics.json).
+All 58 rows pass committed-baseline comparison: 61,003–165,460 CU and 371–509 bytes
+with a LUT (641–1537 bytes without one). The asserted ceilings cover these
+fixtures, not every possible creator count.
+Depth-14 leaf settlement is 1343 bytes without a LUT and 509 bytes with one,
+so it requires a LUT. A single-leaf tree's
+zero first sibling deduplicates with the System Program account; a nonzero
+sibling adds 32 bytes. Different production keys can incur different PDA bump
+costs.
+Oversized forms are simulated locally as raw bytes for compute measurement and
+marked as exceeding the packet limit; only the LUT forms are sent.
+
+The loaded Bubblegum binary disables `updateAssetDataV2` with error 6050, so the
+nondefault asset-data lifecycle fixture is explicitly skipped for that upstream
+limitation.
+The Rust client codec test still round-trips nondefault asset-data hashes.
+
+The loaded Bubblegum binary fully deserializes the Core collection during
+`TransferV2` and runs out of heap with the 40 KB Attributes fixture. Targeted
+gumball collection reads fix claimed settlement and entry eligibility checks,
+but this upstream limit still applies to transfers, including unclaimed
+settlement. The registry regression asserts `InvalidAssetPlugin` before the
+transfer CPI on a permanent-delegate collection with 40 KB Attributes.

@@ -1,0 +1,357 @@
+{
+  "finding": "R20-01",
+  "fixtures": "Pinned mainnet Bubblegum/compression binaries; real BurnV2, CloseTreeV2 and signed address re-creation; original nonce 2 for replacement-slot tests. Local simulations only.",
+  "sampleCount": 57,
+  "computeUnitsRange": [
+    8039,
+    86738
+  ],
+  "serializedBytesRange": [
+    345,
+    1195
+  ],
+  "rows": [
+    {
+      "instruction": "settle_cnft_sale_v2",
+      "scenario": "R20-01: system replacement settles a claimed burn and closes machine",
+      "computeUnits": 45984,
+      "serializedBytes": 904
+    },
+    {
+      "instruction": "settle_cnft_sale_v2",
+      "scenario": "R20-01: foreign replacement settles a claimed burn and closes machine",
+      "computeUnits": 48984,
+      "serializedBytes": 904
+    },
+    {
+      "instruction": "settle_cnft_sale_v2",
+      "scenario": "R20-01: uninitialized replacement settles a claimed burn and closes machine",
+      "computeUnits": 47518,
+      "serializedBytes": 904
+    },
+    {
+      "instruction": "settle_cnft_sale_v2",
+      "scenario": "R20-01: v2 replacement settles a claimed burn and closes machine",
+      "computeUnits": 46086,
+      "serializedBytes": 904
+    },
+    {
+      "instruction": "settle_cnft_sale_v2",
+      "scenario": "R20-01: system replacement spl claimed settlement releases escrow",
+      "computeUnits": 61980,
+      "serializedBytes": 1032
+    },
+    {
+      "instruction": "settle_cnft_sale_v2",
+      "scenario": "R20-01: system replacement token2022 claimed settlement releases escrow",
+      "computeUnits": 67238,
+      "serializedBytes": 1065
+    },
+    {
+      "instruction": "settle_cnft_sale_v2",
+      "scenario": "R20-01: foreign replacement spl claimed settlement releases escrow",
+      "computeUnits": 72480,
+      "serializedBytes": 1032
+    },
+    {
+      "instruction": "settle_cnft_sale_v2",
+      "scenario": "R20-01: foreign replacement token2022 claimed settlement releases escrow",
+      "computeUnits": 86738,
+      "serializedBytes": 1065
+    },
+    {
+      "instruction": "settle_cnft_sale_v2",
+      "scenario": "R20-01: uninitialized replacement spl claimed settlement releases escrow",
+      "computeUnits": 68014,
+      "serializedBytes": 1032
+    },
+    {
+      "instruction": "settle_cnft_sale_v2",
+      "scenario": "R20-01: uninitialized replacement token2022 claimed settlement releases escrow",
+      "computeUnits": 80772,
+      "serializedBytes": 1065
+    },
+    {
+      "instruction": "refund_cnft_sale_v2",
+      "scenario": "R20-01: system replacement sol proof refund makes buyer whole",
+      "computeUnits": 49337,
+      "serializedBytes": 626
+    },
+    {
+      "instruction": "refund_cnft_sale_v2",
+      "scenario": "R20-01: foreign replacement sol proof refund makes buyer whole",
+      "computeUnits": 47837,
+      "serializedBytes": 626
+    },
+    {
+      "instruction": "refund_cnft_sale_v2",
+      "scenario": "R20-01: uninitialized replacement sol proof refund makes buyer whole",
+      "computeUnits": 44871,
+      "serializedBytes": 626
+    },
+    {
+      "instruction": "settle_cnft_sale_v2",
+      "scenario": "R20-01: v2 replacement spl claimed settlement releases escrow",
+      "computeUnits": 65082,
+      "serializedBytes": 1032
+    },
+    {
+      "instruction": "settle_cnft_sale_v2",
+      "scenario": "R20-01: v2 replacement token2022 claimed settlement releases escrow",
+      "computeUnits": 79340,
+      "serializedBytes": 1065
+    },
+    {
+      "instruction": "settle_cnft_sale_v2",
+      "scenario": "R20-01: spl replacement settles a claimed burn and closes machine",
+      "computeUnits": 48292,
+      "serializedBytes": 1034
+    },
+    {
+      "instruction": "refund_cnft_sale_v2",
+      "scenario": "R20-01: v2 replacement sol proof refund makes buyer whole",
+      "computeUnits": 52439,
+      "serializedBytes": 626
+    },
+    {
+      "instruction": "admin_refund_cnft_sale_v2",
+      "scenario": "R20-01: system replacement sol admin refund makes buyer whole",
+      "computeUnits": 53188,
+      "serializedBytes": 756
+    },
+    {
+      "instruction": "admin_refund_cnft_sale_v2",
+      "scenario": "R20-01: foreign replacement sol admin refund makes buyer whole",
+      "computeUnits": 56188,
+      "serializedBytes": 756
+    },
+    {
+      "instruction": "admin_refund_cnft_sale_v2",
+      "scenario": "R20-01: uninitialized replacement sol admin refund makes buyer whole",
+      "computeUnits": 47188,
+      "serializedBytes": 756
+    },
+    {
+      "instruction": "settle_cnft_sale_v2",
+      "scenario": "R20-01: spl replacement spl claimed settlement releases escrow",
+      "computeUnits": 76288,
+      "serializedBytes": 1162
+    },
+    {
+      "instruction": "settle_cnft_sale_v2",
+      "scenario": "R20-01: spl replacement token2022 claimed settlement releases escrow",
+      "computeUnits": 77046,
+      "serializedBytes": 1195
+    },
+    {
+      "instruction": "admin_refund_cnft_sale_v2",
+      "scenario": "R20-01: v2 replacement sol admin refund makes buyer whole",
+      "computeUnits": 44188,
+      "serializedBytes": 756
+    },
+    {
+      "instruction": "refund_cnft_sale_v2",
+      "scenario": "R20-01: system replacement spl proof refund makes buyer whole",
+      "computeUnits": 49809,
+      "serializedBytes": 722
+    },
+    {
+      "instruction": "refund_cnft_sale_v2",
+      "scenario": "R20-01: system replacement token2022 proof refund makes buyer whole",
+      "computeUnits": 47808,
+      "serializedBytes": 722
+    },
+    {
+      "instruction": "refund_cnft_sale_v2",
+      "scenario": "R20-01: foreign replacement spl proof refund makes buyer whole",
+      "computeUnits": 51309,
+      "serializedBytes": 722
+    },
+    {
+      "instruction": "refund_cnft_sale_v2",
+      "scenario": "R20-01: foreign replacement token2022 proof refund makes buyer whole",
+      "computeUnits": 46308,
+      "serializedBytes": 722
+    },
+    {
+      "instruction": "refund_cnft_sale_v2",
+      "scenario": "R20-01: uninitialized replacement spl proof refund makes buyer whole",
+      "computeUnits": 51343,
+      "serializedBytes": 722
+    },
+    {
+      "instruction": "refund_cnft_sale_v2",
+      "scenario": "R20-01: uninitialized replacement token2022 proof refund makes buyer whole",
+      "computeUnits": 56842,
+      "serializedBytes": 722
+    },
+    {
+      "instruction": "admin_refund_cnft_sale_v2",
+      "scenario": "R20-01: spl replacement sol admin refund makes buyer whole",
+      "computeUnits": 48688,
+      "serializedBytes": 756
+    },
+    {
+      "instruction": "refund_cnft_sale_v2",
+      "scenario": "R20-01: v2 replacement spl proof refund makes buyer whole",
+      "computeUnits": 45411,
+      "serializedBytes": 722
+    },
+    {
+      "instruction": "refund_cnft_sale_v2",
+      "scenario": "R20-01: v2 replacement token2022 proof refund makes buyer whole",
+      "computeUnits": 55410,
+      "serializedBytes": 722
+    },
+    {
+      "instruction": "admin_refund_cnft_sale_v2",
+      "scenario": "R20-01: system replacement spl admin refund makes buyer whole",
+      "computeUnits": 47660,
+      "serializedBytes": 852
+    },
+    {
+      "instruction": "admin_refund_cnft_sale_v2",
+      "scenario": "R20-01: system replacement token2022 admin refund makes buyer whole",
+      "computeUnits": 59159,
+      "serializedBytes": 852
+    },
+    {
+      "instruction": "admin_refund_cnft_sale_v2",
+      "scenario": "R20-01: foreign replacement spl admin refund makes buyer whole",
+      "computeUnits": 59660,
+      "serializedBytes": 852
+    },
+    {
+      "instruction": "admin_refund_cnft_sale_v2",
+      "scenario": "R20-01: foreign replacement token2022 admin refund makes buyer whole",
+      "computeUnits": 63659,
+      "serializedBytes": 852
+    },
+    {
+      "instruction": "admin_refund_cnft_sale_v2",
+      "scenario": "R20-01: uninitialized replacement spl admin refund makes buyer whole",
+      "computeUnits": 49160,
+      "serializedBytes": 852
+    },
+    {
+      "instruction": "admin_refund_cnft_sale_v2",
+      "scenario": "R20-01: uninitialized replacement token2022 admin refund makes buyer whole",
+      "computeUnits": 60659,
+      "serializedBytes": 852
+    },
+    {
+      "instruction": "admin_refund_cnft_sale_v2",
+      "scenario": "R20-01: v2 replacement spl admin refund makes buyer whole",
+      "computeUnits": 59660,
+      "serializedBytes": 852
+    },
+    {
+      "instruction": "admin_refund_cnft_sale_v2",
+      "scenario": "R20-01: v2 replacement token2022 admin refund makes buyer whole",
+      "computeUnits": 62159,
+      "serializedBytes": 852
+    },
+    {
+      "instruction": "settle_cnft_sale_v2",
+      "scenario": "R20-01: system replacement spl unsold settlement releases escrow",
+      "computeUnits": 43169,
+      "serializedBytes": 1000
+    },
+    {
+      "instruction": "settle_cnft_sale_v2",
+      "scenario": "R20-01: system replacement token2022 unsold settlement releases escrow",
+      "computeUnits": 43649,
+      "serializedBytes": 1033
+    },
+    {
+      "instruction": "settle_cnft_sale_v2",
+      "scenario": "R20-01: foreign replacement spl unsold settlement releases escrow",
+      "computeUnits": 38669,
+      "serializedBytes": 1000
+    },
+    {
+      "instruction": "settle_cnft_sale_v2",
+      "scenario": "R20-01: foreign replacement token2022 unsold settlement releases escrow",
+      "computeUnits": 43649,
+      "serializedBytes": 1033
+    },
+    {
+      "instruction": "settle_cnft_sale_v2",
+      "scenario": "R20-01: uninitialized replacement spl unsold settlement releases escrow",
+      "computeUnits": 38703,
+      "serializedBytes": 1000
+    },
+    {
+      "instruction": "settle_cnft_sale_v2",
+      "scenario": "R20-01: uninitialized replacement token2022 unsold settlement releases escrow",
+      "computeUnits": 42183,
+      "serializedBytes": 1033
+    },
+    {
+      "instruction": "settle_cnft_sale_v2",
+      "scenario": "R20-01: v2 replacement spl unsold settlement releases escrow",
+      "computeUnits": 43271,
+      "serializedBytes": 1000
+    },
+    {
+      "instruction": "settle_cnft_sale_v2",
+      "scenario": "R20-01: v2 replacement token2022 unsold settlement releases escrow",
+      "computeUnits": 45251,
+      "serializedBytes": 1033
+    },
+    {
+      "instruction": "settle_cnft_sale_v2",
+      "scenario": "R20-01: spl replacement spl unsold settlement releases escrow",
+      "computeUnits": 46977,
+      "serializedBytes": 1130
+    },
+    {
+      "instruction": "settle_cnft_sale_v2",
+      "scenario": "R20-01: spl replacement token2022 unsold settlement releases escrow",
+      "computeUnits": 44457,
+      "serializedBytes": 1163
+    },
+    {
+      "instruction": "admin_refund_cnft_sale_v2",
+      "scenario": "R20-01: spl replacement spl admin refund makes buyer whole",
+      "computeUnits": 50660,
+      "serializedBytes": 852
+    },
+    {
+      "instruction": "admin_refund_cnft_sale_v2",
+      "scenario": "R20-01: spl replacement token2022 admin refund makes buyer whole",
+      "computeUnits": 60659,
+      "serializedBytes": 852
+    },
+    {
+      "instruction": "close_missing_cnft_recovery_v2",
+      "scenario": "R20-01: system replacement returns retained receipt rent",
+      "computeUnits": 9578,
+      "serializedBytes": 345
+    },
+    {
+      "instruction": "close_missing_cnft_recovery_v2",
+      "scenario": "R20-01: foreign replacement returns retained receipt rent",
+      "computeUnits": 9578,
+      "serializedBytes": 345
+    },
+    {
+      "instruction": "close_missing_cnft_recovery_v2",
+      "scenario": "R20-01: uninitialized replacement returns retained receipt rent",
+      "computeUnits": 8112,
+      "serializedBytes": 345
+    },
+    {
+      "instruction": "close_missing_cnft_recovery_v2",
+      "scenario": "R20-01: spl replacement returns retained receipt rent",
+      "computeUnits": 8039,
+      "serializedBytes": 345
+    },
+    {
+      "instruction": "close_missing_cnft_recovery_v2",
+      "scenario": "R20-01: v2 replacement returns retained receipt rent",
+      "computeUnits": 12680,
+      "serializedBytes": 345
+    }
+  ]
+}

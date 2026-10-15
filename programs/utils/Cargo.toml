@@ -1,6 +1,6 @@
 [package]
 name = "utils"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -15,3 +15,6 @@ anchor-spl = {version = "1.1.2", features = ["metadata"]}
 solana-program = "4.0.0"
 mpl-token-metadata = { version = "=5.1.2-alpha.2" }
 mpl-core = { version = "0.12.1" }
+
+[dev-dependencies]
+agave-reserved-account-keys = { version = "=4.2.1", features = ["agave-unstable-api"] }

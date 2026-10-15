@@ -49,6 +49,9 @@ pub struct GumballMachineItem {
     pub token_standard: TokenStandard,
     /// Amount of the asset (always 1 for account versions < 2).
     pub amount: u64,
+    /// Actual gross draw payment, available on refund-aware machines.
+    pub draw_payment: Option<u64>,
+    pub proceeds_paid: Option<u64>,
 }
 
 /// The fully decoded `GumballMachine` account: the generated fixed base header
@@ -57,6 +60,10 @@ pub struct GumballMachineItem {
 pub struct GumballMachineAccountData {
     /// The fixed base header (version, authority, settings, …).
     pub base: GumballMachine,
+    /// Outstanding requests created under live request accounting.
+    pub pending_add_requests: u64,
+    /// Marketplace has reconciled every pre-upgrade request.
+    pub add_requests_migrated: bool,
     /// Number of config lines actually loaded.
     pub items_loaded: u32,
     /// The loaded items.
@@ -71,12 +78,23 @@ pub struct GumballMachineAccountData {
     pub buy_back_funds_available: u64,
     /// Total proceeds settled to date (account version >= 5).
     pub total_proceeds_settled: u64,
+    pub pending_draw_payment: Option<u64>,
+    pub refund_reserve: Option<u64>,
+    pub items_refunded: Option<u64>,
+    pub outstanding_draws: Option<u64>,
+    pub unfinalized_proceeds: Option<u64>,
 }
 
 impl GumballMachineAccountData {
     /// Decodes a full Gumball Machine account from its raw account data.
     pub fn from_bytes(data: &[u8]) -> std::io::Result<Self> {
         let base = GumballMachine::from_bytes(data)?;
+        let pending_add_requests = u64::from_le_bytes(
+            data.get(GUMBALL_MACHINE_HIDDEN_SECTION - 8..GUMBALL_MACHINE_HIDDEN_SECTION)
+                .ok_or_else(|| std::io::Error::other("account too small for pending requests"))?
+                .try_into()
+                .unwrap(),
+        );
         let version = base.version;
         let item_capacity = base.settings.item_capacity as usize;
         // Bit masks are `(item_capacity / 8) + 1` bytes (matches the program).
@@ -133,6 +151,36 @@ impl GumballMachineAccountData {
             total_proceeds_settled = u64::deserialize(&mut rdr)?;
         }
 
+        let (pending_draw_payment, refund_reserve, draw_payments) = if version >= 6 {
+            let pending = u64::deserialize(&mut rdr)?;
+            let reserve = u64::deserialize(&mut rdr)?;
+            let mut payments = Vec::with_capacity(item_capacity);
+            for _ in 0..item_capacity {
+                payments.push(u64::deserialize(&mut rdr)?);
+            }
+            (Some(pending), Some(reserve), payments)
+        } else {
+            (None, None, Vec::new())
+        };
+
+        let (items_refunded, outstanding_draws, proceeds_paid) = if version >= 6 {
+            let refunded = u64::deserialize(&mut rdr)?;
+            let outstanding = u64::deserialize(&mut rdr)?;
+            let mut paid = Vec::with_capacity(item_capacity);
+            for _ in 0..item_capacity {
+                paid.push(u64::deserialize(&mut rdr)?);
+            }
+            (Some(refunded), Some(outstanding), paid)
+        } else {
+            (None, None, Vec::new())
+        };
+
+        let unfinalized_proceeds = if version >= 6 {
+            Some(u64::deserialize(&mut rdr)?)
+        } else {
+            None
+        };
+
         // Items that have NOT yet been drawn appear in the remaining-mint list,
         // which is only meaningful up to `items_loaded - items_redeemed` entries.
         let items_minted = base.items_redeemed as usize;
@@ -157,11 +205,15 @@ impl GumballMachineAccountData {
                 },
                 token_standard,
                 amount,
+                draw_payment: draw_payments.get(index).copied(),
+                proceeds_paid: proceeds_paid.get(index).copied(),
             });
         }
 
         Ok(Self {
             base,
+            pending_add_requests,
+            add_requests_migrated: data[GUMBALL_MACHINE_HIDDEN_SECTION - 9] == 1,
             items_loaded,
             items,
             disable_royalties,
@@ -169,6 +221,11 @@ impl GumballMachineAccountData {
             buy_back_config,
             buy_back_funds_available,
             total_proceeds_settled,
+            pending_draw_payment,
+            refund_reserve,
+            items_refunded,
+            outstanding_draws,
+            unfinalized_proceeds,
         })
     }
 }

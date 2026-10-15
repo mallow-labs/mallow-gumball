@@ -15,10 +15,11 @@ pub const SET_GUMBALL_MACHINE_AUTHORITY_DISCRIMINATOR: [u8; 8] =
 /// Accounts.
 #[derive(Debug)]
 pub struct SetGumballMachineAuthority {
-    /// Gumball Machine account.
     pub gumball_machine: solana_address::Address,
-    /// Autority of the gumball machine.
+
     pub authority: solana_address::Address,
+    /// New authorities must co-sign; appended for legacy idempotent calls.
+    pub new_authority_signer: Option<solana_address::Address>,
 }
 
 impl SetGumballMachineAuthority {
@@ -35,7 +36,7 @@ impl SetGumballMachineAuthority {
         args: SetGumballMachineAuthorityInstructionArgs,
         remaining_accounts: &[solana_instruction::AccountMeta],
     ) -> solana_instruction::Instruction {
-        let mut accounts = Vec::with_capacity(2 + remaining_accounts.len());
+        let mut accounts = Vec::with_capacity(3 + remaining_accounts.len());
         accounts.push(solana_instruction::AccountMeta::new(
             self.gumball_machine,
             false,
@@ -44,6 +45,17 @@ impl SetGumballMachineAuthority {
             self.authority,
             true,
         ));
+        if let Some(new_authority_signer) = self.new_authority_signer {
+            accounts.push(solana_instruction::AccountMeta::new_readonly(
+                new_authority_signer,
+                true,
+            ));
+        } else {
+            accounts.push(solana_instruction::AccountMeta::new_readonly(
+                crate::MALLOW_GUMBALL_ID,
+                false,
+            ));
+        }
         accounts.extend_from_slice(remaining_accounts);
         let mut data = SetGumballMachineAuthorityInstructionData::new()
             .try_to_vec()
@@ -99,10 +111,12 @@ impl SetGumballMachineAuthorityInstructionArgs {
 ///
 ///   0. `[writable]` gumball_machine
 ///   1. `[signer]` authority
+///   2. `[signer, optional]` new_authority_signer
 #[derive(Clone, Debug, Default)]
 pub struct SetGumballMachineAuthorityBuilder {
     gumball_machine: Option<solana_address::Address>,
     authority: Option<solana_address::Address>,
+    new_authority_signer: Option<solana_address::Address>,
     new_authority: Option<Address>,
     __remaining_accounts: Vec<solana_instruction::AccountMeta>,
 }
@@ -111,16 +125,24 @@ impl SetGumballMachineAuthorityBuilder {
     pub fn new() -> Self {
         Self::default()
     }
-    /// Gumball Machine account.
     #[inline(always)]
     pub fn gumball_machine(&mut self, gumball_machine: solana_address::Address) -> &mut Self {
         self.gumball_machine = Some(gumball_machine);
         self
     }
-    /// Autority of the gumball machine.
     #[inline(always)]
     pub fn authority(&mut self, authority: solana_address::Address) -> &mut Self {
         self.authority = Some(authority);
+        self
+    }
+    /// `[optional account]`
+    /// New authorities must co-sign; appended for legacy idempotent calls.
+    #[inline(always)]
+    pub fn new_authority_signer(
+        &mut self,
+        new_authority_signer: Option<solana_address::Address>,
+    ) -> &mut Self {
+        self.new_authority_signer = new_authority_signer;
         self
     }
     #[inline(always)]
@@ -148,6 +170,7 @@ impl SetGumballMachineAuthorityBuilder {
         let accounts = SetGumballMachineAuthority {
             gumball_machine: self.gumball_machine.expect("gumball_machine is not set"),
             authority: self.authority.expect("authority is not set"),
+            new_authority_signer: self.new_authority_signer,
         };
         let args = SetGumballMachineAuthorityInstructionArgs {
             new_authority: self
@@ -162,20 +185,23 @@ impl SetGumballMachineAuthorityBuilder {
 
 /// `set_gumball_machine_authority` CPI accounts.
 pub struct SetGumballMachineAuthorityCpiAccounts<'a, 'b> {
-    /// Gumball Machine account.
     pub gumball_machine: &'b solana_account_info::AccountInfo<'a>,
-    /// Autority of the gumball machine.
+
     pub authority: &'b solana_account_info::AccountInfo<'a>,
+    /// New authorities must co-sign; appended for legacy idempotent calls.
+    pub new_authority_signer: Option<&'b solana_account_info::AccountInfo<'a>>,
 }
 
 /// `set_gumball_machine_authority` CPI instruction.
 pub struct SetGumballMachineAuthorityCpi<'a, 'b> {
     /// The program to invoke.
     pub __program: &'b solana_account_info::AccountInfo<'a>,
-    /// Gumball Machine account.
+
     pub gumball_machine: &'b solana_account_info::AccountInfo<'a>,
-    /// Autority of the gumball machine.
+
     pub authority: &'b solana_account_info::AccountInfo<'a>,
+    /// New authorities must co-sign; appended for legacy idempotent calls.
+    pub new_authority_signer: Option<&'b solana_account_info::AccountInfo<'a>>,
     /// The arguments for the instruction.
     pub __args: SetGumballMachineAuthorityInstructionArgs,
 }
@@ -190,6 +216,7 @@ impl<'a, 'b> SetGumballMachineAuthorityCpi<'a, 'b> {
             __program: program,
             gumball_machine: accounts.gumball_machine,
             authority: accounts.authority,
+            new_authority_signer: accounts.new_authority_signer,
             __args: args,
         }
     }
@@ -216,7 +243,7 @@ impl<'a, 'b> SetGumballMachineAuthorityCpi<'a, 'b> {
         signers_seeds: &[&[&[u8]]],
         remaining_accounts: &[(&'b solana_account_info::AccountInfo<'a>, bool, bool)],
     ) -> solana_program_error::ProgramResult {
-        let mut accounts = Vec::with_capacity(2 + remaining_accounts.len());
+        let mut accounts = Vec::with_capacity(3 + remaining_accounts.len());
         accounts.push(solana_instruction::AccountMeta::new(
             *self.gumball_machine.key,
             false,
@@ -225,6 +252,17 @@ impl<'a, 'b> SetGumballMachineAuthorityCpi<'a, 'b> {
             *self.authority.key,
             true,
         ));
+        if let Some(new_authority_signer) = self.new_authority_signer {
+            accounts.push(solana_instruction::AccountMeta::new_readonly(
+                *new_authority_signer.key,
+                true,
+            ));
+        } else {
+            accounts.push(solana_instruction::AccountMeta::new_readonly(
+                crate::MALLOW_GUMBALL_ID,
+                false,
+            ));
+        }
         remaining_accounts.iter().for_each(|remaining_account| {
             accounts.push(solana_instruction::AccountMeta {
                 pubkey: *remaining_account.0.key,
@@ -243,10 +281,13 @@ impl<'a, 'b> SetGumballMachineAuthorityCpi<'a, 'b> {
             accounts,
             data,
         };
-        let mut account_infos = Vec::with_capacity(3 + remaining_accounts.len());
+        let mut account_infos = Vec::with_capacity(4 + remaining_accounts.len());
         account_infos.push(self.__program.clone());
         account_infos.push(self.gumball_machine.clone());
         account_infos.push(self.authority.clone());
+        if let Some(new_authority_signer) = self.new_authority_signer {
+            account_infos.push(new_authority_signer.clone());
+        }
         remaining_accounts
             .iter()
             .for_each(|remaining_account| account_infos.push(remaining_account.0.clone()));
@@ -265,6 +306,7 @@ impl<'a, 'b> SetGumballMachineAuthorityCpi<'a, 'b> {
 ///
 ///   0. `[writable]` gumball_machine
 ///   1. `[signer]` authority
+///   2. `[signer, optional]` new_authority_signer
 #[derive(Clone, Debug)]
 pub struct SetGumballMachineAuthorityCpiBuilder<'a, 'b> {
     instruction: Box<SetGumballMachineAuthorityCpiBuilderInstruction<'a, 'b>>,
@@ -276,12 +318,12 @@ impl<'a, 'b> SetGumballMachineAuthorityCpiBuilder<'a, 'b> {
             __program: program,
             gumball_machine: None,
             authority: None,
+            new_authority_signer: None,
             new_authority: None,
             __remaining_accounts: Vec::new(),
         });
         Self { instruction }
     }
-    /// Gumball Machine account.
     #[inline(always)]
     pub fn gumball_machine(
         &mut self,
@@ -290,10 +332,19 @@ impl<'a, 'b> SetGumballMachineAuthorityCpiBuilder<'a, 'b> {
         self.instruction.gumball_machine = Some(gumball_machine);
         self
     }
-    /// Autority of the gumball machine.
     #[inline(always)]
     pub fn authority(&mut self, authority: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
         self.instruction.authority = Some(authority);
+        self
+    }
+    /// `[optional account]`
+    /// New authorities must co-sign; appended for legacy idempotent calls.
+    #[inline(always)]
+    pub fn new_authority_signer(
+        &mut self,
+        new_authority_signer: Option<&'b solana_account_info::AccountInfo<'a>>,
+    ) -> &mut Self {
+        self.instruction.new_authority_signer = new_authority_signer;
         self
     }
     #[inline(always)]
@@ -351,6 +402,8 @@ impl<'a, 'b> SetGumballMachineAuthorityCpiBuilder<'a, 'b> {
                 .expect("gumball_machine is not set"),
 
             authority: self.instruction.authority.expect("authority is not set"),
+
+            new_authority_signer: self.instruction.new_authority_signer,
             __args: args,
         };
         instruction.invoke_signed_with_remaining_accounts(
@@ -365,6 +418,7 @@ struct SetGumballMachineAuthorityCpiBuilderInstruction<'a, 'b> {
     __program: &'b solana_account_info::AccountInfo<'a>,
     gumball_machine: Option<&'b solana_account_info::AccountInfo<'a>>,
     authority: Option<&'b solana_account_info::AccountInfo<'a>>,
+    new_authority_signer: Option<&'b solana_account_info::AccountInfo<'a>>,
     new_authority: Option<Address>,
     /// Additional instruction accounts `(AccountInfo, is_writable, is_signer)`.
     __remaining_accounts: Vec<(&'b solana_account_info::AccountInfo<'a>, bool, bool)>,

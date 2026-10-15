@@ -1,3 +1,4 @@
+import { generateKeyPairSigner } from '@solana/kit';
 import test from 'ava';
 import { getUnwrapInstruction, getWrapInstruction } from '../src';
 import { createGumballMachineOnly } from './_settleSetup';
@@ -11,8 +12,11 @@ import {
 test('it can unwrap a gumball machine v2 from its gumball guard', async (t) => {
   // Given an existing gumball machine wrapped in a gumball guard.
   const client = await createClient();
-  const { gumballMachine } = await createGumballMachineOnly(client);
-  const { gumballGuard } = await createStandaloneGumballGuard(client);
+  const base = await generateKeyPairSigner();
+  const { gumballMachine } = await createGumballMachineOnly(client, {
+    gumballMachine: base,
+  });
+  const { gumballGuard } = await createStandaloneGumballGuard(client, { base });
   await sendTransaction(client.svm, client.payer, [
     getWrapInstruction({
       gumballGuard,

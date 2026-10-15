@@ -987,7 +987,7 @@ export class MissingItemIndexError extends ProgramError {
 codeToErrorMap.set(0x17b4, MissingItemIndexError);
 nameToErrorMap.set('MissingItemIndex', MissingItemIndexError);
 
-/** UnsupportedCnftVersion: Unsupported Bubblegum version (only V1 compressed NFTs can be traded) */
+/** UnsupportedCnftVersion: Bubblegum leaf version does not match the instruction or tree owner */
 export class UnsupportedCnftVersionError extends ProgramError {
   override readonly name: string = 'UnsupportedCnftVersion';
 
@@ -995,7 +995,7 @@ export class UnsupportedCnftVersionError extends ProgramError {
 
   constructor(program: Program, cause?: Error) {
     super(
-      'Unsupported Bubblegum version (only V1 compressed NFTs can be traded)',
+      'Bubblegum leaf version does not match the instruction or tree owner',
       program,
       cause
     );
@@ -1029,6 +1029,125 @@ export class AccountAlreadyInitializedError extends ProgramError {
 }
 codeToErrorMap.set(0x17b7, AccountAlreadyInitializedError);
 nameToErrorMap.set('AccountAlreadyInitialized', AccountAlreadyInitializedError);
+
+/** IneligibleCnftFlags: Compressed NFT has non-zero transfer flags */
+export class IneligibleCnftFlagsError extends ProgramError {
+  override readonly name: string = 'IneligibleCnftFlags';
+
+  readonly code: number = 0x17b8; // 6072
+
+  constructor(program: Program, cause?: Error) {
+    super('Compressed NFT has non-zero transfer flags', program, cause);
+  }
+}
+codeToErrorMap.set(0x17b8, IneligibleCnftFlagsError);
+nameToErrorMap.set('IneligibleCnftFlags', IneligibleCnftFlagsError);
+
+/** InvalidCoreCollection: Invalid Core collection */
+export class InvalidCoreCollectionError extends ProgramError {
+  override readonly name: string = 'InvalidCoreCollection';
+
+  readonly code: number = 0x17b9; // 6073
+
+  constructor(program: Program, cause?: Error) {
+    super('Invalid Core collection', program, cause);
+  }
+}
+codeToErrorMap.set(0x17b9, InvalidCoreCollectionError);
+nameToErrorMap.set('InvalidCoreCollection', InvalidCoreCollectionError);
+
+/** AssetDeliverable: Compressed NFT is still deliverable from escrow */
+export class AssetDeliverableError extends ProgramError {
+  override readonly name: string = 'AssetDeliverable';
+
+  readonly code: number = 0x17ba; // 6074
+
+  constructor(program: Program, cause?: Error) {
+    super('Compressed NFT is still deliverable from escrow', program, cause);
+  }
+}
+codeToErrorMap.set(0x17ba, AssetDeliverableError);
+nameToErrorMap.set('AssetDeliverable', AssetDeliverableError);
+
+/** StaleRefundEvidence: Refund evidence must use the current tree root */
+export class StaleRefundEvidenceError extends ProgramError {
+  override readonly name: string = 'StaleRefundEvidence';
+
+  readonly code: number = 0x17bb; // 6075
+
+  constructor(program: Program, cause?: Error) {
+    super('Refund evidence must use the current tree root', program, cause);
+  }
+}
+codeToErrorMap.set(0x17bb, StaleRefundEvidenceError);
+nameToErrorMap.set('StaleRefundEvidence', StaleRefundEvidenceError);
+
+/** InvalidRefundEvidence: Invalid current-tree refund evidence */
+export class InvalidRefundEvidenceError extends ProgramError {
+  override readonly name: string = 'InvalidRefundEvidence';
+
+  readonly code: number = 0x17bc; // 6076
+
+  constructor(program: Program, cause?: Error) {
+    super('Invalid current-tree refund evidence', program, cause);
+  }
+}
+codeToErrorMap.set(0x17bc, InvalidRefundEvidenceError);
+nameToErrorMap.set('InvalidRefundEvidence', InvalidRefundEvidenceError);
+
+/** RefundReserveOutstanding: Outstanding draw reserve prevents final recovery settlement */
+export class RefundReserveOutstandingError extends ProgramError {
+  override readonly name: string = 'RefundReserveOutstanding';
+
+  readonly code: number = 0x17bd; // 6077
+
+  constructor(program: Program, cause?: Error) {
+    super(
+      'Outstanding draw reserve prevents final recovery settlement',
+      program,
+      cause
+    );
+  }
+}
+codeToErrorMap.set(0x17bd, RefundReserveOutstandingError);
+nameToErrorMap.set('RefundReserveOutstanding', RefundReserveOutstandingError);
+
+/** CnftLedgerGrowthTooLarge: cNFT ledger growth exceeds 10240 bytes; recreate with v6 preallocation (unallocated v5 capacity limit: 637) */
+export class CnftLedgerGrowthTooLargeError extends ProgramError {
+  override readonly name: string = 'CnftLedgerGrowthTooLarge';
+
+  readonly code: number = 0x17be; // 6078
+
+  constructor(program: Program, cause?: Error) {
+    super(
+      'cNFT ledger growth exceeds 10240 bytes; recreate with v6 preallocation (unallocated v5 capacity limit: 637)',
+      program,
+      cause
+    );
+  }
+}
+codeToErrorMap.set(0x17be, CnftLedgerGrowthTooLargeError);
+nameToErrorMap.set('CnftLedgerGrowthTooLarge', CnftLedgerGrowthTooLargeError);
+
+/** CnftLedgerRequiresAuthority: Machine authority must fund initial cNFT ledger allocation */
+export class CnftLedgerRequiresAuthorityError extends ProgramError {
+  override readonly name: string = 'CnftLedgerRequiresAuthority';
+
+  readonly code: number = 0x17bf; // 6079
+
+  constructor(program: Program, cause?: Error) {
+    super(
+      'Machine authority must fund initial cNFT ledger allocation',
+      program,
+      cause
+    );
+  }
+}
+codeToErrorMap.set(0x17bf, CnftLedgerRequiresAuthorityError);
+nameToErrorMap.set(
+  'CnftLedgerRequiresAuthority',
+  CnftLedgerRequiresAuthorityError
+);
 
 /**
  * Attempts to resolve a custom program error from the provided error code.

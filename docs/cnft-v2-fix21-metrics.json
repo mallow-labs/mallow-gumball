@@ -1,0 +1,114 @@
+{
+  "findings": [
+    "R21-01",
+    "R21-03",
+    "R21-06",
+    "R21-08"
+  ],
+  "artifact": {
+    "gumball": {
+      "crateVersion": "1.1.0",
+      "bytes": 1713672,
+      "sha256": "1038b20c211fa7311f2762216f4f7aea7723fe9733d5d0e5a2f22a63d5dc988b",
+      "recordedAllocationBytes": 1550208,
+      "extendBytes": 163464
+    },
+    "guard": {
+      "crateVersion": "1.1.0",
+      "bytes": 935784,
+      "sha256": "6f49951721952043c2b75f28536358b566990188d5295cf0be17fdb4a595d0b5",
+      "recordedAllocationBytes": 1038504,
+      "extendBytes": 0
+    }
+  },
+  "fixtures": "Pinned mainnet Bubblegum/compression binaries in local LiteSVM; actual BurnV2 and CloseTreeV2, ledger-injected foreign-authority occupied replacement state at nonce 0 and 2; nondefault live trees 3/8 full, 5/8 wrapped, 14/64 canopy 9, 20/1024 canopy 15. No network transactions.",
+  "sampleCount": 13,
+  "computeUnitsRange": [
+    11886,
+    77063
+  ],
+  "serializedBytesRange": [
+    475,
+    1195
+  ],
+  "rows": [
+    {
+      "instruction": "settle_cnft_sale_v2",
+      "scenario": "R21-01: occupied foreign-authority replacement at 0 exits claimed and closes",
+      "computeUnits": 57304,
+      "serializedBytes": 1034
+    },
+    {
+      "instruction": "admin_refund_cnft_sale_v2",
+      "scenario": "R21-01: occupied foreign-authority replacement at 0 exits drawn and closes",
+      "computeUnits": 45688,
+      "serializedBytes": 756
+    },
+    {
+      "instruction": "admin_refund_cnft_sale_v2",
+      "scenario": "R21-01: occupied foreign-authority replacement at 0 exits unsold and closes",
+      "computeUnits": 39722,
+      "serializedBytes": 724
+    },
+    {
+      "instruction": "settle_cnft_sale_v2",
+      "scenario": "R21-01: occupied foreign-authority replacement at 0 exits unsold and closes",
+      "computeUnits": 43999,
+      "serializedBytes": 1002
+    },
+    {
+      "instruction": "settle_cnft_sale_v2",
+      "scenario": "R21-01: admin-v2 replacement spl claimed settlement releases escrow",
+      "computeUnits": 64305,
+      "serializedBytes": 1162
+    },
+    {
+      "instruction": "settle_cnft_sale_v2",
+      "scenario": "R21-01: admin-v2 replacement token2022 claimed settlement releases escrow",
+      "computeUnits": 77063,
+      "serializedBytes": 1195
+    },
+    {
+      "instruction": "settle_cnft_sale_v2",
+      "scenario": "R21-01: occupied foreign-authority replacement at 2 exits claimed and closes",
+      "computeUnits": 45304,
+      "serializedBytes": 1034
+    },
+    {
+      "instruction": "admin_refund_cnft_sale_v2",
+      "scenario": "R21-01: occupied foreign-authority replacement at 2 exits drawn and closes",
+      "computeUnits": 53188,
+      "serializedBytes": 756
+    },
+    {
+      "instruction": "settle_cnft_sale_v2",
+      "scenario": "R21-01: admin-v2 replacement spl unsold settlement releases escrow",
+      "computeUnits": 43994,
+      "serializedBytes": 1130
+    },
+    {
+      "instruction": "settle_cnft_sale_v2",
+      "scenario": "R21-01: admin-v2 replacement token2022 unsold settlement releases escrow",
+      "computeUnits": 57974,
+      "serializedBytes": 1163
+    },
+    {
+      "instruction": "admin_refund_cnft_sale_v2",
+      "scenario": "R21-01: occupied foreign-authority replacement at 2 exits unsold and closes",
+      "computeUnits": 38274,
+      "serializedBytes": 724
+    },
+    {
+      "instruction": "settle_cnft_sale_v2",
+      "scenario": "R21-01: occupied foreign-authority replacement at 2 exits unsold and closes",
+      "computeUnits": 45551,
+      "serializedBytes": 1002
+    },
+    {
+      "instruction": "close_missing_cnft_recovery_v2",
+      "scenario": "R21-01: marketplace can close a retained receipt for an occupied replacement",
+      "computeUnits": 11886,
+      "serializedBytes": 475
+    }
+  ]
+}

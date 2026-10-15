@@ -1,0 +1,53 @@
+{
+  "finding": "R19-01",
+  "samples": [
+    {
+      "instruction": "refund_cnft_sale_v2",
+      "scenario": "R19-01: closed tree sol proof refund returns the full draw",
+      "computeUnits": 47816,
+      "serializedBytes": 626
+    },
+    {
+      "instruction": "admin_refund_cnft_sale_v2",
+      "scenario": "R19-01: closed tree sol admin refund returns the full draw",
+      "computeUnits": 54715,
+      "serializedBytes": 756
+    },
+    {
+      "instruction": "refund_cnft_sale_v2",
+      "scenario": "R19-01: closed tree spl proof refund returns the full draw",
+      "computeUnits": 48288,
+      "serializedBytes": 722
+    },
+    {
+      "instruction": "refund_cnft_sale_v2",
+      "scenario": "R19-01: closed tree token2022 proof refund returns the full draw",
+      "computeUnits": 56787,
+      "serializedBytes": 722
+    },
+    {
+      "instruction": "admin_refund_cnft_sale_v2",
+      "scenario": "R19-01: closed tree spl admin refund returns the full draw",
+      "computeUnits": 59687,
+      "serializedBytes": 852
+    },
+    {
+      "instruction": "admin_refund_cnft_sale_v2",
+      "scenario": "R19-01: closed tree token2022 admin refund returns the full draw",
+      "computeUnits": 60686,
+      "serializedBytes": 852
+    },
+    {
+      "instruction": "close_missing_cnft_recovery_v2",
+      "scenario": "R19-01: closed-tree receipt cleanup returns rent after an earlier refund",
+      "computeUnits": 8042,
+      "serializedBytes": 345
+    },
+    {
+      "instruction": "settle_cnft_sale_v2",
+      "scenario": "R19-01: claimed burnt leaf settles after deployed CloseTreeV2 and returns seller proceeds",
+      "computeUnits": 45942,
+      "serializedBytes": 904
+    }
+  ]
+}

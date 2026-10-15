@@ -25,3 +25,19 @@ accounts, mirroring the js/umi clients:
 Both are re-exported from the crate root, along with `TryFrom<&AccountInfo>`
 impls and (under the `fetch` feature) `fetch_gumball_machine_account_data` /
 `fetch_gumball_guard_account_data` helpers.
+
+## Recovery receipt seeds
+
+`CnftRecovery::find_pda` and `create_pda` take the leaf nonce as eight
+little-endian bytes: pass `nonce.to_le_bytes()`. The generator uses a fixed
+byte seed so the Rust renderer cannot format the nonce as a decimal string.
+
+
+For v2 missing-tree exits, use `leaf = None` (refund/receipt cleanup) or
+`args.flags = 255` (claimed burnt settlement), zero root and no proof nodes.
+Foreign-owned replacements, invalid MPL headers and slots outside the append
+index/capacity qualify. SPL-owned replacements use marketplace-authorized
+`admin_refund_cnft_sale_v2`; burnt settlement prefixes remaining accounts with
+the marketplace signer and canonical guard GlobalConfig before any Token-2022
+slot. This preserves live v1 verification. See the
+[recovery rules](../../docs/cnft-v2.md#closed-trees).

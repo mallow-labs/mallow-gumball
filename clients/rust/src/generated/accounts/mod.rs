@@ -8,6 +8,7 @@
 pub(crate) mod r#add_item_request;
 pub(crate) mod r#allocation_tracker;
 pub(crate) mod r#allow_list_proof;
+pub(crate) mod r#cnft_recovery;
 pub(crate) mod r#global_config;
 pub(crate) mod r#gumball_guard;
 pub(crate) mod r#gumball_machine;
@@ -17,6 +18,7 @@ pub(crate) mod r#seller_history;
 pub use self::r#add_item_request::*;
 pub use self::r#allocation_tracker::*;
 pub use self::r#allow_list_proof::*;
+pub use self::r#cnft_recovery::*;
 pub use self::r#global_config::*;
 pub use self::r#gumball_guard::*;
 pub use self::r#gumball_machine::*;

@@ -8,7 +8,7 @@ export type GumballGuard = {
   address: 'GGRDy4ieS7ExrUu313QkszyuT9o3BvDLuc3H5VLgCpSF';
   metadata: {
     name: 'gumballGuard';
-    version: '1.0.0';
+    version: '1.1.0';
     spec: '0.1.0';
     description: 'mallow Gumball Guard: programmatic access control for mallow Gumball.';
     repository: 'https://github.com/mallow-labs/mallow-gumball';

@@ -87,7 +87,7 @@ pub fn cancel_add_cnft_request<'info>(
     ctx: Context<'info, CancelAddCnftRequest<'info>>,
     args: CnftArgs,
 ) -> Result<()> {
-    assert_cnft_v1(args.version)?;
+    assert_cnft_v1(args.version, &ctx.accounts.merkle_tree.to_account_info())?;
 
     let seller = &ctx.accounts.seller.to_account_info();
     let system_program = &ctx.accounts.system_program.to_account_info();
@@ -98,6 +98,10 @@ pub fn cancel_add_cnft_request<'info>(
     let compression_program = &ctx.accounts.compression_program.to_account_info();
     let bubblegum_program = &ctx.accounts.bubblegum_program.to_account_info();
     let seller_history = &mut ctx.accounts.seller_history;
+    let proof = crate::resolve_cancelled_add_item_request(
+        &ctx.accounts.add_item_request,
+        ctx.remaining_accounts,
+    )?;
 
     // Anti-substitution: bind the request's stored asset id to the untrusted
     // merkle tree + nonce.
@@ -123,7 +127,7 @@ pub fn cancel_add_cnft_request<'info>(
         log_wrapper,
         compression_program,
         system_program,
-        ctx.remaining_accounts,
+        proof,
         args.root,
         data_hash,
         creator_hash,

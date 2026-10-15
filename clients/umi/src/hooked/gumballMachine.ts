@@ -5,7 +5,8 @@ import {
 } from '../constants';
 
 export function getGumballMachineSizeForItemCount(
-  itemCount: number | bigint
+  itemCount: number | bigint,
+  version = 6
 ): number {
   const items = Number(itemCount);
 
@@ -25,6 +26,7 @@ export function getGumballMachineSizeForItemCount(
       1 + // disablePrimarySplit
       BUY_BACK_CONFIG_SIZE +
       8 + // buyBackFundsAvailable
-      8 // totalProceedsSettled
+      8 + // totalProceedsSettled
+      (version >= 6 ? 40 + items * 16 : 0) // draw payments, refund reserve and per-item settlement ledger
   );
 }

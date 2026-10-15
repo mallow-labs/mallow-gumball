@@ -1,0 +1,14 @@
+[
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "R18-01: default-owned live v2 leaf settles with royalties; inherited=false",
+    "computeUnits": 61286,
+    "serializedBytes": 1006
+  },
+  {
+    "instruction": "settle_cnft_sale_v2",
+    "scenario": "R18-01: default-owned live v2 leaf settles with royalties; inherited=true",
+    "computeUnits": 67591,
+    "serializedBytes": 1004
+  }
+]

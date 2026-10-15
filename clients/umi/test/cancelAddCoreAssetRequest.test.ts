@@ -9,6 +9,7 @@ import {
   requestAddCoreAsset,
   safeFetchAddItemRequestFromSeeds,
   safeFetchSellerHistoryFromSeeds,
+  withRequestCancellationMachine,
 } from '../src';
 import { create, createCoreAsset, createUmi } from './_setup';
 
@@ -33,16 +34,19 @@ test('it can cancel a request to add core asset to a gumball machine', async (t)
   // Then cancel the request to add an coreAsset to the Gumball Machine.
   await transactionBuilder()
     .add(
-      cancelAddCoreAssetRequest(sellerUmi, {
-        asset: coreAsset.publicKey,
-        sellerHistory: findSellerHistoryPda(umi, {
-          gumballMachine: gumballMachine.publicKey,
-          seller: sellerUmi.identity.publicKey,
+      withRequestCancellationMachine(
+        cancelAddCoreAssetRequest(sellerUmi, {
+          asset: coreAsset.publicKey,
+          sellerHistory: findSellerHistoryPda(umi, {
+            gumballMachine: gumballMachine.publicKey,
+            seller: sellerUmi.identity.publicKey,
+          }),
+          authorityPda: findGumballMachineAuthorityPda(umi, {
+            gumballMachine: gumballMachine.publicKey,
+          }),
         }),
-        authorityPda: findGumballMachineAuthorityPda(umi, {
-          gumballMachine: gumballMachine.publicKey,
-        }),
-      })
+        gumballMachine.publicKey
+      )
     )
     .sendAndConfirm(sellerUmi);
 
@@ -98,16 +102,19 @@ test('it can cancel a request to add core asset to a gumball machine after the g
   // Then cancel the request to add an coreAsset to the Gumball Machine.
   await transactionBuilder()
     .add(
-      cancelAddCoreAssetRequest(sellerUmi, {
-        asset: coreAsset.publicKey,
-        sellerHistory: findSellerHistoryPda(umi, {
-          gumballMachine: gumballMachine.publicKey,
-          seller: sellerUmi.identity.publicKey,
+      withRequestCancellationMachine(
+        cancelAddCoreAssetRequest(sellerUmi, {
+          asset: coreAsset.publicKey,
+          sellerHistory: findSellerHistoryPda(umi, {
+            gumballMachine: gumballMachine.publicKey,
+            seller: sellerUmi.identity.publicKey,
+          }),
+          authorityPda: findGumballMachineAuthorityPda(umi, {
+            gumballMachine: gumballMachine.publicKey,
+          }),
         }),
-        authorityPda: findGumballMachineAuthorityPda(umi, {
-          gumballMachine: gumballMachine.publicKey,
-        }),
-      })
+        gumballMachine.publicKey
+      )
     )
     .sendAndConfirm(sellerUmi);
 

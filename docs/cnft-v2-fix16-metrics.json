@@ -1,0 +1,38 @@
+[
+  {
+    "instruction": "admin_refund_cnft_sale_v2",
+    "scenario": "R16-01: live collab sol admin refund preserves later draws, fees and seller shares",
+    "computeUnits": 64128,
+    "serializedBytes": 889
+  },
+  {
+    "instruction": "admin_refund_cnft_sale_v2",
+    "scenario": "R16-01: live collab spl admin refund preserves later draws, fees and seller shares",
+    "computeUnits": 61600,
+    "serializedBytes": 985
+  },
+  {
+    "instruction": "admin_refund_cnft_sale_v2",
+    "scenario": "R16-01: live collab token2022 admin refund preserves later draws, fees and seller shares",
+    "computeUnits": 64099,
+    "serializedBytes": 985
+  },
+  {
+    "instruction": "refund_cnft_sale_v2",
+    "scenario": "R16-01: live collab sol proof refund preserves later draws, fees and seller shares",
+    "computeUnits": 64730,
+    "serializedBytes": 759
+  },
+  {
+    "instruction": "refund_cnft_sale_v2",
+    "scenario": "R16-01: live collab spl proof refund preserves later draws, fees and seller shares",
+    "computeUnits": 68202,
+    "serializedBytes": 855
+  },
+  {
+    "instruction": "refund_cnft_sale_v2",
+    "scenario": "R16-01: live collab token2022 proof refund preserves later draws, fees and seller shares",
+    "computeUnits": 70701,
+    "serializedBytes": 855
+  }
+]

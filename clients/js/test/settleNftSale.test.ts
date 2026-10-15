@@ -1290,7 +1290,7 @@ test('it can settle an nft sale with a marketplace config', async (t) => {
   near(t, getBalance(client, authorityPda), sol(0));
 });
 
-test('it omits sending proceeds for a creator if the amount is too small to keep the account alive', async (t) => {
+test('it funds a primary creator rent shortfall from the seller creator share', async (t) => {
   const client = await createClient();
   const secondCreator = (await generateKeyPairSigner()).address;
   const { mint } = await createNft(client, {
@@ -1339,8 +1339,11 @@ test('it omits sending proceeds for a creator if the amount is too small to keep
     }),
   ]);
 
-  // The second creator's 1% share is too small to rent-exempt a fresh account.
-  t.is(getBalance(client, secondCreator), 0n);
+  // The seller's 99% creator share funds the other creator's rent shortfall.
+  t.is(
+    getBalance(client, secondCreator),
+    client.svm.minimumBalanceForRentExemption(0n)
+  );
 });
 
 test('it can settle an nft sale with disableRoyalties', async (t) => {
