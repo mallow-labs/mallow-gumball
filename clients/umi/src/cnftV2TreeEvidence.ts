@@ -22,6 +22,7 @@ const missingTreeSlot = (data: Uint8Array, index: number): boolean => {
     depth > 30 ||
     buffer < 8 ||
     buffer > 2048 ||
+    // eslint-disable-next-line no-bitwise
     (buffer & (buffer - 1)) !== 0
   )
     return true;
