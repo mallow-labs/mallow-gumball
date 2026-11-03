@@ -7,6 +7,7 @@
 
 use borsh::BorshDeserialize;
 use borsh::BorshSerialize;
+use solana_address::Address;
 
 pub const CLOSE_MINT_LIMIT_DISCRIMINATOR: [u8; 8] = [234, 100, 43, 20, 76, 102, 26, 20];
 
@@ -26,13 +27,17 @@ pub struct CloseMintLimit {
 }
 
 impl CloseMintLimit {
-    pub fn instruction(&self) -> solana_instruction::Instruction {
-        self.instruction_with_remaining_accounts(&[])
+    pub fn instruction(
+        &self,
+        args: CloseMintLimitInstructionArgs,
+    ) -> solana_instruction::Instruction {
+        self.instruction_with_remaining_accounts(args, &[])
     }
     #[allow(clippy::arithmetic_side_effects)]
     #[allow(clippy::vec_init_then_push)]
     pub fn instruction_with_remaining_accounts(
         &self,
+        args: CloseMintLimitInstructionArgs,
         remaining_accounts: &[solana_instruction::AccountMeta],
     ) -> solana_instruction::Instruction {
         let mut accounts = Vec::with_capacity(5 + remaining_accounts.len());
@@ -54,7 +59,9 @@ impl CloseMintLimit {
             false,
         ));
         accounts.extend_from_slice(remaining_accounts);
-        let data = CloseMintLimitInstructionData::new().try_to_vec().unwrap();
+        let mut data = CloseMintLimitInstructionData::new().try_to_vec().unwrap();
+        let mut args = args.try_to_vec().unwrap();
+        data.append(&mut args);
 
         solana_instruction::Instruction {
             program_id: crate::GUMBALL_GUARD_ID,
@@ -87,6 +94,19 @@ impl Default for CloseMintLimitInstructionData {
     }
 }
 
+#[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
+pub struct CloseMintLimitInstructionArgs {
+    pub id: u8,
+    pub user: Address,
+    pub machine: Address,
+}
+
+impl CloseMintLimitInstructionArgs {
+    pub(crate) fn try_to_vec(&self) -> Result<Vec<u8>, std::io::Error> {
+        borsh::to_vec(self)
+    }
+}
+
 /// Instruction builder for `CloseMintLimit`.
 ///
 /// ### Accounts:
@@ -103,6 +123,9 @@ pub struct CloseMintLimitBuilder {
     gumball_guard: Option<solana_address::Address>,
     mint_counter: Option<solana_address::Address>,
     system_program: Option<solana_address::Address>,
+    id: Option<u8>,
+    user: Option<Address>,
+    machine: Option<Address>,
     __remaining_accounts: Vec<solana_instruction::AccountMeta>,
 }
 
@@ -140,6 +163,21 @@ impl CloseMintLimitBuilder {
         self.system_program = Some(system_program);
         self
     }
+    #[inline(always)]
+    pub fn id(&mut self, id: u8) -> &mut Self {
+        self.id = Some(id);
+        self
+    }
+    #[inline(always)]
+    pub fn user(&mut self, user: Address) -> &mut Self {
+        self.user = Some(user);
+        self
+    }
+    #[inline(always)]
+    pub fn machine(&mut self, machine: Address) -> &mut Self {
+        self.machine = Some(machine);
+        self
+    }
     /// Add an additional account to the instruction.
     #[inline(always)]
     pub fn add_remaining_account(&mut self, account: solana_instruction::AccountMeta) -> &mut Self {
@@ -166,8 +204,13 @@ impl CloseMintLimitBuilder {
                 .system_program
                 .unwrap_or(solana_address::address!("11111111111111111111111111111111")),
         };
+        let args = CloseMintLimitInstructionArgs {
+            id: self.id.clone().expect("id is not set"),
+            user: self.user.clone().expect("user is not set"),
+            machine: self.machine.clone().expect("machine is not set"),
+        };
 
-        accounts.instruction_with_remaining_accounts(&self.__remaining_accounts)
+        accounts.instruction_with_remaining_accounts(args, &self.__remaining_accounts)
     }
 }
 
@@ -199,12 +242,15 @@ pub struct CloseMintLimitCpi<'a, 'b> {
     pub mint_counter: &'b solana_account_info::AccountInfo<'a>,
 
     pub system_program: &'b solana_account_info::AccountInfo<'a>,
+    /// The arguments for the instruction.
+    pub __args: CloseMintLimitInstructionArgs,
 }
 
 impl<'a, 'b> CloseMintLimitCpi<'a, 'b> {
     pub fn new(
         program: &'b solana_account_info::AccountInfo<'a>,
         accounts: CloseMintLimitCpiAccounts<'a, 'b>,
+        args: CloseMintLimitInstructionArgs,
     ) -> Self {
         Self {
             __program: program,
@@ -213,6 +259,7 @@ impl<'a, 'b> CloseMintLimitCpi<'a, 'b> {
             gumball_guard: accounts.gumball_guard,
             mint_counter: accounts.mint_counter,
             system_program: accounts.system_program,
+            __args: args,
         }
     }
     #[inline(always)]
@@ -266,7 +313,9 @@ impl<'a, 'b> CloseMintLimitCpi<'a, 'b> {
                 is_writable: remaining_account.2,
             })
         });
-        let data = CloseMintLimitInstructionData::new().try_to_vec().unwrap();
+        let mut data = CloseMintLimitInstructionData::new().try_to_vec().unwrap();
+        let mut args = self.__args.try_to_vec().unwrap();
+        data.append(&mut args);
 
         let instruction = solana_instruction::Instruction {
             program_id: crate::GUMBALL_GUARD_ID,
@@ -315,6 +364,9 @@ impl<'a, 'b> CloseMintLimitCpiBuilder<'a, 'b> {
             gumball_guard: None,
             mint_counter: None,
             system_program: None,
+            id: None,
+            user: None,
+            machine: None,
             __remaining_accounts: Vec::new(),
         });
         Self { instruction }
@@ -360,6 +412,21 @@ impl<'a, 'b> CloseMintLimitCpiBuilder<'a, 'b> {
         self.instruction.system_program = Some(system_program);
         self
     }
+    #[inline(always)]
+    pub fn id(&mut self, id: u8) -> &mut Self {
+        self.instruction.id = Some(id);
+        self
+    }
+    #[inline(always)]
+    pub fn user(&mut self, user: Address) -> &mut Self {
+        self.instruction.user = Some(user);
+        self
+    }
+    #[inline(always)]
+    pub fn machine(&mut self, machine: Address) -> &mut Self {
+        self.instruction.machine = Some(machine);
+        self
+    }
     /// Add an additional account to the instruction.
     #[inline(always)]
     pub fn add_remaining_account(
@@ -394,6 +461,15 @@ impl<'a, 'b> CloseMintLimitCpiBuilder<'a, 'b> {
     #[allow(clippy::clone_on_copy)]
     #[allow(clippy::vec_init_then_push)]
     pub fn invoke_signed(&self, signers_seeds: &[&[&[u8]]]) -> solana_program_error::ProgramResult {
+        let args = CloseMintLimitInstructionArgs {
+            id: self.instruction.id.clone().expect("id is not set"),
+            user: self.instruction.user.clone().expect("user is not set"),
+            machine: self
+                .instruction
+                .machine
+                .clone()
+                .expect("machine is not set"),
+        };
         let instruction = CloseMintLimitCpi {
             __program: self.instruction.__program,
 
@@ -418,6 +494,7 @@ impl<'a, 'b> CloseMintLimitCpiBuilder<'a, 'b> {
                 .instruction
                 .system_program
                 .expect("system_program is not set"),
+            __args: args,
         };
         instruction.invoke_signed_with_remaining_accounts(
             signers_seeds,
@@ -434,6 +511,9 @@ struct CloseMintLimitCpiBuilderInstruction<'a, 'b> {
     gumball_guard: Option<&'b solana_account_info::AccountInfo<'a>>,
     mint_counter: Option<&'b solana_account_info::AccountInfo<'a>>,
     system_program: Option<&'b solana_account_info::AccountInfo<'a>>,
+    id: Option<u8>,
+    user: Option<Address>,
+    machine: Option<Address>,
     /// Additional instruction accounts `(AccountInfo, is_writable, is_signer)`.
     __remaining_accounts: Vec<(&'b solana_account_info::AccountInfo<'a>, bool, bool)>,
 }

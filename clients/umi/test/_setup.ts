@@ -297,6 +297,7 @@ export const create = async <DA extends GuardSetArgs = DefaultGuardSetArgs>(
       tokenStandard: TokenStandard;
       amount?: number;
       quantity?: number;
+      collection?: PublicKey;
     }[];
     startSale?: boolean;
   } & Partial<
@@ -356,6 +357,7 @@ export const create = async <DA extends GuardSetArgs = DefaultGuardSetArgs>(
         addCoreAsset(umi, {
           gumballMachine: gumballMachine.publicKey,
           asset: item.id,
+          collection: item.collection,
         })
       );
     }

@@ -16,7 +16,7 @@ pub fn get_verified_royalty_info<'a>(
     collection: Option<&AccountInfo<'a>>,
     seller: Pubkey,
 ) -> Result<RoyaltyInfo> {
-    let update_authority = get_update_authority(asset, collection)?;
+    let (update_authority, collection) = get_update_authority(asset, collection)?;
     // TODO: Update this when there's a proper primary sale check
     let is_primary_sale = is_primary_sale(seller, update_authority)?;
 

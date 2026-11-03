@@ -1,6 +1,6 @@
 use mpl_core::{types::UpdateAuthority, Asset};
 use mpl_token_metadata::accounts::Metadata;
-use utils::assert_keys_equal;
+use utils::{assert_keys_equal, assert_owned_by};
 
 use super::*;
 use crate::{errors::GumballGuardError, state::GuardType, utils::assert_is_token_account};
@@ -57,6 +57,8 @@ impl NftGate {
     ) -> Result<()> {
         // If nft_metadata key is the same as asset, it's a core asset we're trying to verify
         if nft_metadata.key() == nft_account.key() {
+            // Parsing an asset checks only its bytes, not who wrote them.
+            assert_owned_by(nft_account, &mpl_core::ID)?;
             let asset = Box::<Asset>::try_from(nft_account)?;
             require!(
                 asset.base.update_authority == UpdateAuthority::Collection(*collection),
@@ -85,5 +87,74 @@ impl NftGate {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// An AssetV1 layout: key, owner, update authority (Collection), name, uri, seq.
+    fn asset_bytes(owner: &Pubkey, collection: &Pubkey) -> Vec<u8> {
+        let mut data = vec![1];
+        data.extend_from_slice(owner.as_ref());
+        data.push(2);
+        data.extend_from_slice(collection.as_ref());
+        data.extend_from_slice(&[0; 4]);
+        data.extend_from_slice(&[0; 4]);
+        data.push(0);
+        data
+    }
+
+    fn verify(account_owner: &Pubkey, buyer: &Pubkey, collection: &Pubkey) -> Result<()> {
+        let key = Pubkey::new_from_array([7; 32]);
+        let mut lamports = 1;
+        let mut data = asset_bytes(
+            &Pubkey::new_from_array([8; 32]),
+            &Pubkey::new_from_array([9; 32]),
+        );
+        let info = AccountInfo::new(
+            &key,
+            false,
+            false,
+            &mut lamports,
+            &mut data,
+            account_owner,
+            false,
+        );
+        NftGate::verify_collection(&info, &info, collection, buyer)
+    }
+
+    #[test]
+    fn a_core_asset_must_be_owned_by_mpl_core() {
+        let buyer = Pubkey::new_from_array([8; 32]);
+        let collection = Pubkey::new_from_array([9; 32]);
+        assert!(verify(&mpl_core::ID, &buyer, &collection).is_ok());
+
+        for forger in [
+            crate::ID,
+            Pubkey::default(),
+            Pubkey::new_from_array([3; 32]),
+        ] {
+            assert_eq!(
+                verify(&forger, &buyer, &collection).unwrap_err(),
+                error!(utils::Error::InvalidOwner)
+            );
+        }
+    }
+
+    #[test]
+    fn a_core_asset_must_match_the_buyer_and_collection() {
+        let buyer = Pubkey::new_from_array([8; 32]);
+        let collection = Pubkey::new_from_array([9; 32]);
+        let other = Pubkey::new_from_array([4; 32]);
+        assert_eq!(
+            verify(&mpl_core::ID, &other, &collection).unwrap_err(),
+            error!(GumballGuardError::MissingNft)
+        );
+        assert_eq!(
+            verify(&mpl_core::ID, &buyer, &other).unwrap_err(),
+            error!(GumballGuardError::InvalidNftCollection)
+        );
     }
 }

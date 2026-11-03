@@ -524,7 +524,7 @@ This instruction settles a Core asset sale. If the item hasn't been claimed yet,
 | `system_program`                |          |        | System program account.                                                           |
 | `rent`                          |          |        | Rent sysvar.                                                                      |
 | `asset`                         |    ✅    |        | Asset account (from config line).                                                 |
-| `collection`                    |    ✅    |        | Collection account if asset is part of one (optional).                            |
+| `collection`                    |    ✅    |        | The collection the asset names. Required for an asset in one, ignored otherwise.  |
 | `mpl_core_program`              |          |        | MPL Core program account.                                                         |
 | _Remaining accounts_            |    ✅    |        | Royalty recipients' main accounts, followed by their payment accounts if needed.  |
 

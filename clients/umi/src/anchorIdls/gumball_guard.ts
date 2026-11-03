@@ -50,7 +50,22 @@ export type GumballGuard = {
           name: 'systemProgram';
         },
       ];
-      args: [];
+      args: [
+        {
+          name: 'merkleRoot';
+          type: {
+            array: ['u8', 32];
+          };
+        },
+        {
+          name: 'user';
+          type: 'pubkey';
+        },
+        {
+          name: 'machine';
+          type: 'pubkey';
+        },
+      ];
     },
     {
       name: 'closeMintLimit';
@@ -88,7 +103,20 @@ export type GumballGuard = {
           name: 'systemProgram';
         },
       ];
-      args: [];
+      args: [
+        {
+          name: 'id';
+          type: 'u8';
+        },
+        {
+          name: 'user';
+          type: 'pubkey';
+        },
+        {
+          name: 'machine';
+          type: 'pubkey';
+        },
+      ];
     },
     {
       name: 'createGlobalConfig';

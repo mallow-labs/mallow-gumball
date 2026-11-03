@@ -60,8 +60,10 @@ pub fn remove_multiple_items(
         assert_removable_item(gumball_machine, &data, index)?;
     }
 
-    // Process each removal in reverse order to handle last line movements correctly
-    for &index in indices.iter() {
+    // Swap-remove from the highest index down. Every larger index is already gone,
+    // so line count - 1 is either this line or one that is being kept, and the lines
+    // still to be removed have not moved.
+    for &index in sorted_indices.iter().rev() {
         // Ensure index conversion to usize is safe
         let index_usize = index as usize;
         require!(
@@ -96,13 +98,7 @@ pub fn remove_multiple_items(
             require!(amount == item_amount, GumballError::InvalidAmount);
         }
 
-        // Find the last non-removed config line
-        let mut last_valid_index = count - 1;
-        while sorted_indices.binary_search(&(last_valid_index)).is_ok()
-            && last_valid_index > index as u32
-        {
-            last_valid_index -= 1;
-        }
+        let last_valid_index = count - 1;
 
         // Ensure last_valid_index conversion to usize is safe
         let last_valid_usize = last_valid_index as usize;
@@ -115,7 +111,7 @@ pub fn remove_multiple_items(
             GUMBALL_MACHINE_SIZE + 4 + last_valid_usize * config_line_size;
 
         // Move data only if we're not removing the last valid line
-        if index as u32 != last_valid_index {
+        if index != last_valid_index {
             let last_config_slice: Vec<u8> = data
                 [last_config_line_position..last_config_line_position + config_line_size]
                 .to_vec();
@@ -268,6 +264,160 @@ pub fn remove_multiple_items_span(
 mod tests {
     use super::*;
     use crate::{GumballSettings, GumballState, TokenStandard};
+
+    const AMOUNT: u64 = 10;
+
+    fn key(byte: u8) -> Pubkey {
+        Pubkey::new_from_array([byte; 32])
+    }
+
+    /// Run `remove_multiple_items` as `remover` on a v`version` machine holding
+    /// `lines` of (mint, seller), and return the live lines and the removal result.
+    fn remove_lines(
+        version: u8,
+        lines: &[(u8, u8)],
+        remover: u8,
+        mint: u8,
+        indices: &[u8],
+    ) -> (Vec<(u8, u8)>, Vec<u8>, Result<()>) {
+        let capacity = lines.len() as u64;
+        let machine = GumballMachine {
+            version,
+            authority: key(250),
+            mint_authority: key(250),
+            marketplace_fee_config: None,
+            items_redeemed: 0,
+            items_settled: 0,
+            total_revenue: 0,
+            state: GumballState::None,
+            settings: GumballSettings {
+                uri: String::new(),
+                item_capacity: capacity,
+                items_per_seller: 0,
+                sellers_merkle_root: None,
+                curator_fee_bps: 0,
+                hide_sold_items: false,
+                payment_mint: Pubkey::default(),
+            },
+        };
+        let line_size = machine.get_config_line_size();
+        let mut data = vec![0; GumballMachine::get_size(capacity, version)];
+        machine.try_serialize(&mut data.as_mut_slice()).unwrap();
+        data[GUMBALL_MACHINE_SIZE..GUMBALL_MACHINE_SIZE + 4]
+            .copy_from_slice(&(lines.len() as u32).to_le_bytes());
+        let table = GUMBALL_MACHINE_SIZE + 4;
+        for (i, (line_mint, line_seller)) in lines.iter().enumerate() {
+            let at = table + i * line_size;
+            data[at..at + 32].copy_from_slice(key(*line_mint).as_ref());
+            data[at + 32..at + 64].copy_from_slice(key(*line_seller).as_ref());
+            data[at + 96] = TokenStandard::Fungible as u8;
+            data[at + CONFIG_LINE_SIZE..at + CONFIG_LINE_SIZE + 8]
+                .copy_from_slice(&AMOUNT.to_le_bytes());
+        }
+
+        let account_key = key(251);
+        let owner = crate::ID;
+        let mut lamports = 1;
+        let info = AccountInfo::new(
+            &account_key,
+            false,
+            true,
+            &mut lamports,
+            &mut data,
+            &owner,
+            false,
+        );
+        let mut account = Account::<GumballMachine>::try_from(&info).unwrap();
+        let result = remove_multiple_items(
+            &mut account,
+            key(remover),
+            key(mint),
+            key(remover),
+            indices,
+            AMOUNT,
+        );
+
+        let data = info.data.borrow();
+        let count = get_config_count(&data).unwrap();
+        let read = |i: usize| {
+            let at = table + i * line_size;
+            (data[at], data[at + 32])
+        };
+        let live = (0..count).map(read).collect();
+        let dead = (count..lines.len())
+            .flat_map(|i| data[table + i * line_size..table + (i + 1) * line_size].to_vec())
+            .collect();
+        (live, dead, result)
+    }
+
+    fn permutations(items: &[u8]) -> Vec<Vec<u8>> {
+        if items.is_empty() {
+            return vec![vec![]];
+        }
+        let mut all = vec![];
+        for (i, item) in items.iter().enumerate() {
+            let mut rest = items.to_vec();
+            rest.remove(i);
+            for mut tail in permutations(&rest) {
+                tail.insert(0, *item);
+                all.push(tail);
+            }
+        }
+        all
+    }
+
+    #[test]
+    fn removing_lines_in_any_order_keeps_every_other_line_live_exactly_once() {
+        const REMOVER: u8 = 1;
+        const SIZE: usize = 5;
+        for version in [2, 6] {
+            for remover_lines in 1u8..1 << SIZE {
+                // Every other line belongs to another seller, under its own mint.
+                let lines: Vec<(u8, u8)> = (0..SIZE as u8)
+                    .map(|i| {
+                        if remover_lines & (1 << i) != 0 {
+                            (REMOVER, REMOVER)
+                        } else {
+                            (100 + i, 2)
+                        }
+                    })
+                    .collect();
+                for removed in 1u8..1 << SIZE {
+                    if removed & !remover_lines != 0 {
+                        continue;
+                    }
+                    let indices: Vec<u8> = (0..SIZE as u8)
+                        .filter(|i| removed & (1 << i) != 0)
+                        .collect();
+                    let mut expected: Vec<(u8, u8)> = (0..SIZE as u8)
+                        .filter(|i| removed & (1 << i) == 0)
+                        .map(|i| lines[i as usize])
+                        .collect();
+                    expected.sort_unstable();
+                    for order in permutations(&indices) {
+                        let (mut live, dead, result) =
+                            remove_lines(version, &lines, REMOVER, REMOVER, &order);
+                        assert!(result.is_ok(), "{lines:?} removing {order:?}: {result:?}");
+                        live.sort_unstable();
+                        assert_eq!(live, expected, "{lines:?} removing {order:?}");
+                        assert!(
+                            dead.iter().all(|byte| *byte == 0),
+                            "{lines:?} removing {order:?} left data past the count"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn removing_lines_still_refuses_another_sellers_line_in_any_order() {
+        let lines = [(1, 1), (1, 1), (100, 2)];
+        for order in [[0u8, 2], [2, 0], [1, 2], [2, 1]] {
+            let (_, _, result) = remove_lines(6, &lines, 1, 1, &order);
+            assert!(result.is_err(), "removing {order:?} succeeded");
+        }
+    }
 
     #[test]
     fn removal_preserves_processed_items_on_every_version_and_standard() {

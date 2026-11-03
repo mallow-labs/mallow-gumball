@@ -10,11 +10,13 @@ import {
 import {
   generateSigner,
   publicKey,
+  publicKeyBytes,
   sol,
   some,
   transactionBuilder,
 } from '@metaplex-foundation/umi';
 import test from 'ava';
+import { Account } from 'litesvm/dist/internal';
 import { draw, TokenStandard } from '../../src';
 import {
   assertBotTax,
@@ -27,6 +29,7 @@ import {
   createUmi,
   createVerifiedNft,
 } from '../_setup';
+import { getSvm } from '../litesvm/svm';
 
 test('it allows minting when the payer owns an NFT from a certain collection', async (t) => {
   // Given the identity owns an NFT from a certain collection.
@@ -526,4 +529,62 @@ test('it forbids minting when the payer tries to provide a core asset from the w
 
   // Then we expect an error.
   await t.throwsAsync(promise, { message: /InvalidNftCollection/ });
+});
+
+test('it forbids minting with a forged core asset owned by another program', async (t) => {
+  // Given a buyer holding nothing, and a loaded Gumball Machine with an nftGate guard.
+  const umi = await createUmi();
+  const { publicKey: requiredCollection } = await createCoreCollection(umi);
+  const { publicKey: gumballMachine } = await create(umi, {
+    items: [
+      {
+        id: (await createNft(umi)).publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      },
+    ],
+    startSale: true,
+    guards: {
+      nftGate: some({ requiredCollection }),
+    },
+  });
+
+  // And an account with the AssetV1 layout naming the buyer and the collection,
+  // owned by a program other than mpl-core.
+  const forged = generateSigner(umi).publicKey;
+  getSvm().setAccount(
+    publicKeyBytes(forged),
+    new Account(
+      10_000_000n,
+      Uint8Array.from([
+        1,
+        ...publicKeyBytes(umi.identity.publicKey),
+        2,
+        ...publicKeyBytes(requiredCollection),
+        ...new Array(8).fill(0),
+        0,
+      ]),
+      publicKeyBytes(generateSigner(umi).publicKey),
+      false,
+      0n
+    )
+  );
+
+  // When the buyer mints with it.
+  const promise = transactionBuilder()
+    .add(setComputeUnitLimit(umi, { units: 600_000 }))
+    .add(
+      draw(umi, {
+        gumballMachine,
+        mintArgs: {
+          nftGate: some({
+            mint: forged,
+            tokenStandard: TokenStandard.Core,
+          }),
+        },
+      })
+    )
+    .sendAndConfirm(umi);
+
+  // Then the gate refuses the account.
+  await t.throwsAsync(promise, { message: /InvalidOwner/ });
 });

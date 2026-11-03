@@ -10,6 +10,8 @@ import {
   combineCodec,
   fixDecoderSize,
   fixEncoderSize,
+  getAddressDecoder,
+  getAddressEncoder,
   getBytesDecoder,
   getBytesEncoder,
   getStructDecoder,
@@ -83,13 +85,25 @@ export type CloseAllowlistProofInstruction<
 
 export type CloseAllowlistProofInstructionData = {
   discriminator: ReadonlyUint8Array;
+  merkleRoot: ReadonlyUint8Array;
+  user: Address;
+  machine: Address;
 };
 
-export type CloseAllowlistProofInstructionDataArgs = {};
+export type CloseAllowlistProofInstructionDataArgs = {
+  merkleRoot: ReadonlyUint8Array;
+  user: Address;
+  machine: Address;
+};
 
 export function getCloseAllowlistProofInstructionDataEncoder(): FixedSizeEncoder<CloseAllowlistProofInstructionDataArgs> {
   return transformEncoder(
-    getStructEncoder([['discriminator', fixEncoderSize(getBytesEncoder(), 8)]]),
+    getStructEncoder([
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 8)],
+      ['merkleRoot', fixEncoderSize(getBytesEncoder(), 32)],
+      ['user', getAddressEncoder()],
+      ['machine', getAddressEncoder()],
+    ]),
     (value) => ({
       ...value,
       discriminator: CLOSE_ALLOWLIST_PROOF_DISCRIMINATOR,
@@ -100,6 +114,9 @@ export function getCloseAllowlistProofInstructionDataEncoder(): FixedSizeEncoder
 export function getCloseAllowlistProofInstructionDataDecoder(): FixedSizeDecoder<CloseAllowlistProofInstructionData> {
   return getStructDecoder([
     ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
+    ['merkleRoot', fixDecoderSize(getBytesDecoder(), 32)],
+    ['user', getAddressDecoder()],
+    ['machine', getAddressDecoder()],
   ]);
 }
 
@@ -129,6 +146,9 @@ export type CloseAllowlistProofAsyncInput<
   /** The AllowListProof PDA to close. */
   allowListProof: Address<TAccountAllowListProof>;
   systemProgram?: Address<TAccountSystemProgram>;
+  merkleRoot: CloseAllowlistProofInstructionDataArgs['merkleRoot'];
+  user: CloseAllowlistProofInstructionDataArgs['user'];
+  machine: CloseAllowlistProofInstructionDataArgs['machine'];
 };
 
 export async function getCloseAllowlistProofInstructionAsync<
@@ -174,6 +194,9 @@ export async function getCloseAllowlistProofInstructionAsync<
     ResolvedInstructionAccount
   >;
 
+  // Original args.
+  const args = { ...input };
+
   // Resolve default values.
   if (!accounts.globalConfig.value) {
     accounts.globalConfig.value = await findGlobalConfigPda();
@@ -192,7 +215,9 @@ export async function getCloseAllowlistProofInstructionAsync<
       getAccountMeta('allowListProof', accounts.allowListProof),
       getAccountMeta('systemProgram', accounts.systemProgram),
     ],
-    data: getCloseAllowlistProofInstructionDataEncoder().encode({}),
+    data: getCloseAllowlistProofInstructionDataEncoder().encode(
+      args as CloseAllowlistProofInstructionDataArgs
+    ),
     programAddress,
   } as CloseAllowlistProofInstruction<
     TProgramAddress,
@@ -220,6 +245,9 @@ export type CloseAllowlistProofInput<
   /** The AllowListProof PDA to close. */
   allowListProof: Address<TAccountAllowListProof>;
   systemProgram?: Address<TAccountSystemProgram>;
+  merkleRoot: CloseAllowlistProofInstructionDataArgs['merkleRoot'];
+  user: CloseAllowlistProofInstructionDataArgs['user'];
+  machine: CloseAllowlistProofInstructionDataArgs['machine'];
 };
 
 export function getCloseAllowlistProofInstruction<
@@ -263,6 +291,9 @@ export function getCloseAllowlistProofInstruction<
     ResolvedInstructionAccount
   >;
 
+  // Original args.
+  const args = { ...input };
+
   // Resolve default values.
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
@@ -278,7 +309,9 @@ export function getCloseAllowlistProofInstruction<
       getAccountMeta('allowListProof', accounts.allowListProof),
       getAccountMeta('systemProgram', accounts.systemProgram),
     ],
-    data: getCloseAllowlistProofInstructionDataEncoder().encode({}),
+    data: getCloseAllowlistProofInstructionDataEncoder().encode(
+      args as CloseAllowlistProofInstructionDataArgs
+    ),
     programAddress,
   } as CloseAllowlistProofInstruction<
     TProgramAddress,

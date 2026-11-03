@@ -14,6 +14,7 @@ import {
   deleteGumballGuard,
   draw,
   fetchMintCounter,
+  findGlobalConfigPda,
   findGumballGuardPda,
   findMintCounterPda,
   settleNftSale,
@@ -357,6 +358,9 @@ test('it can close a mint counter after guard is deleted', async (t) => {
         authority,
         gumballGuard,
         mintCounter: mintCounterPda[0],
+        id: 1,
+        user: buyer.publicKey,
+        machine: gumballMachine,
       })
     )
     .sendAndConfirm(umi);
@@ -415,6 +419,9 @@ test('it fails to close a mint counter when guard still exists', async (t) => {
         authority,
         gumballGuard,
         mintCounter: mintCounterPda[0],
+        id: 1,
+        user: buyer.publicKey,
+        machine: gumballMachine,
       })
     )
     .sendAndConfirm(umi);
@@ -488,6 +495,9 @@ test('it fails to close a mint counter when signed by a non-authority', async (t
         authority: randomSigner,
         gumballGuard,
         mintCounter: mintCounterPda[0],
+        id: 1,
+        user: buyer.publicKey,
+        machine: gumballMachine,
       })
     )
     .sendAndConfirm(umi);
@@ -562,10 +572,73 @@ test('it can close a mint counter after machine is fully closed', async (t) => {
         authority,
         gumballGuard,
         mintCounter: mintCounterPda[0],
+        id: 1,
+        user: buyer.publicKey,
+        machine: gumballMachine,
       })
     )
     .sendAndConfirm(umi);
 
   // Then the MintCounter PDA no longer exists.
   t.false(await umi.rpc.accountExists(mintCounterPda[0]));
+});
+
+test('it only closes a mint counter created under the closed guard it names', async (t) => {
+  // Given a live gumball machine with a mint limit guard and a live counter.
+  const umi = await createUmi();
+  const { publicKey: gumballMachine } = await create(umi, {
+    items: [
+      {
+        id: (await createNft(umi)).publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      },
+    ],
+    startSale: true,
+    guards: {
+      mintLimit: some({ id: 1, limit: 5 }),
+    },
+  });
+  const buyer = generateSigner(umi);
+  await transactionBuilder()
+    .add(setComputeUnitLimit(umi, { units: 600_000 }))
+    .add(
+      draw(umi, {
+        gumballMachine,
+        buyer,
+        mintArgs: { mintLimit: some({ id: 1 }) },
+      })
+    )
+    .sendAndConfirm(umi);
+
+  const gumballGuard = findGumballGuardPda(umi, { base: gumballMachine })[0];
+  const [mintCounter] = findMintCounterPda(umi, {
+    id: 1,
+    user: buyer.publicKey,
+    machine: gumballMachine,
+    gumballGuard,
+  });
+  const authority = getTestAuthority(umi);
+  await setupGlobalConfig(umi, authority);
+  const [globalConfig] = findGlobalConfigPda(umi);
+
+  // When the fee authority names an unrelated empty account as the closed guard.
+  const unrelatedGuard = generateSigner(umi).publicKey;
+  for (const target of [mintCounter, gumballGuard, globalConfig]) {
+    const promise = transactionBuilder()
+      .add(
+        closeMintLimit(umi, {
+          authority,
+          gumballGuard: unrelatedGuard,
+          mintCounter: target,
+          id: 1,
+          user: buyer.publicKey,
+          machine: gumballMachine,
+        })
+      )
+      .sendAndConfirm(umi);
+
+    // Then the target is refused and still exists.
+    await t.throwsAsync(promise, { message: /PublicKeyMismatch/ });
+    t.true(await umi.rpc.accountExists(target));
+  }
 });

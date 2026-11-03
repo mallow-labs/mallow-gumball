@@ -1,10 +1,11 @@
 use crate::{
     errors::GumballGuardError,
+    guards::AllowListProof,
     state::{GlobalConfig, GLOBAL_CONFIG_SEED},
     utils::close_pda_account,
 };
 use anchor_lang::prelude::*;
-use utils::assert_owned_by;
+use utils::{assert_keys_equal, assert_owned_by};
 
 /// Close an AllowListProof PDA and send its rent to the account_fee_authority stored in GlobalConfig.
 ///
@@ -29,13 +30,18 @@ pub struct CloseAllowlistProof<'info> {
     /// CHECK: verified to be empty in the handler
     pub gumball_guard: UncheckedAccount<'info>,
     /// The AllowListProof PDA to close.
-    /// CHECK: verified to be owned by this program and non-empty in the handler
+    /// CHECK: re-derived from gumball_guard and the arguments in the handler
     #[account(mut)]
     pub allow_list_proof: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,
 }
 
-pub fn close_allowlist_proof(ctx: Context<CloseAllowlistProof>) -> Result<()> {
+pub fn close_allowlist_proof(
+    ctx: Context<CloseAllowlistProof>,
+    merkle_root: [u8; 32],
+    user: Pubkey,
+    machine: Pubkey,
+) -> Result<()> {
     let gumball_guard = &ctx.accounts.gumball_guard.to_account_info();
     let allow_list_proof = &ctx.accounts.allow_list_proof.to_account_info();
 
@@ -45,14 +51,28 @@ pub fn close_allowlist_proof(ctx: Context<CloseAllowlistProof>) -> Result<()> {
         GumballGuardError::InvalidMachineState
     );
 
-    // 2. Verify proof account exists and is owned by this program
+    // 2. The proof's seeds name its guard, so only a proof created under that
+    // closed guard can match
+    let (proof_pda, _) = Pubkey::find_program_address(
+        &[
+            AllowListProof::PREFIX_SEED,
+            &merkle_root[..],
+            user.as_ref(),
+            gumball_guard.key.as_ref(),
+            machine.as_ref(),
+        ],
+        &crate::ID,
+    );
+    assert_keys_equal(allow_list_proof.key(), proof_pda, "Invalid proof PDA")?;
+
+    // 3. Verify proof account exists and is owned by this program
     require!(
         !allow_list_proof.data_is_empty(),
         GumballGuardError::Uninitialized
     );
     assert_owned_by(allow_list_proof, &crate::ID)?;
 
-    // 3. Close the account: transfer lamports to authority, zero data
+    // 4. Close the account: transfer lamports to authority, zero data
     close_pda_account(allow_list_proof, &ctx.accounts.authority.to_account_info())?;
 
     Ok(())

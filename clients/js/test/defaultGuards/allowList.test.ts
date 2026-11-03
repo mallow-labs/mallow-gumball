@@ -386,7 +386,12 @@ const drawWithAllowList = async (client: Client, itemCount: number) => {
     merkleRoot,
     user: client.payer.address,
   });
-  return { gumballMachine, gumballGuard, allowListProof, mints };
+  const closeArgs = {
+    merkleRoot,
+    user: client.payer.address,
+    machine: gumballMachine,
+  };
+  return { gumballMachine, gumballGuard, allowListProof, mints, closeArgs };
 };
 
 /** Settle the single drawn nft of a one-item machine (payer bought from payer). */
@@ -411,7 +416,7 @@ const settleOnlyItem = async (
 
 test('it can close an allow list proof after guard is deleted', async (t) => {
   const client = await createClient();
-  const { gumballMachine, gumballGuard, allowListProof, mints } =
+  const { gumballMachine, gumballGuard, allowListProof, mints, closeArgs } =
     await drawWithAllowList(client, 1);
   t.true(accountExists(client, allowListProof));
 
@@ -433,6 +438,7 @@ test('it can close an allow list proof after guard is deleted', async (t) => {
       authority,
       gumballGuard,
       allowListProof,
+      ...closeArgs,
     }),
   ]);
   t.false(accountExists(client, allowListProof));
@@ -441,7 +447,10 @@ test('it can close an allow list proof after guard is deleted', async (t) => {
 test('it fails to close an allow list proof when guard still exists', async (t) => {
   const client = await createClient();
   // Two items: the draw leaves the sale live and the guard in place.
-  const { gumballGuard, allowListProof } = await drawWithAllowList(client, 2);
+  const { gumballGuard, allowListProof, closeArgs } = await drawWithAllowList(
+    client,
+    2
+  );
   const authority = await generateKeyPairSignerWithSol(client.svm);
   await setupGlobalConfig(client, authority);
 
@@ -451,6 +460,7 @@ test('it fails to close an allow list proof when guard still exists', async (t) 
         authority,
         gumballGuard,
         allowListProof,
+        ...closeArgs,
       }),
     ]),
     { message: /InvalidMachineState/ }
@@ -460,7 +470,7 @@ test('it fails to close an allow list proof when guard still exists', async (t) 
 
 test('it fails to close an allow list proof when signed by a non-authority', async (t) => {
   const client = await createClient();
-  const { gumballMachine, gumballGuard, allowListProof, mints } =
+  const { gumballMachine, gumballGuard, allowListProof, mints, closeArgs } =
     await drawWithAllowList(client, 1);
   await settleOnlyItem(client, gumballMachine, mints[0]);
   await sendTransaction(client.svm, client.payer, [
@@ -481,6 +491,7 @@ test('it fails to close an allow list proof when signed by a non-authority', asy
         authority: randomSigner,
         gumballGuard,
         allowListProof,
+        ...closeArgs,
       }),
     ]),
     { message: /MissingRequiredSignature/ }
@@ -490,7 +501,7 @@ test('it fails to close an allow list proof when signed by a non-authority', asy
 
 test('it can close an allow list proof after machine is fully closed', async (t) => {
   const client = await createClient();
-  const { gumballMachine, gumballGuard, allowListProof, mints } =
+  const { gumballMachine, gumballGuard, allowListProof, mints, closeArgs } =
     await drawWithAllowList(client, 1);
   await settleOnlyItem(client, gumballMachine, mints[0]);
 
@@ -513,6 +524,7 @@ test('it can close an allow list proof after machine is fully closed', async (t)
       authority,
       gumballGuard,
       allowListProof,
+      ...closeArgs,
     }),
   ]);
   t.false(accountExists(client, allowListProof));

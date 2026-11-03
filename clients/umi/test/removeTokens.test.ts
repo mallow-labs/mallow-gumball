@@ -921,3 +921,75 @@ test('it can remove tokens using unordered indices from a gumball machine', asyn
 
   t.falsy(sellerHistoryAccount);
 });
+
+test('it keeps another seller item live whichever order a seller removes its own tokens in', async (t) => {
+  // Given a machine holding two lines of a seller's tokens, then another seller's.
+  const umi = await createUmi();
+  const sellerUmi = await createUmi();
+  const sellers = [sellerUmi.identity.publicKey];
+  const gumballMachine = await create(umi, {
+    settings: { itemCapacity: 3, sellersMerkleRoot: getMerkleRoot(sellers) },
+  });
+  const [sellerMint] = await createMintWithHolders(sellerUmi, {
+    holders: [{ owner: sellerUmi.identity, amount: 100 }],
+  });
+  const [otherMint] = await createMintWithHolders(umi, {
+    holders: [{ owner: umi.identity, amount: 100 }],
+  });
+  await transactionBuilder()
+    .add(
+      addTokens(sellerUmi, {
+        gumballMachine: gumballMachine.publicKey,
+        mint: sellerMint.publicKey,
+        amount: 10,
+        quantity: 2,
+        args: {
+          sellerProofPath: getMerkleProof(sellers, sellers[0]),
+        },
+      })
+    )
+    .sendAndConfirm(sellerUmi);
+  await transactionBuilder()
+    .add(
+      addTokens(umi, {
+        gumballMachine: gumballMachine.publicKey,
+        mint: otherMint.publicKey,
+        amount: 10,
+        quantity: 1,
+      })
+    )
+    .sendAndConfirm(umi);
+
+  // When the seller removes its own lines, highest index first.
+  await transactionBuilder()
+    .add(
+      removeTokens(sellerUmi, {
+        gumballMachine: gumballMachine.publicKey,
+        indices: new Uint8Array([1, 0]),
+        mint: sellerMint.publicKey,
+        amount: 10,
+      })
+    )
+    .sendAndConfirm(sellerUmi);
+
+  // Then the other seller's line is the only live line.
+  t.like(await fetchGumballMachine(umi, gumballMachine.publicKey), {
+    itemsLoaded: 1,
+    items: [{ index: 0, mint: otherMint.publicKey }],
+  });
+
+  // And its seller can still remove it.
+  await transactionBuilder()
+    .add(
+      removeTokens(umi, {
+        gumballMachine: gumballMachine.publicKey,
+        indices: new Uint8Array([0]),
+        mint: otherMint.publicKey,
+        amount: 10,
+      })
+    )
+    .sendAndConfirm(umi);
+  t.like(await fetchGumballMachine(umi, gumballMachine.publicKey), {
+    itemsLoaded: 0,
+  });
+});

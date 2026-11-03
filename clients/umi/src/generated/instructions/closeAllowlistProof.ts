@@ -19,6 +19,7 @@ import {
   Serializer,
   bytes,
   mapSerializer,
+  publicKey as publicKeySerializer,
   struct,
 } from '@metaplex-foundation/umi/serializers';
 import { findGlobalConfigPda } from '../accounts';
@@ -42,9 +43,18 @@ export type CloseAllowlistProofInstructionAccounts = {
 };
 
 // Data.
-export type CloseAllowlistProofInstructionData = { discriminator: Uint8Array };
+export type CloseAllowlistProofInstructionData = {
+  discriminator: Uint8Array;
+  merkleRoot: Uint8Array;
+  user: PublicKey;
+  machine: PublicKey;
+};
 
-export type CloseAllowlistProofInstructionDataArgs = {};
+export type CloseAllowlistProofInstructionDataArgs = {
+  merkleRoot: Uint8Array;
+  user: PublicKey;
+  machine: PublicKey;
+};
 
 export function getCloseAllowlistProofInstructionDataSerializer(): Serializer<
   CloseAllowlistProofInstructionDataArgs,
@@ -56,7 +66,12 @@ export function getCloseAllowlistProofInstructionDataSerializer(): Serializer<
     CloseAllowlistProofInstructionData
   >(
     struct<CloseAllowlistProofInstructionData>(
-      [['discriminator', bytes({ size: 8 })]],
+      [
+        ['discriminator', bytes({ size: 8 })],
+        ['merkleRoot', bytes({ size: 32 })],
+        ['user', publicKeySerializer()],
+        ['machine', publicKeySerializer()],
+      ],
       { description: 'CloseAllowlistProofInstructionData' }
     ),
     (value) => ({
@@ -69,10 +84,15 @@ export function getCloseAllowlistProofInstructionDataSerializer(): Serializer<
   >;
 }
 
+// Args.
+export type CloseAllowlistProofInstructionArgs =
+  CloseAllowlistProofInstructionDataArgs;
+
 // Instruction.
 export function closeAllowlistProof(
   context: Pick<Context, 'eddsa' | 'identity' | 'programs'>,
-  input: CloseAllowlistProofInstructionAccounts
+  input: CloseAllowlistProofInstructionAccounts &
+    CloseAllowlistProofInstructionArgs
 ): TransactionBuilder {
   // Program ID.
   const programId = context.programs.getPublicKey(
@@ -109,6 +129,9 @@ export function closeAllowlistProof(
     },
   } satisfies ResolvedAccountsWithIndices;
 
+  // Arguments.
+  const resolvedArgs: CloseAllowlistProofInstructionArgs = { ...input };
+
   // Default values.
   if (!resolvedAccounts.authority.value) {
     resolvedAccounts.authority.value = context.identity;
@@ -135,7 +158,9 @@ export function closeAllowlistProof(
   );
 
   // Data.
-  const data = getCloseAllowlistProofInstructionDataSerializer().serialize({});
+  const data = getCloseAllowlistProofInstructionDataSerializer().serialize(
+    resolvedArgs as CloseAllowlistProofInstructionDataArgs
+  );
 
   // Bytes Created On Chain.
   const bytesCreatedOnChain = 0;

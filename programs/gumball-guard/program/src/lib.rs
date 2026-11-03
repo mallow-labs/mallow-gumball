@@ -80,15 +80,25 @@ pub mod gumball_guard {
     /// Close a MintCounter PDA and send its rent to the account_fee_authority in GlobalConfig.
     /// Only the account_fee_authority recorded in GlobalConfig may call this instruction.
     /// The associated gumball guard must have already been closed (deleted).
-    pub fn close_mint_limit(ctx: Context<CloseMintLimit>) -> Result<()> {
-        instructions::close_mint_limit(ctx)
+    pub fn close_mint_limit(
+        ctx: Context<CloseMintLimit>,
+        id: u8,
+        user: Pubkey,
+        machine: Pubkey,
+    ) -> Result<()> {
+        instructions::close_mint_limit(ctx, id, user, machine)
     }
 
     /// Close an AllowListProof PDA and send its rent to the account_fee_authority in GlobalConfig.
     /// Only the account_fee_authority recorded in GlobalConfig may call this instruction.
     /// The associated gumball guard must have already been closed (deleted).
-    pub fn close_allowlist_proof(ctx: Context<CloseAllowlistProof>) -> Result<()> {
-        instructions::close_allowlist_proof(ctx)
+    pub fn close_allowlist_proof(
+        ctx: Context<CloseAllowlistProof>,
+        merkle_root: [u8; 32],
+        user: Pubkey,
+        machine: Pubkey,
+    ) -> Result<()> {
+        instructions::close_allowlist_proof(ctx, merkle_root, user, machine)
     }
 
     /// Create the GlobalConfig PDA. Can only be called once.

@@ -10,10 +10,14 @@ import {
   combineCodec,
   fixDecoderSize,
   fixEncoderSize,
+  getAddressDecoder,
+  getAddressEncoder,
   getBytesDecoder,
   getBytesEncoder,
   getStructDecoder,
   getStructEncoder,
+  getU8Decoder,
+  getU8Encoder,
   SOLANA_ERROR__PROGRAM_CLIENTS__INSUFFICIENT_ACCOUNT_METAS,
   SolanaError,
   transformEncoder,
@@ -83,13 +87,25 @@ export type CloseMintLimitInstruction<
 
 export type CloseMintLimitInstructionData = {
   discriminator: ReadonlyUint8Array;
+  id: number;
+  user: Address;
+  machine: Address;
 };
 
-export type CloseMintLimitInstructionDataArgs = {};
+export type CloseMintLimitInstructionDataArgs = {
+  id: number;
+  user: Address;
+  machine: Address;
+};
 
 export function getCloseMintLimitInstructionDataEncoder(): FixedSizeEncoder<CloseMintLimitInstructionDataArgs> {
   return transformEncoder(
-    getStructEncoder([['discriminator', fixEncoderSize(getBytesEncoder(), 8)]]),
+    getStructEncoder([
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 8)],
+      ['id', getU8Encoder()],
+      ['user', getAddressEncoder()],
+      ['machine', getAddressEncoder()],
+    ]),
     (value) => ({ ...value, discriminator: CLOSE_MINT_LIMIT_DISCRIMINATOR })
   );
 }
@@ -97,6 +113,9 @@ export function getCloseMintLimitInstructionDataEncoder(): FixedSizeEncoder<Clos
 export function getCloseMintLimitInstructionDataDecoder(): FixedSizeDecoder<CloseMintLimitInstructionData> {
   return getStructDecoder([
     ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
+    ['id', getU8Decoder()],
+    ['user', getAddressDecoder()],
+    ['machine', getAddressDecoder()],
   ]);
 }
 
@@ -126,6 +145,9 @@ export type CloseMintLimitAsyncInput<
   /** The MintCounter PDA to close. */
   mintCounter: Address<TAccountMintCounter>;
   systemProgram?: Address<TAccountSystemProgram>;
+  id: CloseMintLimitInstructionDataArgs['id'];
+  user: CloseMintLimitInstructionDataArgs['user'];
+  machine: CloseMintLimitInstructionDataArgs['machine'];
 };
 
 export async function getCloseMintLimitInstructionAsync<
@@ -171,6 +193,9 @@ export async function getCloseMintLimitInstructionAsync<
     ResolvedInstructionAccount
   >;
 
+  // Original args.
+  const args = { ...input };
+
   // Resolve default values.
   if (!accounts.globalConfig.value) {
     accounts.globalConfig.value = await findGlobalConfigPda();
@@ -189,7 +214,9 @@ export async function getCloseMintLimitInstructionAsync<
       getAccountMeta('mintCounter', accounts.mintCounter),
       getAccountMeta('systemProgram', accounts.systemProgram),
     ],
-    data: getCloseMintLimitInstructionDataEncoder().encode({}),
+    data: getCloseMintLimitInstructionDataEncoder().encode(
+      args as CloseMintLimitInstructionDataArgs
+    ),
     programAddress,
   } as CloseMintLimitInstruction<
     TProgramAddress,
@@ -217,6 +244,9 @@ export type CloseMintLimitInput<
   /** The MintCounter PDA to close. */
   mintCounter: Address<TAccountMintCounter>;
   systemProgram?: Address<TAccountSystemProgram>;
+  id: CloseMintLimitInstructionDataArgs['id'];
+  user: CloseMintLimitInstructionDataArgs['user'];
+  machine: CloseMintLimitInstructionDataArgs['machine'];
 };
 
 export function getCloseMintLimitInstruction<
@@ -260,6 +290,9 @@ export function getCloseMintLimitInstruction<
     ResolvedInstructionAccount
   >;
 
+  // Original args.
+  const args = { ...input };
+
   // Resolve default values.
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
@@ -275,7 +308,9 @@ export function getCloseMintLimitInstruction<
       getAccountMeta('mintCounter', accounts.mintCounter),
       getAccountMeta('systemProgram', accounts.systemProgram),
     ],
-    data: getCloseMintLimitInstructionDataEncoder().encode({}),
+    data: getCloseMintLimitInstructionDataEncoder().encode(
+      args as CloseMintLimitInstructionDataArgs
+    ),
     programAddress,
   } as CloseMintLimitInstruction<
     TProgramAddress,

@@ -19,7 +19,9 @@ import {
   Serializer,
   bytes,
   mapSerializer,
+  publicKey as publicKeySerializer,
   struct,
+  u8,
 } from '@metaplex-foundation/umi/serializers';
 import { findGlobalConfigPda } from '../accounts';
 import {
@@ -42,9 +44,18 @@ export type CloseMintLimitInstructionAccounts = {
 };
 
 // Data.
-export type CloseMintLimitInstructionData = { discriminator: Uint8Array };
+export type CloseMintLimitInstructionData = {
+  discriminator: Uint8Array;
+  id: number;
+  user: PublicKey;
+  machine: PublicKey;
+};
 
-export type CloseMintLimitInstructionDataArgs = {};
+export type CloseMintLimitInstructionDataArgs = {
+  id: number;
+  user: PublicKey;
+  machine: PublicKey;
+};
 
 export function getCloseMintLimitInstructionDataSerializer(): Serializer<
   CloseMintLimitInstructionDataArgs,
@@ -56,7 +67,12 @@ export function getCloseMintLimitInstructionDataSerializer(): Serializer<
     CloseMintLimitInstructionData
   >(
     struct<CloseMintLimitInstructionData>(
-      [['discriminator', bytes({ size: 8 })]],
+      [
+        ['discriminator', bytes({ size: 8 })],
+        ['id', u8()],
+        ['user', publicKeySerializer()],
+        ['machine', publicKeySerializer()],
+      ],
       { description: 'CloseMintLimitInstructionData' }
     ),
     (value) => ({
@@ -69,10 +85,13 @@ export function getCloseMintLimitInstructionDataSerializer(): Serializer<
   >;
 }
 
+// Args.
+export type CloseMintLimitInstructionArgs = CloseMintLimitInstructionDataArgs;
+
 // Instruction.
 export function closeMintLimit(
   context: Pick<Context, 'eddsa' | 'identity' | 'programs'>,
-  input: CloseMintLimitInstructionAccounts
+  input: CloseMintLimitInstructionAccounts & CloseMintLimitInstructionArgs
 ): TransactionBuilder {
   // Program ID.
   const programId = context.programs.getPublicKey(
@@ -109,6 +128,9 @@ export function closeMintLimit(
     },
   } satisfies ResolvedAccountsWithIndices;
 
+  // Arguments.
+  const resolvedArgs: CloseMintLimitInstructionArgs = { ...input };
+
   // Default values.
   if (!resolvedAccounts.authority.value) {
     resolvedAccounts.authority.value = context.identity;
@@ -135,7 +157,9 @@ export function closeMintLimit(
   );
 
   // Data.
-  const data = getCloseMintLimitInstructionDataSerializer().serialize({});
+  const data = getCloseMintLimitInstructionDataSerializer().serialize(
+    resolvedArgs as CloseMintLimitInstructionDataArgs
+  );
 
   // Bytes Created On Chain.
   const bytesCreatedOnChain = 0;

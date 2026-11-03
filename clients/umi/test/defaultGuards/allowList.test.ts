@@ -15,6 +15,7 @@ import {
   deleteGumballGuard,
   draw,
   findAllowListProofPda,
+  findGlobalConfigPda,
   findGumballGuardPda,
   getMerkleProof,
   getMerkleRoot,
@@ -550,6 +551,9 @@ test('it can close an allow list proof after guard is deleted', async (t) => {
         authority,
         gumballGuard,
         allowListProof: allowListProofPda[0],
+        merkleRoot,
+        user: umi.identity.publicKey,
+        machine: gumballMachine,
       })
     )
     .sendAndConfirm(umi);
@@ -627,6 +631,9 @@ test('it fails to close an allow list proof when guard still exists', async (t) 
         authority,
         gumballGuard,
         allowListProof: allowListProofPda[0],
+        merkleRoot,
+        user: umi.identity.publicKey,
+        machine: gumballMachine,
       })
     )
     .sendAndConfirm(umi);
@@ -719,6 +726,9 @@ test('it fails to close an allow list proof when signed by a non-authority', asy
         authority: randomSigner,
         gumballGuard,
         allowListProof: allowListProofPda[0],
+        merkleRoot,
+        user: umi.identity.publicKey,
+        machine: gumballMachine,
       })
     )
     .sendAndConfirm(umi);
@@ -810,6 +820,9 @@ test('it can close an allow list proof after machine is fully closed', async (t)
         authority,
         gumballGuard,
         allowListProof: allowListProofPda[0],
+        merkleRoot,
+        user: umi.identity.publicKey,
+        machine: gumballMachine,
       })
     )
     .sendAndConfirm(umi);
@@ -873,4 +886,72 @@ test('it creates a proof for the payer when the buyer is not present', async (t)
       })[0]
     )
   );
+});
+
+test('it only closes an allow list proof created under the closed guard it names', async (t) => {
+  // Given a live gumball machine with an allow list guard and a live proof.
+  const umi = await createUmi();
+  const allowList = [
+    base58PublicKey(umi.identity),
+    'Ur1CbWSGsXCdedknRbJsEk7urwAvu1uddmQv51nAnXB',
+  ];
+  const merkleRoot = getMerkleRoot(allowList);
+  const { publicKey: gumballMachine } = await create(umi, {
+    items: [
+      {
+        id: (await createNft(umi)).publicKey,
+        tokenStandard: TokenStandard.NonFungible,
+      },
+    ],
+    startSale: true,
+    guards: {
+      allowList: some({ merkleRoot }),
+    },
+  });
+  await transactionBuilder()
+    .add(setComputeUnitLimit(umi, { units: 600_000 }))
+    .add(
+      route(umi, {
+        machine: gumballMachine,
+        guard: 'allowList',
+        routeArgs: {
+          path: 'proof',
+          merkleRoot,
+          merkleProof: getMerkleProof(allowList, base58PublicKey(umi.identity)),
+        },
+      })
+    )
+    .sendAndConfirm(umi);
+
+  const gumballGuard = findGumballGuardPda(umi, { base: gumballMachine })[0];
+  const [allowListProof] = findAllowListProofPda(umi, {
+    merkleRoot,
+    user: umi.identity.publicKey,
+    machine: gumballMachine,
+    gumballGuard,
+  });
+  const authority = getTestAuthority(umi);
+  await setupGlobalConfig(umi, authority);
+  const [globalConfig] = findGlobalConfigPda(umi);
+
+  // When the fee authority names an unrelated empty account as the closed guard.
+  const unrelatedGuard = generateSigner(umi).publicKey;
+  for (const target of [allowListProof, gumballGuard, globalConfig]) {
+    const promise = transactionBuilder()
+      .add(
+        closeAllowlistProof(umi, {
+          authority,
+          gumballGuard: unrelatedGuard,
+          allowListProof: target,
+          merkleRoot,
+          user: umi.identity.publicKey,
+          machine: gumballMachine,
+        })
+      )
+      .sendAndConfirm(umi);
+
+    // Then the target is refused and still exists.
+    await t.throwsAsync(promise, { message: /PublicKeyMismatch/ });
+    t.true(await umi.rpc.accountExists(target));
+  }
 });

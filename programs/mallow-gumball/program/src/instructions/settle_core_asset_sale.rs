@@ -92,7 +92,7 @@ pub struct SettleCoreAssetSale<'info> {
     #[account(mut)]
     asset: UncheckedAccount<'info>,
 
-    /// CHECK: Safe due to item check
+    /// CHECK: Bound to the asset in get_verified_royalty_info
     #[account(mut)]
     collection: Option<UncheckedAccount<'info>>,
 
