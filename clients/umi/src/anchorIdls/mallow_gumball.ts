@@ -8,7 +8,7 @@ export type MallowGumball = {
   address: 'MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa';
   metadata: {
     name: 'mallowGumball';
-    version: '1.1.0';
+    version: '1.2.0';
     spec: '0.1.0';
     description: 'mallow Gumball: collaborative random sales of existing NFTs.';
     repository: 'https://github.com/mallow-labs/mallow-gumball';
