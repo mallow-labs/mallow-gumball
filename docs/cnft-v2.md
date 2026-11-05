@@ -601,12 +601,12 @@ Gate new entries only; existing claims, refunds and recovery stay available.
 Use the [M21 release artifact](#m21-marketplace-authorized-tree-exits) and
 [`cnft-v2-fix21-metrics.json`](./cnft-v2-fix21-metrics.json) for the current
 gumball and guard sizes, hashes and exact extension bytes. The release crates are
-`mallow-gumball` 1.1.0, `gumball-guard` 1.1.0 and `utils` 0.2.0; both program IDLs
-record `metadata.version` 1.1.0, distinct from the deployed 1.0.0 programs.
+`mallow-gumball` 1.2.0, `gumball-guard` 1.2.0 and `utils` 0.2.0; both program IDLs
+record `metadata.version` 1.2.0.
 Recheck finalized ProgramData capacity before extending or upgrading.
 
-The rebuilt guard is 935,784 bytes, SHA-256
-`6f49951721952043c2b75f28536358b566990188d5295cf0be17fdb4a595d0b5`,
+The rebuilt guard is 938,848 bytes, SHA-256
+`f81cd0a67becbb5ffeb1323702cd8fe3bced104b7575cbab8ed870b0d622244d`,
 within its previously observed 1,038,504-byte allocation. The documented build
 pins platform-tools v1.52 / SBPFv2 and uses localnet for Anchor IDL generation.
 Cold builds pre-create local placeholder keypairs so Anchor does not rewrite the
@@ -1441,17 +1441,20 @@ final-artifact simulations: **11,886–77,063 CU / 475–1195 serialized bytes**
 Normal live settlement gains no account, tree load or CPI; the admin prefix is
 read only for the explicit zero-root burnt exit (SPL replacement requires it).
 
-The current artifacts are built from `mallow-gumball` 1.1.0, `gumball-guard`
-1.1.0 and `utils` 0.2.0. The gumball artifact is **1,713,672 bytes**, SHA-256
-`1038b20c211fa7311f2762216f4f7aea7723fe9733d5d0e5a2f22a63d5dc988b`.
-Deploy/test copies are byte-identical. Against the recorded **1,550,208-byte**
-allocation, extend by exactly **163,464 bytes**, subject to rechecking finalized
-capacity. Guard is **935,784 bytes**, SHA-256
-`6f49951721952043c2b75f28536358b566990188d5295cf0be17fdb4a595d0b5`;
+The current artifacts are built from `mallow-gumball` 1.2.0, `gumball-guard`
+1.2.0 and `utils` 0.2.0. The gumball artifact is **1,714,440 bytes**, SHA-256
+`ffe8e4ab71d859417a2611312ed4d4543cbe9317b15c6982e7ee7f70aa1e2803`.
+Deploy/test copies are byte-identical. Its recorded **1,724,448-byte** allocation
+needs an extension of **0 bytes**, subject to rechecking finalized capacity. Guard
+is **938,848 bytes**, SHA-256
+`f81cd0a67becbb5ffeb1323702cd8fe3bced104b7575cbab8ed870b0d622244d`;
 against its recorded **1,038,504-byte** allocation it needs no extension.
 Both are SBPFv2. Upgrade guard first, then extend/upgrade gumball and
 synchronize the backend artifact manifest before enabling v2 entries.
-No deployment, publication, push or network transaction was performed.
+
+Mainnet gumball (slot 465551807) matches this artifact byte for byte. Mainnet guard
+(slot 465548724) was deployed before this rebuild: it has the same length but
+different bytes.
 
 ### Reproducing the release binaries
 
@@ -1482,16 +1485,16 @@ artifact; approve and repin it before any upload.
 
 The release candidate rebuilds with `heavy -- env NO_DNA=1 pnpm programs:build`
 and regenerates through `pnpm generate:clients`; the only tracked output change
-is IDL `metadata.version` 1.1.0 in `idls/` and the Umi `AnchorIdls` types.
+is IDL `metadata.version` 1.2.0 in `idls/` and the Umi `AnchorIdls` types.
 `heavy -- pnpm test` passes 39 script, 300 Kit, 836 Umi and seven Rust-client
 tests; the existing Kit todo and Umi skip remain. Native checks pass 19 machine,
 one guard and 11 utility tests.
 
 The Umi build exports the tree-evidence/admin-exit helpers. Consumers copy both
 JSON IDLs and the rebuilt Umi client, then repin the upload files. Gumball is
-1,713,672 bytes; exact extension against recorded allocation 1,550,208 is
-163,464 bytes. Guard is 935,784 bytes and requires no extension against recorded
-allocation 1,038,504. All are SBPFv2. Recheck allocation before upgrade.
+1,714,440 bytes and requires no extension against recorded allocation 1,724,448.
+Guard is 938,848 bytes and requires no extension against recorded allocation
+1,038,504. All are SBPFv2. Recheck allocation before upgrade.
 No deployment or publication occurred. A rebuild reproduces these hashes only
 under the path, command and toolchain listed in
 [Reproducing the release binaries](#reproducing-the-release-binaries).

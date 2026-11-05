@@ -7,16 +7,16 @@
   ],
   "artifact": {
     "gumball": {
-      "crateVersion": "1.1.0",
-      "bytes": 1713672,
-      "sha256": "1038b20c211fa7311f2762216f4f7aea7723fe9733d5d0e5a2f22a63d5dc988b",
-      "recordedAllocationBytes": 1550208,
-      "extendBytes": 163464
+      "crateVersion": "1.2.0",
+      "bytes": 1714440,
+      "sha256": "ffe8e4ab71d859417a2611312ed4d4543cbe9317b15c6982e7ee7f70aa1e2803",
+      "recordedAllocationBytes": 1724448,
+      "extendBytes": 0
     },
     "guard": {
-      "crateVersion": "1.1.0",
-      "bytes": 935784,
-      "sha256": "6f49951721952043c2b75f28536358b566990188d5295cf0be17fdb4a595d0b5",
+      "crateVersion": "1.2.0",
+      "bytes": 938848,
+      "sha256": "f81cd0a67becbb5ffeb1323702cd8fe3bced104b7575cbab8ed870b0d622244d",
       "recordedAllocationBytes": 1038504,
       "extendBytes": 0
     }
