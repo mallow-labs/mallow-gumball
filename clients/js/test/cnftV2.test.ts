@@ -277,10 +277,7 @@ test.serial(
         collection,
         name: 'Kit recovery',
         uri: '',
-        plugins: [
-          { type: 'BubblegumV2' },
-          { type: 'PermanentFreezeDelegate', frozen: false },
-        ],
+        plugins: [{ type: 'BubblegumV2' }],
       })
       .sendAndConfirm(f.umi);
     const mutation = () => ({
@@ -303,6 +300,11 @@ test.serial(
         newCoreCollection: collection.publicKey,
       })
       .sendAndConfirm(f.umi);
+    await cnft.addPermanentDelegate(
+      f.umi,
+      collection.publicKey,
+      'PermanentFreezeDelegate'
+    );
     f.item.collection = collection.publicKey;
     f.item.metadata = {
       ...f.item.metadata,

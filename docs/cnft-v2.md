@@ -148,6 +148,13 @@ settlement with its actual delivery before authorizing skipped delivery.
 
 Entry still rejects nonzero flags and any permanent freeze, transfer or burn
 delegate plugin. TransferV2 itself validates membership and deliverability.
+
+Since its 2026-10-30 mainnet upgrade, Bubblegum refuses to move a leaf into a
+collection with a permanent delegate (6060), and Core refuses to add a permanent
+plugin to an existing collection, so a leaf can no longer reach this state. Leaves
+moved before the upgrade can still be in it, so the collection evidence stays. The
+fixtures write the delegate into the collection account to reproduce that state.
+
 The old `CNFT_COLLECTION_RECOVERY_SIZE` constant and entry size rejection are
 removed from the program and all clients. Large AppData can transfer; small
 Attributes vectors can exhaust Bubblegum's heap.

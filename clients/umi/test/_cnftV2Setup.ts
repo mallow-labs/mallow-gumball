@@ -12,8 +12,10 @@ import {
   mplBubblegum,
 } from '@metaplex-foundation/mpl-bubblegum';
 import {
+  createCollection,
   ExternalPluginAdapterSchema,
   ExternalPluginAdapterType,
+  fetchCollection,
   getExternalPluginAdapterSerializer,
   getPluginHeaderV1AccountDataSerializer,
   getPluginSerializer,
@@ -36,6 +38,52 @@ import { CnftArgsV2Args } from '../src';
 import { CnftCreatorInput } from './_cnftSetup';
 import { getSvm } from './litesvm/svm';
 export { proofAccounts, settleRemainingAccounts } from './_cnftSetup';
+
+// Give a collection that already holds a leaf a permanent delegate. No transaction
+// can do this now: Bubblegum refuses to move a leaf into such a collection (6060,
+// since its 2026-10-30 mainnet upgrade) and Core refuses to add a permanent plugin
+// to an existing collection. Leaves moved before that upgrade can still be in this
+// state, so recovery must keep handling it. Core writes the delegated account; only
+// its address and counters are swapped for the live collection's.
+export const addPermanentDelegate = async (
+  umi: Umi,
+  collection: PublicKey,
+  type:
+    | 'PermanentFreezeDelegate'
+    | 'PermanentTransferDelegate'
+    | 'PermanentBurnDelegate',
+  frozen = false
+) => {
+  const { name, uri } = await fetchCollection(umi, collection);
+  const delegated = generateSigner(umi);
+  await createCollection(umi, {
+    collection: delegated,
+    name,
+    uri,
+    plugins: [
+      { type: 'BubblegumV2' },
+      type === 'PermanentFreezeDelegate' ? { type, frozen } : { type },
+    ],
+  }).sendAndConfirm(umi);
+  const svm = getSvm();
+  const key = publicKeyBytes(collection);
+  const account = svm.getAccount(publicKeyBytes(delegated.publicKey))!;
+  const serializer = getCollectionV1AccountDataSerializer();
+  const [live] = serializer.deserialize(svm.getAccount(key)!.data());
+  const [base] = serializer.deserialize(account.data());
+  const data = Uint8Array.from(account.data());
+  data.set(
+    serializer.serialize({
+      ...base,
+      numMinted: live.numMinted,
+      currentSize: live.currentSize,
+    })
+  );
+  svm.setAccount(
+    key,
+    new Account(account.lamports(), data, account.owner(), false, 0n)
+  );
+};
 
 // Model collection growth after escrow without sending an oversized instruction.
 // Keep every existing plugin body and offset intact; append Attributes before
