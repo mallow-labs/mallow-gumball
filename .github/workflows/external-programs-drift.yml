@@ -1,0 +1,30 @@
+name: External programs drift
+
+# Fails when a program the tests pin has been upgraded on chain, so an upstream
+# release is noticed without turning main red. See external-programs.sh.
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Compare pins with chain
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git checkout
+        uses: actions/checkout@v7
+
+      - name: Load environment variables
+        run: cat .github/.env >> $GITHUB_ENV
+
+      - name: Install Solana
+        uses: metaplex-foundation/actions/install-solana@v1
+        with:
+          version: ${{ env.SOLANA_VERSION }}
+
+      - name: Compare
+        run: configs/program-scripts/external-programs.sh check
