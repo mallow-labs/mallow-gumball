@@ -19,7 +19,10 @@ import {
   thawV2,
   transferV2,
 } from '@metaplex-foundation/mpl-bubblegum';
-import { createCollection } from '@metaplex-foundation/mpl-core';
+import {
+  addCollectionPlugin,
+  createCollection,
+} from '@metaplex-foundation/mpl-core';
 import {
   createAccount,
   createEmptyLut,
@@ -94,6 +97,7 @@ import {
 import {
   addCollectionExternalAdapters,
   addLargeCollectionAttributes,
+  addPermanentDelegate,
   cnftArgs,
   createCnftUmi,
   getCnftProof,
@@ -151,7 +155,7 @@ const emptyProof = (item: any) => {
 const setPermanentCollection = async (
   umi: any,
   item: any,
-  type: string,
+  type: any,
   frozen = false
 ) => {
   const collection = generateSigner(umi);
@@ -159,19 +163,14 @@ const setPermanentCollection = async (
     collection,
     name: 'Recovery fixture',
     uri: '',
-    plugins: [
-      { type: 'BubblegumV2' },
-      {
-        type,
-        ...(type === 'PermanentFreezeDelegate' ? { frozen } : {}),
-      } as any,
-    ],
+    plugins: [{ type: 'BubblegumV2' }],
   }).sendAndConfirm(umi);
   await setCollectionV2(umi, {
     ...mutationArgs(umi, item),
     metadata: item.metadata,
     newCoreCollection: collection.publicKey,
   }).sendAndConfirm(umi);
+  await addPermanentDelegate(umi, collection.publicKey, type, frozen);
   item.collection = collection.publicKey;
   item.metadata = { ...item.metadata, collection: some(collection.publicKey) };
   item.metaHash = hash(getMetadataArgsV2Serializer().serialize(item.metadata));
@@ -727,6 +726,48 @@ for (const kind of ['burnt', 'flagged']) {
     t.is((await fetchGumballMachine(f.umi, f.machine)).itemsSettled, 1n);
     await f.close();
     t.false(await f.umi.rpc.accountExists(f.machine));
+  });
+}
+
+for (const type of [
+  'PermanentFreezeDelegate',
+  'PermanentTransferDelegate',
+  'PermanentBurnDelegate',
+] as const) {
+  test(`pinned Bubblegum and Core refuse to put a leaf under a ${type}`, async (t) => {
+    const umi = await createCnftUmi(createUmi);
+    const item = await mintCnft(umi);
+    const plugin: any =
+      type === 'PermanentFreezeDelegate' ? { type, frozen: false } : { type };
+    const delegated = generateSigner(umi);
+    await createCollection(umi, {
+      collection: delegated,
+      name: 'Delegated',
+      uri: '',
+      plugins: [{ type: 'BubblegumV2' }, plugin],
+    }).sendAndConfirm(umi);
+    await t.throwsAsync(
+      setCollectionV2(umi, {
+        ...mutationArgs(umi, item),
+        metadata: item.metadata,
+        newCoreCollection: delegated.publicKey,
+      }).sendAndConfirm(umi),
+      { message: /Error Number: 6060/ }
+    );
+    const plain = generateSigner(umi);
+    await createCollection(umi, {
+      collection: plain,
+      name: 'Plain',
+      uri: '',
+      plugins: [{ type: 'BubblegumV2' }],
+    }).sendAndConfirm(umi);
+    await t.throwsAsync(
+      addCollectionPlugin(umi, {
+        collection: plain.publicKey,
+        plugin,
+      }).sendAndConfirm(umi),
+      { message: /0x9/ }
+    );
   });
 }
 
