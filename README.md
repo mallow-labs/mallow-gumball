@@ -16,6 +16,13 @@ Cold-cache builds create local placeholder keypairs before Anchor's IDL phase;
 these keys are never deployment identities. The build verifies the canonical
 MGUM/GGRD declarations and IDL addresses before publishing any outputs.
 
+Tests run against the external program binaries pinned in
+`configs/program-scripts/external-programs.txt`. `dump.sh` downloads them from this
+repo's GitHub release and verifies each SHA-256. A daily workflow compares the pins
+with the chain and fails when a program has been upgraded. To adopt an upgrade, run
+`configs/program-scripts/external-programs.sh pin external-programs-YYYY-MM-DD`, run
+the tests against the new binaries and commit the manifest.
+
 For the v2 release, upgrade **gumball-guard first** and verify it, then extend
 and upgrade **mallow-gumball**. Keep new v2 entries disabled until the programs,
 clients and consumers are ready. The old guard deducts fees on draw and cannot
