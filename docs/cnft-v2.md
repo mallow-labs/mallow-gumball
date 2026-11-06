@@ -618,8 +618,9 @@ within its previously observed 1,038,504-byte allocation. The documented build
 pins platform-tools v1.52 / SBPFv2 and uses localnet for Anchor IDL generation.
 Cold builds pre-create local placeholder keypairs so Anchor does not rewrite the
 canonical IDs. After both build phases the script checks each declaration and
-IDL address before publishing artifacts. No extension, deployment or network transaction was
-performed in this worktree.
+IDL address before publishing artifacts. Neither program needed an extension.
+Gumball 1.2.1 is deployed on devnet and mainnet; see the
+[M21 release artifact](#m21-marketplace-authorized-tree-exits).
 
 These hashes identify the exact approved files to upload. Builds are path-dependent:
 rebuilding in another worktree path can produce equal-sized, behaviorally identical
@@ -1461,8 +1462,10 @@ synchronize the backend artifact manifest before enabling v2 entries.
 
 Gumball 1.2.1 adds one fix to 1.2.0: `sell_item` pays the buy-back marketplace
 fee only to the machine's configured fee account. It is a gumball-only upgrade
-with no interface change. Mainnet gumball (slot 465551807) runs 1.2.0, SHA-256
-`ffe8e4ab71d859417a2611312ed4d4543cbe9317b15c6982e7ee7f70aa1e2803`. Guard is
+with no interface change. Mainnet gumball matches this artifact byte for byte:
+it was upgraded from 1.2.0 (SHA-256
+`ffe8e4ab71d859417a2611312ed4d4543cbe9317b15c6982e7ee7f70aa1e2803`) at slot
+465975538, 2026-11-06 04:31 UTC, through the Squads upgrade authority. Guard is
 not upgraded for 1.2.1. It compiles the gumball crate, so a rebuild next to gumball
 1.2.1 gives different guard bytes; the guard record above stays the 1.2.0 artifact.
 Mainnet guard (slot 465548724) was deployed before that artifact was built: it has
@@ -1507,6 +1510,6 @@ JSON IDLs and the rebuilt Umi client, then repin the upload files. Gumball is
 1,714,512 bytes and requires no extension against recorded allocation 1,724,448.
 Guard is 938,848 bytes and requires no extension against recorded allocation
 1,038,504. All are SBPFv2. Recheck allocation before upgrade.
-No deployment or publication occurred. A rebuild reproduces these hashes only
+No client package was published for 1.2.1. A rebuild reproduces these hashes only
 under the path, command and toolchain listed in
 [Reproducing the release binaries](#reproducing-the-release-binaries).
