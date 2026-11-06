@@ -608,8 +608,8 @@ Gate new entries only; existing claims, refunds and recovery stay available.
 Use the [M21 release artifact](#m21-marketplace-authorized-tree-exits) and
 [`cnft-v2-fix21-metrics.json`](./cnft-v2-fix21-metrics.json) for the current
 gumball and guard sizes, hashes and exact extension bytes. The release crates are
-`mallow-gumball` 1.2.0, `gumball-guard` 1.2.0 and `utils` 0.2.0; both program IDLs
-record `metadata.version` 1.2.0.
+`mallow-gumball` 1.2.1, `gumball-guard` 1.2.0 and `utils` 0.2.0; each program IDL
+records its crate version as `metadata.version`.
 Recheck finalized ProgramData capacity before extending or upgrading.
 
 The rebuilt guard is 938,848 bytes, SHA-256
@@ -1448,9 +1448,9 @@ final-artifact simulations: **11,886–77,063 CU / 475–1195 serialized bytes**
 Normal live settlement gains no account, tree load or CPI; the admin prefix is
 read only for the explicit zero-root burnt exit (SPL replacement requires it).
 
-The current artifacts are built from `mallow-gumball` 1.2.0, `gumball-guard`
-1.2.0 and `utils` 0.2.0. The gumball artifact is **1,714,440 bytes**, SHA-256
-`ffe8e4ab71d859417a2611312ed4d4543cbe9317b15c6982e7ee7f70aa1e2803`.
+The current artifacts are built from `mallow-gumball` 1.2.1, `gumball-guard`
+1.2.0 and `utils` 0.2.0. The gumball artifact is **1,714,512 bytes**, SHA-256
+`1fd6fe030f90a6eccd87470d34f874077cbcc5cc5dad83ca959ddcaf1e923901`.
 Deploy/test copies are byte-identical. Its recorded **1,724,448-byte** allocation
 needs an extension of **0 bytes**, subject to rechecking finalized capacity. Guard
 is **938,848 bytes**, SHA-256
@@ -1459,9 +1459,14 @@ against its recorded **1,038,504-byte** allocation it needs no extension.
 Both are SBPFv2. Upgrade guard first, then extend/upgrade gumball and
 synchronize the backend artifact manifest before enabling v2 entries.
 
-Mainnet gumball (slot 465551807) matches this artifact byte for byte. Mainnet guard
-(slot 465548724) was deployed before this rebuild: it has the same length but
-different bytes.
+Gumball 1.2.1 adds one fix to 1.2.0: `sell_item` pays the buy-back marketplace
+fee only to the machine's configured fee account. It is a gumball-only upgrade
+with no interface change. Mainnet gumball (slot 465551807) runs 1.2.0, SHA-256
+`ffe8e4ab71d859417a2611312ed4d4543cbe9317b15c6982e7ee7f70aa1e2803`. Guard is
+not upgraded for 1.2.1. It compiles the gumball crate, so a rebuild next to gumball
+1.2.1 gives different guard bytes; the guard record above stays the 1.2.0 artifact.
+Mainnet guard (slot 465548724) was deployed before that artifact was built: it has
+the same length but different bytes.
 
 ### Reproducing the release binaries
 
@@ -1499,7 +1504,7 @@ one guard and 11 utility tests.
 
 The Umi build exports the tree-evidence/admin-exit helpers. Consumers copy both
 JSON IDLs and the rebuilt Umi client, then repin the upload files. Gumball is
-1,714,440 bytes and requires no extension against recorded allocation 1,724,448.
+1,714,512 bytes and requires no extension against recorded allocation 1,724,448.
 Guard is 938,848 bytes and requires no extension against recorded allocation
 1,038,504. All are SBPFv2. Recheck allocation before upgrade.
 No deployment or publication occurred. A rebuild reproduces these hashes only

@@ -2,7 +2,7 @@
   "address": "MGUMqztv7MHgoHBYWbvMyL3E3NJ4UHfTwgLJUQAbKGa",
   "metadata": {
     "name": "mallow_gumball",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "spec": "0.1.0",
     "description": "mallow Gumball: collaborative random sales of existing NFTs.",
     "repository": "https://github.com/mallow-labs/mallow-gumball"

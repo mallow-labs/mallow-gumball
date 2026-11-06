@@ -7,9 +7,9 @@
   ],
   "artifact": {
     "gumball": {
-      "crateVersion": "1.2.0",
-      "bytes": 1714440,
-      "sha256": "ffe8e4ab71d859417a2611312ed4d4543cbe9317b15c6982e7ee7f70aa1e2803",
+      "crateVersion": "1.2.1",
+      "bytes": 1714512,
+      "sha256": "1fd6fe030f90a6eccd87470d34f874077cbcc5cc5dad83ca959ddcaf1e923901",
       "recordedAllocationBytes": 1724448,
       "extendBytes": 0
     },
