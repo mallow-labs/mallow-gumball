@@ -73,11 +73,11 @@ pub struct SellItem<'info> {
     /// OPTIONAL FEE ACCOUNTS - only required if there is a fee config on the gumball machine
 
     /// Marketplace fee account
-    /// CHECK: Safe due to constraint
+    /// CHECK: Checked against the machine's marketplace fee config in the instruction
     #[account(mut)]
     fee_account: Option<UncheckedAccount<'info>>,
     /// Marketplace fee payment account
-    /// CHECK: Safe due to transfer checks
+    /// CHECK: Safe due to transfer checks (must be the fee account's ATA)
     #[account(mut)]
     fee_payment_account: Option<UncheckedAccount<'info>>,
 
@@ -391,6 +391,19 @@ pub fn sell_item<'info>(
         token_program,
     )?;
 
+    // Make sure there are enough buy back funds available for the payout and the
+    // fee before moving any of them
+    let marketplace_fee = get_bps_of(buy_price, buy_back_config.marketplace_fee_bps)?;
+    let buy_back_funds_available = gumball_machine.get_buy_back_funds_available(&gumball_data)?;
+    msg!("buy_back_funds_available: {}", buy_back_funds_available);
+    require!(
+        buy_back_funds_available
+            >= buy_price
+                .checked_add(marketplace_fee)
+                .ok_or(GumballError::NumericalOverflowError)?,
+        GumballError::InsufficientFunds
+    );
+
     // Pay the seller from the buy back funds
     transfer_from_pda(
         authority_pda,
@@ -408,9 +421,23 @@ pub fn sell_item<'info>(
     )?;
 
     // Pay the marketplace fee
-    let marketplace_fee = get_bps_of(buy_price, buy_back_config.marketplace_fee_bps)?;
     if marketplace_fee > 0 {
-        let fee_account = &mut ctx.accounts.fee_account.as_mut().unwrap().to_account_info();
+        // The fee goes only to the machine's configured marketplace fee account,
+        // as on the settle path (`claim_proceeds`). The oracle co-signs, but the
+        // seller may build the transaction, so the account list is not trusted.
+        let configured_fee = gumball_machine
+            .marketplace_fee_config
+            .ok_or(GumballError::InvalidAuthority)?;
+        let fee_account = &mut ctx
+            .accounts
+            .fee_account
+            .as_ref()
+            .ok_or(GumballError::InvalidAuthority)?
+            .to_account_info();
+        require!(
+            fee_account.key() == configured_fee.fee_account,
+            GumballError::InvalidAuthority
+        );
         let fee_payment_account = ctx
             .accounts
             .fee_payment_account
@@ -436,17 +463,6 @@ pub fn sell_item<'info>(
             marketplace_fee,
         )?;
     }
-
-    // Make sure there are enough buy back funds available
-    let buy_back_funds_available = gumball_machine.get_buy_back_funds_available(&gumball_data)?;
-    msg!("buy_back_funds_available: {}", buy_back_funds_available);
-    require!(
-        buy_back_funds_available
-            .checked_add(marketplace_fee)
-            .ok_or(GumballError::NumericalOverflowError)?
-            >= buy_price,
-        GumballError::InsufficientFunds
-    );
 
     // Decrement buy back funds available
     let buy_back_funds_available_position =

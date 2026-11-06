@@ -1029,6 +1029,238 @@ test('it can sell an item with a marketplace fee using a Token-2022 payment mint
   );
 });
 
+/**
+ * A drawn NFT on a machine whose buy-back takes a 10% marketplace fee, ready
+ * for the drawer to sell back at 1 SOL. `withFeeConfig: false` creates the
+ * machine without a marketplace fee config.
+ */
+const setupBuyBackFeeSale = async (
+  client: Client,
+  opts: { withFeeConfig?: boolean; deposit?: bigint } = {}
+) => {
+  const feeAccount = (await generateKeyPairSigner()).address;
+  const { mint } = await createNft(client);
+  const oracleSigner = await generateKeyPairSigner();
+
+  const { gumballMachine } = await createGumballMachine(client, {
+    guards: {},
+    ...(opts.withFeeConfig === false
+      ? {}
+      : { feeConfig: { feeAccount, feeBps: 0 } }),
+    buyBackConfig: buyBack(oracleSigner, {
+      cutoffPct: 0,
+      marketplaceFeeBps: 1000,
+    }),
+  });
+  await sendTransaction(client.svm, client.payer, [
+    COMPUTE_UNITS,
+    await getAddNftInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint,
+    }),
+    getStartSaleInstruction({ gumballMachine, authority: client.payer }),
+  ]);
+  await manageFunds(client, gumballMachine, opts.deposit ?? sol(1.1), false);
+
+  const drawer = await generateKeyPairSignerWithSol(client.svm, sol(100));
+  await sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await draw({ gumballMachine, payer: drawer, buyer: drawer, mintArgs: {} }),
+  ]);
+
+  return { gumballMachine, mint, oracleSigner, drawer, feeAccount };
+};
+
+test('it cannot sell an item with a marketplace fee to a different fee account', async (t) => {
+  const client = await createClient();
+  const { gumballMachine, mint, oracleSigner, drawer, feeAccount } =
+    await setupBuyBackFeeSale(client);
+  const preFee = getBalance(client, feeAccount);
+
+  // The seller names their own wallet as the fee account.
+  const promise = sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await getSellItemInstructionAsync({
+      gumballMachine,
+      payer: drawer,
+      oracleSigner,
+      seller: drawer.address,
+      buyer: client.payer.address,
+      index: 0,
+      amount: 1,
+      buyPrice: sol(1),
+      mint,
+      feeAccount: drawer.address,
+      tokenStandard: TokenStandard.NonFungible,
+    }),
+  ]);
+
+  await t.throwsAsync(promise, { message: /InvalidAuthority/ });
+  t.is(getBalance(client, feeAccount), preFee);
+  const account = fetchGumballMachine(client.svm, gumballMachine);
+  t.false(account.items[0].isClaimed);
+  t.is(account.buyBackFundsAvailable, sol(1.1));
+});
+
+test('it cannot sell an item with a marketplace fee without the fee account', async (t) => {
+  const client = await createClient();
+  const { gumballMachine, mint, oracleSigner, drawer } =
+    await setupBuyBackFeeSale(client);
+
+  const promise = sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await getSellItemInstructionAsync({
+      gumballMachine,
+      payer: drawer,
+      oracleSigner,
+      seller: drawer.address,
+      buyer: client.payer.address,
+      index: 0,
+      amount: 1,
+      buyPrice: sol(1),
+      mint,
+      tokenStandard: TokenStandard.NonFungible,
+    }),
+  ]);
+
+  await t.throwsAsync(promise, { message: /InvalidAuthority/ });
+});
+
+test('it cannot sell an item with a buy-back fee when the machine has no marketplace fee config', async (t) => {
+  const client = await createClient();
+  const { gumballMachine, mint, oracleSigner, drawer } =
+    await setupBuyBackFeeSale(client, { withFeeConfig: false });
+
+  // Without a configured fee account, no account the caller names can be
+  // checked, so the sale fails closed.
+  const promise = sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await getSellItemInstructionAsync({
+      gumballMachine,
+      payer: drawer,
+      oracleSigner,
+      seller: drawer.address,
+      buyer: client.payer.address,
+      index: 0,
+      amount: 1,
+      buyPrice: sol(1),
+      mint,
+      feeAccount: drawer.address,
+      tokenStandard: TokenStandard.NonFungible,
+    }),
+  ]);
+
+  await t.throwsAsync(promise, { message: /InvalidAuthority/ });
+});
+
+test('it cannot sell an item when buy back funds cover the price but not the fee', async (t) => {
+  const client = await createClient();
+  // 1 SOL covers the buy price but not the 0.1 SOL marketplace fee.
+  const { gumballMachine, mint, oracleSigner, drawer, feeAccount } =
+    await setupBuyBackFeeSale(client, { deposit: sol(1) });
+
+  const promise = sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await getSellItemInstructionAsync({
+      gumballMachine,
+      payer: drawer,
+      oracleSigner,
+      seller: drawer.address,
+      buyer: client.payer.address,
+      index: 0,
+      amount: 1,
+      buyPrice: sol(1),
+      mint,
+      feeAccount,
+      tokenStandard: TokenStandard.NonFungible,
+    }),
+  ]);
+
+  await t.throwsAsync(promise, { message: /InsufficientFunds/ });
+});
+
+test('it cannot sell an item with a marketplace fee to a different fee token account', async (t) => {
+  const client = await createClient();
+  const feeAccount = (await generateKeyPairSigner()).address;
+  const { mint: nftMint } = await createNft(client);
+  const oracleSigner = await generateKeyPairSigner();
+  const drawer = await generateKeyPairSignerWithSol(client.svm, sol(100));
+
+  const { mint: paymentMint, atas } = await createMintWithHolders(client, {
+    holders: [
+      { owner: drawer.address, amount: 100 },
+      { owner: feeAccount, amount: 0 },
+      { owner: client.payer.address, amount: 110 },
+    ],
+  });
+  const [drawerTokenAccount, feeTokenAccount] = atas;
+
+  const { gumballMachine } = await createGumballMachine(client, {
+    guards: { tokenPayment: { mint: paymentMint, amount: 100 } },
+    feeConfig: { feeAccount, feeBps: 0 },
+    buyBackConfig: buyBack(oracleSigner, {
+      cutoffPct: 0,
+      marketplaceFeeBps: 1000,
+    }),
+    settings: { paymentMint },
+  });
+  await sendTransaction(client.svm, client.payer, [
+    COMPUTE_UNITS,
+    await getAddNftInstructionAsync({
+      gumballMachine,
+      seller: client.payer,
+      mint: nftMint,
+    }),
+    getStartSaleInstruction({ gumballMachine, authority: client.payer }),
+  ]);
+  await manageFunds(client, gumballMachine, 110, false, paymentMint);
+
+  await sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    await draw({
+      gumballMachine,
+      payer: drawer,
+      buyer: drawer,
+      mintArgs: {
+        tokenPayment: { mint: paymentMint, feeAccounts: [feeAccount] },
+      },
+    }),
+  ]);
+  const drawerBalance = fetchTokenAccount(client, drawerTokenAccount).amount;
+
+  // The right fee account, but the fee token account swapped for the seller's.
+  const ix = await getSellItemInstructionAsync({
+    gumballMachine,
+    payer: drawer,
+    oracleSigner,
+    seller: drawer.address,
+    buyer: client.payer.address,
+    index: 0,
+    amount: 1,
+    buyPrice: 100,
+    mint: nftMint,
+    feeAccount,
+    paymentMint,
+    tokenStandard: TokenStandard.NonFungible,
+  });
+  const promise = sendTransaction(client.svm, drawer, [
+    COMPUTE_UNITS,
+    {
+      ...ix,
+      accounts: ix.accounts?.map((a) =>
+        a.address === feeTokenAccount
+          ? { ...a, address: drawerTokenAccount }
+          : a
+      ),
+    },
+  ]);
+
+  await t.throwsAsync(promise, { message: /PublicKeyMismatch/ });
+  t.is(fetchTokenAccount(client, drawerTokenAccount).amount, drawerBalance);
+  t.is(fetchTokenAccount(client, feeTokenAccount).amount, 0n);
+});
+
 test('it cannot sell an item with invalid oracle signer', async (t) => {
   const client = await createClient();
   const { mint } = await createNft(client);
